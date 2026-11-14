@@ -1,5 +1,7 @@
 # #220 验收证据
 
+本文保留旧版本的验收历史；旧 Agent 探针已退休，文中脚本名仅标识原证据来源。当前 session v2 工程入口为 [conversation-native.runtime.test.mjs](../../../../packages/agents/test/conversation-native.runtime.test.mjs)、[tool-discovery.runtime.test.mjs](../../../../packages/agents/test/tool-discovery.runtime.test.mjs)。这些测试不继承本页的历史通过结论，真实供应商、桌面与跨机结果须另行验收。
+
 所有记录对应独立分支 `codex/wp08-220-context-compaction`。Node 24.21.0、PostgreSQL 18.6；Windows 使用独立依赖与构建，macOS 与 Windows 桌面 Chrome 分别执行。以下按实际执行结果更新，未执行不计通过。日志仅统一换行和行尾空白；初轮跨路线报告合并相同的交付重试并保留计数与原报告摘要。
 
 ## 真实供应商

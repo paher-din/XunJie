@@ -8,27 +8,90 @@
     "dist"
   ],
   "exports": {
-    "./study-copies": { "types": "./dist/study-copies.d.ts", "import": "./dist/study-copies.js" },
-    "./teaching-artifacts-reference": { "types": "./dist/teaching-artifacts-reference.d.ts", "import": "./dist/teaching-artifacts-reference.js" },
-    "./teaching-artifacts": { "types": "./dist/teaching-artifacts.d.ts", "import": "./dist/teaching-artifacts.js" },
-    "./agent-skills": { "types": "./dist/agent-skills.d.ts", "import": "./dist/agent-skills.js" },
-    "./pdf-materials": { "types": "./dist/pdf-materials.d.ts", "import": "./dist/pdf-materials.js" },
-    "./personal-materials": { "types": "./dist/personal-materials.d.ts", "import": "./dist/personal-materials.js" },
-    "./alu-learning": { "types": "./dist/alu-learning.d.ts", "import": "./dist/alu-learning.js" },
-    "./alu-references": { "types": "./dist/alu-references.d.ts", "import": "./dist/alu-references.js" },
-    "./alu-waveform": { "types": "./dist/alu-waveform.d.ts", "import": "./dist/alu-waveform.js" },
-    "./components": { "types": "./dist/components.d.ts", "import": "./dist/components.js" },
-    "./model-connections": { "types": "./dist/model-connections.d.ts", "import": "./dist/model-connections.js" },
-    "./action-intents": { "types": "./dist/action-intents.d.ts", "import": "./dist/action-intents.js" },
-    "./execution": { "types": "./dist/execution.d.ts", "import": "./dist/execution.js" },
-    "./execution-records": { "types": "./dist/execution-records.d.ts", "import": "./dist/execution-records.js" },
-    "./spaces": { "types": "./dist/spaces.d.ts", "import": "./dist/spaces.js" },
-    "./courses": { "types": "./dist/courses.d.ts", "import": "./dist/courses.js" },
-    "./learning-data": { "types": "./dist/learning-data.d.ts", "import": "./dist/learning-data.js" },
-    "./school-deliveries": { "types": "./dist/school-deliveries.d.ts", "import": "./dist/school-deliveries.js" },
-    "./question-drafts": { "types": "./dist/question-drafts.d.ts", "import": "./dist/question-drafts.js" },
-    "./teaching-agent": { "types": "./dist/teaching-agent.d.ts", "import": "./dist/teaching-agent.js" },
-    "./student-facts": { "types": "./dist/student-facts.d.ts", "import": "./dist/student-facts.js" },
+    "./study-copies": {
+      "types": "./dist/study-copies.d.ts",
+      "import": "./dist/study-copies.js"
+    },
+    "./teaching-artifacts-reference": {
+      "types": "./dist/teaching-artifacts-reference.d.ts",
+      "import": "./dist/teaching-artifacts-reference.js"
+    },
+    "./teaching-artifacts": {
+      "types": "./dist/teaching-artifacts.d.ts",
+      "import": "./dist/teaching-artifacts.js"
+    },
+    "./agent-skills": {
+      "types": "./dist/agent-skills.d.ts",
+      "import": "./dist/agent-skills.js"
+    },
+    "./pdf-materials": {
+      "types": "./dist/pdf-materials.d.ts",
+      "import": "./dist/pdf-materials.js"
+    },
+    "./personal-materials": {
+      "types": "./dist/personal-materials.d.ts",
+      "import": "./dist/personal-materials.js"
+    },
+    "./alu-learning": {
+      "types": "./dist/alu-learning.d.ts",
+      "import": "./dist/alu-learning.js"
+    },
+    "./alu-references": {
+      "types": "./dist/alu-references.d.ts",
+      "import": "./dist/alu-references.js"
+    },
+    "./alu-waveform": {
+      "types": "./dist/alu-waveform.d.ts",
+      "import": "./dist/alu-waveform.js"
+    },
+    "./components": {
+      "types": "./dist/components.d.ts",
+      "import": "./dist/components.js"
+    },
+    "./model-connections": {
+      "types": "./dist/model-connections.d.ts",
+      "import": "./dist/model-connections.js"
+    },
+    "./action-intents": {
+      "types": "./dist/action-intents.d.ts",
+      "import": "./dist/action-intents.js"
+    },
+    "./execution": {
+      "types": "./dist/execution.d.ts",
+      "import": "./dist/execution.js"
+    },
+    "./execution-records": {
+      "types": "./dist/execution-records.d.ts",
+      "import": "./dist/execution-records.js"
+    },
+    "./spaces": {
+      "types": "./dist/spaces.d.ts",
+      "import": "./dist/spaces.js"
+    },
+    "./courses": {
+      "types": "./dist/courses.d.ts",
+      "import": "./dist/courses.js"
+    },
+    "./learning-data": {
+      "types": "./dist/learning-data.d.ts",
+      "import": "./dist/learning-data.js"
+    },
+    "./school-deliveries": {
+      "types": "./dist/school-deliveries.d.ts",
+      "import": "./dist/school-deliveries.js"
+    },
+    "./question-drafts": {
+      "types": "./dist/question-drafts.d.ts",
+      "import": "./dist/question-drafts.js"
+    },
+    "./teaching-agent": {
+      "types": "./dist/teaching-agent.d.ts",
+      "import": "./dist/teaching-agent.js"
+    },
+    "./student-facts": {
+      "types": "./dist/student-facts.d.ts",
+      "import": "./dist/student-facts.js"
+    },
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
@@ -48,6 +111,34 @@
     "./storage": {
       "types": "./dist/storage.d.ts",
       "import": "./dist/storage.js"
+    },
+    "./agent-runtime": {
+      "types": "./dist/agent-runtime.d.ts",
+      "import": "./dist/agent-runtime.js"
+    },
+    "./agent-sessions": {
+      "types": "./dist/agent-sessions.d.ts",
+      "import": "./dist/agent-sessions.js"
+    },
+    "./session-materials": {
+      "types": "./dist/session-materials.d.ts",
+      "import": "./dist/session-materials.js"
+    },
+    "./student-learning": {
+      "types": "./dist/student-learning.d.ts",
+      "import": "./dist/student-learning.js"
+    },
+    "./student-questions": {
+      "types": "./dist/student-questions.d.ts",
+      "import": "./dist/student-questions.js"
+    },
+    "./agent-service": {
+      "types": "./dist/agent-service.d.ts",
+      "import": "./dist/agent-service.js"
+    },
+    "./agent-dependencies": {
+      "types": "./dist/agent-dependencies.d.ts",
+      "import": "./dist/agent-dependencies.js"
     }
   },
   "scripts": {

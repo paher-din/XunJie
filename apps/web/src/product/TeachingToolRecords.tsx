@@ -7,7 +7,8 @@ import { stateLabel } from '../tool-execution/ledger'
 import type { LocateResult } from '../components/workspace/references/model'
 import './teaching-tool-records.css'
 
-export type TeachingToolLocator = (record: TeachingToolRecord) => LocateResult | Promise<LocateResult>
+export type TeachingToolRecordView = Pick<TeachingToolRecord, 'commandId' | 'runId' | 'name' | 'state' | 'outcome' | 'result' | 'feedback' | 'arguments' | 'basis' | 'source'>
+export type TeachingToolLocator = (record: TeachingToolRecordView) => LocateResult | Promise<LocateResult>
 
 const outcomeLabels = {
   'not-dispatched': '未派发', accepted: '已接受，等待结果', completed: '已完成',
@@ -90,7 +91,7 @@ function ToolDetails({ label, value }: { label: ReactNode; value: unknown }) {
   </details>
 }
 
-function ToolRecord({ record, onLocate }: { record: TeachingToolRecord; onLocate?: TeachingToolLocator }) {
+function ToolRecord({ record, onLocate }: { record: TeachingToolRecordView; onLocate?: TeachingToolLocator }) {
   const [locating, setLocating] = useState(false)
   const title = toolLabels[record.name] ?? record.name
   const skillTool = record.name === 'skill_load' || record.name === 'skill_read'
@@ -151,7 +152,7 @@ function ToolRecord({ record, onLocate }: { record: TeachingToolRecord; onLocate
   </details>
 }
 
-export function TeachingToolRecords({ records, onLocate }: { records: TeachingToolRecord[]; onLocate?: TeachingToolLocator }) {
+export function TeachingToolRecords({ records, onLocate }: { records: TeachingToolRecordView[]; onLocate?: TeachingToolLocator }) {
   if (!records.length) return null
   return <div className="teaching-tool-records" aria-label="工具记录">
     {records.map(record => <ToolRecord key={record.commandId} record={record} onLocate={onLocate} />)}

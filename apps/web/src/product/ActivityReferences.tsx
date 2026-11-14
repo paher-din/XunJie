@@ -7,8 +7,6 @@ import { DraftReferencesProvider, TextReferenceSource } from '../components/work
 import { ReliableQuestionDraft } from '../reliable-workspace/draft'
 import { learningRequest, workspaceScope } from './learningTransport'
 import { workViewSchema } from '@xunjie/contracts/learning-data'
-import { actionViewSchema, actionReceiverSchema } from '@xunjie/contracts/action-intents'
-import { z } from 'zod'
 import { ReliableWorkspace } from '../reliable-workspace'
 import { ActivitySessionContext } from './ActivitySession'
 import { ComponentInteractions } from '../component-host/interactions'
@@ -23,6 +21,10 @@ import { materialLinks } from './material-links'
 import { createExecutionTransport, createSessionTransport } from './executionTransport'
 import { NativeSessionController } from '../tool-execution/session-controller'
 import { SessionRequests } from '../tool-execution/session-requests'
+import { AgentSessionsClient, createSessionActionReceiver } from './agent-sessions'
+import { useAgentSession, sessionError } from './useAgentSession'
+import { sessionSkillStateSchema } from '@xunjie/contracts/agent-skills'
+import type { AgentSession } from '@xunjie/contracts/agent-sessions'
 import { useAgentInteraction } from './AgentInteraction'
 import { useSkillCatalog, draftSkillOption } from './skills'
 import type { LearningReadCache } from './learning-read-cache'
@@ -34,7 +36,18 @@ export function ActivityReferences({ activity, spaceKey, namespace, authorized, 
   readCache?: LearningReadCache
 }) {
   const scope = workspaceScope(namespace, activity)
-  const skills = useSkillCatalog(activity.identity, spaceKey, namespace, activity.activityId)
+  const agentClient = useMemo(() => new AgentSessionsClient({ identity: activity.identity, spaceKey, namespace }), [scope, spaceKey])
+  const [agentSession, setAgentSession] = useState<AgentSession>()
+  const skills = useSkillCatalog(activity.identity, spaceKey, namespace, agentSession?.sessionId, !!agentSession, readCache)
+  const [agentSessionError, setAgentSessionError] = useState(''), [attempt, setAttempt] = useState(0)
+  const agent = useAgentSession(agentClient, agentSession?.sessionId, authorized && !readOnly, viewActive)
+  useEffect(() => {
+    let active = true
+    setAgentSession(undefined); setAgentSessionError('')
+    if (authorized) void (readOnly ? agentClient.list().then(items => items.find(item => item.workspace?.activityId === activity.activityId))
+      : agentClient.workspace(activity.activityId, activity.target)).then(value => { if (active) setAgentSession(value) }).catch(cause => { if (active) setAgentSessionError(sessionError(cause)) })
+    return () => { active = false }
+  }, [agentClient, authorized, readOnly, attempt])
   const inputInteraction = useAgentInteraction(activity.identity, spaceKey, namespace, authorized && !readOnly)
   const access = useRef(authorized)
   access.current = authorized
@@ -62,18 +75,23 @@ export function ActivityReferences({ activity, spaceKey, namespace, authorized, 
       sync: async body => workViewSchema.parse(await request('', body)),
     }, { activityId: activity.activityId, bindings: activity.course?.components ?? [] }, readOnly)
   }, [scope, spaceKey, namespace, readOnly])
+  const sessionOwner = useRef(agentSession); sessionOwner.current = agentSession
   const actions = useMemo(() => {
-    const path = 'intents/' + activity.activityId
-    const request = (suffix: string, body?: unknown) => learningRequest(activity, spaceKey, namespace, path + suffix, body)
+    const retired = async () => { throw Object.assign(new Error('旧版问题交接不能重新派发，原记录保留。'), { code: 'incompatible' }) }
     return workspace.actions(draft, {
-      prepare: async body => actionViewSchema.parse(await request('', body)),
-      read: async id => { const value = await request('/' + id); return value === null ? null : actionViewSchema.parse(value) },
-      list: async () => z.array(actionViewSchema).parse(await request('')),
-      dispatch: async id => actionViewSchema.parse(await request('/' + id + '/dispatch', {})),
-      cancel: async id => actionViewSchema.parse(await request('/' + id + '/cancel', {})),
-      capabilities: async () => z.array(actionReceiverSchema).parse(await request('/capabilities')),
+      prepare: retired, dispatch: retired, cancel: retired, read: async () => null, list: async () => [],
+      capabilities: async () => {
+        if (!sessionOwner.current) throw Object.assign(new Error('工作区对话尚未准备。'), { code: 'unavailable' })
+        await agentClient.read(sessionOwner.current.sessionId)
+        return []
+      },
     })
-  }, [workspace, draft, scope, spaceKey, namespace])
+  }, [workspace, draft, agentClient])
+  useEffect(() => agentSession && !readOnly ? actions.registerLocal(createSessionActionReceiver(agentClient, agentSession,
+    async action => {
+      await workspace.flush(); await draft.leave()
+      if (action.draft.skills) sessionSkillStateSchema.parse(await agentClient.request(`${agentSession.sessionId}/skills/select`, { requestId: action.requestId, skills: action.draft.skills }))
+    })) : undefined, [actions, agentClient, agentSession, readOnly, workspace, draft])
   const execution = useMemo(() => {
     // One page load is one executor generation; an older page cannot adopt a newer run.
     const transport = createExecutionTransport(activity, spaceKey, namespace)
@@ -109,7 +127,7 @@ export function ActivityReferences({ activity, spaceKey, namespace, authorized, 
     if (authorized) { draft.resume(); workspace.resume(); actions.resume();void execution.synchronize().catch(()=>{}) }
     else { draft.suspend(); workspace.suspend(); actions.suspend() }
   }, [draft, workspace, actions, execution, authorized])
-  return <ActivitySessionContext.Provider value={{ workspace, draft, actions, execution, sessions, interactions, inputInteraction, readCache, viewActive }}>
+  return <ActivitySessionContext.Provider value={{ workspace, draft, actions, execution, sessions, interactions, inputInteraction, agent, agentSession, agentSessionError, retryAgentSession: () => setAttempt(value => value + 1), readCache, viewActive }}>
     <DraftReferencesProvider workspaceKey={scope} draft={draft} actions={actions} delivery={inputInteraction.delivery}
       viewActive={viewActive}
       skillCatalog={{ options: (skills.data?.skills ?? []).map(draftSkillOption),

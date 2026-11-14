@@ -5,7 +5,10 @@
   "type": "module",
   "files": ["dist"],
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" }
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    "./identity": { "types": "./dist/identity.d.ts", "import": "./dist/identity.js" },
+    "./chunk-channel": { "types": "./dist/chunk-channel.d.ts", "import": "./dist/chunk-channel.js" },
+    "./source-closure": { "types": "./dist/source-closure.d.ts", "import": "./dist/source-closure.js" }
   },
   "scripts": {
     "build": "node ../../scripts/build.mjs storage --",
@@ -13,6 +16,6 @@
     "pretest": "node ../../scripts/build.mjs storage:test",
     "test": "node ../../scripts/test.mjs storage"
   },
-  "dependencies": { "@xunjie/contracts": "0.1.0", "pg": "8.16.3" },
+  "dependencies": { "@xunjie/contracts": "0.1.0", "pg": "8.16.3", "zod": "4.6.5" },
   "devDependencies": { "@types/node": "24.19.1", "@types/pg": "8.15.6", "typescript": "~5.9.2" }
 }

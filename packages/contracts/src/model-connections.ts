@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { spaceIdentitySchema } from './spaces.js';
+import { agentDispatchPermitSchema } from './agent-runtime.js';
 import { storageOwnerSchema } from './storage.js';
 import { modelReasoningEfforts } from './model-reasoning.js';
 import { maximumModelTokenCount } from './model-capacity.js';
@@ -226,9 +227,11 @@ export const modelCapabilityFailureSchema = z.object({ error: z.literal('capabil
 export type ModelCapabilityInput = z.infer<typeof modelCapabilityInputSchema>;
 export type ModelCapabilityDecision = z.infer<typeof modelCapabilityDecisionSchema>;
 export type ModelCapabilityRequirement = z.infer<typeof modelCapabilityRequirementSchema>;
+export const modelSessionAuthoritySchema = z.object({ formatVersion: z.literal(1), permit: agentDispatchPermitSchema }).strict();
+export type ModelSessionAuthority = z.infer<typeof modelSessionAuthoritySchema>;
 export const modelSegmentPurposeSchema = z.enum(['chat-probe', 'learning']);
 export const modelSegmentInputSchema = z.object({ requestId: z.uuid(), segmentId: z.uuid(), source: modelCheckInputSchema.shape.source,
-  purpose: modelSegmentPurposeSchema.optional(),
+  purpose: modelSegmentPurposeSchema.optional(), sessionId: z.uuid().optional(),
   prefix: z.object({ system: z.string().max(400_000), tools: z.array(modelToolSchema).max(64), options: modelChatOptionsSchema.optional() }).strict(),
   portable: z.array(z.object({ text: z.string().max(400_000), role: z.enum(['user', 'assistant']).optional(),
     resultRef: z.uuid().optional() }).strict()).max(512),
@@ -246,13 +249,14 @@ export const modelChatInputSchema = z.object({ attemptId: z.uuid(), purpose: z.l
   limits: z.object({ maxOutputTokens: z.number().int().min(1).max(2048), timeoutMs: z.number().int().min(250).max(30000) }).strict() }).strict();
 /** Learning calls are not probes: no probe count, sequence, output or time caps apply. */
 export const modelLearningInputSchema = z.object({ attemptId: z.uuid(), purpose: z.literal('learning'), segmentId: z.uuid(),
+  authority: modelSessionAuthoritySchema.optional(),
   expectedSequence: z.number().int().nonnegative(), input: z.object({ text: z.string().max(1_000_000), images: z.array(modelImageRefSchema).max(8).default([]),
     toolResults: z.array(modelToolResultSchema).max(64).default([]), observations: z.array(modelObservationSchema).max(512).default([]) }).strict(),
   limits: z.object({ maxOutputTokens: z.number().int().min(1).max(1_000_000),
     timeoutMs: z.number().int().min(250).max(2_147_483_647).optional() }).strict() }).strict();
 export const modelAttemptInputSchema = z.union([modelCheckInputSchema, modelChatInputSchema, modelLearningInputSchema]);
 export const modelAttemptSchema = z.object({ attemptId: z.uuid(), purpose: z.enum(['connection-check', 'chat-probe', 'learning']),
-  test: modelCheckItemSchema.optional(), diagnostic: modelDiagnosticSchema.optional(),
+  test: modelCheckItemSchema.optional(), diagnostic: modelDiagnosticSchema.optional(), authority: modelSessionAuthoritySchema.optional(),
   source: z.object({ kind: z.enum(['school', 'personal']), ownerScope: z.string().min(1).max(500),
     feeSource: z.string().min(1).max(500), grantId: z.uuid().optional(), grantVersion: z.number().int().positive().optional() }).strict().optional(),
   connection: modelConnectionSchema, limits: modelLearningInputSchema.shape.limits.extend({ maxOutputTokens: z.number().int().min(1).max(maximumModelTokenCount) }),

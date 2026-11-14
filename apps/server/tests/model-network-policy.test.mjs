@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createServer } from 'node:http';
-import { modelAddressAllowed, resolveModelTarget, validateModelTarget, modelTargetFetch } from '../../../packages/learning-space/src/model-connections/network-policy.ts';
+import { modelAddressAllowed, resolveModelTarget, validateModelTarget, modelTargetFetch } from '../../../packages/model-gateway/src/network-policy.ts';
 
 const configuration = baseUrl => ({ baseUrl, path: '/chat/completions' });
 const denied = action => assert.rejects(action, error => error.code === 'forbidden');

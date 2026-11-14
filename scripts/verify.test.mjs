@@ -51,6 +51,25 @@ if(stage === process.env.FAIL_STAGE) {
     write('packages/new-package/pretest.mjs', `process.env.FIXTURE_STAGE='new-pretest';\n${stageScript}`);
     write('packages/new-package/test-entry.mjs', `process.env.FIXTURE_STAGE='new-test';\n${stageScript}`);
   }
+  if (extra.AGENT_WORKSPACES) {
+    for (const name of ['agent-runtime', 'agents']) {
+      write(`packages/${name}/package.json`, JSON.stringify({ name: `@xunjie/${name}`, scripts: { test: 'node --test test/*.test.mjs' } }));
+    }
+    write('packages/agent-runtime/test/session.runtime.test.mjs', `process.env.FIXTURE_STAGE='agent-runtime-native';\n${stageScript}`);
+    write('packages/agents/test/execution.test.mjs', `process.env.FIXTURE_STAGE='agents-execution';\n${stageScript}`);
+    write('packages/agents/test/future.runtime.test.mjs', `process.env.FIXTURE_STAGE='agents-native';\n${stageScript}`);
+    write('packages/learning-space/package.json', JSON.stringify({ name: '@xunjie/learning-space', scripts: { build: 'fixture' } }));
+    write('packages/learning-space/test/support/session-skills.mjs', 'export const ownerReady = true;');
+    write('packages/learning-space/test/learning-query.test.mjs', `import {ownerReady} from './support/session-skills.mjs'; if(!ownerReady) throw new Error('missing owner');
+process.env.FIXTURE_STAGE='learning-query';
+${stageScript}`);
+    write('packages/learning-space/test/session-skills.runtime.test.mjs', `import {ownerReady} from './support/session-skills.mjs'; if(!ownerReady) throw new Error('missing owner');
+process.env.FIXTURE_STAGE='learning-native';
+${stageScript}`);
+    write('apps/server/retired.test.mjs', "throw new Error('deleted test was scheduled')");
+    rmSync(join(root, 'apps/server/retired.test.mjs'));
+
+  }
   write('scripts/build.mjs', stageScript);
   for (const [path, stage] of [
     ['scripts/check-contracts-browser.mjs', 'check:contracts:browser'], ['scripts/check-doc-links.mjs', 'check:docs'],
@@ -276,3 +295,52 @@ for (const target of ['checks', 'contracts', 'storage', 'product-runtime', 'serv
     assert.equal(realpathSync(f.summary().cwd), realpathSync(f.root));
   });
 }
+
+
+test('unified verification executes Agent local behavior and leaves native sessions explicitly external', { timeout: 10_000 }, async t => {
+  const f = fixture(t, { AGENT_WORKSPACES: '1' }, ['--group', 'unit', '--jobs', '1']);
+  assert.deepEqual(await f.exit, [0, null], f.output());
+  const stages = f.events().map(event => event.stage);
+  assert.equal(stages.filter(stage => stage === 'agents-execution').length, 1);
+  assert.equal(stages.includes('agent-runtime-native'), false);
+  assert.equal(stages.includes('agents-native'), false);
+  assert.equal(stages.filter(stage => stage === 'learning-query').length, 1);
+  assert.equal(stages.includes('learning-native'), false);
+  const tasks = f.summary().stages.flatMap(stage => stage.tasks);
+  assert.equal(tasks.find(task => task.name === 'packages/agents/test/execution.test.mjs')?.status, 'passed');
+  assert.equal(tasks.some(task => task.name.includes('runtime.test.mjs')), false);
+  assert.equal(tasks.some(task => /support\/|retired.test/.test(task.name)), false);
+});
+
+test('explicit native entry prepares fresh dependencies and propagates the actual native test failure', { timeout: 10_000 }, async t => {
+  const f = fixture(t, { AGENT_WORKSPACES: '1' }, ['--group', 'prepare', '--list']);
+  await f.exit;
+  for (const path of ['test.mjs', 'test-discovery.mjs', 'server-test-weights.json', 'test-scheduler.mjs']) cpSync(join(source, path), join(f.root, 'scripts', path));
+  const entry = join(f.root, 'scripts/test.mjs');
+  const invoke = async (target, args = [], env = {}) => {
+    const child = spawn(process.execPath, [entry, target, ...args], { cwd: tmpdir(),
+      env: { ...process.env, EVENTS: join(f.root, 'events.jsonl'), ...env }, stdio: ['ignore', 'pipe', 'pipe'] });
+    let output = ''; child.stdout.on('data', data => output += data); child.stderr.on('data', data => output += data);
+    return { exit: await once(child, 'close'), output };
+  };
+  const local = await invoke('agent-runtime', ['--list']);
+  assert.deepEqual(local.exit, [0, null], local.output);
+  assert.match(local.output, /0 local test files/);
+  for (const target of ['agent-runtime', 'agents', 'learning-space']) {
+    const listed = await invoke(target, ['--external', '--list']);
+    assert.deepEqual(listed.exit, [0, null], listed.output);
+    assert.match(listed.output, /1 external test files/);
+    assert.doesNotMatch(listed.output, /execution.test.mjs/);
+  }
+  assert.deepEqual(f.events(), [], 'listing never runs builds or tests');
+  const failed = await invoke('agent-runtime', ['--external', '--report-dir', '.verification'], { FAIL_STAGE: 'agent-runtime-native' });
+  assert.deepEqual(failed.exit, [1, null], failed.output);
+  assert.deepEqual(f.events().map(event => event.stage), ['agent-runtime:test', 'agent-runtime-native']);
+  assert.equal(f.summary().status, 'failed');
+  assert.equal(f.summary().stages[1].name, 'unit');
+  assert.equal(f.summary().stages[1].tasks[0].status, 'failed');
+  assert.match(failed.output, /known failure detail/);
+  const learning = await invoke('learning-space', ['--external'], { FAIL_STAGE: 'learning-native' });
+  assert.deepEqual(learning.exit, [1, null], learning.output);
+  assert.deepEqual(f.events().slice(-2).map(event => event.stage), ['learning-space:test', 'learning-native']);
+});

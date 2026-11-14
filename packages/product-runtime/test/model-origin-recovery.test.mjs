@@ -18,7 +18,7 @@ test('R10 host permit uses real retired predecessors, never a new credential alo
     const first = randomUUID(), middle = randomUUID(), last = randomUUID();
     const one = fact(service, first, middle), two = fact(service, middle, last);
     let allowed = true, taskReads = 0;
-    const task = { operation: 'learning', formatVersion: 2, origin: { service, installationId: last, grantId: randomUUID() } };
+    const task = { operation: 'learning', formatVersion: 3, origin: { service, installationId: last, grantId: randomUUID() } };
     const host = withModelOriginRecovery(root, { async authorizeTask() {
       if (!allowed) throw Object.assign(new Error('forbidden'), { code: 'forbidden' });
       return { authorized: true };

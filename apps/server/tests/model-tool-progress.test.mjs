@@ -9,7 +9,7 @@ import { build } from 'esbuild';
 // Public transport with the installed, real vendor SDKs; do not replace the assemblers.
 const directory = await mkdtemp(join(tmpdir(), 'xj-tool-progress-'));
 after(() => rm(directory, { recursive: true, force: true }));
-await build({ entryPoints: ['transport', 'json-tool-progress'].map(name => fileURLToPath(new URL(`../../../packages/learning-space/src/model-connections/${name}.ts`, import.meta.url))),
+await build({ entryPoints: ['transport', 'json-tool-progress'].map(name => fileURLToPath(new URL(`../../../packages/model-gateway/src/${name}.ts`, import.meta.url))),
   outdir: directory, outExtension: { '.js': '.mjs' }, bundle: true, platform: 'node', format: 'esm',
   plugins: [{ name: 'installed-dependencies', setup(builder) {
     builder.onResolve({ filter: /^[^./]/ }, args => isAbsolute(args.path) ? undefined

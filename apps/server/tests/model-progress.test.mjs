@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 const { createProgressPublisher } = await import(new URL(
-  '../../../packages/learning-space/dist/model-connections/sensitive-output.js', import.meta.url).href);
+  '../../../packages/model-gateway/dist/sensitive-output.js', import.meta.url).href);
 
 test('incremental previews withhold credential-sized tails and stop at the credential', () => {
   const key = 'synthetic-progress-key';

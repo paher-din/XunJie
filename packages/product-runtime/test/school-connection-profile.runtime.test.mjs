@@ -7,8 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import { openProductRuntime, resolveCredential } from '@xunjie/product-runtime';
 import { createFileBackend, openStorage } from '@xunjie/storage';
-import { createSpaces, createMemberAgentBindings, createActivityAgentRoutes, spaceCourseMigrations, learningMigrations,
-  createLearningData } from '@xunjie/learning-space';
+import { createSpaces, createMemberAgentBindings, createActivityAgentRoutes, spaceCourseMigrations, learningMigrations, createLearningData } from '@xunjie/learning-space';
 
 const resources = { nodePath: process.execPath, nodeVersion: '24.21.0',
   postgresBin: process.env.XUNJIE_PRODUCT_POSTGRES_BIN, postgresVersion: '18.6',
@@ -90,7 +89,7 @@ test('client delivery stays eligible but explicit member and pinned independent 
   const spaces = createSpaces(space, { credentialNamespace: f.state.environment.installationId });
   const bindings = createMemberAgentBindings(space, spaces.authorize);
   const target = { ...f.state.environment.services.find(item => item.unit === 'learning-data'),
-    unit: 'teaching-agent', environmentId: randomUUID(), serviceId: randomUUID() };
+    unit: 'teaching-agent', environmentId: randomUUID(), serviceId: randomUUID(), capabilities: ['agent.sessions.v2'] };
   const original = { connectionId: f.grant.connectionId, installationId: randomUUID(), target, delivery: 'client' };
   await bindings.bind({ ...original, requestId: randomUUID(), identity: f.identity });
   assert.equal((await f.api('connections/profile', undefined, f.bearer)).value.localStudy, true);

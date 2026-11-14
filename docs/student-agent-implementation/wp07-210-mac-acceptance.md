@@ -1,5 +1,7 @@
 # #210：WP07 运行中引导、排队与暂停续接的 macOS 验收
 
+本文保留旧版本的验收历史；旧 Agent 探针已退休，文中脚本名仅标识原证据来源。当前 session v2 工程入口为 [capabilities.runtime.test.mjs](../../packages/agent-runtime/test/capabilities.runtime.test.mjs)、[agent-student-ask.runtime.test.mjs](../../packages/product-runtime/test/agent-student-ask.runtime.test.mjs)。这些测试不继承本页的历史通过结论，真实供应商、桌面与跨机结果须另行验收。
+
 对应 [#210](https://github.com/paher-din/XunJie/issues/210)，来源需求 [#200](https://github.com/paher-din/XunJie/issues/200)。本记录在已有 Apple Silicon / macOS 环境完成；不新建 PR、不合并既有 PR，继续同一 `wp07` 分支。
 
 实际验收提交：`7381fe958597001aacfa08b6da9f3b7a35a6b673`（`origin/wp07` 最新提交，2026-11-07 02:35 +0800）。本页新增验收脚本、截图和记录，不改变产品源码。
@@ -143,21 +145,12 @@ XUNJIE_E2E_BROWSER_CHANNEL=chrome XUNJIE_XJ_DEV_URL=http://127.0.0.1 \
 
 本轮一次性 school 实例、模型 fixture、Windows 临时目录、云主机临时包、产品包实例与构建候选均已停止/卸载/删除；输入法恢复 ABC。仅保留本页、脱敏证据、实际截图和本机被忽略的原始日志，未提交密码、token、API Key 或私有路径。
 
-## 复跑入口
+## 当前工程回归入口
+
+使用 Node 24.21.0 和支持的 `XUNJIE_PRODUCT_POSTGRES_BIN`；先由协调方统一准备 workspace 产物。已有产物时直接运行，不在共享构建期间重复 build：
 
 ```sh
-export PATH=<node-24.21.0>/bin:$PATH
-export XUNJIE_PRODUCT_POSTGRES_BIN=/opt/homebrew/opt/postgresql@18/bin
-export XUNJIE_PRODUCT_WEB_ROOT="$PWD/apps/web/dist-runtime"
-node --test --test-reporter=tap apps/server/tests/teaching-agent.input-control.runtime.test.mjs
-node --test --test-reporter=tap apps/server/tests/teaching-agent.student-ask.runtime.test.mjs
-node --test --test-reporter=tap apps/server/tests/teaching-agent.runtime.test.mjs
-
-node scripts/package-product.mjs --platform darwin-arm64 --profile full --out <new-empty-candidate-path>
-node scripts/probe-input-control-ime.mjs
-
-node scripts/probe-teaching-tools.mjs --credentials-file <authorized-private-providers.json> \
-  --input-control --out docs/student-agent-implementation/evidence/wp07-210/real-model-input-control.json
+node --test --test-concurrency=1 apps/server/tests/teaching-agent.input-control.runtime.test.mjs packages/product-runtime/test/agent-student-ask.runtime.test.mjs
 ```
 
-跨机复跑拓扑与逐项报告见 [`cross-machine-input-control.json`](evidence/wp07-210/cross-machine-input-control.json)；脚本为 [`cross-machine-school-setup.mjs`](../../scripts/cross-machine-school-setup.mjs)、[`cross-machine-input-control-client.mjs`](../../scripts/cross-machine-input-control-client.mjs) 和 [`cross-machine-model-fixture.mjs`](../../scripts/cross-machine-model-fixture.mjs)。school 的 TLS 证书、成员密码与 Windows 临时配置不进入仓库。
+这些是当前 session v2 工程入口，结果须按本次实际执行单独记录。历史产品包、真实供应商、桌面输入法与跨机验收不由上述测试替代。

@@ -18,7 +18,7 @@ import type { ProductPrerequisiteResult } from './prerequisites.js';
 import type { BackupPolicy, RecoveryManifest } from './recovery-types.js';
 import { RecoveryError } from './recovery.js';
 import type { RetirementProof } from './recovery.js';
-import { learningAdmissionPolicySchema, type LearningAdmissionPolicy } from '@xunjie/learning-space';
+import { learningAdmissionPolicySchema, type LearningAdmissionPolicy } from '@xunjie/model-gateway';
 import type { DeploymentConfiguration } from '@xunjie/contracts/product-runtime';
 import { deploymentConfigurationSchema } from '@xunjie/contracts/product-runtime';
 import { describeDeployment, resolveDeployment, validateDeployment } from './deployment.js';

@@ -18,8 +18,8 @@ import { questionDraftViewSchema } from '@xunjie/contracts/question-drafts';
 import { pdfDocumentSchema, pdfReadingSchema, pdfSearchResultSchema } from '@xunjie/contracts/pdf-materials';
 import { personalMaterialSchema, personalMaterialVersionContentSchema, personalMaterialReadResultSchema } from '@xunjie/contracts/personal-materials';
 import { actionViewSchema, actionReceiverSchema } from '@xunjie/contracts/action-intents';
-import { teachingInteractionSettingsSchema, teachingControlReceiptSchema, teachingInputControlReceiptSchema } from '@xunjie/contracts/teaching-agent';
-import { teachingSkillLimits } from '@xunjie/contracts/agent-skills';
+import { teachingInteractionSettingsSchema } from '@xunjie/contracts/teaching-agent';
+import { sessionSkillSelectSchema, sessionSkillStateSchema, type SessionSkillsPort } from '@xunjie/contracts/agent-skills';
 import { schoolAcquisitionInputSchema, schoolAcquisitionReceiptSchema, schoolSubmissionInputSchema,
   schoolSubmissionReceiptSchema, schoolSubmissionSchema, schoolSubmissionListSchema } from '@xunjie/contracts/school-deliveries';
 import { studyTransferSchema } from '@xunjie/contracts/study-copies';
@@ -27,9 +27,13 @@ import { courseBindingStateSchema } from '@xunjie/contracts/courses';
 import type { SpaceAuthority, LearningTarget } from '@xunjie/contracts/spaces';
 import type { CourseBindingAuthority } from '@xunjie/contracts/courses';
 import type { createLearningData } from '@xunjie/learning-space';
-import { modelDeviceTaskSchema, routeArtifacts, routeModels, ModelCapabilityError, createLearningModelService,
-  modelOriginSuccessionSchema, modelOriginRecoveryOperationSchema } from '@xunjie/learning-space';
-import type { createModelGateway } from '@xunjie/learning-space';
+import { routeArtifacts } from './learning-http/index.js';
+import { modelDeviceTaskSchema } from '@xunjie/model-gateway/device-tasks';
+import { routeModels } from '@xunjie/model-gateway/wire';
+import { ModelCapabilityError } from '@xunjie/model-gateway/capabilities';
+import { createLearningModelService, createLearningModelClient } from '@xunjie/model-gateway/service';
+import { modelOriginSuccessionSchema, modelOriginRecoveryOperationSchema } from '@xunjie/model-gateway';
+import type { createModelGateway } from '@xunjie/model-gateway';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import { modelSelectionSchema, selectModelSchema, modelGrantInputSchema, modelGrantSchema, modelAttemptSchema, schoolModelSchema, modelCheckInputSchema, modelSegmentInputSchema, modelChatInputSchema, modelImageInputSchema,
   modelPortableResultSchema, modelSegmentBoundarySchema, modelSegmentProvenanceSchema, modelCapabilityInputSchema, modelCapabilityFailureSchema } from '@xunjie/contracts/model-connections';
@@ -46,9 +50,21 @@ import type { RecoveryManifest } from './recovery-types.js';
 import type { RetirementProof } from './recovery.js';
 import { resolveCredential } from './postgres.js';
 import { createAgentConnection } from './agent-connections.js';
-import { createTeachingAgentService, teachingAgentHttpCall, routeExecutionHttp, createTeachingDataService, createDownloadedCourses } from '@xunjie/learning-space';
+import { createAgentDependencyClient, type AgentSessionDependencies } from '@xunjie/agents/transport/session-dependencies';
+import { createAgentSessionClient } from '@xunjie/agents/transport/session-service';
+import { agentDependencyCallSchema, agentSourceDescriptionSchema, agentSourceReadArgsSchema, agentSourceReadResultSchemas,
+  type AgentDependencyCall } from '@xunjie/contracts/agent-dependencies';
+import { executionRecordEventSchema } from '@xunjie/contracts/execution-records';
+import { agentSessionSchema, createAgentSessionSchema, updateAgentSessionSchema, markAgentSessionReadySchema } from '@xunjie/contracts/agent-sessions';
+import { agentDispatchPermitSchema, type AgentDispatchPermit } from '@xunjie/contracts/agent-runtime';
+import { sameAgentSubject, type AgentSessionPort } from '@xunjie/contracts/agent-service';
+import { createWorkspaceToolModule } from '@xunjie/agents/workspace-assistant/index';
+import { createLearningQuery, type LearningQuerySource } from '@xunjie/learning-space/learning-data/learning-query';
+import { routeAgentSessions, type SessionHttpPort } from './learning-http/sessions-http.js';
+import type { AgentSessionDirectory } from './agent-sessions.js';
+import { routeExecutionHttp, type ExecutionCommandAuthorization } from './learning-http/execution-http.js';
+import { createDownloadedCourses } from '@xunjie/learning-space';
 import type { createStudyCopies } from '@xunjie/learning-space';
-import type { TeachingDependencyCall, TeachingAgentPort } from '@xunjie/learning-space';
 
 const connectionProfileSchema = z.object({ version: z.literal(1), localStudy: z.boolean(), connectionId: z.uuid(),
   identity: spaceIdentitySchema, target: learningTargetSchema, account: schoolAccountSchema }).strict();
@@ -56,7 +72,7 @@ const grantSchema = z.object({ token: z.string().min(40).max(200), identity: spa
   target: learningTargetSchema, connectionId: z.uuid(), capabilities: z.tuple([z.literal('activity:read'), z.literal('activity:write')]),
   account: schoolAccountSchema.optional(), localStudy: z.object({ version: z.literal(1) }).strict().optional(),
   profile: z.unknown().optional(),
-  deviceSetup: z.object({ version: z.literal(1) }).strict().optional() });
+  deviceSetup: z.object({ version: z.number().int().positive() }).strict().optional() });
 const connectionSchema = z.object({ requestId: z.uuid(), schoolEndpoint: z.url(), verifier: z.string(),
   clientId: z.uuid(), clientNamespace: z.string(), grant: grantSchema.optional(),
   setupPending: z.boolean().optional(),
@@ -72,6 +88,7 @@ const cleanupDestinationSchema = z.object({ connectionId: z.uuid(), schoolEndpoi
 }) }).strict();
 const modelTaskAuthorization = new AsyncLocalStorage<{
   identity: SpaceIdentity; authorize(fresh?: boolean): Promise<void>;
+  authorizePermit?(identity: SpaceIdentity, permit: AgentDispatchPermit, attemptId: string, phase: 'receive' | 'dispatch' | 'active'): Promise<void>;
 }>();
 
 function sameExecutionIdentity(current: ExecutionQuery, retained: ExecutionQuery) {
@@ -100,19 +117,24 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
   target: LearningTarget;
   /** Actual model owner; independent of the learning-data target. */
   modelTarget?: LearningTarget;
+  /** Explicit catalog owner for local bindings; downloaded catalogs otherwise live locally. */
+  courseTarget?: LearningTarget;
   create?(authority: SpaceAuthority, courses: CourseBindingAuthority): ReturnType<typeof createLearningData>;
   studyCopies?: ReturnType<typeof createStudyCopies>;
   models?: Awaited<ReturnType<typeof createModelGateway>> | undefined;
   personal?(): Promise<SpaceIdentity>;
-  teaching?: TeachingAgentPort;
+  sessions?: SessionHttpPort;
+  executionCommandAuthorization?: ExecutionCommandAuthorization;
+  dispatchPermit?(): AgentDispatchPermit | undefined;
+  withAuthority?<T>(permit: AgentDispatchPermit, work: () => Promise<T>): Promise<T>;
   executions?: ReturnType<typeof createLearningData>['executions'];
-  authority?(): import('@xunjie/learning-space').TeachingDispatchAuthority | undefined;
   executionEnvironment?(identity: SpaceIdentity): Promise<unknown>;
 }) {
   const ref = (id: string) => `school-client-${z.uuid().parse(id)}`;
   const path = (id: string) => join(root, 'credentials', ref(id));
   const cleanupPath = (id: string) => join(root, 'native-channel', z.uuid().parse(id), 'endpoint.json');
   const studyInitializations = new Map<string, Promise<void>>();
+  const dispatchAuthorization = new AsyncLocalStorage<AgentDispatchPermit>();
   function confirmedProfile(connection: Connection) {
     const parsed = connectionProfileSchema.safeParse(connection.grant?.profile);
     if (!parsed.success) return null;
@@ -326,9 +348,8 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       response = await fetch(new URL('/api/learning/' + route, connection.schoolEndpoint), {
         method: body === undefined ? 'GET' : 'POST', redirect: 'error', signal: AbortSignal.timeout(
           /^study-transfer(?:\/ack)?$/.test(route) ? 120000
-            : /^(?:agent\/[0-9a-f-]{36}\/)?skills\/import(?:\?|$)/.test(route) ? teachingSkillLimits.importTimeoutMs
             : route.startsWith('pdf/') ? 45000 : 10000),
-        headers: { 'content-type': 'application/json', ...(authorized ? { authorization: `Bearer ${connection.grant!.token}` } : {}) },
+        headers: { 'content-type': 'application/json', ...(/^(?:agent-sessions(?:\/|$)|agent-sources$)/.test(route) ? { 'x-xj-agent-contract': '2' } : {}), ...(authorized ? { authorization: `Bearer ${connection.grant!.token}` } : {}) },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       });
     } catch { throw new StorageError('unavailable'); }
@@ -346,6 +367,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     // this ceiling cannot be borrowed by an operation that was never sized for a toolchain file.
     if (runtimeResourceRoute.test(route)) return boundedJsonResponse(response, runtimeResourceResponseBytes);
     if(executionArtifactRoute.test(route))return boundedJsonResponse(response,executionArtifactResponseBytes);
+    if (route.startsWith('agent-sessions')) return boundedJsonResponse(response, 16*1024*1024);
     if (route.startsWith('artifacts/')) return boundedJsonResponse(response, 2000000);
     if (route.startsWith('materials/')) return boundedJsonResponse(response, 3*1024*1024);
     if (route.startsWith('pdf/') || /^releases\/[0-9a-f-]{36}\/materials\//.test(route)) return boundedJsonResponse(response, 29*1024*1024);
@@ -370,78 +392,321 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     }
     throw new StorageError('forbidden');
   }
-  async function agentDependency(identity: SpaceIdentity, value: TeachingDependencyCall) {
-    const connection = await identityConnection(identity, false);
-    if (value.identity && subject(value.identity) !== subject(identity)) throw new StorageError('forbidden');
-    if (localStudyMode(connection)) {
-      await ensureStudy(connection); await assertStudyIdentity(connection);
-      const data = studyLearning(connection);
-      if (value.operation === 'authorize') {
-        if (value.activityId) await data.open(identity, value.activityId);
-        return { authorized: true };
-      }
-      return createTeachingDataService({ learning: data, courses: studyCourses(connection),
-        assertWritable: () => assertStudyIdentity(connection) })(value);
-    }
-    if (connection.localBinding && local?.create) {
-      const binding = connection.localBinding, data = localLearning(connection);
-      await checkLocal(connection, binding.runtimeConnectionId);
-      if (value.operation === 'authorize') {
-        if (value.activityId) await data.open(identity, value.activityId);
-        return { authorized: true };
-      }
-      const courses = {
-        referenceText: async (_identity: SpaceIdentity, source: unknown) => z.object({ text: z.string() }).strict().parse(
-          await authorityCall(connection, binding.runtimeConnectionId, 'referenceText', source)),
-        verifyComponentReference: async (_identity: SpaceIdentity, source: unknown) => {
-          z.object({ verified: z.literal(true) }).strict().parse(await authorityCall(connection, binding.runtimeConnectionId, 'verifyComponentReference', source));
-          return undefined;
-        },
-        readComponent: async (_identity: SpaceIdentity, releaseId: string, key: string) => componentBundleSchema.parse(
-          await call(connection, `releases/${releaseId}/components/${key}`, undefined, true)),
-        readComponentAlgorithm: async (_identity: SpaceIdentity, releaseId: string, key: string) => componentAlgorithmBundleSchema.parse(
-          await call(connection, `releases/${releaseId}/components/${key}/algorithm`, undefined, true)),
-        readMaterial: async (_identity: SpaceIdentity, releaseId: string, materialId: string) => courseMaterialContentSchema.parse(
-          await call(connection, `releases/${releaseId}/materials/${materialId}`, undefined, true)),
-      };
-      return createTeachingDataService({ learning: data, courses,
-        assertWritable: async () => { await checkLocal(connection, binding.runtimeConnectionId); } })(value);
-    }
-    if (!connection.agentBinding) throw new StorageError('unavailable');
-    const invoke = createAgentConnection(root, connection.agentBinding.dependencyConnectionId, 'teaching.dependencies', connection.grant!.target);
-    return invoke({ ...value, ...(local?.authority?.() ? { authority: local.authority() } : {}) });
+  async function dependencyClient(connection: Connection) {
+    if (!connection.grant || !connection.agentBinding) throw new StorageError('unavailable');
+    const config = await readJson<InstalledConfiguration>(join(root, 'installation.json'));
+    const descriptor = config.connections.find(item => item.connectionId === connection.agentBinding!.dependencyConnectionId);
+    if (!descriptor || !descriptor.requiredCapabilities.includes('agent.dependencies.v2')) throw new StorageError('incompatible');
+    if (descriptor.target.environmentId !== connection.grant.target.environmentId || descriptor.target.serviceId !== connection.grant.target.serviceId)
+      throw new StorageError('identity-conflict');
+    const client = createAgentDependencyClient(createAgentConnection(root, descriptor.connectionId, 'agent.dependencies.v2', descriptor.target),
+      { permit: () => local?.dispatchPermit?.() ?? dispatchAuthorization.getStore() });
+    return client;
   }
-  async function identityForAgent(scope: { environmentId: string; spaceId: string; principalId: string; activityId?: string }) {
+  async function agentDependency(identity: SpaceIdentity, value: AgentDependencyCall) {
+    if ((value as { version?: unknown }).version !== 2) throw new StorageError('incompatible');
+    const parsed = agentDependencyCallSchema.safeParse(value);
+    if (!parsed.success) throw new StorageError('invalid');
+    if (!sameAgentSubject(parsed.data.identity, identity)) throw new StorageError('forbidden');
+    const connection = await identityConnection(identity);
+    if (localStudyMode(connection) || connection.localBinding) throw new StorageError('unavailable');
+    return (await dependencyClient(connection)).invoke(parsed.data);
+  }
+  async function sourceDescription(connection: Connection) {
+    if (!connection.grant) throw new StorageError('forbidden');
+    const parsed = agentSourceDescriptionSchema.safeParse(await call(connection, 'agent-sources', undefined, true));
+    if (!parsed.success) throw new StorageError('incompatible');
+    const source = parsed.data;
+    if (!sameAgentSubject(source.identity, connection.grant.identity)) throw new StorageError('forbidden');
+    if (JSON.stringify(canonicalValue(source.learningTarget)) !== JSON.stringify(canonicalValue(connection.grant.target)))
+      throw new StorageError('identity-conflict');
+    return source;
+  }
+  async function identityForAgent(scope: { environmentId: string; spaceId: string; principalId: string; sessionId?: string }) {
     for (const item of await list()) if (item.identity.environmentId === scope.environmentId
       && item.identity.spaceId === scope.spaceId && item.identity.principalId === scope.principalId) {
-      await agentDependency(item.identity, { version: 1, operation: 'authorize', identity: item.identity,
-        ...(scope.activityId ? { activityId: scope.activityId } : {}), args: [] });
+      const connection = await identityConnection(item.identity);
+      if (scope.sessionId) {
+        if (localStudyMode(connection) || connection.localBinding) {
+          if (!local?.sessions) throw new StorageError('unavailable');
+          await local.sessions.sessions.read(item.identity, scope.sessionId);
+        } else await (await sessionDirectory(item.identity)).read(item.identity, scope.sessionId);
+      }
       return item.identity;
     }
     throw new StorageError('forbidden');
   }
+  /** Actual learning owner and catalog owner are independent of the account grant target. */
+  async function learningSources() {
+    const sources = [];
+    for (const item of await list()) {
+      const connection = await identityConnection(item.identity);
+      if (localStudyMode(connection) || connection.localBinding) {
+        if (!local) throw new StorageError('unavailable');
+        if (connection.localBinding) await checkLocal(connection, connection.localBinding.runtimeConnectionId);
+        const source = await sourceDescription(connection);
+        sources.push({ connectionId: connection.requestId, identity: connection.grant!.identity,
+          learningTarget: local.target, courseTarget: source.courseTarget, local: true });
+      } else {
+        const source = await sourceDescription(connection);
+        if (!sameAgentSubject(source.identity, connection.grant!.identity)) throw new StorageError('forbidden');
+        sources.push({ ...source, connectionId: connection.requestId, local: false });
+      }
+    }
+    return sources;
+  }
+  async function sessionDirectory(identity: SpaceIdentity): Promise<AgentSessionDirectory> {
+    const original = await identityConnection(identity);
+    const current = async (who: SpaceIdentity) => {
+      if (!sameAgentSubject(who, identity)) throw new StorageError('forbidden');
+      const connection = await identityConnection(who);
+      if (connection.requestId !== original.requestId || connection.schoolEndpoint !== original.schoolEndpoint) throw new StorageError('identity-conflict');
+      return connection;
+    };
+    const checked = (value: unknown, sessionId?: string) => {
+      const session = agentSessionSchema.parse(value);
+      if (!sameAgentSubject(session.identity, identity) || sessionId !== undefined && session.sessionId !== sessionId) throw new StorageError('identity-conflict');
+      return session;
+    };
+    // A directory row retains the data owner's connection namespace. User metadata must
+    // remain visible after an Agent rebind and must never resolve those ids locally.
+    return {
+      list: async (who: SpaceIdentity) => z.object({ items: agentSessionSchema.array() }).strict().parse(
+        await call(await current(who), 'agent-sessions', undefined, true)).items.map(item => checked(item)),
+      read: async (who: SpaceIdentity, sessionId: string) => checked(await call(await current(who), `agent-sessions/${z.uuid().parse(sessionId)}`, undefined, true), sessionId),
+      update: async (who: SpaceIdentity, value: Parameters<SessionHttpPort['sessions']['update']>[1]) => {
+        const input = updateAgentSessionSchema.parse(value);
+        return checked(await call(await current(who), 'agent-sessions/update', input, true), input.sessionId);
+      },
+      create: async (who: SpaceIdentity, value: Parameters<SessionHttpPort['sessions']['create']>[1]) => {
+        const input = createAgentSessionSchema.parse(value), connection = await current(who);
+        return checked(connection.agentBinding ? await (await dependencyClient(connection)).sessions.create(who, input)
+          : await call(connection, 'agent-sessions', input, true), input.sessionId);
+      },
+      markReady: async (who: SpaceIdentity, value: Parameters<ReturnType<typeof createAgentDependencyClient>['sessions']['markReady']>[1]) => {
+        const input = markAgentSessionReadySchema.parse(value);
+        const connection = await current(who);
+        if (!original.agentBinding) throw new StorageError('unavailable');
+        const caller = await dependencyClient({ ...connection, agentBinding: original.agentBinding });
+        return checked(await caller.sessions.markReady(who, input), input.sessionId);
+      },
+    };
+  }
+  async function sessionAgent(identity: SpaceIdentity, sessionId: string): Promise<AgentSessionPort> {
+    sessionId = z.uuid().parse(sessionId);
+    const originalConnection = await identityConnection(identity);
+    const directory = await sessionDirectory(identity), original = await directory.read(identity, sessionId);
+    return createAgentSessionClient(async request => {
+      if (!sameAgentSubject(request.identity, identity) || request.sessionId !== sessionId) throw new StorageError('identity-conflict');
+      // These operations require service audience and a separate host grant. A user HTTP
+      // proxy cannot become an initialization or dispatch capability.
+      if (['initialize', 'resolveWait', 'assertDispatch'].includes(request.operation)) throw new StorageError('forbidden');
+      const connection = await identityConnection(identity), current = await directory.read(identity, sessionId);
+      if (connection.requestId !== originalConnection.requestId || connection.schoolEndpoint !== originalConnection.schoolEndpoint
+        || JSON.stringify(canonicalValue(current.owner)) !== JSON.stringify(canonicalValue(original.owner))) throw new StorageError('identity-conflict');
+      const prefix = `agent-sessions/${sessionId}`;
+      switch (request.operation) {
+        case 'accept': return call(connection, prefix + '/inputs', request.args.input, true);
+        case 'conversation': return call(connection, prefix + '/conversation?after=' + request.args.after, undefined, true);
+        case 'events': return call(connection, prefix + '/events?after=' + request.args.after, undefined, true);
+        case 'run': return call(connection, prefix + '/runs/' + request.args.runId, undefined, true);
+        case 'snapshot': return call(connection, prefix + '/snapshots/' + request.args.runId, undefined, true);
+        case 'request': return call(connection, prefix + '/requests/' + request.args.requestId, undefined, true);
+        case 'stop': case 'continueRun': return call(connection, prefix + '/runs/' + request.args.runId
+          + (request.operation === 'stop' ? '/stop' : '/continue'), { requestId: request.args.requestId }, true);
+        case 'respond': return call(connection, prefix + '/waits/' + request.args.response.waitId + '/responses', request.args.response, true);
+        case 'inputControl': return call(connection, prefix + '/inputs/' + request.args.inputId + '/control', request.args.control, true);
+        default: throw new StorageError('forbidden');
+      }
+    });
+  }
+  async function sessionSkills(identity: SpaceIdentity, sessionId: string): Promise<SessionSkillsPort> {
+    sessionId = z.uuid().parse(sessionId);
+    const originalConnection = await identityConnection(identity);
+    if (localStudyMode(originalConnection) || originalConnection.localBinding) {
+      if (!local?.sessions?.skills) throw new StorageError('unavailable');
+      return local.sessions.skills(identity, sessionId);
+    }
+    const directory = await sessionDirectory(identity), original = await directory.read(identity, sessionId);
+    const invoke = async (who: SpaceIdentity, id: string, body?: unknown) => {
+      if (!sameAgentSubject(who, identity)) throw new StorageError('forbidden');
+      if (id !== sessionId) throw new StorageError('identity-conflict');
+      const connection = await identityConnection(identity), current = await directory.read(identity, sessionId);
+      if (connection.requestId !== originalConnection.requestId || connection.schoolEndpoint !== originalConnection.schoolEndpoint
+        || JSON.stringify(canonicalValue(current.owner)) !== JSON.stringify(canonicalValue(original.owner))) throw new StorageError('identity-conflict');
+      if (current.deleted) throw new StorageError('missing');
+      if (body !== undefined && current.archived) throw new StorageError('conflict');
+      const result = sessionSkillStateSchema.safeParse(await call(connection,
+        `agent-sessions/${sessionId}/skills` + (body === undefined ? '' : '/select'), body, true));
+      if (!result.success) throw new StorageError('incompatible');
+      return result.data;
+    };
+    return {
+      resolveSession: (who, id) => invoke(who, id),
+      selectSession: (who, id, input) => invoke(who, id, sessionSkillSelectSchema.parse(input)),
+      // Fixed tool loads use the service dependency module, never the user's HTTP capability.
+      async loadSession() { throw new StorageError('forbidden'); },
+      async reconcileSession() { throw new StorageError('forbidden'); },
+    };
+  }
+  const sessionDependency = (call: AgentDependencyCall) => agentDependency(call.identity, call);
+  async function openActivity(identity: SpaceIdentity, activityId: string) {
+    const connection = await identityConnection(identity);
+    const expected = [identity.environmentId, identity.spaceId, identity.principalId].join('.');
+    return activitySchema.parse(await forward(connection.requestId, `activities/${z.uuid().parse(activityId)}`, undefined, expected));
+  }
+  function boundCourses(connection: Connection) {
+    if (localStudyMode(connection)) return studyCourses(connection);
+    const binding = connection.localBinding;
+    if (!binding) throw new StorageError('unavailable');
+    const authorize = async (who: SpaceIdentity) => {
+      if (!sameAgentSubject(who, connection.grant!.identity)) throw new StorageError('forbidden');
+      await checkLocal(await read(connection.requestId), binding.runtimeConnectionId);
+    };
+    return {
+      referenceText: async (who: SpaceIdentity, source: unknown) => { await authorize(who); return z.object({ text: z.string() }).strict().parse(
+        await authorityCall(connection, binding.runtimeConnectionId, 'referenceText', source)); },
+      verifyComponentReference: async (who: SpaceIdentity, source: unknown) => { await authorize(who);
+        z.object({ verified: z.literal(true) }).strict().parse(await authorityCall(connection, binding.runtimeConnectionId, 'verifyComponentReference', source)); return undefined; },
+      readComponent: async (who: SpaceIdentity, releaseId: string, key: string) => { await authorize(who); return componentBundleSchema.parse(
+        await call(connection, `releases/${z.uuid().parse(releaseId)}/components/${z.string().regex(/^[a-z][a-z0-9-]{0,47}$/).parse(key)}`, undefined, true)); },
+      readComponentAlgorithm: async (who: SpaceIdentity, releaseId: string, key: string) => { await authorize(who); return componentAlgorithmBundleSchema.parse(
+        await call(connection, `releases/${z.uuid().parse(releaseId)}/components/${z.string().regex(/^[a-z][a-z0-9-]{0,47}$/).parse(key)}/algorithm`, undefined, true)); },
+      readMaterial: async (who: SpaceIdentity, releaseId: string, materialId: string) => { await authorize(who); return courseMaterialContentSchema.parse(
+        await call(connection, `releases/${z.uuid().parse(releaseId)}/materials/${z.uuid().parse(materialId)}`, undefined, true)); },
+    };
+  }
+  async function dependenciesForSession(identity: SpaceIdentity, sessionId: string): Promise<AgentSessionDependencies> {
+    const connection = await identityConnection(identity);
+    sessionId = z.uuid().parse(sessionId);
+    if (!localStudyMode(connection) && !connection.localBinding) {
+      const client = await dependencyClient(connection);
+      await client.authorize(identity, sessionId);
+      return client.forSession(identity, sessionId);
+    }
+    if (!local?.sessions) throw new StorageError('unavailable');
+    if (connection.localBinding) await checkLocal(connection, connection.localBinding.runtimeConnectionId);
+    const session = await local.sessions.sessions.read(identity, sessionId);
+    if (!sameAgentSubject(session.identity, identity) || session.deleted) throw new StorageError('forbidden');
+    const learning = localStudyMode(connection) ? studyLearning(connection) : localLearning(connection);
+    const courses = boundCourses(connection);
+    const workspace = async () => {
+      if (!session.workspace || session.scenario !== 'workspace-assistant') throw new StorageError('forbidden');
+      const activity = await learning.open(identity, session.workspace.activityId);
+      if (JSON.stringify(canonicalValue(activity.target)) !== JSON.stringify(canonicalValue(session.workspace.target))) throw new StorageError('identity-conflict');
+      return activity;
+    };
+    const materialOwner = async () => {
+      await identityConnection(identity);
+      if (!local?.sessions?.materials) throw new StorageError('unavailable');
+      return local.sessions.materials(identity, sessionId);
+    };
+    const materials: AgentSessionDependencies['materials'] = { search: async (...args) => (await materialOwner()).search(...args), personal: {
+      list: async (...args) => (await materialOwner()).personal.list(...args),
+      material: async (...args) => (await materialOwner()).personal.material(...args),
+      original: async (...args) => (await materialOwner()).personal.original(...args),
+      versionContent: async (...args) => (await materialOwner()).personal.versionContent(...args),
+      readRange: async (...args) => (await materialOwner()).personal.readRange(...args),
+    }, pdf: {
+      list: async (...args) => (await materialOwner()).pdf.list(...args),
+      document: async (...args) => (await materialOwner()).pdf.document(...args),
+      original: async (...args) => (await materialOwner()).pdf.original(...args),
+      reading: async (...args) => (await materialOwner()).pdf.reading(...args),
+      read: async (...args) => (await materialOwner()).pdf.read(...args),
+      find: async (...args) => (await materialOwner()).pdf.find(...args),
+    } };
+    return { learning, courses, workspace, materials,
+      withAuthority: (permit, work) => local?.withAuthority
+        ? local.withAuthority(permit, () => dispatchAuthorization.run(permit, work)) : dispatchAuthorization.run(permit, work),
+      models: createLearningModelClient(async request => {
+        if (!sameAgentSubject(request.identity, identity)) throw new StorageError('forbidden');
+        if (!local?.models) throw new StorageError('unavailable');
+        return createLearningModelService(local.models, async who => { await identityConnection(who); })(request);
+      }),
+      query: createLearningQuery({ sources: async () => [await querySource(identity)] }),
+      tools: async () => session.scenario === 'workspace-assistant' ? [createWorkspaceToolModule({ workspace, learning, courses,
+        environment: () => executionEnvironmentFor(identity) })] : [],
+    };
+  }
+  async function querySource(identity: SpaceIdentity): Promise<LearningQuerySource> {
+    const connection = await identityConnection(identity);
+    const localOwner = localStudyMode(connection) || !!connection.localBinding;
+    const described = await sourceDescription(connection);
+    if (!sameAgentSubject(described.identity, identity)) throw new StorageError('forbidden');
+    const expected = [identity.environmentId, identity.spaceId, identity.principalId].join('.');
+    const readOnly = (who: SpaceIdentity, route: string) => {
+      if (!sameAgentSubject(who, identity)) throw new StorageError('forbidden');
+      return forward(connection.requestId, route, undefined, expected);
+    };
+    const learning = localOwner ? localStudyMode(connection) ? studyLearning(connection) : localLearning(connection) : {
+      list: async (who: SpaceIdentity) => z.array(activitySchema).parse(await readOnly(who, 'activities')),
+      open: async (who: SpaceIdentity, activityId: string) => activitySchema.parse(await readOnly(who, `activities/${z.uuid().parse(activityId)}`)),
+      works: {
+        read: async (who: SpaceIdentity, activityId: string) => readOnly(who, `workspaces/${z.uuid().parse(activityId)}`),
+        content: async (who: SpaceIdentity, activityId: string, versionId: string) => readOnly(who, `workspaces/${z.uuid().parse(activityId)}/contents/${z.uuid().parse(versionId)}`),
+      },
+    };
+    let records: NonNullable<LearningQuerySource['learning']['executionRecords']> | undefined;
+    let conversations: LearningQuerySource['ownerConversationRead'];
+    if (!localOwner && connection.agentBinding) {
+      const source = await (await dependencyClient(connection)).source.describe(identity);
+      if (!sameAgentSubject(source.identity, identity)
+        || JSON.stringify(canonicalValue(source.learningTarget)) !== JSON.stringify(canonicalValue(described.learningTarget))
+        || JSON.stringify(canonicalValue(source.courseTarget)) !== JSON.stringify(canonicalValue(described.courseTarget)))
+        throw new StorageError('identity-conflict');
+      const ownerRead = async (who: SpaceIdentity, args: z.infer<typeof agentSourceReadArgsSchema>) => {
+        if (!sameAgentSubject(who, identity)) throw new StorageError('forbidden');
+        const current = await identityConnection(who);
+        if (current.requestId !== connection.requestId || current.schoolEndpoint !== connection.schoolEndpoint
+          || JSON.stringify(canonicalValue(current.grant!.target)) !== JSON.stringify(canonicalValue(connection.grant!.target))
+          || current.agentBinding?.dependencyConnectionId !== connection.agentBinding!.dependencyConnectionId)
+          throw new StorageError('identity-conflict');
+        return (await dependencyClient(current)).invoke({ version: 2, operation: 'source.read', identity: who, args });
+      };
+      records = {
+        history: async (who, activityId, cursor) => agentSourceReadResultSchemas['records.history'].parse(await ownerRead(who,
+          { method: 'records.history', activityId, ...(cursor ? { cursor } : {}) })),
+        read: async (who, activityId, requestId) => agentSourceReadResultSchemas['records.read'].parse(await ownerRead(who,
+          { method: 'records.read', activityId, requestId })),
+      };
+      if (source.conversationOwner) conversations = { owner: source.conversationOwner,
+        list: async (who, cursor) => agentSourceReadResultSchemas['conversations.list'].parse(await ownerRead(who,
+          { method: 'conversations.list', ...(cursor ? { cursor } : {}) })),
+        read: async (who, objectId, version) => agentSourceReadResultSchemas['conversations.read'].parse(await ownerRead(who,
+          { method: 'conversations.read', objectId, version })),
+      };
+    }
+    return { sourceId: 'school:' + connection.requestId, identity: described.identity, target: localOwner ? local!.target : described.learningTarget,
+      learning: { ...learning, ...(records ? { executionRecords: records } : {}) } as LearningQuerySource['learning'],
+      ...(conversations ? { ownerConversationRead: conversations } : {}),
+      courses: { owner: described.courseTarget,
+        listCourses: (who: SpaceIdentity) => readOnly(who, 'courses'),
+        readRelease: async (who: SpaceIdentity, releaseId: string) => courseReleaseSchema.parse(await readOnly(who, `releases/${z.uuid().parse(releaseId)}`)),
+      },
+    };
+  }
   async function configureAgent(value: unknown) {
     const input = z.object({ connectionId: z.uuid(), dependencyConnectionId: z.uuid(), executionConnectionId: z.uuid().optional(), target: learningTargetSchema }).strict().parse(value);
     const descriptor = environment.services.find(item => item.unit === 'teaching-agent');
-    if (!local?.teaching || !descriptor || input.target.environmentId !== descriptor.environmentId || input.target.serviceId !== descriptor.serviceId)
+    if (!local?.sessions || !descriptor || input.target.environmentId !== descriptor.environmentId || input.target.serviceId !== descriptor.serviceId)
       throw new StorageError('forbidden');
     const connection = await read(input.connectionId);
     if (!connection.grant) throw new StorageError('forbidden');
     const config = await readJson<InstalledConfiguration>(join(root, 'installation.json'));
     const dependency = config.connections.find(item => item.connectionId === input.dependencyConnectionId);
     if (!dependency || dependency.sourceServiceId !== descriptor.serviceId || dependency.sourceEnvironmentId !== descriptor.environmentId
-      || dependency.target.environmentId !== connection.grant.target.environmentId || dependency.target.serviceId !== connection.grant.target.serviceId
-      || !dependency.requiredCapabilities.includes('teaching.dependencies')) throw new StorageError('forbidden');
+      || !dependency.requiredCapabilities.includes('agent.dependencies.v2')) throw new StorageError('forbidden');
     if (input.executionConnectionId) {
       const execution = environment.services.find(item => item.unit === 'tool-execution');
       const publication = config.connections.find(item => item.connectionId === input.executionConnectionId);
       if (!execution || !publication || publication.sourceEnvironmentId !== execution.environmentId || publication.sourceServiceId !== execution.serviceId
         || publication.target.environmentId !== dependency.target.environmentId || publication.target.serviceId !== dependency.target.serviceId
-        || !publication.requiredCapabilities.includes('teaching.dependencies')) throw new StorageError('forbidden');
+        || !publication.requiredCapabilities.includes('agent.dependencies.v2')) throw new StorageError('forbidden');
     }
-    await createAgentConnection(root, input.dependencyConnectionId, 'teaching.dependencies')( {
-      version: 1, operation: 'authorize', identity: connection.grant.identity, args: [],
-    });
+    const source = await createAgentDependencyClient(createAgentConnection(root, input.dependencyConnectionId, 'agent.dependencies.v2', dependency.target))
+      .source.describe(connection.grant.identity);
+    if (!sameAgentSubject(source.identity, connection.grant.identity) || source.learningTarget.environmentId !== dependency.target.environmentId
+      || source.learningTarget.serviceId !== dependency.target.serviceId) throw new StorageError('identity-conflict');
     await update(input.connectionId, async () => {
       const current = await read(input.connectionId);
       if (JSON.stringify(current.grant) !== JSON.stringify(connection.grant)) throw new StorageError('identity-conflict');
@@ -475,9 +740,21 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       return;
     }
     if (!connection.agentBinding?.executionConnectionId) throw new StorageError('unavailable');
-    await createAgentConnection(root, connection.agentBinding.executionConnectionId, 'teaching.dependencies', connection.grant!.target)(
-      { version: 1, operation: 'execution.record', identity, activityId,
-        args: [event, createHash('sha256').update(JSON.stringify(canonicalValue(event))).digest('hex')] });
+    const executor = environment.services.find(item => item.unit === 'tool-execution');
+    const config = await readJson<InstalledConfiguration>(join(root, 'installation.json'));
+    const descriptor = config.connections.find(item => item.connectionId === connection.agentBinding!.executionConnectionId);
+    if (!descriptor || !descriptor.requiredCapabilities.includes('agent.dependencies.v2')) throw new StorageError('incompatible');
+    const original = executionRecordEventSchema.parse(event), target = connection.grant!.target;
+    if (!executor || descriptor.sourceEnvironmentId !== executor.environmentId || descriptor.sourceServiceId !== executor.serviceId
+      || original.sourceOwner.environmentId !== executor.environmentId || original.sourceOwner.serviceId !== executor.serviceId
+      || descriptor.target.environmentId !== target.environmentId || descriptor.target.serviceId !== target.serviceId)
+      throw new StorageError('identity-conflict');
+    // This executor connection is independent of the Agent's dependency connection. Keep the
+    // original installation and full event fixed; recovery is proved by the receiving owner.
+    const publish = createAgentConnection(root, descriptor.connectionId, 'agent.dependencies.v2', descriptor.target);
+    const result = await publish({ version: 2, operation: 'execution.record', identity,
+      args: { activityId: z.uuid().parse(activityId), event: original } });
+    if (result !== null) throw new StorageError('incompatible');
   }
   const executionFactsSchema = z.object({ nodeClass: z.enum(['device','school-execution-node']), secureTransport: z.boolean(),
     remoteAvailable: z.boolean(), device: executionDeviceSchema,
@@ -519,6 +796,15 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       return task.authorize(true);
     }
     await identityConnection(identity);
+  }
+  /** True only inside an authenticated paired task. A caller must use its directory otherwise. */
+  async function authorizePermit(identity: SpaceIdentity, permit: AgentDispatchPermit, attemptId: string,
+    phase: 'receive' | 'dispatch' | 'active'): Promise<boolean> {
+    const task = modelTaskAuthorization.getStore();
+    if (!task) return false;
+    if (!sameAgentSubject(identity, task.identity) || !task.authorizePermit) throw new StorageError('forbidden');
+    await task.authorizePermit(identity, agentDispatchPermitSchema.parse(permit), z.uuid().parse(attemptId), phase);
+    return true;
   }
   async function schoolModel(identity: SpaceIdentity) {
     const connection = await identityConnection(identity);
@@ -753,10 +1039,11 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       // Network exchange is outside the lock. Revocation or a new proof may have won while it was in flight.
       const current = await read(requestId);
       if (current.verifier !== connection.verifier) throw new StorageError('forbidden');
-      await rememberCleanupDestination(current);
       current.grant = grant;
       current.setupPending = confirmedProfile(current)?.localStudy === true && !localStudyMode(current)
-        && !!grant.deviceSetup && !!local?.teaching && !current.localBinding && !current.modelBinding && !current.agentBinding;
+        && !!grant.deviceSetup && !!local?.sessions && !current.localBinding && !current.modelBinding && !current.agentBinding;
+      if (current.setupPending && grant.deviceSetup?.version !== 2) throw new StorageError('incompatible');
+      await rememberCleanupDestination(current);
       await atomicJson(path(requestId), current);
       return current;
     });
@@ -766,8 +1053,9 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       if (!(await read(requestId)).setupPending) return view(await read(requestId));
       const agent = environment.services.find(item => item.unit === 'teaching-agent');
       const execution = environment.services.find(item => item.unit === 'tool-execution');
-      if (!agent || !execution || !local?.teaching) throw new StorageError('unavailable');
+      if (!agent || !execution || !local?.sessions) throw new StorageError('unavailable');
       const configured = schoolDeviceSetupResultSchema.parse(await call(current, 'connections/device-setup', {
+        version: 2,
         connectionId: requestId, installationId: environment.installationId,
         deviceModules: environment.services.filter(item => item.unit !== 'client'),
       }, true));
@@ -786,7 +1074,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
         const config = await readJson<InstalledConfiguration>(join(root, 'installation.json'));
         const save = config.connections.some(item => item.connectionId === id) ? runtime.reconnect : runtime.connect;
         await save({ connectionId: id, sourceEnvironmentId: source.environmentId, sourceServiceId: source.serviceId,
-          target: configured.target, requiredCapabilities: ['teaching.dependencies'], optionalCapabilities: [],
+          target: configured.target, requiredCapabilities: ['agent.dependencies.v2'], optionalCapabilities: [],
           credentialRef: 'school-'+role+'-'+requestId }, credential.token);
       }
       await configureAgent({ connectionId: requestId, dependencyConnectionId, executionConnectionId,
@@ -904,13 +1192,25 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
           if (task.operation === 'learning') {
             const identity = connection.grant.identity;
             const associationId = task.attemptId ?? task.taskId;
-            const fixedOrigin = task.formatVersion === 2
-              ? { formatVersion: 2, service: task.origin.service, installationId: task.origin.installationId, grantId: task.origin.grantId,
-                identity: task.origin.identity, recoveryGeneration: task.origin.recoveryGeneration,
-                ...(task.attemptId ? { attemptId: task.attemptId } : {}),
-                ...(task.origin.authority ? { runId: task.origin.authority.runId, activityId: task.origin.authority.activityId }
-                  : task.origin.activityId ? { activityId: task.origin.activityId } : {}) }
-              : { ...task.origin, formatVersion: 1 };
+            // Configuration refresh cannot create an Agent origin or acquire a dispatch permit.
+            if (task.formatVersion === 2) {
+              let receipt;
+              try {
+                await checkAccess();
+                z.object({ authorized: z.literal(true), successions: z.array(modelOriginSuccessionSchema).max(64).optional() }).strict().parse(
+                  await authorityCall(connection, runtimeConnectionId, 'modelTaskPermit', { taskId: task.taskId }));
+                if (subject(task.origin.identity) !== subject(identity) || subject(task.request.identity) !== subject(identity)) throw new StorageError('forbidden');
+                if (task.origin.recoveryGeneration !== environment.installationId) throw new StorageError('stale-generation');
+                receipt = await createLearningModelService(local.models!, async () => { await checkAccess(); })(task.request);
+              } catch (error) { receipt = { ok: false as const, code: error instanceof StorageError ? error.code : 'invalid' as const }; }
+              if (!isOpen()) return;
+              await authorityCall(connection, runtimeConnectionId, 'completeModelTask', { taskId: task.taskId, receipt });
+              continue;
+            }
+            let fixedOrigin: Record<string, unknown> = { formatVersion: 3, service: task.origin.service,
+              installationId: task.origin.installationId, grantId: task.origin.grantId, identity: task.origin.identity,
+              recoveryGeneration: task.origin.recoveryGeneration, sessionId: task.origin.sessionId,
+              ...(task.attemptId ? { attemptId: task.attemptId } : {}), ...(task.origin.authority ? { authority: task.origin.authority } : {}) };
             const checkPermit = async () => z.object({ authorized: z.literal(true),
               successions: z.array(modelOriginSuccessionSchema).max(64).optional() }).strict().parse(
                 await authorityCall(connection, runtimeConnectionId, 'modelTaskPermit', { taskId: task.taskId }));
@@ -928,13 +1228,21 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
               assertOrigin();
               await checkAccess();
               const permit = await checkPermit();
+              if (task.attemptId && !task.origin.authority && recoveryOperation.success) {
+                // Result reads retain the original operation facts. They never acquire a new
+                // active dispatch permit or replace the task's authenticated source/session.
+                const original = await local.models!.origins.read(identity, associationId);
+                if (original.formatVersion !== 3) throw new StorageError('identity-conflict');
+                fixedOrigin = { ...fixedOrigin, ...(original.runId ? { runId: original.runId } : {}),
+                  ...(original.stepId ? { stepId: original.stepId } : {}), ...(original.operationId ? { operationId: original.operationId } : {}) };
+              }
               const bindOrigin = async () => {
                 const saved = await local.models!.origins.read(identity, associationId).catch(error => {
                   if (!(error instanceof StorageError) || error.code !== 'missing') throw error;
                   return undefined;
                 });
                 const start = permit.successions?.findIndex(fact => fact.sourceInstallationId === saved?.installationId) ?? -1;
-                const successions = saved && task.formatVersion === 2 && saved.installationId !== task.origin.installationId && start >= 0
+                const successions = saved && saved.installationId !== task.origin.installationId && start >= 0
                   ? permit.successions!.slice(start) : undefined;
                 const recipient = saved && saved.recoveryGeneration !== task.origin.recoveryGeneration && recoveryOperation.success
                   ? await recipientRecovery() : undefined;
@@ -942,15 +1250,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
                   ? { operation: recoveryOperation.data, ...(successions ? { successions } : {}), ...(recipient ? { recipient } : {}) } : undefined;
                 await local.models!.origins.bind(identity, associationId, fixedOrigin, recovery);
               };
-              // Import a journal from older candidates once, then retain all ownership facts
-              // in the model owner's migration/snapshot boundary. No new runtime journal is written.
-              const legacyPath = join(root, 'native-channel', connection.requestId, 'model-learning', associationId + '.json');
-              if (await exists(legacyPath)) {
-                const old = z.record(z.string(), z.unknown()).parse(await readJson(legacyPath));
-                await local.models!.origins.bind(identity, associationId, { ...old, formatVersion: task.formatVersion });
-                await bindOrigin();
-                await unlink(legacyPath);
-              } else await bindOrigin();
+              await bindOrigin();
               const assertCurrent = async () => {
                 if (!isOpen()) throw new StorageError('maintenance');
                 assertOrigin();
@@ -970,7 +1270,14 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
                 : admitted ??= assertCurrent().catch(error => { admitted = undefined; throw error; });
               // AsyncLocalStorage follows Gateway's background deliver into its
               // pre-SDK authorizeModel hook, including after this poll has returned its receipt.
-              receipt = await modelTaskAuthorization.run({ identity, authorize }, () => createLearningModelService(local.models!, async actor => {
+              const taskPermit = task.origin.authority;
+              const authorizeTaskPermit = async (who: SpaceIdentity, value: AgentDispatchPermit, attemptId: string) => {
+                if (!taskPermit || !sameAgentSubject(who, task.origin.identity) || task.attemptId !== attemptId
+                  || taskPermit.operationId !== attemptId || JSON.stringify(canonicalValue(value)) !== JSON.stringify(canonicalValue(taskPermit)))
+                  throw new StorageError('identity-conflict');
+                await assertCurrent();
+              };
+              receipt = await modelTaskAuthorization.run({ identity, authorize, authorizePermit: authorizeTaskPermit }, () => createLearningModelService(local.models!, async actor => {
                 if (subject(actor) !== subject(task.origin.identity)) throw new StorageError('forbidden');
                 await authorize();
               })(task.request));
@@ -992,6 +1299,8 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
               // The Gateway checks again immediately before SDK dispatch, including in its background task.
               await checkAccess();
             };
+            if (task.operation !== 'receive' && (await local.models!.checks.read(identity, task.attemptId)).purpose === 'learning')
+              throw new StorageError('forbidden');
             const value = await modelTaskAuthorization.run({ identity, authorize }, () => routeModels(local.models!, identity, route, input));
             receipt = { ok: true, value: modelAttemptSchema.parse(value) };
           } catch (error) {
@@ -1040,8 +1349,8 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
   }
   function localLearning(connection: Connection) {
     const binding = connection.localBinding!;
-    const sameIdentity = (identity: unknown) => {
-      if (JSON.stringify(identity) !== JSON.stringify(connection.grant!.identity)) throw new StorageError('forbidden');
+    const sameIdentity = (identity: SpaceIdentity) => {
+      if (!sameAgentSubject(identity, connection.grant!.identity)) throw new StorageError('forbidden');
     };
     if (!local?.create) throw new StorageError('unavailable');
     return local.create({ async resolveBinding(identity) {
@@ -1106,6 +1415,10 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       throw new StorageError('forbidden');
     }
     if (parts[0] === 'intents') {
+      if (parts.length === 4 && body !== undefined && ['dispatch', 'cancel'].includes(parts[3]!)) {
+        const original = await learning.intents.read(identity, parts[1]!, parts[2]!);
+        if (original?.input.receiver.kind === 'question') throw new StorageError('incompatible');
+      }
       if (parts.length === 2) return body === undefined ? learning.intents.list(identity, parts[1]!) : learning.intents.prepare(identity, parts[1]!, body);
       if (parts.length === 3 && parts[2] === 'capabilities' && body === undefined) return learning.intents.capabilities(identity, parts[1]!);
       if (parts.length === 3 && body === undefined) return learning.intents.read(identity, parts[1]!, parts[2]!);
@@ -1119,6 +1432,8 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       return learning.drafts.revision(identity, parts[1]!, parts[3]!);
     }
     if (parts[0] === 'executions') {
+      if (['agent', 'agent-pending', 'agent-stops'].includes(parts[2]!))
+        return routeExecutionHttp(local?.executions ?? learning.executions, local?.executionCommandAuthorization, identity, route, body);
       // A run is owned by the same activity the grant names; the fixed basis never travels elsewhere.
       if (parts.length === 2 && body !== undefined) return learning.executions.accept(identity, parts[1]!, body);
       if ((parts.length === 3 || parts.length === 4) && parts[2] === 'history' && body === undefined)
@@ -1147,11 +1462,6 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     await assertStudyIdentity(connection);
     const identity = connection.grant!.identity, copies = local!.studyCopies!, learning = studyLearning(connection);
     if (route.startsWith('models/')) return modelForward(connection, route, body);
-    if (route.startsWith('agent/') || route === 'skills' || route.startsWith('skills/')) {
-      if (!local?.teaching) throw new StorageError('unavailable');
-      return createTeachingAgentService(local.teaching, () => assertStudyIdentity(connection))(
-        teachingAgentHttpCall(identity, route, body === undefined ? 'GET' : 'POST', body, search));
-    }
     if (route === 'execution-environment') return executionEnvironmentFor(identity);
     if (route.startsWith('executions/')) {
       if (!local?.executions) throw new StorageError('unavailable');
@@ -1184,7 +1494,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
           return learning.executions.artifact(identity, activityId, requestId);
         }
       }
-      return routeExecutionHttp(local.executions, local.teaching, identity, route, body);
+      return routeExecutionHttp(local.executions, local.executionCommandAuthorization, identity, route, body);
     }
     if (route === 'courses' || route.startsWith('releases/')) {
       if (body !== undefined) {
@@ -1303,31 +1613,37 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     }
     return localForward(connection, route, body, learning);
   }
-  async function forward(connectionId: string, route: string, body?: unknown, expectedSubject?: string, search = '') {
+  async function forward(connectionId: string, route: string, body?: unknown, expectedSubject?: string, search = '', contractVersion?: unknown) {
+    if (/^(agent|skills)(\/|$)/.test(route)) throw new StorageError('incompatible');
+    if ((/^agent-sessions(\/|$)/.test(route) || route === 'agent-sources') && contractVersion !== '2') throw new StorageError('incompatible');
+    if (route === 'agent-sources' && body !== undefined) throw new StorageError('missing');
     const id = '[0-9a-f-]{36}';
     const key = '[a-z][a-z0-9-]{0,47}';
-    if (!new RegExp(`^(?:execution-environment|activities(?:/${id})?|activity-status|receipts/${id}|courses|releases/${id}` +
+    if (!new RegExp(`^(?:agent-sources|execution-environment|activities(?:/${id})?|activity-status|receipts/${id}|courses|releases/${id}` +
       `|artifacts/${id}(?:/(?:check|adopt|shelf|checks/${id}|candidates/${id}|receipts/${id}|${id}(?:/revisions/${id}(?:/resource)?)?))?` +
       `|agent-settings(?:/receipts/${id})?` +
       `|conversation-archives(?:/(?:set|import))?` +
       `|conversation-history(?:/update)?` +
       `|activity-receipts/${id}(?:/${id})?|submissions/${id}(?:/${id}|/receipts/${id})?` +
-      `|skills(?:/(?:import|select|disable))?` +
+      `|agent-sessions(?:/(?:update|workspace|${id}(?:/(?:conversation|events|skills(?:/select)?|materials(?:/.*)?|pdf(?:/.*)?|inputs(?:/${id}/control)?|runs/${id}(?:/(?:stop|continue))?|snapshots/${id}|requests/${id}|waits/${id}/responses))?))?` +
       `|pdf/${id}(?:/read|/find|/course|/(?:documents|reads|originals)/${id})?` +
       `|materials/${id}(?:/requests/${id}|/${id}(?:/remove|/versions/[1-9][0-9]*(?:/read)?)?)?` +
       `|releases/${id}/materials/${id}|releases/${id}/components/${key}(?:/algorithm|/dependencies/${key}|/preparation-reports?` +
       `|/resources/${runtimeResourcePathPattern})?` +
       `|course-activities|course-activity-results/${id}|workspaces/${id}(?:/(?:receipts|contents)/${id})?` +
-      `|drafts/${id}(?:/(?:receipts|revisions)/${id})?|intents/${id}(?:/capabilities|/${id}(?:/(?:dispatch|cancel))?)?|executions/${id}(?:/(?:sessions|history(?:/${id})?|checkpoints(?:/${id})?|${id}(?:/(?:report|stop|result|control|artifact)|/controls/${id})?))?` +
+      `|drafts/${id}(?:/(?:receipts|revisions)/${id})?|intents/${id}(?:/capabilities|/${id}(?:/(?:dispatch|cancel))?)?|executions/${id}(?:/(?:agent-pending|agent-stops/${id}|agent/${id}/(?:claim|accept)|sessions|history(?:/${id})?|checkpoints(?:/${id})?|${id}(?:/(?:report|stop|result|control|artifact)|/controls/${id})?))?` +
       `|models/(?:selection|connections(?:/${id}/credential)?|providers|profiles|directory|capabilities|images|results/${id}|grants(?:/${id}/revoke)?|segments(?:/${id}(?:/(?:tool-results|close))?)?|checks(?:/${id}(?:/(?:dispatch|cancel))?)?|calls(?:/${id}(?:/(?:dispatch|cancel))?)?)` +
-      `|agent/${id}(?:/(?:conversation|events|capabilities|skills(?:/(?:import|select|disable))?|model-switches|requests/${id}|snapshots/${id}|responses/${id}|controls/${id}|inputs/${id}/control|questions/${id}/(?:responses|presentations)|runs/${id}(?:/(?:stop|continue))?))?|connections/revoke)$`).test(route)) {
+      `|connections/revoke)$`).test(route)) {
       throw new StorageError('forbidden');
     }
     const savedConnection = await read(connectionId);
+    if (expectedSubject !== undefined && (!savedConnection.grant || expectedSubject !== [savedConnection.grant.identity.environmentId,
+      savedConnection.grant.identity.spaceId, savedConnection.grant.identity.principalId].join('.'))) throw new StorageError('forbidden');
     const connection = route === 'connections/revoke' ? savedConnection : await refreshProfile(savedConnection);
     if (!connection.grant) throw new StorageError('forbidden');
     if (expectedSubject !== undefined && expectedSubject !== [connection.grant.identity.environmentId, connection.grant.identity.spaceId,
       connection.grant.identity.principalId].join('.')) throw new StorageError('forbidden');
+    if (route === 'agent-sources') return sourceDescription(connection);
     if (route === 'conversation-archives' && body !== undefined
       || (route === 'conversation-archives/set' || route === 'conversation-archives/import') && body === undefined) throw new StorageError('invalid');
     if (route === 'conversation-archives/set') body = conversationArchiveSetSchema.parse(body);
@@ -1335,22 +1651,48 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     if (route === 'conversation-history' && body !== undefined
       || route === 'conversation-history/update' && body === undefined) throw new StorageError('invalid');
     if (route === 'conversation-history/update') body = conversationHistoryUpdateSchema.parse(body);
+    if (/^agent-sessions(\/|$)/.test(route)) {
+      const identity = await modelAccess(connection);
+      if (local?.sessions) {
+        if (connection.localBinding) await checkLocal(connection, connection.localBinding.runtimeConnectionId);
+        return routeAgentSessions(local.sessions, identity, route, body === undefined ? 'GET' : 'POST', body, search, '2');
+      }
+      if (localStudyMode(connection) || connection.localBinding) throw new StorageError('unavailable');
+      const checked = (value: unknown) => {
+        const session = agentSessionSchema.parse(value);
+        if (!sameAgentSubject(session.identity, identity)) throw new StorageError('forbidden');
+        return session;
+      };
+      const remote: SessionHttpPort = { sessions: {
+        list: async () => z.object({ items: agentSessionSchema.array() }).strict().parse(
+          await call(connection, 'agent-sessions', undefined, true)).items.map(checked),
+        read: async (_who, sessionId) => checked(await call(connection, `agent-sessions/${sessionId}`, undefined, true)),
+        create: async (_who, input) => checked(await call(connection, 'agent-sessions', input, true)),
+        update: async (_who, input) => checked(await call(connection, 'agent-sessions/update', input, true)),
+        workspace: async (_who, activityId, target) => checked(await call(connection, 'agent-sessions/workspace', { activityId, target }, true)),
+      }, agent: async (_who, sessionId) => sessionAgent(identity, sessionId), skills: async (_who, sessionId) => sessionSkills(identity, sessionId) };
+      return routeAgentSessions(remote, identity, route, body === undefined ? 'GET' : 'POST', body, search, '2');
+    }
+    const legacyQuestion = /^intents\/([0-9a-f-]{36})\/([0-9a-f-]{36})\/(dispatch|cancel)$/.exec(route);
+    if (legacyQuestion && body !== undefined) {
+      const original = actionViewSchema.nullable().parse(await (localStudyMode(connection)
+        ? studyLearning(connection).intents.read(connection.grant.identity, legacyQuestion[1]!, legacyQuestion[2]!)
+        : connection.localBinding ? localLearning(connection).intents.read(connection.grant.identity, legacyQuestion[1]!, legacyQuestion[2]!)
+        : call(connection, `intents/${legacyQuestion[1]}/${legacyQuestion[2]}`, undefined, true)));
+      if (original?.input.receiver.kind === 'question') throw new StorageError('incompatible');
+    }
     if (localStudyMode(connection) && route !== 'connections/revoke') return studyForward(connection, route, body, search);
     if (route.startsWith('models/')) return modelForward(connection, route, body);
-    if (connection.agentBinding || connection.localBinding && local?.teaching) {
+    if (connection.agentBinding || connection.localBinding) {
       const identity = await modelAccess(connection);
-      if (!local?.teaching) throw new StorageError('unavailable');
-      if (route.startsWith('agent/') || route === 'skills' || route.startsWith('skills/'))
-        return createTeachingAgentService(local.teaching, async () => { await modelAccess(connection); })(
-          teachingAgentHttpCall(identity, route, body === undefined ? 'GET' : 'POST', body, search));
       if (route === 'execution-environment') {
         return executionEnvironmentFor(identity);
       }
       if (route.startsWith('executions/')) {
-        if (!local.executions) throw new StorageError('unavailable');
+        if (!local?.executions) throw new StorageError('unavailable');
         const parts = route.split('/'), activityId = z.uuid().parse(parts[1]);
-        const activity = activitySchema.parse(await agentDependency(identity, { version: 1, operation: 'data', identity, activityId,
-          args: ['open', [activityId]] }));
+        const activity = activitySchema.parse(await (connection.localBinding ? localLearning(connection).open(identity, activityId)
+          : call(connection, `activities/${activityId}`, undefined, true)));
         const plan = activity.course?.executionPlan;
         const hasSchoolTarget = plan && (isCourseExecutionPlanV2(plan)
           ? plan.placements.some(item => item.target === 'school-runtime') : plan.remote !== null);
@@ -1374,22 +1716,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
           if (parts[2] && /^[0-9a-f-]{36}$/.test(parts[2]) && !await local.executions.read(identity, activityId, parts[2]))
             return call(connection, route, body, true);
         }
-        return routeExecutionHttp(local.executions, local.teaching, identity, route, body);
-      }
-      const intent = /^intents\/([0-9a-f-]{36})\/([0-9a-f-]{36})\/(dispatch|cancel)$/.exec(route);
-      if (intent && body !== undefined && connection.agentBinding) {
-        const [, activityId, requestId, operation] = intent;
-        const current = actionViewSchema.parse(await agentDependency(identity, { version: 1,
-          operation: operation === 'cancel' ? 'intent.cancel' : 'intent.begin', identity, activityId, args: [requestId] }));
-        if (['accepted', 'cancelled', 'failed'].includes(current.state) || current.state !== 'dispatched') return current;
-        const receiver = local.teaching.receiver;
-        if (JSON.stringify(receiver.identity) !== JSON.stringify(current.input.receiver)) throw new StorageError('identity-conflict');
-        let receipt = await receiver.query(current.input.requestId, current.inputDigest);
-        if (!receipt) receipt = current.cancelRequested ? await receiver.cancel(current.input.requestId, current.inputDigest)
-          : await receiver.accept(current.input, current.inputDigest);
-        if (!receipt) return current;
-        return actionViewSchema.parse(await agentDependency(identity, { version: 1, operation: 'intent.receipt', identity,
-          activityId, args: [requestId, receipt] }));
+        return routeExecutionHttp(local.executions, local.executionCommandAuthorization, identity, route, body);
       }
     }
     if (connection.localBinding && /^(artifacts|pdf|materials|conversation-archives|conversation-history|agent-settings|activities|activity-status|receipts|course-activities|course-activity-results|workspaces|drafts|intents|executions)(\/|$)/.test(route)) {
@@ -1463,8 +1790,6 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       return activity;
     };
     if (route === 'agent-settings' || route.startsWith('agent-settings/receipts/')) return value === null ? null : parsed(teachingInteractionSettingsSchema, value);
-    if (/^agent\/[^/]+\/controls\//.test(route)) return value === null ? null : parsed(teachingControlReceiptSchema, value);
-    if (/^agent\/[^/]+\/inputs\//.test(route)) return parsed(teachingInputControlReceiptSchema, value);
     if (route.startsWith('intents/')) {
       if (route.endsWith('/capabilities')) return parsed(z.array(actionReceiverSchema), value);
       const checkIntent = (candidate: unknown) => {
@@ -1559,5 +1884,5 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     return call(connection, `native-channel/${operation}`, input, true);
   }
   return { list, account, start, complete, configureLocal, configureModel, configureAgent, forward, nativeChannelCall,
-    authorizeModel, authorizeModelDispatch, schoolModel, pollModelTasks, agentDependency, identityForAgent, publishExecutionRecord, executionEnvironmentFor };
+    authorizeModel, authorizeModelDispatch, authorizePermit, schoolModel, pollModelTasks, agentDependency, sessionDependency, sessionDirectory, sessionAgent, sessionSkills, learningSources, openActivity, dependenciesForSession, querySource, identityForAgent, publishExecutionRecord, executionEnvironmentFor };
 }

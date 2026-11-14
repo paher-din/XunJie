@@ -1,5 +1,7 @@
 # #208：WP07 #201 的 macOS 模型切换与学习延续实机验收
 
+本文保留旧版本的验收历史；旧 Agent 探针已退休，文中脚本名仅标识原证据来源。当前 session v2 工程入口为 [agent-student-ask.runtime.test.mjs](../../packages/product-runtime/test/agent-student-ask.runtime.test.mjs)、[capabilities.runtime.test.mjs](../../packages/agent-runtime/test/capabilities.runtime.test.mjs)。这些测试不继承本页的历史通过结论，真实供应商、桌面与跨机结果须另行验收。
+
 本记录完成 [#208](https://github.com/paher-din/XunJie/issues/208) 在已有 Apple Silicon / macOS 环境上的验收，来源需求为 [#201](https://github.com/paher-din/XunJie/issues/201)。验收只在 #201 修复合入后执行；记录中的提交是实际测试提交，不是预合并候选。
 
 ## 结论

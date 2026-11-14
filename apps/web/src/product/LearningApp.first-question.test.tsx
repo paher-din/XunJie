@@ -1,285 +1,190 @@
 // @vitest-environment jsdom
+import 'fake-indexeddb/auto'
 import { transferableAbortController } from 'node:util'
-import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { act, createElement, useImperativeHandle, type ReactNode, type RefObject } from 'react'
+import { act, type ReactNode, useImperativeHandle, type RefObject } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
-import type { ConversationHistoryItem, CreateActivity, LearningActivity } from '@xunjie/contracts/learning-data'
-import type { SpaceIdentity } from '@xunjie/contracts/spaces'
-import type { ActivityWorkspaceHandle } from './ActivityWorkspace'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { sessionInputProtection } from '../reliable-workspace/input-protection'
 import { LearningApp } from './LearningApp'
-import { firstQuestionKey, parsePendingActivityRequest, readFirstQuestion } from './first-question'
+import type { AgentSession } from '@xunjie/contracts/agent-sessions'
+import type { AgentConversation } from '@xunjie/contracts/agent-service'
+import type { AgentInput } from '@xunjie/contracts/agent-runtime'
+import type { ActivityWorkspaceHandle } from './ActivityWorkspace'
+import { toast } from '@xunjie/ui/feedback'
 
-// Exercise the real Agent controls, router and creation/recovery transport. The
-// separate conversation regression exercises the real durable queue and receipt.
 vi.mock('../lib/theme', () => ({ useTheme() {} }))
-vi.mock('../components/ProductShell', () => ({ ProductShell: ({ children, onSettings, onHome, onAgent, agentHistory }: {
-  children: ReactNode; onSettings(): void; onHome(): void; onAgent(): void; agentHistory(close: () => void): ReactNode
-}) => createElement('main', null, createElement('button', { onClick: onSettings }, '打开侧栏设置'),
-  createElement('button', { onClick: onHome }, '返回首页'),
-  createElement('button', { onClick: onAgent }, 'Agent 对话'), createElement('nav', { 'aria-label': '对话历史' }, agentHistory(() => {})), children) }))
-vi.mock('./ProductSettings', () => ({ ProductSettings: ({ modelSettings }: { modelSettings: ReactNode }) =>
-  createElement('div', null, '设置视图', modelSettings) }))
-vi.mock('./PersonalModelSettings', () => ({ PersonalModelSettings: () => createElement('p', null, '模型设置视图') }))
+vi.mock('../components/ProductShell', () => ({ ProductShell: ({ children, onHome, onAgent, agentHistory }: {
+  children: ReactNode; onHome(): void; onAgent(): void; agentHistory(close: () => void): ReactNode
+}) => <main><button onClick={onHome}>首页</button><button onClick={onAgent}>Agent 对话</button><nav>{agentHistory(() => {})}</nav>{children}</main> }))
 vi.mock('./ActivityReferences', () => ({ ActivityReferences: ({ children }: { children: ReactNode }) => children,
   CourseMaterialReferences: () => null, CourseRequirementsReference: () => null }))
-vi.mock('./ActivityPage', () => ({ ActivityPage: ({ activity, workspaceRef }: {
-  activity: LearningActivity; workspaceRef: RefObject<ActivityWorkspaceHandle | null>
-}) => {
-  useImperativeHandle(workspaceRef, () => ({ leave: async () => { if (rejectLeave) throw new Error('保护失败') } }))
-  return createElement('h1', { id: 'activity-title' }, activity.goal || activity.question)
+vi.mock('./ActivityPage', () => ({ ActivityPage: ({ workspaceRef }: { workspaceRef: RefObject<ActivityWorkspaceHandle | null> }) => {
+  useImperativeHandle(workspaceRef, () => ({ leave: async () => {} })); return <h1>真实工作区</h1>
 } }))
-vi.mock('./ProductConversation', () => ({ ProductConversation: ({ activity, workspaceRef }: {
-  activity: LearningActivity; workspaceRef: RefObject<ActivityWorkspaceHandle | null>
-}) => {
-  useImperativeHandle(workspaceRef, () => ({ leave: async () => { if (rejectLeave) throw new Error('保护失败') } }))
-  return createElement('h1', { id: 'activity-title' }, activity.goal || activity.question)
-} }))
-
-let root: Root, host: HTMLDivElement, identity: SpaceIdentity, namespace: string, pendingKey: string
-let activities: Map<string, LearningActivity>, created: CreateActivity[], receiptReads: string[]
-let archivedIds: Set<string>
-let labels: Map<string, Pick<ConversationHistoryItem, 'title' | 'pinned' | 'deleted'>>
-let loseCreationReply: boolean, releaseCreation: (() => void) | undefined, holdCreation: Promise<void> | undefined
-let rejectLeave = false
-const settle = async () => { await new Promise(resolve => setTimeout(resolve, 0)); await new Promise(resolve => setTimeout(resolve, 0)) }
-const response = (value: unknown) => new Response(JSON.stringify(value), { status: 200, headers: { 'content-type': 'application/json' } })
-const pending = () => parsePendingActivityRequest(JSON.parse(localStorage.getItem(pendingKey)!))
-function button(label: string) {
-  const found = [...host.querySelectorAll('button')].find(element => element.textContent?.trim() === label)
-  expect(found, label).toBeDefined(); return found!
+const actor = { environmentId: crypto.randomUUID(), spaceId: crypto.randomUUID(), principalId: crypto.randomUUID(), kind: 'personal', name: '学生' }
+const owner = { version: 1, connectionId: crypto.randomUUID(), installationId: crypto.randomUUID(), target: { environmentId: actor.environmentId, serviceId: crypto.randomUUID(),
+  endpoint: 'https://agent.example.test', unit: 'teaching-agent', protocolVersion: 1, capabilities: ['agent.sessions.v2'] } }
+const now = '2026-11-13T00:00:00.000Z'
+let root: Root, host: HTMLDivElement, sessions: Map<string, AgentSession>, conversations: Map<string, AgentConversation>, receipts: Map<string, any>
+let writes: { path: string; body: any }[], loss: boolean, activityReads: number, workspaces: any[]
+const response = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'content-type': 'application/json' } })
+const settle = async () => { for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve, 0)) }
+async function waitFor(check: () => unknown | Promise<unknown>) {
+  let failure: unknown
+  for (let i = 0; i < 100; i++) {
+    await act(settle)
+    try { await check(); return } catch (cause) { failure = cause }
+  }
+  throw failure
 }
-async function click(label: string) { await act(async () => { button(label).click(); await settle() }) }
-async function conversationMenu(activityId: string, action: string) {
-  await act(async () => { host.querySelector<HTMLButtonElement>(`[data-conversation-id="${activityId}"] .agent-conv-more`)!.click(); await settle() })
-  await click(action)
+const click = async (label: string) => act(async () => { const button = [...host.querySelectorAll('button')].find(button => button.textContent?.trim() === label); expect(button, label).toBeDefined(); button!.click(); await settle() })
+async function fill(text: string) {
+  await waitFor(async () => { await act(async () => { await settle() }); expect(host.querySelector('textarea[aria-label="向 Agent 提问"]')).not.toBeNull() })
+  await act(async () => { const field = host.querySelector<HTMLTextAreaElement>('textarea[aria-label="向 Agent 提问"]')!; expect(field).not.toBeNull()
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(field, text); field.dispatchEvent(new Event('input', { bubbles: true })); await settle() })
 }
-async function fillQuestion(text: string) {
-  await vi.waitFor(async () => {
-    await act(async () => { await settle() })
-    expect(host.querySelector('textarea[aria-label="向 Agent 提问"]')).not.toBeNull()
-  })
-  await act(async () => {
-    const field = host.querySelector<HTMLTextAreaElement>('textarea[aria-label="向 Agent 提问"]')!
-    expect(field).not.toBeNull()
-    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(field, text)
-    field.dispatchEvent(new Event('input', { bubbles: true })); await settle()
-  })
-}
-async function startQuestion(text: string) {
-  await click('Agent 对话')
-  await fillQuestion(text)
-  const send = host.querySelector<HTMLButtonElement>('button[aria-label="发送消息"]')!
-  expect(send).not.toBeNull()
-  expect(send.disabled).toBe(false)
-  await act(async () => { send.click(); await settle() })
-}
-async function mount() {
-  await act(async () => { root.render(createElement(LearningApp)); await settle() })
-}
-async function reload() {
-  await act(async () => { root.unmount(); await settle() })
-  root = createRoot(host); await mount()
-}
-
-beforeEach(async () => {
+async function send(text: string) { await fill(text); await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="发送消息"]')!.click(); await settle() }) }
+const mount = async () => act(async () => { root.render(<LearningApp />); await settle() })
+const reload = async () => { await act(async () => root.unmount()); root = createRoot(host); await mount() }
+beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
-  // jsdom does not implement the image decoding or layout observer used by the real Agent UI.
-  vi.stubGlobal('Image', class { src = ''; decode() { return Promise.resolve() } })
-  vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
-  vi.stubGlobal('IntersectionObserver', class { observe() {} disconnect() {} })
+  const abort = transferableAbortController(); vi.stubGlobal('AbortController', abort.constructor); vi.stubGlobal('AbortSignal', abort.signal.constructor)
+  vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
+  vi.stubGlobal('IntersectionObserver', class { observe() {} unobserve() {} disconnect() {} })
   vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener() {}, removeEventListener() {} }))
-  // React Router creates Node's native Request; its signal must come from the
-  // same implementation instead of jsdom's otherwise compatible DOM signal.
-  const abort = transferableAbortController()
-  vi.stubGlobal('AbortController', abort.constructor)
-  vi.stubGlobal('AbortSignal', abort.signal.constructor)
-  vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
-  localStorage.clear(); sessionStorage.clear(); history.replaceState(null, '', '/')
-  identity = { environmentId: crypto.randomUUID(), spaceId: crypto.randomUUID(), principalId: crypto.randomUUID(),
-    kind: 'personal', name: '测试用户' }
-  namespace = crypto.randomUUID()
-  pendingKey = `xj.activity-request.${namespace}.${identity.environmentId}.${identity.spaceId}.${identity.principalId}`
-  activities = new Map(); archivedIds = new Set(); labels = new Map(); created = []; receiptReads = []; loseCreationReply = false; holdCreation = undefined; releaseCreation = undefined; rejectLeave = false
-  const historyState = () => ({ items: [...new Set([...archivedIds, ...labels.keys()])].map(activityId => ({ activityId,
-    title: null, pinned: false, deleted: false, ...labels.get(activityId), archived: archivedIds.has(activityId) })) })
+  vi.stubGlobal('Image', class { src = ''; decode() { return Promise.resolve() } })
+  HTMLElement.prototype.scrollTo = vi.fn(); HTMLElement.prototype.scrollIntoView = vi.fn()
+  localStorage.clear(); sessionStorage.clear(); history.replaceState(null, '', '/?view=agent&space=personal')
+  sessions = new Map(); conversations = new Map(); receipts = new Map(); writes = []; loss = false; activityReads = 0; workspaces = []
   vi.stubGlobal('fetch', vi.fn(async (url: string, options: RequestInit = {}) => {
-    const route = url.replace('/api/learning/', '')
-    if (route === 'context') return response({ clientNamespace: namespace, profile: 'local', identities: [{ key: 'personal', identity }] })
-    if (route === 'models/selection') return response({ version: 0, selected: null, options: [] })
-    if (route === 'conversation-archives/set') {
-      const input = JSON.parse(options.body as string) as { activityId: string; archived: boolean }
-      if (input.archived) archivedIds.add(input.activityId); else archivedIds.delete(input.activityId)
-      return response({ archivedIds: [...archivedIds] })
+    const path = url.replace('/api/learning/', ''), body = options.body ? JSON.parse(String(options.body)) : undefined
+    if (body) writes.push({ path, body })
+    if (path === 'context') return response({ clientNamespace: 'session-ui', profile: 'local', identities: [{ key: 'personal', identity: actor }] })
+    if (path === 'models/selection') return response({ version: 0, selected: null, options: [] })
+    if (path === 'activities') { activityReads++; return response(workspaces) }
+    if (path.startsWith('activities/')) return response(workspaces.find(item => item.activityId === path.split('/')[1]))
+    if (path.startsWith('skills')) return response({ skills: [] })
+    if (!path.startsWith('agent-sessions')) throw new Error('Unexpected endpoint ' + path)
+    expect(new Headers(options.headers).get('x-xj-agent-contract')).toBe('2')
+    expect(new Headers(options.headers).get('x-xj-space')).toBe('personal')
+    if (path === 'agent-sessions' && !body) return response({ items: [...sessions.values()] })
+    if (path === 'agent-sessions' && body) {
+      const value = { ...body, identity: actor, owner, title: body.title ?? null, pinned: false, archived: false, deleted: false,
+        state: 'ready', createdAt: now, updatedAt: now, readyAt: now } as AgentSession
+      sessions.set(body.sessionId, value)
+      conversations.set(body.sessionId, { sessionId: body.sessionId, lastSeq: 0, messages: [], runs: [], inputs: [], waits: [], tools: [], workspaces: [] })
+      return response(value)
     }
-    if (route === 'conversation-archives') return response({ archivedIds: [...archivedIds] })
-    if (route === 'conversation-history') return response(historyState())
-    if (route === 'conversation-history/update') {
-      const input = JSON.parse(options.body as string) as { activityId: string; action: string; title?: string; pinned?: boolean }
-      const existing = labels.get(input.activityId) ?? { title: null, pinned: false, deleted: false }
-      labels.set(input.activityId, { ...existing, ...(input.action === 'delete' ? { deleted: true }
-        : input.action === 'rename' ? { title: input.title! } : { pinned: input.pinned! }) })
-      return response(historyState())
+    if (path === 'agent-sessions/update') {
+      const session = { ...sessions.get(body.sessionId)!, ...Object.fromEntries(Object.entries(body).filter(([key]) => key !== 'requestId')), updatedAt: now }
+      sessions.set(body.sessionId, session); return response(session)
     }
-    if (route.startsWith('receipts/')) {
-      const requestId = route.slice('receipts/'.length); receiptReads.push(requestId)
-      return response(activities.get(requestId) ?? null)
+    const parts = path.split('/'), sessionId = parts[1]!
+    if (parts.length === 2) return sessions.has(sessionId) ? response(sessions.get(sessionId)) : response({ error: 'missing' }, 404)
+    if (parts[2] === 'materials' || parts[2] === 'pdf') return response([])
+    if (parts[2]?.startsWith('conversation')) return response(conversations.get(sessionId))
+    if (parts[2] === 'requests') return response(receipts.get(parts[3]! ) ?? null)
+    if (parts[2] === 'inputs' && parts.length === 3) {
+      const input = body as AgentInput, inputId = crypto.randomUUID(), runId = crypto.randomUUID()
+      const receipt = { requestId: input.requestId, sessionId, inputId, runId, inputDigest: 'a'.repeat(64) }
+      receipts.set(input.requestId, { receipt, input })
+      const run = { sessionId, inputId, runId, requestId: input.requestId, state: 'completed' as const, reason: '', generation: 1, stopRequested: false,
+        needsContinue: false, previousRunId: null, createdAt: now, updatedAt: now, completedAt: now }
+      const value = conversations.get(sessionId)!
+      conversations.set(sessionId, { ...value, lastSeq: value.lastSeq + 2, runs: [...value.runs, run],
+        messages: [...value.messages, { messageId: inputId, inputId, runId, role: 'user', text: input.text, createdAt: now, state: 'settled' },
+          { messageId: crypto.randomUUID(), runId, role: 'assistant', text: '递归通过更小的同类问题求解。', createdAt: now, state: 'settled' }],
+        inputs: [...value.inputs, { inputId, runId, version: 1, mode: input.mode, state: 'adopted', text: input.text, createdAt: now }] })
+      if (loss) throw new Error('lost reply')
+      return response(receipt)
     }
-    if (route === 'activities' && options.method === 'POST') {
-      const input = JSON.parse(options.body as string) as CreateActivity
-      created.push(input)
-      const activity: LearningActivity = { activityId: crypto.randomUUID(), identity,
-        target: { environmentId: identity.environmentId, serviceId: crypto.randomUUID(), version: 1 },
-        goal: input.goal, question: input.question, references: input.references, status: 'open', createdAt: new Date().toISOString() }
-      activities.set(input.requestId, activity)
-      await holdCreation
-      if (loseCreationReply) { loseCreationReply = false; throw new TypeError('Synthetic creation ACK loss') }
-      return response(activity)
-    }
-    if (route === 'activities') return response([...activities.values()])
-    if (route.startsWith('activities/')) return response([...activities.values()].find(activity => activity.activityId === route.slice('activities/'.length)))
-    throw new Error('Unexpected route ' + route)
+    return response({ error: 'missing' }, 404)
   }))
   host = document.createElement('div'); document.body.append(host); root = createRoot(host)
+})
+afterEach(async () => { await act(async () => { root.unmount(); toast.dismiss() }); host.remove(); vi.restoreAllMocks(); vi.unstubAllGlobals() })
+it('the formal Agent first question creates a persisted session and never creates an activity', async () => {
+  await mount(); await send('什么是递归？')
+  await waitFor(() => expect(host.textContent).toContain('递归通过更小的同类问题求解。'))
+  expect(writes.filter(item => item.path === 'activities')).toHaveLength(0)
+  expect(writes.find(item => item.path === 'agent-sessions')!.body.scenario).toBe('student-assistant')
+  expect(new URLSearchParams(location.search).get('session')).toBe([...sessions.keys()][0])
+  expect(new URLSearchParams(location.search).has('activity')).toBe(false)
+})
+it('a lost first input ACK is queried under the original identity on reload and is never sent twice', async () => {
+  loss = true; await mount(); await send('保留这个原问题')
+  expect(writes.filter(item => /\/inputs$/.test(item.path))).toHaveLength(1)
+  loss = false; await reload()
+  await waitFor(() => expect(new URLSearchParams(location.search).get('session')).toBe([...sessions.keys()][0]))
+  expect(writes.filter(item => /\/inputs$/.test(item.path))).toHaveLength(1)
+  expect(host.textContent).toContain('保留这个原问题')
+})
+it('new home sessions remain independent and history keeps their real saved titles', async () => {
+  await mount(); await send('第一段会话'); await waitFor(() => expect(sessions.size).toBe(1))
+  await click('新对话'); await send('第二段会话'); await waitFor(() => expect(sessions.size).toBe(2))
+  const first = [...sessions.values()][0]!
+  await click(first.title!)
+  await waitFor(() => expect(new URLSearchParams(location.search).get('session')).toBe(first.sessionId))
+  expect(host.querySelectorAll('[data-message-id]')).toHaveLength(2)
+})
+it('the formal sidebar renames, pins, archives, restores and deletes the same session with archived input kept read-only', async () => {
+  await mount(); await send('原对话标题'); await waitFor(() => expect(sessions.size).toBe(1))
+  const session = [...sessions.values()][0]!
+  const row = () => host.querySelector<HTMLElement>(`[data-conversation-id="${session.sessionId}"]`)!
+  const rowClick = async (selector: string) => act(async () => { row().querySelector<HTMLButtonElement>(selector)!.click(); await settle() })
+  await rowClick('[aria-label="置顶"]')
+  expect(sessions.get(session.sessionId)?.pinned).toBe(true)
+  await rowClick('[aria-label="更多操作"]'); await click('重命名')
+  await act(async () => { const field = row().querySelector<HTMLInputElement>('input')!; Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(field, '新的对话标题'); field.dispatchEvent(new Event('input', { bubbles: true })); field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); await settle() })
+  expect(sessions.get(session.sessionId)?.title).toBe('新的对话标题')
+  expect(host.querySelector('h1')?.textContent).toBe('新的对话标题')
+  await rowClick('[aria-label="更多操作"]'); await click('归档')
+  expect(host.textContent).toContain('这段对话已归档')
+  await fill('归档时不能发送'); expect(host.querySelector<HTMLButtonElement>('[aria-label="发送消息"]')?.disabled).toBe(true)
+  await click('已归档1'); await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="恢复「新的对话标题」"]')!.click(); await settle() })
+  expect(sessions.get(session.sessionId)?.archived).toBe(false)
+  await rowClick('[aria-label="更多操作"]'); await click('删除'); await click('删除')
+  expect(sessions.get(session.sessionId)?.deleted).toBe(true)
+  expect(new URLSearchParams(location.search).has('session')).toBe(false)
+})
+
+it('a confirmed workspace tool result refreshes the formal home tiles and opens the real activity', async () => {
+  await mount(); await send('创建一个练习项目'); await waitFor(() => expect(sessions.size).toBe(1))
+  const sessionId = [...sessions.keys()][0]!, conversation = conversations.get(sessionId)!, runId = conversation.runs[0]!.runId, activityId = crypto.randomUUID()
+  const activity = { activityId, identity: actor, target: { environmentId: actor.environmentId, serviceId: crypto.randomUUID(), version: 1 }, question: '递归练习', goal: '递归练习', references: [], status: 'open', createdAt: now }
+  workspaces.push(activity)
+  conversation.lastSeq++
+  conversation.workspaces.push({ operationId: crypto.randomUUID(), runId, workspace: { ...activity, title: '递归练习' } })
+  const before = activityReads
+  await act(async () => { window.dispatchEvent(new Event('focus')); await settle() })
+  await waitFor(() => expect(host.querySelector('.msg-task-card')).not.toBeNull())
+  expect(activityReads).toBeGreaterThan(before)
+  await click('首页')
+  expect(host.querySelector(`[data-activity-id="${activityId}"]`)).not.toBeNull()
+})
+
+it('the ordinary composer retains failed local drafts and blocks formal navigation until its original bytes are protected', async () => {
   await mount()
-})
-afterEach(async () => {
-  await act(async () => { releaseCreation?.(); await settle(); root.unmount(); await settle() })
-  host.remove(); vi.restoreAllMocks(); vi.useRealTimers(); vi.unstubAllGlobals()
-})
-
-it.each(['send', 'old-envelope', 'legacy'] as const)(
-  'recovers the original creation and saved send intent after an ACK loss and reload (%s)', async (format) => {
-  loseCreationReply = true
-  await startQuestion('The fixed initial question')
-  expect(created).toHaveLength(1)
-  const original = pending(), originalQuestionId = original.firstQuestion?.requestId
-  expect(originalQuestionId).toBeTypeOf('string')
-  if (format === 'old-envelope') localStorage.setItem(pendingKey, JSON.stringify({ ...original, firstQuestion: null }))
-  if (format === 'legacy') localStorage.setItem(pendingKey, JSON.stringify(original.input))
-  const saved = pending()
-  expect(saved.input).toEqual(created[0])
-  if (format === 'send') expect(saved.firstQuestion?.requestId).toBe(originalQuestionId)
-  else expect(saved.firstQuestion).toBeNull()
-  await reload()
-  await click('核对并继续原请求')
-  expect(created).toHaveLength(1)
-  expect(receiptReads).toEqual([saved.input.requestId, saved.input.requestId])
-  expect(localStorage.getItem(pendingKey)).toBeNull()
-  const activity = activities.get(saved.input.requestId)!
-  expect(host.querySelector('#activity-title')).not.toBeNull()
-  expect(readFirstQuestion(activity.activityId)).toEqual(format === 'send' ? {
-    requestId: originalQuestionId, question: 'The fixed initial question',
-  } : null)
-})
-
-it('retains the authorized first question when creation completes after a view change', async () => {
-  holdCreation = new Promise(resolve => { releaseCreation = resolve })
-  await startQuestion('The first question belongs to the created activity')
-  const saved = pending()
-  expect(saved.firstQuestion).not.toBeNull()
-  await click('打开侧栏设置')
-  expect(host.textContent).toContain('模型设置视图')
-  await act(async () => { releaseCreation!(); await settle() })
-  const activity = activities.get(saved.input.requestId)!
-  expect(host.textContent).toContain('模型设置视图')
-  expect(readFirstQuestion(activity.activityId)).toEqual(saved.firstQuestion)
-  expect(localStorage.getItem(pendingKey)).toBeNull()
-  await act(async () => { history.back(); await settle() })
-  await vi.waitFor(async () => { await act(settle); expect(location.search).not.toContain('settings=account') })
-  expect(host.textContent).not.toContain('上次发起的学习尚未确认')
-  expect(host.querySelector('nav[aria-label="对话历史"]')?.textContent).toContain(activity.question)
-  const field = host.querySelector<HTMLTextAreaElement>('textarea[aria-label="向 Agent 提问"]')!
-  expect(field.disabled).toBe(false)
-  expect(field.readOnly).toBe(false)
-  await fillQuestion('A new question can be sent')
-  expect(host.querySelector<HTMLButtonElement>('button[aria-label="发送消息"]')!.disabled).toBe(false)
-  await click('返回首页')
-  const activityCard = host.querySelector<HTMLButtonElement>(`[data-activity-id="${activity.activityId}"]`)
-  expect(activityCard?.textContent).toContain(activity.question)
-  expect(created).toHaveLength(1)
-})
-
-it('protects an open conversation before archiving it without closing the activity', async () => {
-  await startQuestion('要归档的对话')
-  const activity = [...activities.values()][0]
-  expect(activity).toBeDefined()
-  rejectLeave = true
-  await conversationMenu(activity.activityId, '归档')
-  expect(archivedIds.has(activity.activityId)).toBe(false)
-  expect(host.querySelector('#activity-title')).not.toBeNull()
-  rejectLeave = false
-  await conversationMenu(activity.activityId, '归档')
-  expect(archivedIds.has(activity.activityId)).toBe(true)
-  expect(activity.status).toBe('open')
-  expect(host.querySelector('#activity-title')).toBeNull()
-  expect(location.search).not.toContain('activity=')
-})
-
-it('protects an open conversation before deleting its entry and keeps the activity', async () => {
-  await startQuestion('删除前保留输入的对话')
-  const activity = [...activities.values()][0]
-  await conversationMenu(activity.activityId, '删除')
-  expect(labels.get(activity.activityId)?.deleted).not.toBe(true)
-  rejectLeave = true
-  await act(async () => { host.querySelector<HTMLButtonElement>('.agent-conv-confirm .danger')!.click(); await settle() })
-  expect(labels.get(activity.activityId)?.deleted).not.toBe(true)
-  expect(host.querySelector('#activity-title')).not.toBeNull()
-  rejectLeave = false
-  await act(async () => { host.querySelector<HTMLButtonElement>('.agent-conv-confirm .danger')!.click(); await settle() })
-  expect(labels.get(activity.activityId)?.deleted).toBe(true)
-  expect(activity.status).toBe('open')
-  expect(host.querySelector('#activity-title')).toBeNull()
-  expect(location.search).not.toContain('activity=')
-})
-
-it('keeps the same activity tree mounted across settings and browser back/forward navigation', async () => {
-  await startQuestion('Keep the original activity mounted')
-  const title = host.querySelector('#activity-title')!
-  expect(title).not.toBeNull()
-  await click('打开侧栏设置')
-  expect(host.querySelector('#activity-title')).toBe(title)
-  expect(title.closest('[inert]')).not.toBeNull()
-  await act(async () => { history.back(); await settle() })
-  await vi.waitFor(async () => { await act(settle); expect(location.search).not.toContain('settings=account') })
-  expect(host.querySelector('#activity-title')).toBe(title)
-  expect(title.closest('[inert]')).toBeNull()
-  await act(async () => { history.forward(); await settle() })
-  await vi.waitFor(async () => { await act(settle); expect(location.search).toContain('settings=account') })
-  expect(host.querySelector('#activity-title')).toBe(title)
-  expect(title.closest('[inert]')).not.toBeNull()
-})
-
-it('does not recreate a discarded automatic-send intent when the original creation replies late', async () => {
-  holdCreation = new Promise(resolve => { releaseCreation = resolve })
-  await startQuestion('This request will be discarded')
-  const saved = pending()
-  await click('打开侧栏设置')
-  await click('返回首页')
-  await click('Agent 对话')
-  await click('放弃这次请求')
-  await act(async () => { releaseCreation!(); await settle() })
-  const activity = activities.get(saved.input.requestId)!
-  expect(readFirstQuestion(activity.activityId)).toBeNull()
-  expect(localStorage.getItem(pendingKey)).toBeNull()
-  expect(host.querySelector('#activity-title')).toBeNull()
-})
-
-it('keeps both original identities until the first question handoff itself is protected', async () => {
-  const setItem = Storage.prototype.setItem
-  let rejectFirstQuestion = true
-  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key, value) {
-    if (key.startsWith(firstQuestionKey('')) && rejectFirstQuestion) throw new Error('Synthetic full browser storage')
-    return setItem.call(this, key, value)
+  const put = IDBObjectStore.prototype.put
+  let fail = true
+  const fault = vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementation(function (this: IDBObjectStore, value, key) {
+    if (fail && this.name === 'agentControls' && value.key.includes('session-draft')) throw new DOMException('draft quota', 'QuotaExceededError')
+    return put.call(this, value, key)
   })
-  await startQuestion('Do not discard the send intent before handoff')
-  const saved = pending()
-  expect(saved.firstQuestion).not.toBeNull()
-  expect(created).toHaveLength(1)
-  rejectFirstQuestion = false
-  await reload()
-  await click('核对并继续原请求')
-  const activity = activities.get(saved.input.requestId)!
-  expect(readFirstQuestion(activity.activityId)).toEqual(saved.firstQuestion)
-  expect(created).toHaveLength(1)
-  expect(localStorage.getItem(pendingKey)).toBeNull()
+  const text = '尚未发送的完整首问必须保留'
+  try {
+    await fill(text)
+    expect(host.textContent).toContain('输入尚未在本机可靠保留')
+    const unload = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(unload); expect(unload.defaultPrevented).toBe(true)
+    await click('首页')
+    expect(new URLSearchParams(location.search).get('view')).toBe('agent')
+    expect(host.querySelector<HTMLTextAreaElement>('textarea[aria-label="向 Agent 提问"]')?.value).toBe(text)
+    await reload()
+    await waitFor(async () => { await act(settle); expect(host.querySelector<HTMLTextAreaElement>('textarea[aria-label="向 Agent 提问"]')?.value).toBe(text) })
+    fail = false
+    await click('首页'); expect(new URLSearchParams(location.search).get('view')).not.toBe('agent')
+    await click('Agent 对话')
+    await waitFor(async () => { await act(settle); expect(host.querySelector<HTMLTextAreaElement>('textarea[aria-label="向 Agent 提问"]')?.value).toBe(text) })
+    expect(writes.filter(write => /\/inputs$/.test(write.path))).toHaveLength(0)
+  } finally { fail = false; await act(async () => { await sessionInputProtection.leave(); await settle() }); fault.mockRestore() }
 })

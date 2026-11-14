@@ -1,0 +1,41 @@
+{
+  "name": "@xunjie/agents",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./*": {
+      "types": "./dist/*.d.ts",
+      "import": "./dist/*.js"
+    },
+    "./capabilities/skills": {
+      "types": "./dist/capabilities/skills/index.d.ts",
+      "import": "./dist/capabilities/skills/index.js"
+    }
+  },
+  "scripts": {
+    "build": "node ../../scripts/build.mjs agents --",
+    "typecheck": "node ../../scripts/build.mjs agents:typecheck",
+    "test": "node ../../scripts/test.mjs agents",
+    "test:external": "node ../../scripts/test.mjs agents --external"
+  },
+  "dependencies": {
+    "@xunjie/contracts": "0.1.0",
+    "@xunjie/storage": "0.1.0",
+    "@xunjie/model-gateway": "0.1.0",
+    "zod": "4.6.5",
+    "@xunjie/agent-runtime": "0.1.0",
+    "@xunjie/learning-space": "0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.1",
+    "typescript": "~5.9.2"
+  }
+}

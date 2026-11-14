@@ -1,3 +1,4 @@
+import './model-cleanup-source-loader.mjs';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
@@ -9,7 +10,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import pg from 'pg';
 import { provisionStorage, openStorage, createFileBackend, StorageError, prepareStorageRestore, finalizeStorageRestore } from '@xunjie/storage';
-import { createModelGateway, modelMigrations } from '../../../packages/learning-space/dist/model-connections/index.js';
+import { createModelGateway, modelMigrations } from '../../../packages/model-gateway/dist/index.js';
 import { openProductRuntime } from '../../../packages/product-runtime/dist/runtime.js';
 import { createProductRuntimeHost } from '../../../packages/product-runtime/dist/host.js';
 import { createSchoolClient } from '../../../packages/product-runtime/dist/school-client.js';
@@ -18,13 +19,13 @@ import { withModelOriginRecovery, createModelRecipientRecovery } from '../../../
 import { retireInstallation } from '../../../packages/product-runtime/dist/retired-installations.js';
 import { recordRecoverySuccession, isRecoverySuccessor, recoveryPredecessors } from '../../../packages/product-runtime/dist/recovery-successions.js';
 import { nativeFixture } from '../../../packages/storage/test/native-fixture.mjs';
-import { createModelDeviceTasks } from '../../../packages/learning-space/dist/model-connections/device-tasks.js';
+import { createModelDeviceTasks } from '../../../packages/model-gateway/dist/device-tasks.js';
 import { createRecoveryManager, restoreRecoverySet } from '../../../packages/product-runtime/dist/recovery.js';
 import { createMaintenanceCoordinator } from '../../../packages/product-runtime/dist/maintenance.js';
 import { createStorageRecoveryOwner, createStorageRecoveryTarget } from '../../../packages/product-runtime/dist/storage-recovery.js';
-import { createPairedLearningModels } from '../../../packages/learning-space/dist/model-connections/paired-learning.js';
+import { createPairedLearningModels } from '../../../packages/model-gateway/dist/paired-learning.js';
 import { createSpaces, spaceMigrations } from '../../../packages/learning-space/dist/spaces/index.js';
-import { createLearningAuthority } from '../../../packages/learning-space/dist/learning-entry/authority.js';
+import { createLearningAuthority } from '../../../packages/product-runtime/dist/learning-http/authority.js';
 
 async function until(read, message) {
   const deadline = Date.now() + 10000;
@@ -101,7 +102,7 @@ test('R10 host-verified successors query and cancel accepted, in-flight and comp
     const client = createSchoolClient(deviceRoot, { formatVersion: 1, environmentId: owner.environmentId, installationId: deviceInstallationId,
       clientNamespace: 'fixture', profile: 'model', services: [] }, local);
     models = await createModelGateway(storage, { holder: 'device', authorize: client.authorizeModel,
-      authorizeDispatch: client.authorizeModelDispatch, authorizationPollMs: 60000 });
+      authorizeDispatch: client.authorizeModelDispatch, authorizePermit: (who, permit, context) => client.authorizePermit(who, permit, context.attemptId, context.phase), authorizationPollMs: 60000 });
     local.models = models;
     // The fixture's school task authority exercises real WP01 grants, retirement files and route
     // succession. The production adapter supplies only that host's evidence to the actual poller.
@@ -121,17 +122,20 @@ test('R10 host-verified successors query and cancel accepted, in-flight and comp
     const attempts = [];
     async function task(operation, args, origin, authorityFields) {
       const taskId = randomUUID(), attemptId = operation.startsWith('checks.') ? operation === 'checks.receive' ? args[0].attemptId : args[0] : undefined;
-      await models.deviceTasks.enqueue(identity, pair, { taskId, ...(attemptId ? { attemptId } : {}), operation: 'learning', formatVersion: 2,
+      if (operation === 'segments.create') args = [{ ...args[0], sessionId: origin.sessionId }];
+      if (operation === 'checks.receive') args = [{ ...args[0], authority: { formatVersion: 1, permit: authorityFields } }];
+      if (operation === 'checks.dispatch') args = [args[0], { formatVersion: 1, permit: authorityFields }];
+      await models.deviceTasks.enqueue(identity, pair, { taskId, ...(attemptId ? { attemptId } : {}), operation: 'learning', formatVersion: 3,
         origin: { ...origin, ...(authorityFields ? { authority: authorityFields } : {}) }, request: { identity, operation, args } });
       await client.pollModelTasks(() => true);
       const record = await models.deviceTasks.read(identity, pair, taskId);
       assert.ok(record.receipt, 'task completed through real school-client poller'); return record.receipt;
     }
     for (const state of ['completed', 'in-flight', 'accepted']) {
-      const attemptId = randomUUID(), segmentId = randomUUID(), activityId = randomUUID(), runId = randomUUID();
+      const attemptId = randomUUID(), segmentId = randomUUID(), sessionId = randomUUID(), runId = randomUUID();
       const origin = { service: agentService, installationId: first, grantId: originalGrant.grantId, identity,
-        recoveryGeneration: deviceInstallationId, activityId };
-      const lease = { driverId: 'original-driver', generation: 1, activityId, runId };
+        recoveryGeneration: deviceInstallationId, sessionId };
+      const lease = { generation: 1, sessionId, runId, stepId: randomUUID(), operationId: attemptId };
       const created = await task('segments.create', [{ requestId: randomUUID(), segmentId, purpose: 'learning', source: { connectionId: connection, version: 1 },
         prefix: { system: '', tools: [] }, portable: [] }], origin);
       assert.equal(created.ok, true, JSON.stringify(created));
@@ -183,10 +187,11 @@ test('R10 host-verified successors query and cancel accepted, in-flight and comp
     permitAllowed = false;
     assert.deepEqual(await task('checks.read', [record.attemptId], successor), { ok: false, code: 'forbidden' }, 'saved proof never bypasses current permit');
     permitAllowed = true;
-    const fixed = { ...successor, formatVersion: 2, attemptId: record.attemptId, runId: record.lease.runId };
+    const fixed = { ...successor, formatVersion: 3, attemptId: record.attemptId, runId: record.lease.runId,
+      stepId: record.lease.stepId, operationId: record.lease.operationId };
     await assert.rejects(models.origins.assert(identity, record.attemptId, fixed), { code: 'identity-conflict' }, 'recovery authorization is not dispatch authority');
     for (const changed of [{ ...fixed, grantId: randomUUID() }, { ...fixed, recoveryGeneration: randomUUID() },
-      { ...fixed, service: { ...agentService, serviceId: randomUUID() } }, { ...fixed, activityId: randomUUID() }, { ...fixed, runId: randomUUID() }])
+      { ...fixed, service: { ...agentService, serviceId: randomUUID() } }, { ...fixed, sessionId: randomUUID() }, { ...fixed, runId: randomUUID() }])
       await assert.rejects(models.origins.assert(identity, record.attemptId, changed, 'checks.read'), { code: 'identity-conflict' });
     await models.validate();
     assert.equal(sends, 2);
@@ -211,8 +216,8 @@ test('R10 original model-owner maintenance and isolated backup restore retain su
     const first = randomUUID(), middle = randomUUID(), last = randomUUID(), stranger = randomUUID();
     const service = { environmentId: randomUUID(), serviceId: randomUUID() };
     const record = { attemptId: randomUUID() };
-    const original = { formatVersion: 2, service, identity, attemptId: record.attemptId, installationId: first, grantId: randomUUID(),
-      runId: randomUUID(), activityId: randomUUID(), recoveryGeneration: randomUUID() };
+    const original = { formatVersion: 3, service, identity, attemptId: record.attemptId, installationId: first, grantId: randomUUID(),
+      runId: randomUUID(), sessionId: randomUUID(), recoveryGeneration: randomUUID() };
     await models.origins.bind(identity, record.attemptId, original);
     const one = { formatVersion: 1, backupId: randomUUID(), sourceEnvironmentId: service.environmentId, sourceServiceId: service.serviceId,
       sourceInstallationId: first, targetInstallationId: middle };
@@ -273,8 +278,8 @@ test('R10 migration upgrades populated same-installation authorizations without 
     const backend = createFileBackend({ id: 'files', root: fixture.root + '/objects' });
     storage = await openStorage({ binding, backend, migrations: oldMigrations });
     const identity = { environmentId: randomUUID(), spaceId: randomUUID(), principalId: randomUUID(), kind: 'school', name: 'School' };
-    const attemptId = randomUUID(), original = { formatVersion: 2, service: owner, identity, installationId: randomUUID(),
-      grantId: randomUUID(), recoveryGeneration: randomUUID(), attemptId, activityId: randomUUID(), runId: randomUUID() };
+    const attemptId = randomUUID(), original = { formatVersion: 3, service: owner, identity, installationId: randomUUID(),
+      grantId: randomUUID(), recoveryGeneration: randomUUID(), attemptId, sessionId: randomUUID(), runId: randomUUID() };
     const renewed = { ...original, grantId: randomUUID() }, scope = [identity.environmentId, identity.spaceId, identity.principalId].join('.');
     await storage.request({ requestId: randomUUID(), fingerprint: 'v17-authorizations' }, async tx => {
       await tx.query('INSERT INTO model_origin_journals VALUES($1,$2,$3)', [scope, attemptId, original]);
@@ -443,17 +448,20 @@ for (const rootRoute of [false, true]) test(rootRoute
     async function openModels(device, storage) {
       device.storage = storage; storages.push(storage);
       device.models = await createModelGateway(storage, { holder: 'device', authorize: device.client.authorizeModel,
-        authorizeDispatch: device.client.authorizeModelDispatch });
+        authorizeDispatch: device.client.authorizeModelDispatch, authorizePermit: (who, permit, context) => device.client.authorizePermit(who, permit, context.attemptId, context.phase) });
       device.local.models = device.models; gateways.push(device.models);
     }
     async function task(device, operation, record, args, authorityFields, taskId = randomUUID()) {
+      if (operation === 'segments.create') args = [{ ...args[0], sessionId: record.sessionId }];
+      if (operation === 'checks.receive') args = [{ ...args[0], authority: { formatVersion: 1, permit: authorityFields } }];
+      if (operation === 'checks.dispatch') args = [args[0], { formatVersion: 1, permit: authorityFields }];
       const origin = { service: agentService, installationId: agentInstallation, grantId: agentGrant.grantId,
-        identity, recoveryGeneration: device.environment.installationId, activityId: record.activityId,
+        identity, recoveryGeneration: device.environment.installationId, sessionId: record.sessionId,
         ...(authorityFields ? { authority: authorityFields } : {}) };
       if (rootRoute) {
         let settled = false, reply;
         const { identity: _identity, recoveryGeneration: _generation, ...context } = origin;
-        const pending = paired.request({ identity, operation, args }, { ...context, operationId: taskId })
+        const pending = paired.request({ identity, operation, args }, { ...context, formatVersion: 3, operationId: taskId })
           .then(value => { reply = value; }, error => { reply = { ok: false, code: error.code }; }).finally(() => { settled = true; });
         while (!settled) {
           await device.client.pollModelTasks(() => true);
@@ -462,7 +470,7 @@ for (const rootRoute of [false, true]) test(rootRoute
         await pending; return reply;
       }
       await tasks.enqueue(identity, device.pair, { taskId, ...(operation.startsWith('checks.') ? { attemptId: record.attemptId } : {}),
-        operation: 'learning', formatVersion: 2, origin, request: { identity, operation, args } });
+        operation: 'learning', formatVersion: 3, origin, request: { identity, operation, args } });
       await device.client.pollModelTasks(() => true);
       const result = await tasks.read(identity, device.pair, taskId);
       assert.ok(result.receipt, 'real school-client returns the original task receipt'); return result.receipt;
@@ -490,8 +498,8 @@ for (const rootRoute of [false, true]) test(rootRoute
     }
     const records = [];
     for (const state of rootRoute ? ['accepted', 'completed', 'unknown'] : ['accepted', 'completed']) {
-      const record = { state, attemptId: randomUUID(), segmentId: randomUUID(), activityId: randomUUID(), runId: randomUUID() };
-      record.lease = { driverId: 'original-driver', generation: 1, runId: record.runId, activityId: record.activityId };
+      const record = { state, attemptId: randomUUID(), segmentId: randomUUID(), sessionId: randomUUID(), runId: randomUUID() };
+      record.lease = { generation: 1, runId: record.runId, sessionId: record.sessionId, stepId: randomUUID(), operationId: record.attemptId };
       assert.equal((await task(source, 'segments.create', record, [{ requestId: randomUUID(), segmentId: record.segmentId, purpose: 'learning',
         source: rootRoute ? { selected: true, selectionVersion: 1 } : { connectionId: modelConnection, version: 1 }, prefix: { system: '', tools: [] }, portable: [] }])).ok, true);
       record.input = { attemptId: record.attemptId, segmentId: record.segmentId, purpose: 'learning', expectedSequence: 0,
@@ -510,8 +518,8 @@ for (const rootRoute of [false, true]) test(rootRoute
       pendingReadId = randomUUID();
       const item = records[0];
       await assert.rejects(paired.request({ identity, operation: 'checks.read', args: [item.attemptId] }, {
-        operationId: pendingReadId, service: agentService, installationId: agentInstallation, grantId: agentGrant.grantId,
-        activityId: item.activityId }), { code: 'unavailable' });
+        formatVersion: 3, operationId: pendingReadId, service: agentService, installationId: agentInstallation, grantId: agentGrant.grantId,
+        sessionId: item.sessionId }), { code: 'unavailable' });
       originalPending = (await taskStorage.read('SELECT body FROM model_paired_requests WHERE id=$1', [pendingReadId])).rows[0].body;
       originalRoutes = (await taskStorage.read('SELECT scope,kind,id,body FROM model_paired_routes ORDER BY kind,id')).rows;
       assert.equal((await tasks.read(identity, source.pair, pendingReadId)).receipt, null);

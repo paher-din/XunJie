@@ -1,6 +1,6 @@
 # 空间与身份 owner
 
-本模块拥有个人主体、学校账号、成员资格、会话、客户端授权和成员级学习数据服务绑定；不写活动表。浏览器 wire 从 `@xunjie/contracts/spaces` 消费，生产接线见 [learning-entry](../learning-entry/README.md)。
+本模块拥有个人主体、学校账号、成员资格、会话、客户端授权和成员级学习数据服务绑定；不写活动表。浏览器 wire 从 `@xunjie/contracts/spaces` 消费，生产接线见 [learning-http](../../../product-runtime/README.md#session-v2-与-http-边界)。
 
 `personal()` 幂等建立本机主体与个人空间。学校账号由管理者通过产品 CLI 建立，密码使用 scrypt 校验；会话和客户端凭据仅保存摘要，按当前成员资格和到期时间核验。退出会话、撤销连接及撤销成员资格分别生效。产品安装身份参与凭据摘要，独立恢复不复活源会话或连接。
 

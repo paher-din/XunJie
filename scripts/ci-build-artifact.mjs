@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 const outputs = ['packages/contracts/dist', 'packages/storage/dist', 'packages/learning-space/dist',
+  'packages/agent-runtime/dist', 'packages/model-gateway/dist', 'packages/agents/dist',
   'packages/product-runtime/dist', 'apps/server/dist', 'apps/web/dist', 'apps/web/dist-runtime', 'apps/local-runtime/dist'];
 const cache = '.cache/xunjie-build';
 const allowed = path => [...outputs, cache].some(root => path === root || path.startsWith(root + '/'));

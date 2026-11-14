@@ -4,11 +4,10 @@ import { readFile, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { resolveCredential, openProductRuntime } from '@xunjie/product-runtime';
-import { openStorage, createFileBackend } from '@xunjie/storage';
-import { createLearningData, createLearningEntry, learningMigrations } from '@xunjie/learning-space';
+import { createLearningEntry } from '@xunjie/product-runtime/learning-http';
 import { createServer } from 'node:http';
 import { test } from 'node:test';
-import { fixture, reply, until } from './support/teaching-input-control.mjs';
+import { fixture, reply, until } from './support/session-product.mjs';
 
 const payload = () => ({ html: '<label>我的解释<textarea></textarea></label>', title: '原解释卡', display: 'card',
   formatVersion: 1, hostApiVersion: 1, css: '', javascript: '', stateVersion: 1,
@@ -40,49 +39,44 @@ async function independentAgent(f, activity) {
     await source.install({ profile: 'agent', agent: { dependencyConnectionId } });
     const remote = await source.start(), agent = remote.environment.services.find(service => service.unit === 'teaching-agent');
     const inbound = await source.authorize({ sourceEnvironmentId: data.environmentId, sourceServiceId: data.serviceId,
-      sourceInstallationId: environment.installationId, capabilities: ['teaching.agent'] }, agent.serviceId);
+      sourceInstallationId: environment.installationId, capabilities: ['agent.sessions.v2'] }, agent.serviceId);
     await f.runtime.connect({ connectionId: agentConnectionId, sourceEnvironmentId: data.environmentId, sourceServiceId: data.serviceId,
-      target: agent, requiredCapabilities: ['teaching.agent'], optionalCapabilities: [], credentialRef: 'artifact-stop-agent' }, inbound.token);
+      target: agent, requiredCapabilities: ['agent.sessions.v2'], optionalCapabilities: [], credentialRef: 'artifact-stop-agent' }, inbound.token);
     await f.api('manage/agent-binding', { requestId: randomUUID(), identity: activity.identity, connectionId: agentConnectionId,
       target: agent, installationId: remote.environment.installationId }, { authorization: 'Bearer ' + await resolveCredential(f.root, 'control') });
     const grant = await f.runtime.authorize({ sourceEnvironmentId: agent.environmentId, sourceServiceId: agent.serviceId,
-      sourceInstallationId: remote.environment.installationId, capabilities: ['teaching.dependencies'] }, data.serviceId);
+      sourceInstallationId: remote.environment.installationId, capabilities: ['agent.dependencies.v2'] }, data.serviceId);
     await source.connect({ connectionId: dependencyConnectionId, sourceEnvironmentId: agent.environmentId, sourceServiceId: agent.serviceId,
-      target: data, requiredCapabilities: ['teaching.dependencies'], optionalCapabilities: [], credentialRef: 'artifact-stop-dependencies' }, grant.token);
+      target: data, requiredCapabilities: ['agent.dependencies.v2'], optionalCapabilities: [], credentialRef: 'artifact-stop-dependencies' }, grant.token);
     return { close };
   } catch (error) { await close(); throw error; }
 }
 
-/** Two real model rounds cross the standalone service. Bound each original attempt,
- * not all setup, generation, publication and follow-up with one shared 60s timer. */
-async function generatedRun(f, activityId, runId, expectedState, independent, t) {
-  const started = Date.now(), attemptLimitMs = 60000;
-  const totalDeadline = started + (independent ? 2 : 1) * attemptLimitMs;
-  let attemptDeadline = started + attemptLimitMs, last;
-  const attempts = new Set(), transitions = [];
-  t.after(() => t.diagnostic('Run progress: ' + JSON.stringify(transitions)));
-  while (Date.now() < totalDeadline && Date.now() < attemptDeadline) {
+/** Inspect the original Run; polling never accepts another generation or request identity. */
+async function generatedRun(f, sessionId, runId, expectedState, t) {
+  const started = Date.now(), deadline = started + 60000;
+  let last;
+  const transitions = [];
+  while (Date.now() < deadline) {
     // Full conversation replay is needed only at the target state, not on every poll.
-    const run = await f.api(`agent/${activityId}/runs/${runId}`);
+    const run = await f.api(`agent-sessions/${sessionId}/runs/${runId}`);
     const current = { state: run.state, reason: run.reason, attemptId: run.attemptId, modelCalls: f.payloads.length };
     if (JSON.stringify(current) !== last) { last = JSON.stringify(current); transitions.push({ elapsedMs: Date.now() - started, ...current }); }
     assert.equal(f.failures.length, 0, 'The controlled model must finish its response.');
     assert.ok(!['failed', 'paused', 'stopped'].includes(run.state), 'Unexpected Run terminal: ' + JSON.stringify(transitions));
     assert.ok(f.payloads.length <= 2, 'These fixtures permit exactly two model rounds.');
-    if (run.attemptId && !attempts.has(run.attemptId)) {
-      attempts.add(run.attemptId);
-      assert.ok(attempts.size <= 2, 'Unexpected additional model attempt: ' + JSON.stringify(transitions));
-      attemptDeadline = Date.now() + attemptLimitMs;
-    }
     if (run.state === expectedState) {
-      const conversation = await f.api(`agent/${activityId}/conversation`);
-      const generated = conversation.tools.find(tool => tool.name === 'generate_teaching_artifact');
+      const conversation = await f.api(`agent-sessions/${sessionId}/conversation`);
+      const events = await f.api(`agent-sessions/${sessionId}/events`);
+      const generated = events.find(event => event.kind === 'tool-result' && event.body.name === 'generate_teaching_artifact')?.body;
       // A model admission wait is not the student Wait required by these cases.
-      if (generated?.outcome === 'completed'
-        && (expectedState !== 'waiting' || conversation.questions.some(question => question.state === 'pending'))) return conversation;
+      if (generated?.outcome.state === 'completed'
+        && (expectedState !== 'waiting' || conversation.waits.some(wait => wait.state === 'pending'))) return { ...conversation, publication: generated };
     }
     await new Promise(resolve => setTimeout(resolve, 250));
   }
+  const snapshot = await f.api(`agent-sessions/${sessionId}/snapshots/${runId}`).catch(() => null);
+  t.diagnostic('Operation states: ' + JSON.stringify(snapshot?.steps.map(step => ({ kind: step.operation.kind, state: step.state, result: step.result?.state }))));
   throw new Error('The original Run stopped progressing toward ' + expectedState + ': ' + JSON.stringify(transitions));
 }
 
@@ -101,17 +95,17 @@ for (const finalState of ['waiting', 'completed']) test(`a published candidate f
       await f.configure();
       const activity = await f.activity('已发布候选的采用资格');
       if (finalState === 'completed') remote = await independentAgent(f, activity);
-      const { runId } = await f.send(activity, '生成解释卡。');
-      const conversation = await generatedRun(f, activity.activityId, runId, finalState, !!remote, t);
-      const command = conversation.tools.find(tool => tool.name === 'generate_teaching_artifact');
-      assert.equal(command?.outcome, 'completed');
-      const candidate = command.result.artifact, route = `artifacts/${activity.activityId}`;
+      const { runId, sessionId } = await f.send(activity, '生成解释卡。');
+      const conversation = await generatedRun(f, sessionId, runId, finalState, t);
+      const command = conversation.publication;
+      assert.equal(command?.outcome.state, 'completed');
+      const candidate = command.outcome.result.artifact, route = `artifacts/${activity.activityId}`;
       await checked(f.api, route, candidate);
       const input = adoption(candidate, null, await f.api(`workspaces/${activity.activityId}`));
       const saved = await f.api(`${route}/adopt`, input);
       assert.equal(saved.outcome, 'adopted');
       const work = await f.api(`workspaces/${activity.activityId}`);
-      await f.api(`agent/${activity.activityId}/runs/${runId}/stop`, { requestId: randomUUID() });
+      await f.api(`agent-sessions/${sessionId}/runs/${runId}/stop`, { requestId: randomUUID() });
       assert.deepEqual(await f.api(`${route}/adopt`, input), saved);
       assert.deepEqual(await f.api(`${route}/receipts/${input.requestId}`), saved);
       assert.deepEqual(await f.api(`workspaces/${activity.activityId}`), work);
@@ -142,16 +136,16 @@ for (const independent of [false, true]) test(`stopping the original ${independe
       const before = await f.api(`workspaces/${activity.activityId}`);
       arguments_ = { ...payload(), title: '尚未采用的修订', artifactId: original.artifactId,
         parentRevisionId: original.revisionId, mapping: [] };
-      const { runId } = await f.send(activity, '改善解释卡，然后询问我想比较的输入。');
-      const conversation = await generatedRun(f, activity.activityId, runId, 'waiting', independent, t);
-      const command = conversation.tools.find(tool => tool.name === 'generate_teaching_artifact');
-      assert.equal(command?.outcome, 'completed');
-      const candidate = command.result.artifact, fixed = await checked(f.api, route, candidate);
+      const { runId, sessionId } = await f.send(activity, '改善解释卡，然后询问我想比较的输入。');
+      const conversation = await generatedRun(f, sessionId, runId, 'waiting', t);
+      const command = conversation.publication;
+      assert.equal(command?.outcome.state, 'completed');
+      const candidate = command.outcome.result.artifact, fixed = await checked(f.api, route, candidate);
       assert.equal(fixed.origin.runId, runId);
       assert.equal(fixed.origin.commandId, command.commandId);
       const input = adoption(candidate, original.revisionId, before);
 
-      const stop = await f.api(`agent/${activity.activityId}/runs/${runId}/stop`, { requestId: randomUUID() });
+      const stop = await f.api(`agent-sessions/${sessionId}/runs/${runId}/stop`, { requestId: randomUUID() });
       assert.equal(stop.stopRequested, true);
       const rejected = await f.raw(`${route}/adopt`, input);
       assert.equal(rejected.status, 409, 'A successful earlier check must not authorize adoption after Stop: ' + JSON.stringify(rejected.body));
@@ -175,31 +169,24 @@ test('Stop during artifact state upload rejects the later commit through the pro
       : reply(response, { calls: [{ id: 'wait-before-adoption', name: 'student_ask', arguments: {
         question: '如何解释变化？', source: '当前页面', options: [], allowText: true, skippable: true,
       } }] }));
-    let server, storage, learning, release = () => {}, pending;
+    let server, release = () => {}, pending;
     try {
-      const activity = await f.activity('保存等待时停止采用'), c = await f.controlled(activity);
+      const activity = await f.activity('保存等待时停止采用');
       const env = JSON.parse(await readFile(join(f.root, 'environment.json'), 'utf8'));
-      const service = env.services.find(item => item.unit === 'learning-data');
-      storage = await openStorage({ binding: JSON.parse(await resolveCredential(f.root, 'storage-' + service.serviceId)),
-        migrations: learningMigrations, backend: createFileBackend({ id: 'learning-data', root: join(f.root, 'learning-resources', 'learning-data') }) });
       let armed = false, waiting = false;
       const held = new Promise(done => { release = done; });
-      learning = createLearningData({ ...storage, async stageResource(input) {
+      const c = await f.controlled(activity, { async stageResource(input, stage) {
         if (armed && input.scope.startsWith('works/')) { armed = false; waiting = true; await held; }
-        return storage.stageResource(input);
-      } }, c.spaces, c.courses, {}, undefined, undefined,
-      (identity, activityId, origin, candidate) => c.agent.assertCommandDispatch(identity, activityId, {
-        runId: origin.runId, stepId: origin.stepId, snapshotId: origin.snapshotId, commandId: origin.commandId,
-        adoption: { artifactId: candidate.artifactId, revisionId: candidate.revisionId, candidateId: candidate.candidateId,
-          ...(origin.attemptId ? { attemptId: origin.attemptId } : {}) },
-      }));
-      const entry = createLearningEntry({ environment: env, target: activity.target, spaces: c.spaces, learning,
-        teaching: c.agent, administratorToken: randomUUID() });
+        return stage(input);
+      } });
+      const sessionId = c.session.sessionId;
+      const entry = createLearningEntry({ environment: env, target: activity.target, spaces: c.spaces, learning: c.learning,
+        courses: c.courses, agentSessions: async () => c.sessionHttp, assertAgentCommand: c.authority.assertDispatch, administratorToken: randomUUID() });
       server = createServer((request, response) => { void entry(request, response); });
       await new Promise(done => server.listen(0, '127.0.0.1', done));
       const raw = async (route, body) => {
         const response = await fetch(`http://127.0.0.1:${server.address().port}/api/learning/${route}`, {
-          headers: { 'content-type': 'application/json', 'x-xj-space': 'personal' },
+          headers: { 'content-type': 'application/json', 'x-xj-space': 'personal', 'x-xj-agent-contract': '2' },
           ...(body === undefined ? {} : { method: 'POST', body: JSON.stringify(body) }) });
         return { status: response.status, body: await response.json() };
       };
@@ -212,18 +199,20 @@ test('Stop during artifact state upload rejects the later commit through the pro
       const before = await api(`workspaces/${activity.activityId}`);
       arguments_ = { ...payload(), title: '正在保存的新版', artifactId: original.artifactId,
         parentRevisionId: original.revisionId, mapping: [] };
-      c.agent.resume(); const { runId } = await c.send('改善页面并询问我的理解。');
-      const conversation = await until(async () => { const value = await api(`agent/${activity.activityId}/conversation`);
-        return value.runs.find(run => run.runId === runId)?.state === 'waiting' ? value : null;
+      const { runId } = await c.send('改善页面并询问我的理解。');
+      const conversation = await until(async () => { const value = await api(`agent-sessions/${sessionId}/conversation`);
+        if (value.runs.find(run => run.runId === runId)?.state !== 'waiting') return null;
+        const events = await api(`agent-sessions/${sessionId}/events`);
+        return { ...value, publication: events.find(event => event.kind === 'tool-result' && event.body.name === 'generate_teaching_artifact')?.body };
       }, 'The independent owner must publish and wait.');
-      const command = conversation.tools.find(tool => tool.name === 'generate_teaching_artifact');
-      assert.equal(command?.outcome, 'completed');
-      const candidate = command.result.artifact;
+      const command = conversation.publication;
+      assert.equal(command?.outcome.state, 'completed');
+      const candidate = command.outcome.result.artifact;
       await checked(api, route, candidate);
       const input = adoption(candidate, original.revisionId, before);
       armed = true; pending = raw(`${route}/adopt`, input);
       await until(() => waiting, 'The real state resource upload must reach the held boundary.');
-      const stopped = await api(`agent/${activity.activityId}/runs/${runId}/stop`, { requestId: randomUUID() });
+      const stopped = await api(`agent-sessions/${sessionId}/runs/${runId}/stop`, { requestId: randomUUID() });
       assert.equal(stopped.stopRequested, true);
       release();
       const rejected = await pending;
@@ -237,6 +226,6 @@ test('Stop during artifact state upload rejects the later commit through the pro
     } finally {
       release(); await pending?.catch(() => {});
       server?.closeAllConnections(); if (server) await new Promise(done => server.close(done));
-      await learning?.executions.shutdown(); await storage?.close(); await f.close();
+      await f.close();
     }
   });

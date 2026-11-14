@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { defaultLearningAdmissionPolicy, learningAdmissionPolicySchema, learningFinalUnits, learningReservationUnits }
-  from '../../../packages/learning-space/src/model-connections/learning-admission.ts';
+  from '../../../packages/model-gateway/src/learning-admission.ts';
 
 test('learning billing requires final complete counters and preserves real zero without double counting cache/reasoning', () => {
   assert.equal(learningFinalUnits({ state: 'unknown' }), null);

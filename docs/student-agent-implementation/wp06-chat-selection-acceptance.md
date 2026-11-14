@@ -16,7 +16,7 @@
 
 段固定路线、格式、system/工具/参数和顺序；工具未结清不能换段，不替调用方执行或取消工具。新段只接受显式可移植文本和本主体已完成结果引用，封存旧段并保留出处。新观察带调用方来源和版本追加，不覆写旧工具结果。PNG 从固定原件引用物化，变换保留来源；不接任意 URL、教师材料 ID 或路径。
 
-具体 wire、限额、错误与维护操作见[模型 owner](../../packages/learning-space/src/model-connections/README.md)。
+具体 wire、限额、错误与维护操作见[模型 owner](../../packages/model-gateway/README.md)。
 
 ## 真实端点（2026-11-02）
 

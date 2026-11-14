@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useImperativeHandle, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { GuidancePresentation } from '@xunjie/ui/workspace'
 import { toast } from '@xunjie/ui/feedback'
 import type { LearningActivity } from '@xunjie/contracts/learning-data'
 import { Icon, IconText } from '../icons'
@@ -13,12 +14,10 @@ import { WorkspacePopover } from '../components/workspace/WorkspacePopover'
 import { SelectionToolbar, WorkspaceReferenceComposer, useWorkspaceReferences } from '../components/workspace/references'
 import { ActivityWorkspace, type ActivityWorkspaceHandle } from './ActivityWorkspace'
 import { ActivityActions } from './ActivityActions'
-import { ActivityConversation, FirstQuestionAutoSend, firstQuestionKey, currentStudentQuestion } from './ActivityConversation'
+import { ActivityConversation } from './ActivityConversation'
 import { ExecutionPanel } from './ExecutionPanel'
 import { NativeSessionPanel } from './NativeSessionPanel'
-import { teachingConversationSchema, type TeachingStudentQuestion } from '@xunjie/contracts/teaching-agent'
-import { learningRequest, workspaceScope } from './learningTransport'
-import { GuidancePresentation } from '../components/workspace/guidance/GuidancePresentation'
+import { workspaceScope } from './learningTransport'
 import { AgentInputMode } from './AgentInteraction'
 import { AgentModelPicker, useAgentModelPicker } from './AgentModelPicker'
 import type { ModelSelectionController } from './ModelSelection'
@@ -28,6 +27,7 @@ import { PersonalMaterials, PersonalMaterialEntries, usePersonalMaterials } from
 import { panes, type LayoutNode } from '../lib/wsLayout'
 import { useTeachingArtifacts } from '../teaching-artifacts/useTeachingArtifacts'
 import { ArtifactCard } from '../teaching-artifacts/ArtifactCard'
+import { PersonalProjectPlan, usePersonalProject } from './PersonalProjectPlan'
 import { ActivitySubmission } from './ActivitySubmission'
 
 // The center already supports injected named tool bodies; PDF shares its existing tab/layout lifecycle.
@@ -72,12 +72,14 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
   requestedArtifactId?: string | null
   details: (openCoursePdf: (materialId: string) => void) => ReactNode; account: ReactNode
 }) {
+  const project = usePersonalProject(activity, spaceKey, namespace, authorized)
   const [materialsOpen, setMaterialsOpen] = useState(!!activity.course)
+  useEffect(() => { if (project.project) setMaterialsOpen(true) }, [project.project])
   const [conversationActive, setConversationActive] = useState(false)
   const [tabsSlot, setTabsSlot] = useState<HTMLDivElement | null>(null)
   const references = useWorkspaceReferences()
   const ask = useRef<HTMLButtonElement>(null)
-  const { workspace, draft, actions, execution, sessions, inputInteraction } = useActivitySession()
+  const { workspace, draft, actions, execution, sessions, inputInteraction, agent, agentSessionError, retryAgentSession } = useActivitySession()
   const root = useRef<HTMLDivElement>(null)
   const [tool, setTool] = useState<ToolKey>('design')
   const center = useRef<CenterToolAreaHandle>(null)
@@ -91,7 +93,7 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
   const [workLocation, setWorkLocation] = useState<{ objectId: string }>()
   const [componentLocation, setComponentLocation] = useState<ComponentResultLocation & { key: string }>()
   const readOnly = workspace.isReadOnly()
-  const picker = useAgentModelPicker(selection, activity, spaceKey, namespace)
+  const picker = useAgentModelPicker(selection)
   const scope = workspaceScope(namespace, activity)
   const [layoutReady, setLayoutReady] = useState(false)
   useEffect(() => { const taskId = namespace + ':' + activity.activityId; includePdfTab(taskId); includeCenterTab(taskId, PERSONAL_TOOL); setLayoutReady(true) }, [namespace, activity.activityId])
@@ -99,29 +101,10 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
   const pdf = usePdfMaterials({ activity, spaceKey, namespace, authorized, reveal: revealPdf })
   const revealPersonal = useCallback(async () => { await workspace.leave(); setTool(PERSONAL_TOOL) }, [workspace])
   const personal = usePersonalMaterials({ activity, spaceKey, namespace, authorized, reveal: revealPersonal })
-  const [pendingQuestion, setPendingQuestion] = useState<TeachingStudentQuestion | null>(null)
+  const pendingWait = agent?.conversation?.waits.find(wait => wait.kind === 'user' && wait.state === 'pending' && agent.conversation?.runs.some(run => run.runId === wait.runId && !run.stopRequested && run.state === 'waiting'))
+  const waitText = typeof pendingWait?.presentation.question === 'string' ? pendingWait.presentation.question : 'Agent 有一个问题想与你确认。'
   const [focusQuestionId, setFocusQuestionId] = useState<string | null>(null)
   const questionFocused = useCallback(() => setFocusQuestionId(null), [])
-  useEffect(() => { setPendingQuestion(null); setFocusQuestionId(null) }, [scope])
-  useEffect(() => {
-    if (references.open || !authorized || readOnly) return
-    let current = true
-    const read = async () => {
-      try {
-        const value = teachingConversationSchema.parse(await learningRequest(activity, spaceKey, namespace, `agent/${activity.activityId}/conversation`))
-        if (current) setPendingQuestion(currentStudentQuestion(value))
-      } catch { if (current) setPendingQuestion(null) }
-    }
-    void read()
-    const timer = setInterval(() => { void read() }, 5000)
-    return () => { current = false; clearInterval(timer) }
-  }, [scope, references.open, authorized, readOnly, activity, spaceKey, namespace])
-  const firstQuestionOpened = useRef<string | null>(null)
-  useEffect(() => {
-    if (firstQuestionOpened.current === activity.activityId) return
-    firstQuestionOpened.current = activity.activityId
-    if (activity.question || localStorage.getItem(firstQuestionKey(activity.activityId))) references.setOpen(true)
-  }, [activity.activityId, references])
   useImperativeHandle(workspaceRef, () => ({ leave: async () => {
     await waitForComposerComposition(scope)
     await workspace.leave(); await draft.leave(); await actions.leave()
@@ -256,7 +239,7 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
     <ArtifactCard center entry={entry} controller={artifacts} onClose={async () => {
       await workspace.leave(); artifacts.setOpened(null); center.current?.closeGenTab(entry.artifact.artifactId); setTool('design')
     }} />
-  const title = activity.course?.taskTitle || activity.goal || activity.question || '资料学习'
+  const title = activity.course?.taskTitle || project.project?.content.title || activity.goal || activity.question || '资料学习'
   return <div ref={root} className={'ws ws-organized product-workspace' + (references.open ? ' discussion-open' : '')}>
     <header className="ws-head">
       <button type="button" className="ws-navbtn" aria-label="返回活动列表" onClick={onBack}><Icon name="arrow-left" size={18} /></button>
@@ -289,7 +272,8 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
       <span className="product-workspace-caption">当前作品{activity.status === 'closed' ? ' · 活动已关闭' : ''}</span></div>
     <div className="ws-body">
       {materialsOpen && <aside className="product-task-details" aria-label="目标与材料">
-        {details(materialId => void pdf.openCourse(materialId))}<PdfMaterialEntries pdf={pdf} /><PersonalMaterialEntries personal={personal} />
+        {project.project ? <PersonalProjectPlan project={project.project} /> : details(materialId => void pdf.openCourse(materialId))}
+        {project.error && <p role="alert">项目清单暂时无法读取。<button type="button" onClick={() => void project.retry()}>重试</button></p>}<PdfMaterialEntries pdf={pdf} /><PersonalMaterialEntries personal={personal} />
       </aside>}
       {layoutReady && <CenterToolArea ref={center} taskId={namespace + ':' + activity.activityId} tools={tools} toolBodies={toolBodies}
         genCards={artifacts.entries.flatMap(entry => entry.revision ? [{ cardId: entry.artifact.artifactId, title: entry.artifact.title,
@@ -308,26 +292,23 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
           <ActivityWorkspace activity={activity} spaceKey={spaceKey} namespace={namespace} authorized={authorized} location={workLocation} /></>} />}
       <aside className="product-discussion" aria-label="问题与引用" inert={!references.open}
         style={references.open ? undefined : { display: 'none' }}>
-        <FirstQuestionAutoSend activity={activity} />
         <ActivityConversation activity={activity} spaceKey={spaceKey} namespace={namespace} onModels={onModels}
-          onActiveChange={setConversationActive} onLocateTool={locateTool} onQuestionChange={setPendingQuestion}
+          onActiveChange={setConversationActive} onLocateTool={locateTool}
           focusQuestionId={focusQuestionId} onQuestionFocused={questionFocused} artifacts={artifacts} onOpenArtifact={openArtifact} />
+        {agentSessionError && <p role="alert">{agentSessionError}<button type="button" onClick={retryAgentSession}>重新打开对话</button></p>}
         <AgentInputMode active={conversationActive} />
         <WorkspaceReferenceComposer closeFocusRef={ask}
           modelPicker={<AgentModelPicker controller={picker} disabled={!authorized || readOnly} onSettings={onModels} />}
-          sendBlocked={!inputInteraction.ready || picker.blocked}
+          sendBlocked={!inputInteraction.ready || !agent?.sessionId || picker.blocked}
           blockedHint="问题与引用仍保留。"
           blockedLabel="暂时不能发送"
           submitLabel={conversationActive ? inputInteraction.mode === 'queue' ? '排队发送' : '补充当前任务' : '发送问题'} /><ActivityActions />
       </aside>
     </div>
     <SelectionToolbar />
-    {pendingQuestion && !references.open && authorized && !readOnly && <GuidancePresentation
-      item={{ id: scope + ':' + pendingQuestion.questionId, label: '等你回应',
-        content: { kind: 'text', text: 'Agent 有一个关于当前学习目标的问题。你可以继续编辑作品，准备好后再回应。' },
-        actions: [{ id: 'answer', label: '回答当前问题', primary: true }] }} state="waiting"
-      companionAction={{ id: 'answer', label: '学习助手：回答当前问题' }} onAction={() => {
-        setFocusQuestionId(pendingQuestion.questionId); references.setOpen(true)
-      }} />}
+    {!references.open && pendingWait && <GuidancePresentation item={{ id: pendingWait.waitId, content: { kind: 'text', text: waitText }, target: () => ask.current,
+      actions: [{ id: 'respond', label: '回应 Agent', primary: true }] }} onAction={() => { references.setOpen(true); setFocusQuestionId(pendingWait.waitId) }} />}
+
+
   </div>
 }

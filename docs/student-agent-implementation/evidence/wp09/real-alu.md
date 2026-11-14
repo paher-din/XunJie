@@ -1,5 +1,7 @@
 # WP09 真实模型 ALU 页连续验收
 
+本文保留旧版本的验收历史；旧 Agent 探针已退休，文中脚本名仅标识原证据来源。当前 session v2 工程入口为 [teaching-artifact-generation.runtime.test.mjs](../../../../apps/server/tests/teaching-artifact-generation.runtime.test.mjs)、[teaching-artifact-stop-adopt.runtime.test.mjs](../../../../apps/server/tests/teaching-artifact-stop-adopt.runtime.test.mjs)、[workspace-assistant.runtime.test.mjs](../../../../packages/agents/test/workspace-assistant.runtime.test.mjs)。这些测试不继承本页的历史通过结论，真实供应商、桌面与跨机结果须另行验收。
+
 2026-11-08，原 DeepSeek Chat 真实生成的 ALU candidate 经 r2 正式 Chrome 检查并采用，通过正常 Monaco 输入工程 fixture，再点击原页「运行单次实验」，得到真实 Icarus `F=0000、Cout=1`。r3 在同一 private root、同一 revision 和同一 execution 上完成重启读取、刷新恢复及窄桌面导航检查，未重发模型 Run 或执行请求。
 
 最新报告为 [real-alu-r3-ui.json](real-alu-r3-ui.json)。[real-alu.json](real-alu.json) 记录 r2 首次执行及 probe 断言失败后的原 request 续验；[real-alu-r3.json](real-alu-r3.json) 记录 r3 最小只读续验。模型生成的既有依据见 [real-models-product-r2.json](real-models-product-r2.json)。本次新增 generation 为 **0**，共享总额仍为 **20/24**；无模型修订。
@@ -52,13 +54,7 @@
 
 清理前，私有 root 为 `/private/tmp/xj-wp09-real-models-20261108`，最小只读复核使用最新报告。下面保留历史操作命令；原环境现已删除，不能再对本轮 root 执行 resume：
 
-```sh
-rtk bypass dist/wp09-macos-r3/resources/node/bin/node scripts/probe-wp09-real-alu.mjs \
-  --product dist/wp09-macos-r3 \
-  --resume docs/student-agent-implementation/evidence/wp09/real-alu-r3-ui.json \
-  --read-only \
-  --out docs/student-agent-implementation/evidence/wp09/real-alu-r3-recheck.json
-```
+旧探针命令已退休；当前工程入口见本页开头的测试链接。原始报告仍仅证明当时的旧版本结果。
 
 清理前追加 `--ui-checks` 已实际覆盖普通解释输入、1024×800、Tab 与导航恢复。`--read-only` 禁止编辑代码和新 execution；`--ui-checks` 显式允许普通解释输入。供应商请求在 probe 中被阻止；不读取供应商凭据。采用包内生产 host/application，启动时仅在内存选择包内 Web 路径；验收期间原安装配置保持不变，最终清理时随环境删除。Chrome→host 为本机 loopback HTTP；本次没有新的供应商 HTTP/TLS 请求。
 

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Space identity and learning-data owners plus their production HTTP boundary",
+  "description": "Space identity, courses and learning-data domain owners",
   "files": [
     "dist"
   ],
@@ -11,6 +11,94 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./courses": {
+      "types": "./dist/courses/index.d.ts",
+      "import": "./dist/courses/index.js"
+    },
+    "./courses/downloaded": {
+      "types": "./dist/courses/downloaded.d.ts",
+      "import": "./dist/courses/downloaded.js"
+    },
+    "./learning-data": {
+      "types": "./dist/learning-data/index.d.ts",
+      "import": "./dist/learning-data/index.js"
+    },
+    "./learning-data/agent-executions": {
+      "types": "./dist/learning-data/agent-executions.d.ts",
+      "import": "./dist/learning-data/agent-executions.js"
+    },
+    "./learning-data/dependency-semantics": {
+      "types": "./dist/learning-data/dependency-semantics.d.ts",
+      "import": "./dist/learning-data/dependency-semantics.js"
+    },
+    "./learning-data/linux-isolation": {
+      "types": "./dist/learning-data/linux-isolation.d.ts",
+      "import": "./dist/learning-data/linux-isolation.js"
+    },
+    "./learning-data/material-search": {
+      "types": "./dist/learning-data/material-search.d.ts",
+      "import": "./dist/learning-data/material-search.js"
+    },
+    "./learning-data/native-channel": {
+      "types": "./dist/learning-data/native-channel.d.ts",
+      "import": "./dist/learning-data/native-channel.js"
+    },
+    "./learning-data/native-process": {
+      "types": "./dist/learning-data/native-process.d.ts",
+      "import": "./dist/learning-data/native-process.js"
+    },
+    "./learning-data/native-sandbox": {
+      "types": "./dist/learning-data/native-sandbox.d.ts",
+      "import": "./dist/learning-data/native-sandbox.js"
+    },
+    "./learning-data/plan": {
+      "types": "./dist/learning-data/plan.d.ts",
+      "import": "./dist/learning-data/plan.js"
+    },
+    "./learning-data/source-closure": {
+      "types": "./dist/learning-data/source-closure.d.ts",
+      "import": "./dist/learning-data/source-closure.js"
+    },
+    "./learning-data/teaching-artifacts": {
+      "types": "./dist/learning-data/teaching-artifacts.d.ts",
+      "import": "./dist/learning-data/teaching-artifacts.js"
+    },
+    "./skill-packages": {
+      "types": "./dist/skill-packages.d.ts",
+      "import": "./dist/skill-packages.js"
+    },
+    "./spaces": {
+      "types": "./dist/spaces/index.d.ts",
+      "import": "./dist/spaces/index.js"
+    },
+    "./spaces/agent-bindings": {
+      "types": "./dist/spaces/agent-bindings.d.ts",
+      "import": "./dist/spaces/agent-bindings.js"
+    },
+    "./learning-data/agent-sessions": {
+      "types": "./dist/learning-data/agent-sessions.d.ts",
+      "import": "./dist/learning-data/agent-sessions.js"
+    },
+    "./learning-data/session-materials": {
+      "types": "./dist/learning-data/session-materials.d.ts",
+      "import": "./dist/learning-data/session-materials.js"
+    },
+    "./learning-data/learning-query": {
+      "types": "./dist/learning-data/learning-query.d.ts",
+      "import": "./dist/learning-data/learning-query.js"
+    },
+    "./learning-data/personal-projects": {
+      "types": "./dist/learning-data/personal-projects.d.ts",
+      "import": "./dist/learning-data/personal-projects.js"
+    },
+    "./learning-data/skills": {
+      "types": "./dist/learning-data/skills.d.ts",
+      "import": "./dist/learning-data/skills.js"
+    },
+    "./learning-data/project-materials": {
+      "types": "./dist/learning-data/project-materials.d.ts",
+      "import": "./dist/learning-data/project-materials.js"
     }
   },
   "scripts": {
@@ -18,14 +106,10 @@
     "typecheck": "node ../../scripts/build.mjs learning-space:typecheck"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "1.1.0",
     "@napi-rs/canvas": "1.1.0",
     "@xunjie/contracts": "0.1.0",
     "@xunjie/storage": "0.1.0",
-    "ajv": "8.20.0",
-    "openai": "7.42.0",
     "pdfjs-dist": "6.5.438",
-    "undici": "7.30.0",
     "yaml": "2.8.2",
     "zod": "4.6.5"
   },

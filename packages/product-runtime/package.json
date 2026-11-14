@@ -3,11 +3,46 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
-    "./connections": { "types": "./dist/connections.d.ts", "import": "./dist/connections.js" },
-    "./maintenance": { "types": "./dist/maintenance.d.ts", "import": "./dist/maintenance.js" }
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./connections": {
+      "types": "./dist/connections.d.ts",
+      "import": "./dist/connections.js"
+    },
+    "./maintenance": {
+      "types": "./dist/maintenance.d.ts",
+      "import": "./dist/maintenance.js"
+    },
+    "./learning-http": {
+      "types": "./dist/learning-http/index.d.ts",
+      "import": "./dist/learning-http/index.js"
+    },
+    "./learning-http/authority": {
+      "types": "./dist/learning-http/authority.d.ts",
+      "import": "./dist/learning-http/authority.js"
+    },
+    "./learning-http/agent-http": {
+      "types": "./dist/learning-http/agent-http.d.ts",
+      "import": "./dist/learning-http/agent-http.js"
+    },
+    "./learning-http/execution-http": {
+      "types": "./dist/learning-http/execution-http.d.ts",
+      "import": "./dist/learning-http/execution-http.js"
+    },
+    "./learning-http/artifacts-http": {
+      "types": "./dist/learning-http/artifacts-http.d.ts",
+      "import": "./dist/learning-http/artifacts-http.js"
+    },
+    "./learning-http/github-skill": {
+      "types": "./dist/learning-http/github-skill.d.ts",
+      "import": "./dist/learning-http/github-skill.js"
+    }
   },
   "scripts": {
     "build": "node ../../scripts/build.mjs product-runtime --",
@@ -15,6 +50,19 @@
     "pretest": "node ../../scripts/build.mjs product-runtime:test",
     "test": "node ../../scripts/test.mjs product-runtime"
   },
-  "dependencies": { "@xunjie/contracts": "0.1.0", "@xunjie/storage": "0.1.0", "@xunjie/learning-space": "0.1.0", "pg": "8.16.3" },
-  "devDependencies": { "@types/node": "24.19.1", "@types/pg": "8.15.6", "typescript": "~5.9.2" }
+  "dependencies": {
+    "@xunjie/contracts": "0.1.0",
+    "@xunjie/storage": "0.1.0",
+    "@xunjie/learning-space": "0.1.0",
+    "@xunjie/model-gateway": "0.1.0",
+    "pg": "8.16.3",
+    "@xunjie/agents": "0.1.0",
+    "zod": "4.6.5",
+    "@xunjie/agent-runtime": "0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.1",
+    "@types/pg": "8.15.6",
+    "typescript": "~5.9.2"
+  }
 }

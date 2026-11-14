@@ -8,7 +8,7 @@ import { build } from 'esbuild';
 
 const directory = await mkdtemp(join(tmpdir(), 'xj-sensitive-boundary-'));
 after(() => rm(directory, { recursive: true, force: true }));
-await build({ entryPoints: ['chat', 'responses', 'messages'].map(name => fileURLToPath(new URL(`../../../packages/learning-space/src/model-connections/${name}.ts`, import.meta.url))),
+await build({ entryPoints: ['chat', 'responses', 'messages'].map(name => fileURLToPath(new URL(`../../../packages/model-gateway/src/${name}.ts`, import.meta.url))),
   outdir: directory, bundle: true, platform: 'node', format: 'esm', outExtension: { '.js': '.mjs' },
   plugins: [{ name: 'installed-dependencies', setup(builder) { builder.onResolve({ filter: /^[^./]/ }, args => isAbsolute(args.path) ? undefined : ({
     path: args.path.startsWith('node:') ? args.path : import.meta.resolve(args.path), external: true,

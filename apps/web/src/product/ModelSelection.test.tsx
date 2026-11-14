@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import 'fake-indexeddb/auto'
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
@@ -21,8 +22,9 @@ const response = (value: unknown) => new Response(JSON.stringify(value), { heade
 const settle = () => new Promise(resolve => setTimeout(resolve, 0))
 function Harness({ subject = identity }: { subject?: SpaceIdentity }) {
   controller = useModelSelection(subject, 'personal', 'test')
-  return <><Toaster /><ProductAgent question="原问题" onQuestion={() => {}} onSend={() => {}} pending={null} onRetry={() => {}}
-    onDiscard={() => {}} onSettings={() => {}} selection={controller} busy={false} readOnly={false} error="" /></>
+  return <><Toaster /><ProductAgent identity={subject} spaceKey="personal" namespace="test"
+    onSession={() => {}} onWorkspace={() => {}} onWorkspaceCreated={() => {}}
+    onSettings={() => {}} selection={controller} readOnly={false} /></>
 }
 const render = async (subject = identity) => act(async () => { root.render(<Harness subject={subject} />); await settle() })
 async function choose(index: number) {
@@ -36,6 +38,8 @@ beforeEach(async () => {
   vi.stubGlobal('IntersectionObserver', class { observe() {} disconnect() {} })
   vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener() {}, removeEventListener() {} }))
   Object.defineProperty(HTMLImageElement.prototype, 'decode', { configurable: true, value: () => Promise.resolve() })
+  localStorage.clear()
+  localStorage.setItem('xj.agent-draft.' + JSON.stringify(['test', 'personal', identity.environmentId, identity.spaceId, identity.principalId]) + '.new', '原问题')
   requests = []; receipts = new Map(); loseReceipt = false; holdReceipt = undefined
   server = { version: 0, selected: null, options: [
     { kind: 'personal', origin: 'self', connection, policy },

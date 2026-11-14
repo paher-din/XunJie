@@ -1,5 +1,7 @@
 # 现有学习对话接入版本化能力装配：验收证据
 
+本文保留旧版本的验收历史；旧 Agent 探针已退休，文中脚本名仅标识原证据来源。当前 session v2 工程入口为 [conversation-native.runtime.test.mjs](../../../../packages/agents/test/conversation-native.runtime.test.mjs)、[tool-discovery.runtime.test.mjs](../../../../packages/agents/test/tool-discovery.runtime.test.mjs)。这些测试不继承本页的历史通过结论，真实供应商、桌面与跨机结果须另行验收。
+
 本目录对应[现有学习对话接入版本化能力装配](https://github.com/paher-din/XunJie/issues/215)，保留公开 ID、摘要、状态与必要截图，不包含凭据或完整私有模型正文。时间均为报告中的 UTC。
 
 | 验证 | 结果与来源 |
@@ -10,11 +12,11 @@
 | Windows 正式 Chrome / ALU | [Windows 报告](windows-chrome-alu.json)：10/10，Windows 11 x64、Chrome 156.0.8078.81、真实产品 PostgreSQL 和 Icarus Worker/WASM，模型为受控上游。此项不宣称真实供应商模型验收。 |
 | Windows Agent → Mac 数据 / 模型 owner | [跨机报告](cross-owner.json)：9/9，直接 LAN HTTPS，SSH 仅控制；真实 DeepSeek 2 次。撤权拒绝新操作，换发授权沿原 Action 恢复，重启纯读不新增工具或模型调用。供应商凭据留在 Mac。 |
 
-Chrome/ALU 复用 `probe-alu-tutoring.mjs`，原始报告的 `issue:202` 是该探针的来源标识；本次运行由 `label:wp08-215-*`、时间及产品摘要定位。原始报告保持不改写。跨机用 [跨机装配探针](../../../../scripts/probe-teaching-assembly-cross.mjs)，三协议用 [真实工具探针](../../../../scripts/probe-teaching-tools.mjs)。
+Chrome/ALU 复用 `probe-alu-tutoring.mjs`，原始报告的 `issue:202` 是该探针的来源标识；本次运行由 `label:wp08-215-*`、时间及产品摘要定位。原始报告保持不改写。跨机用 历史脚本 `probe-teaching-assembly-cross.mjs`（已退役），三协议用 历史脚本 `probe-teaching-tools.mjs`（已退役）。
 
 平台报告使用 2026-11-07 18:13–18:26 的候选：两平台 `applicationSha256` 为 `6405c7f88c8522628324fe6372630274514a5723cc09d93894ace52babf5e781`；完整分发摘要见各报告。之后的差异是容量暂停文案、快照恢复时固定上下文事实，以及新段补回已采用意图和对应超限范围，由最终工程检查、真实 PostgreSQL 故障回归及上述真实装配换段报告覆盖；没有把这些较早平台报告改称最终提交逐字节复验。
 
-装配换段使用[专门探针](../../../../scripts/probe-teaching-assembly-transition.mjs)，在母票批准的公开 Agent owner 配置入口改变定义，生产 RunDriver、ModelGateway、实际工具和 PostgreSQL 均正常运行；仅使用既有 fixture 准备独立环境，没有伪造业务记录。原先“末尾是 assistant”和“没有 pending 输入时超限范围为空”的回归先失败后通过。报告省略未清洗的上游原因正文；公开结果只记录固定状态、ID、摘要和次数。
+装配换段使用历史脚本 `probe-teaching-assembly-transition.mjs`（已退役），在母票批准的公开 Agent owner 配置入口改变定义，生产 RunDriver、ModelGateway、实际工具和 PostgreSQL 均正常运行；仅使用既有 fixture 准备独立环境，没有伪造业务记录。原先“末尾是 assistant”和“没有 pending 输入时超限范围为空”的回归先失败后通过。报告省略未清洗的上游原因正文；公开结果只记录固定状态、ID、摘要和次数。
 
 独立工程与故障回归汇总记录在[工程结果](engineering.json)。审查记录在[双轴审查](review.md)。工程、模型/工具及浏览器通过不等于教学效果；本票未开展真实学生教学效果评估。
 

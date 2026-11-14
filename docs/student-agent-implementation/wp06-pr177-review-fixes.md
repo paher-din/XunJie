@@ -19,7 +19,7 @@
 | SPC-09 / P2 原始流字节上限 | SDK 解析前对 raw body 限界 2 MB，覆盖注释、半帧和小事件累计，明确 response-limit | 2.1 MB comment/未闭合 data、多事件超限、恰好 2 MB；真实 owner 的限界失败可持久查询且不重发 |
 | SPC-10 / P3 空 end_turn | 合法无内容块的 end_turn 保留完成/用量；未闭合块、错序和未知块仍失败 | 空终态/空文本块 × final/partial/unknown/zero，原生回放；真实 PG 和重启 |
 
-实现与接口说明见 [模型 owner README](../../packages/learning-space/src/model-connections/README.md)。公开字段为增量契约，本轮没有新增数据库 schema，也没有重解释旧原生记录；既有学校内网个人配置仍可读取，但不能绕过新的派发政策。
+实现与接口说明见 [模型 owner README](../../packages/model-gateway/README.md)。公开字段为增量契约，本轮没有新增数据库 schema，也没有重解释旧原生记录；既有学校内网个人配置仍可读取，但不能绕过新的派发政策。
 
 ## 实际验证
 

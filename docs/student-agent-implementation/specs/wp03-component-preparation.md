@@ -31,7 +31,7 @@
 | [组件视图](../../../apps/web/src/component-host/ComponentView.tsx) | 验证固定 bundle/material；隔离 `/view`；每次 load 新连接 | 准备调度、依赖字节交付、准备问题展示；保持原挂载/权限保护 |
 | [宿主 bridge](../../../apps/web/src/component-host/bridge.ts) | MessagePort、操作回执与条件写入；执行尚不可用 | 生产实例与准备实例分离；不给自检生产写入或执行能力 |
 | [可靠工作区](../../../apps/web/src/reliable-workspace/README.md) | 唯一作品权威；IndexedDB v4、原操作持久回执、离开保护 | 作品仍走原通路；准备缓存不复制作品、不另建自动保存周期 |
-| [正式 HTTP](../../../packages/learning-space/src/learning-entry/index.ts)与[学校客户端](../../../packages/product-runtime/src/school-client.ts) | 组件 bundle 与独立 view，逐次身份/资格核验；客户端有限路由转发 | 固定依赖读取和报告入口、响应校验及对应转发，拒绝任意 URL 代理 |
+| [正式 HTTP](../../../packages/product-runtime/src/learning-http/index.ts)与[学校客户端](../../../packages/product-runtime/src/school-client.ts) | 组件 bundle 与独立 view，逐次身份/资格核验；客户端有限路由转发 | 固定依赖读取和报告入口、响应校验及对应转发，拒绝任意 URL 代理 |
 | [标注样例](../../../components/material-annotation/package.mjs) | 自包含 HTML；quote/note 自动保存；暂无外部依赖 | 新版本声明独立高亮依赖；打包只读取锁定发行文件，保留许可证和来源 |
 
 前置关系于本次规划时通过 GitHub 原生 `dependencies/blocked_by` 核对：#171 的前置为 #169；不依赖 #170。此处仅记录规划依据，不维护第二份完成状态清单。
@@ -199,7 +199,7 @@ Opaque iframe 的 DOM 不能由父页面直接读取：视图测试入口负责�
     FOREIGN KEY(component_id,version) REFERENCES course_components(component_id,version));
   ```
   写入走既有 `storage.request` 回执去重；`components.validate()` 重新解析每条报告并核对组件/版本/摘要，纳入 owner 的维护与恢复校验。format 1 组件不接受报告（返回 `invalid`），报告不是任何设备或资格的 ready 凭证。
-- 正式 HTTP（[learning-entry](../../../packages/learning-space/src/learning-entry/index.ts)）新增三个固定路由，均先走既有 `authorizedRelease` 资格校验，不接受任意路径或 URL：`GET releases/<releaseId>/components/<key>/dependencies/<dependencyId>`、`POST .../preparation-report`、`GET .../preparation-reports`。学校转发（[school-client](../../../packages/product-runtime/src/school-client.ts)）的允许列表与响应校验同步扩展，未加 `/view` 等不经过转发的路径。
+- 正式 HTTP（[learning-entry](../../../packages/product-runtime/src/learning-http/index.ts)）新增三个固定路由，均先走既有 `authorizedRelease` 资格校验，不接受任意路径或 URL：`GET releases/<releaseId>/components/<key>/dependencies/<dependencyId>`、`POST .../preparation-report`、`GET .../preparation-reports`。学校转发（[school-client](../../../packages/product-runtime/src/school-client.ts)）的允许列表与响应校验同步扩展，未加 `/view` 等不经过转发的路径。
 - 本地 CLI（[cli.ts](../../../apps/local-runtime/src/cli.ts)）的 `component-import` 支持 `dependencies: [{ dependencyId, path }]`，路径仍限制在导入目录内，`resourceId` 取自清单声明，不接受调用方自选。
 - 标注样例新增版本 2（[view-v2.html](../../../components/material-annotation/view-v2.html)），`package.mjs` 同时生成 `component.json`（版本 1，未变）与 `component-v2.json`。依赖为 `mark.js@8.11.1` 的 `dist/mark.min.js`，16917 字节，SHA-256 `21d62e1053f7589fe6365cccd7c636d1781abf7879a605d8ce5f1f5b81a7b8fa`，随附 MIT 许可证与取得方式见 [vendor/README.md](../../../components/material-annotation/vendor/README.md)。版本 1 的 `view.html` 未改动。
 

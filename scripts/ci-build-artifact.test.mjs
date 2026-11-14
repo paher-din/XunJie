@@ -20,6 +20,7 @@ function fixture(t) {
   git(['add', 'source']);
   git(['-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'fixture']);
   for (const path of ['packages/contracts/dist', 'packages/storage/dist', 'packages/learning-space/dist',
+    'packages/agent-runtime/dist', 'packages/model-gateway/dist', 'packages/agents/dist',
     'packages/product-runtime/dist', 'apps/server/dist', 'apps/web/dist', 'apps/web/dist-runtime', 'apps/local-runtime/dist', '.cache/xunjie-build']) {
     mkdirSync(join(root, path), { recursive: true });
     writeFileSync(join(root, path, 'result.json'), '{"built":true}\n');
@@ -53,3 +54,22 @@ for (const corruption of ['commit', 'file', 'archive', 'path']) {
     assert.equal(readFileSync(join(root, 'apps/web/dist/result.json'), 'utf8'), 'consumer original');
   });
 }
+
+
+test('restored CI output executes Agent subpath imports without the original build outputs', t => {
+  const { root, artifact } = fixture(t);
+  for (const [name, source] of Object.entries({
+    'agent-runtime': 'export const runtime = 2;',
+    'model-gateway': 'export const model = 3;',
+    agents: 'export { runtime } from "../../agent-runtime/dist/feature.js"; export { model } from "../../model-gateway/dist/feature.js";',
+  })) {
+    writeFileSync(join(root, `packages/${name}/dist/feature.js`), source);
+    writeFileSync(join(root, `packages/${name}/package.json`), '{"type":"module"}');
+  }
+  packBuild(root, artifact);
+  for (const name of ['agent-runtime', 'model-gateway', 'agents']) rmSync(join(root, `packages/${name}/dist`), { recursive: true });
+  restoreBuild(root, artifact);
+  const result = spawnSync(process.execPath, ['--input-type=module', '-e', 'import {runtime, model} from "./packages/agents/dist/feature.js"; console.log(runtime + model);'], { cwd: root, encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), '5');
+});

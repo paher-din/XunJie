@@ -8,7 +8,7 @@
 
 | 发现 | 处置 |
 | --- | --- |
-| 新 `teaching-agent` 模块缺少 README；`model-connections`、`learning-entry` 与学习空间总览仍写“学习未接入”“只接受探针”“三个 owner” | 已修复：新增 [teaching-agent README](../../packages/learning-space/src/teaching-agent/README.md)；更新 owner 列表、学习用途、`checks.progress`、迁移 11 与 namespace 豁免说明 |
+| 新 `teaching-agent` 模块缺少 README；`model-connections`、`learning-entry` 与学习空间总览仍写“学习未接入”“只接受探针”“三个 owner” | 已修复：新增 [teaching-agent README](../../packages/agents/README.md)；更新 owner 列表、学习用途、`checks.progress`、迁移 11 与 namespace 豁免说明 |
 | 交付缺少修改前/后截图 | 已修复：交付记录给出基线构建、macOS 与 Windows 实际界面 |
 | `product.css` 把主按钮底色 `--primary` 当角色文字色 | 已修复：改用文字令牌 `--ink` |
 | 契约内联重复声明帮助策略 schema | 已修复：活动绑定复用 `teachingHelpPolicySchema` |

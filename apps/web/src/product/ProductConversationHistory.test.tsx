@@ -3,7 +3,8 @@ import { act, useState } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import type { ConversationHistoryItem, LearningActivity } from '@xunjie/contracts/learning-data'
-import { ProductConversationHistory, useConversationHistory } from './ProductConversationHistory'
+import { useAgentSessionHistory } from './useAgentSession'
+import { ProductConversationHistory } from './ProductConversationHistory'
 import { Toaster, toast } from '@xunjie/ui/feedback'
 
 const first = '00000000-0000-4000-8000-000000000001'
@@ -19,10 +20,12 @@ type Scope = { archives: Map<string, boolean>; labels: Map<string, Label> }
 let host: HTMLDivElement, root: Root
 let scopes: Map<string, Scope>
 
+const identity = { kind: 'personal' as const, environmentId: crypto.randomUUID(), spaceId: crypto.randomUUID(), principalId: crypto.randomUUID(), name: '个人' }
+const owner = { version: 1, connectionId: crypto.randomUUID(), installationId: crypto.randomUUID(), target: { environmentId: identity.environmentId, serviceId: crypto.randomUUID(), endpoint: 'https://agent.example.test', unit: 'teaching-agent', protocolVersion: 1, capabilities: ['agent.sessions.v2'] } }
 function History({ scope }: { scope: string }) {
-  const history = useConversationHistory('legacy-' + scope, scope, 'client', 'subject-' + scope)
+  const history = useAgentSessionHistory({ identity, spaceKey: scope, namespace: 'client' })
   const [open, setOpen] = useState(false), [query, setQuery] = useState('')
-  return <ProductConversationHistory activities={activities} labels={history.items} archiveOpen={open} query={query}
+  return <ProductConversationHistory sessions={history.items} archiveOpen={open} query={query}
     error={history.error} ready={history.ready} busy={history.busy} onRetry={history.retry} scopeKey={scope}
     onNew={vi.fn()} onOpen={vi.fn()} onArchiveOpenChange={setOpen} onQueryChange={setQuery}
     onArchive={id => history.setArchived(id, true)} onRestore={id => history.setArchived(id, false)}
@@ -34,28 +37,26 @@ function savedScope(scope: string) {
   scopes.set(scope, saved); return saved
 }
 function historyState(saved: Scope) {
-  return { items: [...new Set([...saved.archives.keys(), ...saved.labels.keys()])].map(activityId => ({
-    activityId, title: null, pinned: false, deleted: false, ...saved.labels.get(activityId), archived: saved.archives.get(activityId) ?? false,
-  })) }
+  return { items: activities.map(activity => ({ sessionId: activity.activityId, requestId: first, identity, owner,
+    scenario: 'student-assistant', title: activity.goal, pinned: false, deleted: false,
+    ...saved.labels.get(activity.activityId), archived: saved.archives.get(activity.activityId) ?? false,
+    state: 'ready', createdAt: activity.createdAt, updatedAt: activity.createdAt, readyAt: activity.createdAt })) }
 }
 function serverRequest(url: string, options: RequestInit = {}) {
   const headers = options.headers as Record<string, string>, scope = headers['x-xj-space']
-  expect(headers['x-xj-expected-subject']).toBe('subject-' + scope)
+  expect(headers['x-xj-expected-subject']).toBe([identity.environmentId, identity.spaceId, identity.principalId].join('.'))
+  expect(headers['x-xj-agent-contract']).toBe('2')
   expect(headers['x-xj-namespace']).toBe('client')
   const saved = savedScope(scope), body = JSON.parse(String(options.body ?? '{}'))
-  if (url === '/api/learning/conversation-history/update') {
-    const label = saved.labels.get(body.activityId) ?? { title: null, pinned: false, deleted: false }
-    if (label.deleted && body.action !== 'delete') return response({ error: 'missing' }, 404)
-    saved.labels.set(body.activityId, { ...label,
-      ...(body.action === 'rename' ? { title: body.title } : body.action === 'pin' ? { pinned: body.pinned } : { deleted: true, pinned: false }) })
-    return response(historyState(saved))
+  if (url === '/api/learning/agent-sessions/update') {
+    const label = saved.labels.get(body.sessionId) ?? { title: activities.find(item => item.activityId === body.sessionId)?.goal ?? null, pinned: false, deleted: false }
+    if (label.deleted && !body.deleted) return response({ error: 'missing' }, 404)
+    saved.labels.set(body.sessionId, { ...label, ...(body.title !== undefined ? { title: body.title } : {}), ...(body.pinned !== undefined ? { pinned: body.pinned } : {}), ...(body.deleted !== undefined ? { deleted: body.deleted } : {}) })
+    if (body.archived !== undefined) saved.archives.set(body.sessionId, body.archived)
+    return response(historyState(saved).items.find(item => item.sessionId === body.sessionId))
   }
-  if (url === '/api/learning/conversation-history') return response(historyState(saved))
-  if (url.endsWith('/set')) saved.archives.set(body.activityId, body.archived)
-  else if (url.endsWith('/import')) {
-    for (const id of body.activityIds) if (!saved.archives.has(id)) saved.archives.set(id, true)
-  } else throw new Error('Unexpected route ' + url)
-  return response({ archivedIds: [...saved.archives].filter(([, archived]) => archived).map(([id]) => id) })
+  if (url === '/api/learning/agent-sessions') return response(historyState(saved))
+  throw new Error('Unexpected route ' + url)
 }
 
 async function render(scope: string) { await act(async () => { root.render(<><Toaster /><History scope={scope} /></>); await settle() }) }
@@ -115,7 +116,7 @@ it('uses the library menu and date groups, commits IME-safe renames once and ret
     field.dispatchEvent(new FocusEvent('focusout', { bubbles: true }))
     await settle()
   })
-  const updates = vi.mocked(fetch).mock.calls.filter(([url]) => url === '/api/learning/conversation-history/update')
+  const updates = vi.mocked(fetch).mock.calls.filter(([url]) => url === '/api/learning/agent-sessions/update')
   expect(updates).toHaveLength(1)
   expect(host.textContent).toContain('复位问题整理')
   expect(activities[0].goal).toBe('数字逻辑')
@@ -171,14 +172,14 @@ it('retains an unconfirmed rename for retry after a network failure', async () =
   await act(async () => { field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); await settle() })
   expect(field.isConnected).toBe(true); expect(field.value).toBe('断网后继续的标题')
   await act(async () => { await new Promise(resolve => setTimeout(resolve, 20)) })
-  expect(host.querySelector('[data-sonner-toast]')?.textContent).toContain('对话操作未确认')
-  expect(host.querySelector('.agent-side-empty')?.textContent).not.toContain('对话操作未确认')
+  expect(host.querySelector('[role="alert"]')?.textContent).toContain('offline')
   const attempts = vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/update'))
-  expect(attempts).toHaveLength(2)
-  expect(JSON.parse(String(attempts[0][1]?.body)).requestId).toBe(JSON.parse(String(attempts[1][1]?.body)).requestId)
+  expect(attempts).toHaveLength(1)
   offline = false
   await act(async () => { field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); await settle() })
   expect(savedScope('personal-a').labels.get(first)?.title).toBe('断网后继续的标题')
+  const retried = vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/update'))
+  expect(retried).toHaveLength(2); expect(retried[0][1]?.body).toBe(retried[1][1]?.body)
 })
 
 it('keeps the menu open when the conversation scrolls and closes it when its own sidebar scrolls', async () => {
@@ -191,31 +192,13 @@ it('keeps the menu open when the conversation scrolls and closes it when its own
   expect(more.getAttribute('aria-expanded')).toBe('false')
 })
 
-it('imports old browser archives without overriding a later restore', async () => {
-  savedScope('personal-a').archives.set(first, false)
-  localStorage.setItem('legacy-personal-a', JSON.stringify([first, second]))
+it('does not reinterpret legacy activity archive ids as ordinary sessions', async () => {
+  const old = JSON.stringify([first, second])
+  localStorage.setItem('legacy-personal-a', old)
   await render('personal-a')
-  expect(savedScope('personal-a').archives.get(first)).toBe(false)
-  expect(savedScope('personal-a').archives.get(second)).toBe(true)
-  expect(localStorage.getItem('legacy-personal-a')).toBeNull()
+  expect(localStorage.getItem('legacy-personal-a')).toBe(old)
   expect(host.querySelector(`[data-conversation-id="${first}"]`)).not.toBeNull()
-  expect(host.querySelector(`[data-conversation-id="${second}"]`)).toBeNull()
-})
-
-it('retains the old browser archive after a network failure and imports it on retry', async () => {
-  localStorage.setItem('legacy-personal-a', JSON.stringify([first]))
-  let offline = true
-  vi.stubGlobal('fetch', vi.fn(async (url: string, options?: RequestInit) => {
-    if (offline) throw new Error('offline')
-    return serverRequest(url, options)
-  }))
-  await render('personal-a')
-  expect(localStorage.getItem('legacy-personal-a')).toBe(JSON.stringify([first]))
-  expect(host.textContent).toContain('无法读取对话列表')
-  offline = false
-  await click('[role="alert"] button')
-  expect(localStorage.getItem('legacy-personal-a')).toBeNull()
-  expect(savedScope('personal-a').archives.get(first)).toBe(true)
+  expect(savedScope('personal-a').archives.size).toBe(0)
 })
 
 it('ignores a delayed response after switching accounts or spaces', async () => {

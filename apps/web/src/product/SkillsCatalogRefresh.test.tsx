@@ -40,14 +40,14 @@ it.each([false, true])('refreshes an activity after a global toggle while retain
     { ...extra, selected: !extraDisabled, disabled: extraDisabled }], selections: [] })
   const writes: unknown[] = []
   vi.stubGlobal('fetch', vi.fn(async (route: string, options: RequestInit) => {
-    const bound = `/api/learning/agent/${activityId}/skills`
+    const bound = `/api/learning/agent-sessions/${activityId}/skills`
     if (options.method === 'POST') {
       expect(route).toBe('/api/learning/skills/disable')
       writes.push(JSON.parse(options.body as string)); defaultVersion = 2; extraDisabled = false; holdNextRead = true
       return response({ ...extra, selected: true })
     }
     expect([bound, '/api/learning/skills']).toContain(route)
-    const value = catalog()
+    const value = route === bound ? { catalog: catalog().skills, loaded: [], selectionDigest: 'a'.repeat(64) } : catalog()
     if (holdNextRead) {
       holdNextRead = false
       return new Promise<Response>(resolve => { releaseActivity = () => resolve(response(value)) })
@@ -116,7 +116,7 @@ it('refreshes an already mounted activity catalog after removing a personal skil
       expect(route).toBe('/api/learning/skills/remove'); removed = true
       return response({ skillId })
     }
-    return response({ skills: removed ? [] : [entry], selections: [] })
+    return response(route.includes('agent-sessions/') ? { catalog: removed ? [] : [entry], loaded: [], selectionDigest: 'a'.repeat(64) } : { skills: removed ? [] : [entry], selections: [] })
   }))
   function Library() {
     const catalog = useSkillCatalog(identity, 'personal', namespace)

@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { createHash, randomUUID } from 'node:crypto';
 import { provisionStorage, openStorage, createFileBackend, StorageError } from '@xunjie/storage';
 import { nativeFixture } from '../../../packages/storage/test/native-fixture.mjs';
-import { chunkChannelMigrationSql, createChunkChannel, createChunkClient } from '../../../packages/learning-space/dist/teaching-agent/chunk-channel.js';
+import { chunkChannelMigrationSql, createChunkChannel, createChunkClient } from '../../../packages/storage/dist/chunk-channel.js';
 
 const source = () => ({ grantId: randomUUID(), sourceEnvironmentId: randomUUID(), sourceServiceId: randomUUID(), sourceInstallationId: randomUUID() });
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');

@@ -7,12 +7,12 @@ import { join } from 'node:path';
 import { createServer } from 'node:http';
 import { provisionStorage, openStorage, createFileBackend, StorageError } from '@xunjie/storage';
 import { nativeFixture } from '../../../packages/storage/test/native-fixture.mjs';
-const { createModelGateway, modelMigrations } = await import('../../../packages/learning-space/dist/model-connections/index.js');
+const { createModelGateway, modelMigrations } = await import('../../../packages/model-gateway/dist/index.js');
 const { createSchoolClient } = await import('../../../packages/product-runtime/dist/school-client.js');
 import { createConnectionAuthority } from '../../../packages/product-runtime/dist/connections.js';
-import { defaultLearningAdmissionPolicy } from '../../../packages/learning-space/dist/model-connections/learning-admission.js';
+import { defaultLearningAdmissionPolicy } from '../../../packages/model-gateway/dist/learning-admission.js';
 
-for (const independent of [false, true]) test(`paired learning tasks receive, claim, query and stop through ${independent ? 'independent modelBinding' : 'legacy localBinding'}`, { timeout: 60000 }, async () => {
+for (const independent of [true]) test(`paired learning tasks receive, claim, query and stop through V3 session modelBinding`, { timeout: 60000 }, async () => {
   const fixture = await nativeFixture(); let storage; let models; let authority; let pair;
   let opened; const sdkStarted = new Promise(resolve => { opened = resolve; }); let calls = 0;
   const upstream = createServer(async (request, response) => {
@@ -62,7 +62,7 @@ for (const independent of [false, true]) test(`paired learning tasks receive, cl
             if (!activityAllowed) return { error: 'forbidden' };
           }
           const lease = record.task.origin?.authority;
-          if (lease && permittedLease && (lease.generation !== permittedLease.generation || lease.driverId !== permittedLease.driverId))
+          if (lease && permittedLease && (lease.generation !== permittedLease.generation || lease.sessionId !== permittedLease.sessionId))
             return { error: 'stale-generation' };
           return { authorized: true };
         }
@@ -94,6 +94,7 @@ for (const independent of [false, true]) test(`paired learning tasks receive, cl
     const local = { target: learningTarget, modelTarget: localTarget };
     const client = createSchoolClient(root, { formatVersion: 1, environmentId: localTarget.environmentId, installationId, clientNamespace: 'fixture', profile: 'local', services: [] }, local);
     models = await createModelGateway(storage, { holder: 'device', authorize: client.authorizeModel,
+      authorizePermit: (who, permit, context) => client.authorizePermit(who, permit, context.attemptId, context.phase),
       authorizeDispatch: async identity => { await beforeDispatch?.(); await client.authorizeModelDispatch(identity); },
       // One initial cancellation plus three distinct live-revocation scenarios
       // retain four unknown upstream slots. This finite fixture policy leaves the
@@ -174,8 +175,8 @@ for (const independent of [false, true]) test(`paired learning tasks receive, cl
       assert.equal(calls, 0, 'grant reconciliation never dispatches the model');
     }
     const segmentId = randomUUID(), attemptId = randomUUID();
-    const serviceOrigin = { service: { environmentId: actor.environmentId, serviceId: randomUUID() }, identity: actor, recoveryGeneration: installationId };
-    const origin = independent ? { ...serviceOrigin, installationId: randomUUID(), grantId: randomUUID() } : { ...serviceOrigin, runId: randomUUID(), attemptId };
+    const serviceOrigin = { sessionId: randomUUID(), service: { environmentId: actor.environmentId, serviceId: randomUUID() }, identity: actor, recoveryGeneration: installationId };
+    const origin = { ...serviceOrigin, installationId: randomUUID(), grantId: randomUUID() };
     if (independent) {
       const agentGrant = await authority.authorize({ sourceEnvironmentId: origin.service.environmentId,
         sourceServiceId: origin.service.serviceId, sourceInstallationId: origin.installationId, capabilities: ['learning.authority'] });
@@ -184,25 +185,27 @@ for (const independent of [false, true]) test(`paired learning tasks receive, cl
       // current WP01 grant; random credentials are not a renewal permit.
       verifyAgent = true;
     }
-    const runAuthority = { driverId: 'test-agent-driver', runId: randomUUID(), activityId: randomUUID(), generation: 1 };
+    const runAuthority = { sessionId: origin.sessionId, runId: randomUUID(), stepId: randomUUID(), operationId: attemptId, generation: 1 };
     let retiredLease;
     permittedLease = runAuthority;
     const preparationIds = [];
     async function task(operation, args, overriddenOrigin = origin, lease = runAuthority) {
       const taskId = randomUUID();
-      const associated = !independent || operation.startsWith('checks.');
-      const associatedAttempt = independent && operation.startsWith('checks.')
-        ? operation === 'checks.receive' ? args[0].attemptId : args[0] : attemptId;
+      const associated = operation.startsWith('checks.');
+      const associatedAttempt = associated ? operation === 'checks.receive' ? args[0].attemptId : args[0] : undefined;
       if (!associated) preparationIds.push(taskId);
-      const authority = independent && operation.startsWith('checks.') && lease ? { authority: lease } : {};
-      await models.deviceTasks.enqueue(actor, pair, { taskId, ...(associated ? { attemptId: associatedAttempt } : {}), operation: 'learning', formatVersion: independent ? 2 : 1,
-        origin: { ...overriddenOrigin, ...authority }, request: { identity: actor, operation, args } });
+      if (operation === 'segments.create') args = [{ ...args[0], sessionId: origin.sessionId }];
+      const permit = lease ? { ...lease, operationId: associatedAttempt ?? lease.operationId } : undefined;
+      if (operation === 'checks.receive') args = [{ ...args[0], authority: { formatVersion: 1, permit } }];
+      if (operation === 'checks.dispatch') args = [args[0], { formatVersion: 1, permit }];
+      await models.deviceTasks.enqueue(actor, pair, { taskId, ...(associated ? { attemptId: associatedAttempt } : {}), operation: 'learning', formatVersion: 3,
+        origin: { ...overriddenOrigin, ...(permit && associated ? { authority: permit } : {}) }, request: { identity: actor, operation, args } });
       await client.pollModelTasks(() => true);
       return (await models.deviceTasks.read(actor, pair, taskId)).receipt;
     }
     if (independent) {
       assert.equal((await task('selection.read', [])).value.version, 0);
-      await models.origins.assert(actor, preparationIds[0], { ...origin, formatVersion: 2 });
+      await models.origins.assert(actor, preparationIds[0], { ...origin, formatVersion: 3 });
       await assert.rejects(readFile(join(root, 'native-channel', connectionId, 'model-learning', preparationIds[0] + '.json')), { code: 'ENOENT' });
     }
     assert.equal((await task('segments.create', [{ requestId: randomUUID(), segmentId, purpose: 'learning', source: { connectionId: modelId, version: 1 }, prefix: { system: '', tools: [] }, portable: [] }])).ok, true);
@@ -211,20 +214,17 @@ for (const independent of [false, true]) test(`paired learning tasks receive, cl
     if (independent) {
       const oldLease = structuredClone(runAuthority); retiredLease = oldLease;
       const journalPath = join(root, 'native-channel', connectionId, 'model-learning', attemptId + '.json');
-      await models.origins.assert(actor, attemptId, { ...origin, formatVersion: 2, attemptId, authority: oldLease });
+      await models.origins.assert(actor, attemptId, { ...origin, formatVersion: 3, attemptId, authority: oldLease });
       await assert.rejects(readFile(journalPath), { code: 'ENOENT' });
-      // Upgrade an older whole-origin journal without retaining its expired dispatcher lease.
-      await mkdir(join(root, 'native-channel', connectionId, 'model-learning'), { recursive: true });
-      await writeFile(journalPath, JSON.stringify({ ...origin, authority: oldLease }));
-      const nextLease = { ...runAuthority, generation: runAuthority.generation + 1, driverId: 'restarted-agent-driver' };
+      const nextLease = { ...runAuthority, generation: runAuthority.generation + 1 };
       permittedLease = nextLease;
       const queried = await task('checks.read', [attemptId], origin, nextLease);
       assert.equal(queried.value.attemptId, attemptId); assert.equal(queried.value.state, 'accepted');
       assert.equal((await task('checks.read', [attemptId], origin, null)).value.state, 'accepted');
-      await models.origins.assert(actor, attemptId, { ...origin, formatVersion: 2, attemptId, authority: nextLease });
+      await models.origins.assert(actor, attemptId, { ...origin, formatVersion: 3, attemptId, authority: nextLease });
       await assert.rejects(readFile(journalPath), { code: 'ENOENT' });
       assert.deepEqual(await task('checks.read', [attemptId], origin, { ...nextLease, runId: randomUUID() }), { ok: false, code: 'identity-conflict' });
-      assert.deepEqual(await task('checks.read', [attemptId], origin, { ...nextLease, activityId: randomUUID() }), { ok: false, code: 'identity-conflict' });
+      assert.deepEqual(await task('checks.read', [attemptId], origin, { ...nextLease, stepId: randomUUID() }), { ok: false, code: 'identity-conflict' });
       assert.deepEqual(await task('checks.dispatch', [attemptId], origin, oldLease), { ok: false, code: 'stale-generation' });
       assert.equal(calls, 0); assert.equal((await models.checks.read(actor, attemptId)).state, 'accepted');
       Object.assign(runAuthority, nextLease);
@@ -278,8 +278,8 @@ for (const independent of [false, true]) test(`paired learning tasks receive, cl
       assert.deepEqual(await task('checks.read', [attemptId]), { ok: false, code: 'forbidden' });
       accessTarget = localTarget;
     }
-    await assert.rejects(models.deviceTasks.enqueue(actor, pair, { taskId: randomUUID(), attemptId, operation: 'learning', formatVersion: independent ? 2 : 1,
-      origin: { ...origin, ...(independent ? { authority: runAuthority } : {}), recoveryGeneration: randomUUID() }, request: { identity: actor, operation: 'checks.dispatch', args: [attemptId] } }), { code: 'stale-generation' });
+    await assert.rejects(models.deviceTasks.enqueue(actor, pair, { taskId: randomUUID(), attemptId, operation: 'learning', formatVersion: 3,
+      origin: { ...origin, authority: runAuthority, recoveryGeneration: randomUUID() }, request: { identity: actor, operation: 'checks.dispatch', args: [attemptId, { formatVersion: 1, permit: runAuthority }] } }), { code: 'stale-generation' });
     assert.equal(calls, 1);
     if (independent) {
       // The task has passed admission and returned its dispatch receipt. Revocation while

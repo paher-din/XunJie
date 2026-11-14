@@ -3,7 +3,8 @@ import { test } from 'node:test';
 import { randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
 import { join } from 'node:path';
-import { createModelGateway, modelMigrations, createSpaces, spaceMigrations } from '@xunjie/learning-space';
+import { createSpaces, spaceMigrations } from '@xunjie/learning-space';
+import { createModelGateway, modelMigrations } from '@xunjie/model-gateway';
 import { provisionStorage, openStorage, createFileBackend } from '@xunjie/storage';
 import { nativeFixture } from '../../../packages/storage/test/native-fixture.mjs';
 

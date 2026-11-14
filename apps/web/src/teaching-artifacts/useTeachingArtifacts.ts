@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { z } from 'zod'
 import { acceptsState, componentStateName, componentStateSchema } from '@xunjie/contracts/components'
 import type { LearningActivity, WorkFile } from '@xunjie/contracts/learning-data'
-import { teachingConversationSchema } from '@xunjie/contracts/teaching-agent'
 import { teachingArtifactSchema, teachingArtifactRevisionSchema, teachingArtifactCandidateSchema, teachingArtifactReceiptSchema,
   type TeachingArtifact, type TeachingArtifactRevision, type TeachingArtifactReceipt } from '@xunjie/contracts/teaching-artifacts'
 import { useActivitySession } from '../product/ActivitySession'
@@ -14,7 +13,7 @@ import { useViewPolling } from '../product/useViewPolling'
 export interface ArtifactEntry { artifact: TeachingArtifact; revision: TeachingArtifactRevision | null; issue: string }
 export interface ArtifactViewGuard { composing: boolean; focused: boolean }
 export function useTeachingArtifacts(activity: LearningActivity, spaceKey: string, namespace: string, authorized: boolean) {
-  const { workspace, viewActive = true } = useActivitySession()
+  const { workspace, agent, viewActive = true } = useActivitySession()
   const [entries, setEntries] = useState<ArtifactEntry[]>([]), [error, setError] = useState('')
   const displayed = useRef(entries); displayed.current = entries
   const [opened, setOpened] = useState<string | null>(null)
@@ -89,12 +88,21 @@ export function useTeachingArtifacts(activity: LearningActivity, spaceKey: strin
           let candidate = teachingArtifactCandidateSchema.parse(await request('candidates/' + candidateId))
           const proposed = await readRevision(artifact.artifactId, candidate.revisionId)
           if (proposed.origin && !pending) {
-            const conversation = teachingConversationSchema.parse(await learningRequest(activity, spaceKey, namespace, `agent/${activity.activityId}/conversation`))
+            if (!agent?.sessionId) throw new Error('工作区对话尚未准备好。')
+            const conversation = await agent.client.conversation(agent.sessionId)
             const run = conversation.runs.find(run => run.runId === proposed.origin!.runId)
-            const tool = conversation.tools.find(tool => tool.commandId === proposed.origin!.commandId)
-            const published = teachingArtifactReceiptSchema.safeParse(tool?.result?.artifact)
-            if (!run || run.stopRequested || !['running', 'dispatching', 'waiting', 'completed'].includes(run.state)
-              || tool?.outcome !== 'completed' || !published.success || published.data.candidateId !== candidateId) {
+            let after = 0, published = false
+            while (after < conversation.lastSeq) {
+              const events = await agent.client.events(agent.sessionId, after)
+              if (!events.length) break
+              for (const event of events) {
+                if (event.kind !== 'tool-result' || event.body.commandId !== proposed.origin!.commandId || event.body.runId !== proposed.origin!.runId) continue
+                const outcome = z.object({ state: z.string(), result: z.object({ artifact: teachingArtifactReceiptSchema }).passthrough() }).passthrough().safeParse(event.body.outcome)
+                published = outcome.success && outcome.data.state === 'completed' && outcome.data.result.artifact.candidateId === candidateId
+              }
+              after = events.at(-1)!.seq
+            }
+            if (!run || run.stopRequested || !['running', 'waiting', 'completed'].includes(run.state) || !published) {
               if (run?.stopRequested || run?.state === 'stopped') issues.current.set(artifact.artifactId, '生成已停止；原页面和输入仍保留。')
               shown.push({ artifact, revision, issue: issues.current.get(artifact.artifactId) ?? '' })
               continue
@@ -170,7 +178,7 @@ export function useTeachingArtifacts(activity: LearningActivity, spaceKey: strin
       setEntries(previous => JSON.stringify(previous) === JSON.stringify(shown) ? previous : shown)
       setError('')
     }
-  }, [authorized, request, readRevision, workspace, activity.status, receipt, scope])
+  }, [authorized, request, readRevision, workspace, activity.status, receipt, scope, agent?.client, agent?.sessionId])
   useEffect(() => {
     ++generation.current; setEntries([]); setOpened(null); setCenterIds([]); revisions.current.clear(); issues.current.clear(); guards.current.clear()
     return () => { ++generation.current }

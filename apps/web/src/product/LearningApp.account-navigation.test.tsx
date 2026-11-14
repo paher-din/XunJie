@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
+import 'fake-indexeddb/auto'
 import { transferableAbortController } from 'node:util'
 import { act, useImperativeHandle, type ReactNode, type RefObject } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import type { AgentSession } from '@xunjie/contracts/agent-sessions'
 import type { LearningActivity } from '@xunjie/contracts/learning-data'
 import type { SpaceIdentity } from '@xunjie/contracts/spaces'
 import type { ActivityWorkspaceHandle } from './ActivityWorkspace'
@@ -13,11 +15,6 @@ vi.mock('../lib/theme', () => ({ THEME_OPTIONS: [{ value: 'system', label: '跟�
   setThemePreference: vi.fn(), useTheme: () => ({ preference: 'system', resolved: 'light' }) }))
 vi.mock('./PersonalModelSettings', () => ({ PersonalModelSettings: () => null }))
 vi.mock('./ModelSelection', () => ({ useModelSelection: () => ({}) }))
-vi.mock('./ProductConversationHistory', () => ({ conversationTitle: () => '',
-  ProductConversationHistory: ({ activities, onOpen }: { activities: LearningActivity[] | null; onOpen(id: string): void }) =>
-    <div data-testid="history">{activities?.map(item => <button key={item.activityId} onClick={() => onOpen(item.activityId)}>{item.question}</button>)}</div>,
-  useConversationHistory: () => ({ items: [], archivedIds: [], ready: true }),
-}))
 vi.mock('./ActivityReferences', () => ({ ActivityReferences: ({ children }: { children: ReactNode }) => children,
   CourseMaterialReferences: () => null, CourseRequirementsReference: () => null }))
 function Workspace({ activity, workspaceRef }: { activity: LearningActivity; workspaceRef: RefObject<ActivityWorkspaceHandle | null> }) {
@@ -25,7 +22,6 @@ function Workspace({ activity, workspaceRef }: { activity: LearningActivity; wor
   return <h1 data-testid="workspace">{activity.course?.taskTitle ?? activity.question}</h1>
 }
 vi.mock('./ActivityPage', () => ({ ActivityPage: (props: Parameters<typeof Workspace>[0]) => <Workspace {...props} /> }))
-vi.mock('./ProductConversation', () => ({ ProductConversation: (props: Parameters<typeof Workspace>[0]) => <Workspace {...props} /> }))
 
 const personal: SpaceIdentity = { environmentId: crypto.randomUUID(), spaceId: crypto.randomUUID(), principalId: crypto.randomUUID(), kind: 'personal', name: '个人学习空间' }
 const school: SpaceIdentity = { environmentId: crypto.randomUUID(), spaceId: crypto.randomUUID(), principalId: crypto.randomUUID(), kind: 'school', name: '学校学习空间' }
@@ -36,6 +32,10 @@ const personalActivity = activity(personal, '个人自主学习')
 const schoolActivity: LearningActivity = { ...activity(school, '课程提问'), course: { associationId: crypto.randomUUID(), courseId,
   courseName: '学校课程', taskId: crypto.randomUUID(), taskTitle: '学校任务', releaseId: crypto.randomUUID(), contentDigest: 'a'.repeat(64),
   objectives: ['学习目标'], requirements: '任务要求', materials: [], starterWorks: [], capabilities: [], helpPolicy: { version: 1, questions: 'allowed', scope: 'course' } } }
+const session = (title: string): AgentSession => ({ sessionId: crypto.randomUUID(), requestId: crypto.randomUUID(), identity: personal, scenario: 'student-assistant', title,
+  owner: { version: 1, connectionId: crypto.randomUUID(), installationId: crypto.randomUUID(), target: { environmentId: personal.environmentId, serviceId: crypto.randomUUID(), endpoint: 'https://agent.example.test', unit: 'teaching-agent', protocolVersion: 1, capabilities: ['agent.sessions.v2'] } },
+  state: 'ready', pinned: false, archived: false, deleted: false, createdAt: '2026-11-13T00:00:00.000Z', updatedAt: '2026-11-13T00:00:00.000Z', readyAt: '2026-11-13T00:00:00.000Z' })
+let sessionItems: AgentSession[]
 const originalScrollIntoView = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollIntoView')
 let host: HTMLDivElement, root: Root, connected: boolean, offline: boolean, schoolOffline: boolean, rejectLeave: boolean
 let legacyContext: boolean, explicitUnbound: boolean, currentSchoolKey: string
@@ -69,7 +69,7 @@ beforeEach(() => {
   vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener() {}, removeEventListener() {} }))
   localStorage.clear(); sessionStorage.clear(); history.replaceState(null, '', '/?space=personal')
   connected = true; currentSchoolKey = schoolKey; offline = false; schoolOffline = false; rejectLeave = false; legacyContext = false; explicitUnbound = false
-  reads = []; creates = []; holdSchool = undefined; finishSchool = undefined
+  sessionItems = [session('个人普通对话')]; reads = []; creates = []; holdSchool = undefined; finishSchool = undefined
   host = document.createElement('div'); document.body.append(host); root = createRoot(host)
   vi.stubGlobal('fetch', vi.fn(async (url: string, options: RequestInit = {}) => {
     const route = url.replace('/api/learning/', ''), space = (options.headers as Record<string, string>)?.['x-xj-space']
@@ -81,6 +81,18 @@ beforeEach(() => {
     if (space === currentSchoolKey) {
       if (schoolOffline) return response({ error: 'unavailable' }, 503)
       await holdSchool
+    }
+    if (route === 'agent-sessions' && options.method === 'POST') {
+      creates.push(space!); const input = JSON.parse(String(options.body)); const value = { ...session(input.title), ...input }; sessionItems.push(value); return response(value)
+    }
+    if (route === 'agent-sessions') return response({ items: sessionItems })
+    if (route.startsWith('agent-sessions/')) {
+      const [, sessionId, suffix] = route.split('/')
+      if (suffix?.startsWith('conversation')) return response({ sessionId, lastSeq: 0, messages: [], inputs: [], runs: [], waits: [], tools: [], workspaces: [] })
+      if (suffix === 'materials' || suffix === 'pdf') return response([])
+      if (suffix === 'requests') return response(null)
+      if (suffix === 'inputs') return response({ sessionId, requestId: JSON.parse(String(options.body)).requestId, inputId: crypto.randomUUID(), runId: crypto.randomUUID(), inputDigest: 'a'.repeat(64) })
+      return response(sessionItems.find(item => item.sessionId === sessionId) ?? { error: 'missing' }, sessionItems.some(item => item.sessionId === sessionId) ? 200 : 404)
     }
     if (route === 'activities' && options.method === 'POST') {
       creates.push(space!); return response({ ...personalActivity, question: JSON.parse(options.body as string).question })
@@ -118,7 +130,7 @@ it('keeps the bound account across filtering, school entry, personal Agent, sett
   expect(accountLabel()).toBe('Robert')
   await click('Agent 对话')
   expect(new URLSearchParams(location.search).get('space')).toBe('personal')
-  expect(host.querySelector('[data-testid="history"]')?.textContent).toBe('个人自主学习')
+  expect(host.querySelector('[data-conversation-id]')?.textContent).toContain('个人普通对话')
   expect(accountLabel()).toBe('Robert')
   await remount(); expect(accountLabel()).toBe('Robert')
   await clickSelector('button[aria-label="设置与帮助"]')
@@ -153,7 +165,7 @@ it('shares initial list reads and shows loaded content immediately across home a
   expect(listReads().filter(item => item.route === 'courses')).toHaveLength(1)
   const count = listReads().length
   await click('Agent 对话')
-  expect(host.querySelector('[data-testid="history"]')?.textContent).toContain('个人自主学习')
+  expect(host.querySelector('[data-conversation-id]')?.textContent).toContain('个人普通对话')
   await click('首页')
   expect(host.textContent).toContain('学校课程')
   expect(host.textContent).not.toContain('正在读取学校课程')
@@ -175,18 +187,12 @@ it('opens an activity without waiting for its slower activity list', async () =>
   } finally { await act(async () => { finish(); await settle() }) }
 })
 
-it('refreshes the sidebar on a later visit when its cached activity list has expired', async () => {
+it('refreshes session history on a later visit when another window has added a conversation', async () => {
   await mount()
-  const original = vi.mocked(fetch).getMockImplementation()!
-  const added = activity(personal, '其他窗口新增的活动')
-  vi.mocked(fetch).mockImplementation(async (...args) => {
-    if (String(args[0]) === '/api/learning/activities'
-      && (args[1]?.headers as Record<string, string>)?.['x-xj-space'] === 'personal') return response([added, personalActivity])
-    return original(...args)
-  })
+  sessionItems.push(session('其他窗口新增的对话'))
   vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 31000)
   await click('Agent 对话')
-  expect(host.querySelector('[data-testid="history"]')?.textContent).toContain('其他窗口新增的活动')
+  expect(host.textContent).toContain('其他窗口新增的对话')
 })
 
 it('defers a hidden activity when entering settings directly', async () => {
@@ -198,15 +204,15 @@ it('defers a hidden activity when entering settings directly', async () => {
   expect(new URLSearchParams(location.search).get('settings')).toBeNull()
 })
 
-it('reuses recently verified activity metadata when reopening a conversation', async () => {
+it('reuses recently verified activity metadata when reopening its workspace', async () => {
   history.replaceState(null, '', '/?space=personal&view=agent&activity=' + personalActivity.activityId)
   await mount()
   expect(host.querySelector('[data-testid="workspace"]')?.textContent).toBe('个人自主学习')
   const activityReads = () => reads.filter(item => item.route === 'activities/' + personalActivity.activityId)
   expect(activityReads()).toHaveLength(1)
   await click('首页')
-  await click('Agent 对话')
-  await click('个人自主学习')
+  await click('个人')
+  await clickSelector('[data-activity-id="' + personalActivity.activityId + '"]')
   expect(host.querySelector('[data-testid="workspace"]')?.textContent).toBe('个人自主学习')
   expect(activityReads()).toHaveLength(1)
 })

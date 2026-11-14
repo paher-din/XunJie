@@ -4,7 +4,8 @@ import { join } from 'node:path';
 import { z } from 'zod';
 import { StorageError } from '@xunjie/storage';
 import { runtimeConnectionSchema, fixedRuntimeConnectionDescriptor, type RuntimeConnection } from '@xunjie/contracts/product-runtime';
-import { teachingDispatchAuthoritySchema } from '@xunjie/contracts/teaching-agent';
+import { agentSessionCallSchema, type AgentSessionCall } from '@xunjie/contracts/agent-service';
+import { agentDependencyCallSchema, isAgentDependencyRead, type AgentDependencyCall } from '@xunjie/contracts/agent-dependencies';
 import { acquireLock, atomicJson, exists, readJson } from './io.js';
 
 const source = z.object({ grantId: z.uuid(), sourceEnvironmentId: z.uuid(), sourceServiceId: z.uuid(), sourceInstallationId: z.uuid() }).strict();
@@ -21,53 +22,53 @@ function canonical(value: unknown): string {
     `${JSON.stringify(key)}:${canonical((value as Record<string, unknown>)[key])}`).join(',')}}`;
   return JSON.stringify(value);
 }
-/** Only top-level dispatch leases vary; fixed inputs and all other authority fields stay bound. */
-function fixed(value: unknown): unknown {
-  if (value && typeof value === 'object' && 'operation' in value && 'args' in value && Array.isArray(value.args)) {
-    const argument = value.args[0];
-    if (value.operation === 'assertModelDispatch' && argument && typeof argument === 'object') {
-      const { driverId: _driver, generation: _generation, ...association } = argument;
-      return { ...value, args: [association, ...value.args.slice(1)] };
-    }
-    if (value.operation === 'assertCommandDispatch' && argument && typeof argument === 'object')
-      return { ...value, args: [fixed(argument), ...value.args.slice(1)] };
-  }
-  if (!value || typeof value !== 'object' || !('authority' in value) || value.authority === undefined) return value;
-  const authority = teachingDispatchAuthoritySchema.parse(value.authority);
-  const { driverId: _driver, generation: _generation, ...association } = authority;
-  return { ...value, authority: association };
+/** Only dispatch generations vary; the original operation and request bytes remain fixed. */
+const object = (value: unknown): Record<string, unknown> => value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+function modern(value: unknown, capability: string): AgentSessionCall | AgentDependencyCall {
+  if (!['agent.sessions.v2', 'agent.dependencies.v2'].includes(capability)) throw new StorageError('incompatible');
+  if (object(value).version !== 2) throw new StorageError('incompatible');
+  const parsed = capability === 'agent.sessions.v2' ? agentSessionCallSchema.safeParse(value) : agentDependencyCallSchema.safeParse(value);
+  if (!parsed.success) throw new StorageError('invalid');
+  return parsed.data;
 }
-function semantics(payload: unknown) {
-  const item = payload as { operation?: string; args?: unknown[]; identity?: unknown; scope?: unknown; activityId?: unknown };
-  if (['data', 'course', 'intent.begin', 'intent.receipt', 'intent.cancel'].includes(item.operation ?? ''))
-    return { dynamic: true, association: fixed(payload) };
-  const nested = item.operation === 'model' ? item.args?.[0] as typeof item : item;
-  const operation = nested?.operation ?? '';
-  // These domain operations explicitly query/reconcile their original identity. Reissuing them
-  // after durable consumption is safe; an unknown transport is never consumed or reissued.
-  const dynamic = item.operation === 'model'
-    ? /^(selection\.(read|snapshot|resolve|pin|pinned)|checks\.(read|list|progress|summary|requestPayload|dispatch)|segments\.read|images\.read|results\.(read|native)|capabilities\.decide)$/.test(operation)
-    : ['authorize', 'identityFor', 'activity', 'tool.definitions', 'tool.contributions', 'tool.reconcile', 'tool.stop', 'conversation', 'events',
-      'capabilities', 'run', 'request', 'snapshot', 'query', 'response', 'inputControlReceipt', 'switchModel', 'assertCommandDispatch', 'assertModelDispatch',
-      'skills.list', 'skills.read', 'facts.read'].includes(operation);
-  const identifiers: Array<[string, unknown]> = [];
-  const collect = (value: unknown) => {
-    if (!value || typeof value !== 'object') return;
-    for (const [key, entry] of Object.entries(value).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) {
-      if (['requestId', 'attemptId', 'commandId', 'segmentId', 'runId', 'stepId', 'snapshotId', 'callId'].includes(key)) identifiers.push([key, entry]);
-      else if (key !== 'authority' && entry && typeof entry === 'object') collect(entry);
+function fixed(value: unknown, capability: string): unknown {
+  const call = modern(value, capability);
+  const copy = JSON.parse(JSON.stringify(call)) as Record<string, unknown>;
+  delete object(copy.identity).name;
+  if (copy.permit) delete object(copy.permit).generation;
+  // Model authority embeds the same permit in these fixed protocol positions.
+  if (call.operation === 'model') {
+    const args = object(copy.args).args as unknown[];
+    const slot = call.args.method === 'checks.receive' ? 0 : call.args.method === 'checks.dispatch' ? 1 : -1;
+    if (slot >= 0) {
+      const authority = slot === 0 ? object(object(args[slot]).authority) : object(args[slot]);
+      if (authority.permit) delete object(authority.permit).generation;
     }
-  };
-  collect(nested?.args);
-  // Scalar command/attempt arguments (dispatch, cancel, read) are identities as well.
-  for (const arg of nested?.args ?? []) if (typeof arg === 'string') identifiers.push(['argument', arg]);
-  return { dynamic, association: { operation: item.operation, nested: operation, identity: item.identity ?? item.scope,
-    activityId: item.activityId, identifiers: identifiers.length ? identifiers : fixed(payload) } };
+  }
+  return copy;
+}
+
+function semantics(payload: unknown, capability: string) {
+  const call = modern(payload, capability);
+  const args = object(call.args), normalized = object(fixed(payload, capability));
+  const dynamic = capability === 'agent.dependencies.v2' ? isAgentDependencyRead(call as AgentDependencyCall)
+    : ['run', 'events', 'snapshot', 'request', 'conversation', 'assertDispatch'].includes(call.operation);
+  const method = typeof args.method === 'string' ? args.method : undefined;
+  let request: unknown = args.requestId;
+  if (call.operation === 'initialize') request = object(args.session).sessionId;
+  for (const key of ['input', 'response', 'resolution', 'control']) request ??= object(args[key]).requestId;
+  if ('permit' in call) request ??= call.permit?.operationId;
+  const nested = Array.isArray(args.args) ? args.args : [];
+  request ??= object(nested[0]).requestId ?? object(nested[0]).attemptId ?? object(nested[1]).commandId
+    ?? (typeof nested[0] === 'string' ? nested[0] : undefined);
+  return { dynamic, association: { version: 2, operation: call.operation, ...(method ? { method } : {}),
+    ...(dynamic ? { identity: normalized.identity, sessionId: 'sessionId' in call ? call.sessionId : null, args }
+      : { requestId: request ?? normalized }) } };
 }
 
 function validateEntry(value: unknown) {
   const entry = schema.parse(value);
-  if (sha(canonical(fixed(entry.payload))) !== entry.digest || entry.state !== 'pending' && !Object.hasOwn(entry, 'result'))
+  if (sha(canonical(fixed(entry.payload, entry.capability))) !== entry.digest || entry.state !== 'pending' && !Object.hasOwn(entry, 'result'))
     throw new StorageError('corrupt');
   return entry;
 }
@@ -142,7 +143,7 @@ export async function withAgentTransfer<T>(options: { root: string; connection: 
   const { root, connection, capability, payload } = options;
   if (Buffer.byteLength(JSON.stringify(payload)) > 16 * 1024 * 1024) throw new StorageError('invalid');
   const descriptor = fixedRuntimeConnectionDescriptor(connection);
-  const meaning = semantics(payload), digest = sha(canonical(fixed(payload)));
+  const meaning = semantics(payload, capability), digest = sha(canonical(fixed(payload, capability)));
   const key = sha(canonical({ connectionId: connection.connectionId, capability, association: meaning.association }));
   const release = await acquireLock(root, 'agent-transfer-' + key);
   try {

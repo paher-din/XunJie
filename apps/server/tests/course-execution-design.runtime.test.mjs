@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createHash, randomUUID } from 'node:crypto';
 import { provisionStorage, openStorage, createFileBackend, StorageError } from '@xunjie/storage';
-import { createCourseExecutionDesign, createCourses, createSpaces, createLearningData, createTeachingTools,
-  spaceCourseMigrations, learningMigrations } from '@xunjie/learning-space';
+import { createCourseExecutionDesign, createCourses, createSpaces, createLearningData, spaceCourseMigrations, learningMigrations } from '@xunjie/learning-space';
+import { createTeachingTools } from '@xunjie/agents';
 import { courseExecutionPlanBasis, courseExecutionPlanSchema, decideExecutionPlacement, canonicalValue,
   plannedExecutionScope, legacyCourseExecutionPlanSchema } from '@xunjie/contracts/execution';
 import { manifestResources } from '@xunjie/contracts/components';

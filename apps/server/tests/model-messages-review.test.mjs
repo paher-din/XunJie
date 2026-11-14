@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 
 const { runMessages, validateMessagesNative } = await import(process.env.XUNJIE_MESSAGES_REVIEW_MODULE
   ? pathToFileURL(process.env.XUNJIE_MESSAGES_REVIEW_MODULE).href
-  : new URL('../../../packages/learning-space/dist/model-connections/messages.js', import.meta.url).href);
+  : new URL('../../../packages/model-gateway/dist/messages.js', import.meta.url).href);
 const tool = { name: 'read_marker', description: '', inputSchema: { type: 'object',
   properties: { nonce: { type: 'string' } }, required: ['nonce'], additionalProperties: false } };
 const start = (usage = { input_tokens: 0, output_tokens: 0 }) => ({ type: 'message_start', message: {

@@ -8,9 +8,10 @@ import { createOutboundConnection, RuntimeConnectionError } from './connections.
 import { readJson } from './io.js';
 import { resolveCredential } from './postgres.js';
 import type { InstalledConfiguration } from './runtime.js';
-import { createChunkClient, isTeachingDependencyRead, teachingDependencyCallSchema } from '@xunjie/learning-space';
+import { createChunkClient } from '@xunjie/storage/chunk-channel';
 import { withAgentTransfer } from './agent-transfer-journal.js';
-import { teachingDispatchAuthoritySchema } from '@xunjie/contracts/teaching-agent';
+import { agentSessionCallSchema } from '@xunjie/contracts/agent-service';
+import { agentDependencyCallSchema, isAgentDependencyRead } from '@xunjie/contracts/agent-dependencies';
 
 /** A connection id denotes one owner. Looking up current configuration cannot change it. */
 export function createAgentConnection(root: string, connectionId: string, capability: string,
@@ -38,62 +39,40 @@ export function createAgentConnection(root: string, connectionId: string, capabi
   const chunked = createChunkClient(send);
   const retryQuery = Symbol('retry-query');
   const invoke = async (payload: unknown, recoverQuery = true): Promise<unknown> => {
-    // These pure queries have bounded replies (identity or void) and must always
-    // check current authority. Keeping them out of the effect journal also avoids
-    // multiplying reverse authorization calls into several durable round trips.
-    const operation = (payload as { operation?: string }).operation;
-    const readOnlyQuery = capability === 'teaching.agent' && operation === 'conversation'
-      || capability === 'teaching.dependencies' && isTeachingDependencyRead(teachingDependencyCallSchema.parse(payload));
-    if (['authorize', 'identityFor', 'assertCommandDispatch', 'assertModelDispatch'].includes(operation ?? ''))
-      return send(payload);
-    if (capability === 'teaching.dependencies' && ['activity','data','course'].includes(operation ?? '')
-      && isTeachingDependencyRead(teachingDependencyCallSchema.parse(payload))) {
-      try {
-        const reply = z.union([z.object({ directRead: z.literal(1), value: z.unknown() }).strict(),
-          z.object({ directRead: z.literal(1), chunked: z.literal(true) }).strict()]).parse(
-          await send({ directRead: 1, input: payload }));
-        if ('value' in reply) return reply.value;
-      } catch (error) {
-        // Older peers do not know this envelope. Only pure reads can use the existing chunk path.
-        if (!(error instanceof StorageError) || error.code !== 'invalid') throw error;
-      }
-    }
+    if (!['agent.sessions.v2', 'agent.dependencies.v2'].includes(capability)
+      || (payload as { version?: unknown })?.version !== 2) throw new StorageError('incompatible');
+    const session = capability === 'agent.sessions.v2' ? agentSessionCallSchema.safeParse(payload) : undefined;
+    const dependency = capability === 'agent.dependencies.v2' ? agentDependencyCallSchema.safeParse(payload) : undefined;
+    const parsed = session ?? dependency!;
+    if (!parsed.success) throw new StorageError('invalid');
+    const call = parsed.data;
+    payload = call;
+    const readOnlyQuery = dependency?.success ? isAgentDependencyRead(dependency.data)
+      : ['run', 'events', 'snapshot', 'request', 'conversation'].includes(call.operation);
+    // Bounded authority checks always consult the original owner and never a saved receipt.
+    if (call.operation === 'assertDispatch' || call.operation === 'authorize') return send(payload);
+    // A pure owner query has no effect to recover. Small replies use one fresh call;
+    // large replies still use bounded chunks and release their temporary bytes after decoding.
+    if (readOnlyQuery) return chunked(payload, { inline: true, acknowledge: true });
+    const authority = 'permit' in call ? call.permit : undefined;
     const config = await readJson<InstalledConfiguration>(join(root, 'installation.json'));
     const environment = await readJson<RuntimeEnvironment>(join(root, 'environment.json'));
     const connection = config.connections.find(item => item.connectionId === connectionId);
-    if (!connection) throw new StorageError('unavailable');
+    if (!connection || !connection.requiredCapabilities.includes(capability)) throw new StorageError('unavailable');
     const token = await resolveCredential(root, connection.credentialRef);
     const grantId = z.uuid().parse(token.split('.')[0]);
-    const input = payload as { operation?: string; authority?: unknown; args?: Array<Record<string, unknown>> };
-    const guardArgument = input.operation === 'assertModelDispatch' ? input.args?.[0] : undefined;
-    const authority = input.authority !== undefined ? teachingDispatchAuthoritySchema.parse(input.authority)
-      : guardArgument ? teachingDispatchAuthoritySchema.parse({ runId: guardArgument.runId, activityId: guardArgument.activityId,
-        driverId: guardArgument.driverId, generation: guardArgument.generation })
-      : input.operation === 'assertCommandDispatch' && input.args?.[0]?.authority
-        ? teachingDispatchAuthoritySchema.parse(input.args[0].authority) : undefined;
-    let recheckAuthorization = false;
     const value = await withAgentTransfer({ root, connection, capability, installationId: environment.installationId, grantId, payload },
       async (entry, receive, context) => {
-        const modelOperation = input.operation === 'model' ? input.args?.[0]?.operation : undefined;
-        recheckAuthorization = context.reused && (['activity', 'switchModel'].includes(input.operation ?? '')
-          || modelOperation === 'selection.pin');
+        const transport = { transferId: entry.transferId, origin: entry.origin, ...(authority ? { authority } : {}) };
         if (entry.state !== 'pending') {
-          // A lost ack is retried from a durable, complete local result. It cannot create a
-          // fresh transfer or invoke the business handler again, including after process death.
-          await send({ chunkChannel: 1, operation: 'ack', transferId: entry.transferId, origin: entry.origin });
-          // Activity and pinned model/switch receipts require current authorization.
-          // Their domain IDs make rechecking an already completed operation idempotent;
-          // consume the original transport before asking the domain to check again.
-          return entry.result === null && readOnlyQuery
-            ? retryQuery : entry.result;
+          // Recheck current source/subject authority even when the local reply is durable.
+          await send({ chunkChannel: 1, operation: 'ack', ...transport });
+          return entry.result === null && readOnlyQuery ? retryQuery : entry.result;
         }
         if (entry.origin.grantId !== grantId || entry.origin.sourceInstallationId !== environment.installationId) {
-          try { await send({ chunkChannel: 1, operation: 'metadata', transferId: entry.transferId, origin: entry.origin }); }
+          try { await send({ chunkChannel: 1, operation: 'metadata', ...transport }); }
           catch (error) {
             if (!(error instanceof StorageError) || error.code !== 'missing') throw error;
-            // The authenticated original owner confirmed absence. Keep the transport ID
-            // and fixed body, and durably move only this never-received transfer to the
-            // current grant. Unknown/existing transfers always retain their old namespace.
             await context.rebindOrigin({ grantId, sourceEnvironmentId: connection.sourceEnvironmentId,
               sourceServiceId: connection.sourceServiceId, sourceInstallationId: environment.installationId });
           }
@@ -102,19 +81,15 @@ export function createAgentConnection(root: string, connectionId: string, capabi
           ...(authority ? { authority } : {}), receive, acknowledge: true });
         try { return await read(); }
         catch (error) {
-          if (!recoverQuery || !readOnlyQuery
-            || !(error instanceof StorageError) || !['commit-unknown', 'conflict'].includes(error.code)) throw error;
-          // The original owner reconstructs and authorizes the retained input before it may
-          // retire a pure query. Effects keep their original unknown transport and never retry.
-          const state = await send({ chunkChannel: 1, operation: 'discard-query', transferId: entry.transferId,
-            origin: entry.origin }) as { state?: string };
+          if (!recoverQuery || !readOnlyQuery || !(error instanceof StorageError)
+            || !['commit-unknown', 'conflict'].includes(error.code)) throw error;
+          const state = await send({ chunkChannel: 1, operation: 'discard-query', ...transport }) as { state?: string };
           if (state.state !== 'acknowledged') return read();
           await receive(null);
           return retryQuery;
         }
       });
     if (value === retryQuery) return invoke(payload, false);
-    if (recheckAuthorization) return invoke(payload);
     const error = failure.safeParse(value);
     if (error.success) throw new StorageError(error.data.error);
     return value;

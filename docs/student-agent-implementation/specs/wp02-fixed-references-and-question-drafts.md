@@ -22,7 +22,7 @@
 | [学习数据及作品 owner](../../../packages/learning-space/src/learning-data/README.md) | 活动与当前授权、稳定作品对象、不可变 `contentId`、历史资源和回执 | 问题草稿头、不可变草稿修订、引用来源核验及保留关系；支持尚未同步的选择时依据 |
 | [课程 owner](../../../packages/learning-space/src/courses/README.md) | 固定发布、开放投影、材料读取、当前课程资格、历史材料保留 | 通过窄接口核验课程字段或材料来源，不能由学习数据模块读写课程 SQL 或资源 repository |
 | [正式活动页](../../../apps/web/src/product/LearningApp.tsx)和[作品编辑器](../../../apps/web/src/product/ActivityWorkspace.tsx) | 课程/自主活动、固定材料、可靠编辑、空间/活动切换、登录恢复 | 在原入口装配文本/代码引用与问题输入，保留既有离开、权限和恢复保护；不另开演示页代替生产交付 |
-| [生产 HTTP](../../../packages/learning-space/src/learning-entry/README.md)及[学校代理](../../../packages/product-runtime/src/school-client.ts) | 学校直连及已安装客户端的课程、活动、作品路由 | 同步接入草稿/引用操作、原结果查询、来源定位所需读取和按路由响应验证 |
+| [生产 HTTP](../../../packages/product-runtime/README.md#session-v2-与-http-边界)及[学校代理](../../../packages/product-runtime/src/school-client.ts) | 学校直连及已安装客户端的课程、活动、作品路由 | 同步接入草稿/引用操作、原结果查询、来源定位所需读取和按路由响应验证 |
 
 已有选区规范中的“选择不触发保存”只描述当时前端范围，本票按 #152 明确允许草稿后台保存；不得照抄旧网络断言而禁止必要同步。旧演示 IndexedDB、草稿库和业务求助接口不自动迁移或复用为新产品权威。#150/#151 已有两平台记录不等于 #152 已验收。
 

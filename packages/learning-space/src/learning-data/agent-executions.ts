@@ -190,6 +190,9 @@ export function createAgentExecutions(storage: OwnedStorage, options: {
     if (!original) return null;
     const input = executionStopSchema.parse(value);
     await storage.request({ requestId: `agent-execution-stop:${input.stopId}`, fingerprint: hash({ identity, activityId, requestId, input }) }, async tx => {
+      await tx.query(`UPDATE agent_execution_origins o SET cleanup_state='pending',next_check_at=clock_timestamp()
+        FROM agent_execution_commands c WHERE o.command_id=c.command_id AND c.activity_id=$1 AND c.request_id=$2
+        AND o.cleanup_state='none'`, [activityId, requestId]);
       await tx.query('UPDATE agent_execution_commands SET cancelled=true,stop_body=COALESCE(stop_body,$3::jsonb) WHERE activity_id=$1 AND request_id=$2',
         [activityId, requestId, JSON.stringify(input)]);
       return null;
@@ -207,8 +210,9 @@ export function createAgentExecutions(storage: OwnedStorage, options: {
     if (!due.rows.length) return [];
     const claimed = await storage.request({ requestId: `agent-origin-check:${randomUUID()}`, fingerprint: 'agent-origin-check' }, async tx => {
       const { rows } = await tx.query(`WITH due AS (
-        SELECT command_id FROM agent_execution_origins WHERE cleanup_state IN ('none','pending') AND next_check_at<=clock_timestamp()
-        ORDER BY next_check_at,command_id LIMIT 20 FOR UPDATE SKIP LOCKED)
+        SELECT o.command_id FROM agent_execution_origins o JOIN agent_execution_commands c USING(command_id)
+        WHERE o.cleanup_state IN ('none','pending') AND o.next_check_at<=clock_timestamp()
+        ORDER BY (o.cleanup_state='pending' OR c.cancelled) DESC,o.next_check_at,o.command_id LIMIT 20 FOR UPDATE OF o SKIP LOCKED)
         UPDATE agent_execution_origins o SET next_check_at=clock_timestamp()+interval '1 second'
         FROM due WHERE o.command_id=due.command_id RETURNING o.command_id`);
       return rows.map(row => String(row.command_id));
@@ -223,7 +227,7 @@ export function createAgentExecutions(storage: OwnedStorage, options: {
       if (!isOpen()) break;
       const identity = spaceIdentitySchema.parse(row.identity), activityId = String(row.activity_id);
       const origin = row.source === null ? undefined : originSchema.parse(row.source);
-      if (row.cleanup_state === 'none') {
+      if (row.cleanup_state === 'none' && !row.cancelled) {
         try {
           const candidates: (AgentExecutionOrigin | undefined)[] = [origin];
           if (origin && row.history) {

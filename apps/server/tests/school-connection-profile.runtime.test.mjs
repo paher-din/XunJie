@@ -4,7 +4,8 @@ import { createServer } from 'node:http';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { createFileBackend, openStorage, provisionStorage } from '@xunjie/storage';
-import { createSpaces, createLearningData, createLearningEntry, spaceCourseMigrations, learningMigrations } from '@xunjie/learning-space';
+import { createSpaces, createLearningData, spaceCourseMigrations, learningMigrations } from '@xunjie/learning-space';
+import { createLearningEntry } from '@xunjie/product-runtime/learning-http';
 import { nativeFixture } from '../../../packages/storage/test/native-fixture.mjs';
 
 test('connection profile refresh uses only the live bearer, and transfer refusal never freezes an explicit topology', { timeout: 120000 }, async () => {

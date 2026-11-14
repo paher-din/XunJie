@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Readable } from 'node:stream';
-import { readLearningBody } from '../dist/learning-entry/index.js';
+import { readLearningBody } from '@xunjie/product-runtime/learning-http';
 
 /** A minimal IncomingMessage stand-in: the reader only consumes the stream and the content type. */
 const request = (chunks, headers = { 'content-type': 'application/json' }) =>

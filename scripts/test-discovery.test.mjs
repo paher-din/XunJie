@@ -78,7 +78,7 @@ test('current checkout discovery equals the original recursive test sets, includ
       || ['runner/node.rpc.test.ts', 'server/tutoring/test/real-provider-failures.test.ts', 'xj-dev-access/ssh-policy.test.py'].includes(path);
     for (const external of [false, true]) {
       const expected = discovered.filter(path => legacyExternal(path) === external).map(path => directory + '/' + path);
-      if (!expected.length && target !== 'contracts') assert.throws(() => discoverTests(root, target, { external }), /No .* tests discovered/);
+      if (!expected.length && target !== 'contracts' && (external || !discovered.some(legacyExternal))) assert.throws(() => discoverTests(root, target, { external }), /No .* tests discovered/);
       else assert.deepEqual(discoverTests(root, target, { external }).sort(), expected);
     }
   }

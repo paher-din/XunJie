@@ -92,8 +92,12 @@ function verifyBoundaryMaterial(material: OwnerBoundaryMaterial | undefined, inp
     throw new RecoveryError('invalid-boundary-material');
   }
   for (const command of material.unresolved) {
-    if (typeof command.requestId !== 'string' || typeof command.inputDigest !== 'string'
-      || typeof command.executionRef !== 'string' || typeof command.activityId !== 'string'
+    if (!command || typeof command !== 'object'
+      || typeof command.requestId !== 'string' || typeof command.inputDigest !== 'string'
+      || typeof command.executionRef !== 'string'
+      || (command.activityId === undefined && command.sessionId === undefined)
+      || (command.activityId !== undefined && (typeof command.activityId !== 'string' || !command.activityId.trim()))
+      || (command.sessionId !== undefined && (typeof command.sessionId !== 'string' || !command.sessionId.trim()))
       || typeof command.location !== 'string'
       || !['accepted-not-started', 'running', 'paused', 'stop-pending', 'unknown'].includes(command.disposition)) {
       throw new RecoveryError('invalid-boundary-material');

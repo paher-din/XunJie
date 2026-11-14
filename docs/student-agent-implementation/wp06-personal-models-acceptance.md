@@ -1,6 +1,6 @@
 # WP06 #164：个人模型设置与可靠连接检查交付
 
-来源 [#164](https://github.com/paher-din/XunJie/issues/164)，实施分支 `wp06`，基线 `f0979d5`，最终代码 `2b4b87f2b962f38201320ed75ca1398fbd0cf389`。实施边界见[方案](specs/wp06-personal-model-checks.md)，操作及生命周期见[模型 owner](../../packages/learning-space/src/model-connections/README.md)。[草稿 PR #177](https://github.com/paher-din/XunJie/pull/177) 不合并；Windows 与 Apple Silicon Mac 的验收结果均在本文，Mac 交接与逐项勾选见 [#178](https://github.com/paher-din/XunJie/issues/178)，完整跨机/独立部署接管属于后继 [#168](https://github.com/paher-din/XunJie/issues/168)。
+来源 [#164](https://github.com/paher-din/XunJie/issues/164)，实施分支 `wp06`，基线 `f0979d5`，最终代码 `2b4b87f2b962f38201320ed75ca1398fbd0cf389`。实施边界见[方案](specs/wp06-personal-model-checks.md)，操作及生命周期见[模型 owner](../../packages/model-gateway/README.md)。[草稿 PR #177](https://github.com/paher-din/XunJie/pull/177) 不合并；Windows 与 Apple Silicon Mac 的验收结果均在本文，Mac 交接与逐项勾选见 [#178](https://github.com/paher-din/XunJie/issues/178)，完整跨机/独立部署接管属于后继 [#168](https://github.com/paher-din/XunJie/issues/168)。
 
 ## 本次变化
 

@@ -16,12 +16,12 @@ const temporary = await mkdtemp(join(tmpdir(), 'xj-configuration-check-'));
 after(() => rm(temporary, { recursive: true, force: true }));
 await symlink(join(repository, 'node_modules'), join(temporary, 'node_modules'), 'junction');
 await build({ stdin: { contents: `
-  export { createChecks } from './packages/learning-space/src/model-connections/checks.ts';
-  export { modelMigrations } from './packages/learning-space/src/model-connections/index.ts';
-  export { errorFacts, responseFacts, networkFailureReason } from './packages/learning-space/src/model-connections/upstream-facts.ts';
-  export { resolveModelTarget } from './packages/learning-space/src/model-connections/network-policy.ts';
+  export { createChecks } from './packages/model-gateway/src/checks.ts';
+  export { modelMigrations } from './packages/model-gateway/src/index.ts';
+  export { errorFacts, responseFacts, networkFailureReason } from './packages/model-gateway/src/upstream-facts.ts';
+  export { resolveModelTarget } from './packages/model-gateway/src/network-policy.ts';
   export { resolveModelCapacity } from './packages/contracts/src/model-connections.ts';
-  export { testVerdict } from './packages/learning-space/src/model-connections/test-payload.ts';
+  export { testVerdict } from './packages/model-gateway/src/test-payload.ts';
 `, resolveDir: repository }, outfile: join(temporary, 'checks.mjs'), bundle: true, platform: 'node',
   format: 'esm', packages: 'external', alias: { '@xunjie/contracts': join(repository, 'packages/contracts/src') } });
 const { createChecks, modelMigrations, errorFacts, responseFacts, networkFailureReason, resolveModelTarget, resolveModelCapacity, testVerdict } =

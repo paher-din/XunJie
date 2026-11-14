@@ -1,5 +1,7 @@
 # WP09 真实模型验收
 
+本文保留旧版本的验收历史；旧 Agent 探针已退休，文中脚本名仅标识原证据来源。当前 session v2 工程入口为 [teaching-artifact-generation.runtime.test.mjs](../../../../apps/server/tests/teaching-artifact-generation.runtime.test.mjs)、[teaching-artifact-stop-adopt.runtime.test.mjs](../../../../apps/server/tests/teaching-artifact-stop-adopt.runtime.test.mjs)、[workspace-assistant.runtime.test.mjs](../../../../packages/agents/test/workspace-assistant.runtime.test.mjs)。这些测试不继承本页的历史通过结论，真实供应商、桌面与跨机结果须另行验收。
+
 源生产入口的本轮验收通过，累计 **20/24 次 generation，剩余 4 次**。完整事实见 `real-models.json`。每次供应商调用最多 8192 output tokens、绝对截止 60 秒、SDK retry=0；限制只属于 probe。
 
 最终清理已于 **2026-11-08T13:43:55.123Z** 完成。原私有环境 `/private/tmp/xj-wp09-real-models-20261108` 在确认 host/PG stopped、无本任务所属运行进程及打开文件后，经 r3 产品 `deleteEnvironment` 校验原 environmentId 并删除产品数据，再移除本任务 handoff 和 root 外壳；该路径现已不存在。repo 的 20 个 real-models/real-alu JSON 报告与 PNG 截图均保留，删除前后 hash 一致。本文及 JSON 中的 stopped/retained 是**当时的验收与交接事实**，不表示原私有环境当前仍保留；历史 resume 命令已不能用于该已删除环境。后续原 ALU 页的实际采用、真实 Icarus 及 r3 零调用续验见 [real-alu.md](real-alu.md)。
@@ -34,41 +36,15 @@
 
 交接时原隔离环境已停止并保留，学校登录信息只在该 root 的 `wp09-real-models-handoff.private.json`（0600），不进入本报告；当时供主验收脚本用同一环境接真实执行。最终清理已删除该私有文件及原环境。
 
-## 复跑
+## 当前工程回归入口
 
-使用 Node 24.21.0、PostgreSQL 18.6 和已构建的生产模块。本 probe 不运行构建；完整模式需要桌面 Chrome。`--product` 从实际产品包读取 app/product-runtime.js、resources.json 及该包 Web，不用源码 Web 替换产品资源。
+使用 Node 24.21.0 和支持的 `XUNJIE_PRODUCT_POSTGRES_BIN`；先由协调方统一准备 workspace 产物。已有产物时直接运行，不在共享构建期间重复 build：
 
 ```sh
-probe_node="$PWD/dist/product-darwin-arm64-wp07-203-final-r4/resources/node/bin/node"
-export XUNJIE_PRODUCT_POSTGRES_BIN="$PWD/dist/product-darwin-arm64-wp07-203-final-r4/resources/postgres/bin"
-
-# 零 generation：检查已构建 SDK 输出契约和真实 TLS。
-"$probe_node" scripts/probe-wp09-real-models.mjs --prepare-only \
-  --out docs/student-agent-implementation/evidence/wp09/real-models-preflight.json
-
-# 新的完整验收环境：三协议生成/修订、Chrome、跨路线与重启。
-"$probe_node" scripts/probe-wp09-real-models.mjs \
-  --out docs/student-agent-implementation/evidence/wp09/real-models-fresh.json
-
-# UI 尚未构建时先生成候选，保留环境待继续；PRIVATE_DIR 必须是新目录。
-"$probe_node" scripts/probe-wp09-real-models.mjs --candidates-only \
-  --root PRIVATE_DIR --out docs/student-agent-implementation/evidence/wp09/real-models-candidates.json
-
-# 继续同一环境：已有 Run 只读取，共用原证据的累计预算；ALU 分支预留至少 3 calls。
-"$probe_node" scripts/probe-wp09-real-models.mjs \
-  --resume docs/student-agent-implementation/evidence/wp09/real-models-candidates.json \
-  --root PRIVATE_DIR --alu --keep-root \
-  --out docs/student-agent-implementation/evidence/wp09/real-models.json
-
-# 最终新产品包最少核验：Chat 真实生成、采用、输入和重启；继承最新累计 20 次预算。
-"$probe_node" scripts/probe-wp09-real-models.mjs --product PRODUCT_DIR --product-minimal \
-  --budget-from docs/student-agent-implementation/evidence/wp09/real-models.json \
-  --out docs/student-agent-implementation/evidence/wp09/real-models-product.json
+node --test --test-concurrency=1 apps/server/tests/teaching-artifact-generation.runtime.test.mjs apps/server/tests/teaching-artifact-stop-adopt.runtime.test.mjs packages/agents/test/workspace-assistant.runtime.test.mjs
 ```
 
-本轮当前不重跑 fresh 示例。r2 Mac 产品包已按下节完成原环境零调用续验；fresh / product-minimal 命令仅作为未来复跑示例，不属于本轮新增调用。`--browser-only` 只做原候选的 Chrome/恢复，不启动跨路线生成。成功完整模式默认删除自己创建的隔离环境；`--keep-root` 和 ALU 交接模式保留停止后的原环境。
-
-默认私有配置为 `~/.config/magpie/providers.json`，只按 JSON `providers.find(p => /deepseek/i.test(p.preset ?? p.name ?? '') && p.key).key` 取密钥，不尝试旧逐行格式。密钥只用于内存及临时产品环境的正式凭据保存。报告不写配置正文、HTTP 请求/响应正文、原生 thinking、生成脚本、登录凭据或学生状态正文；仅保留公共身份、版本、摘要、状态、usage 和实际传输/HTTP/TLS 事实。
+这些是当前 session v2 工程入口，结果须按本次实际执行单独记录。历史产品包、真实供应商、桌面输入法与跨机验收不由上述测试替代。
 
 ## TLS 和网络适配
 
@@ -96,14 +72,7 @@ Chat SDK 收到协议终态后会取消尚未 EOF 的 SSE。报告保留实际 f
 
 本段记录 `real-models-product-r2.json` 的采集时事实：ALU 原候选在 r2 中重读通过，当时仍为 candidate；原 revision 摘要、Run、command 来源一致，未重复发布或执行，root 停止并保留供后续联调。随后原页的采用、Monaco 工程 fixture 和真实 Icarus 见 [real-alu.md](real-alu.md)；该 root 现已最终清理。
 
-```sh
-# 本轮实际命令；继续已通过源证据，禁止新模型 generation，保留原 root。
-dist/wp09-macos-r2/resources/node/bin/node scripts/probe-wp09-real-models.mjs \
-  --product dist/wp09-macos-r2 \
-  --resume docs/student-agent-implementation/evidence/wp09/real-models.json \
-  --root PRIVATE_DIR --keep-root --screenshots \
-  --out docs/student-agent-implementation/evidence/wp09/real-models-product-r2.json
-```
+旧探针命令已退休；当前工程入口见本页开头的测试链接。原始报告仍仅证明当时的旧版本结果。
 
 截图由正式首页外观菜单选择浅/深色，再打开同一 Responses 原产物 v2 的中心工具页；未改 DOM 配色、未编辑图片。截图均为真实 Chrome 1440×1000，可与 before/activity-page.png 对照。
 

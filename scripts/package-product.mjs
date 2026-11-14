@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { createReadStream, createWriteStream } from 'node:fs';
-import { chmod, cp, lstat, mkdir, mkdtemp, readFile, readdir, readlink, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { chmod, cp, lstat, mkdir, mkdtemp, readFile, readdir, readlink, realpath, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { builtinModules, createRequire } from 'node:module';
 import { homedir } from 'node:os';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
@@ -106,14 +106,17 @@ export async function writeLaunchers(directory, platform) {
   return names;
 }
 
-export function assertProductionGraph(metafile) {
+export function assertProductionGraph(metafile, sourceRoot = root) {
   for (const input of Object.keys(metafile.inputs)) {
-    const path = slash(isAbsolute(input) ? relative(root, input) : input);
+    const path = slash(isAbsolute(input) ? relative(sourceRoot, input) : input);
     if (path.startsWith('product-node-only:')) continue;
+    if (/^packages\/agents\/src\/(?:runtime\/|transport\/service\.[cm]?ts$)/.test(path)) {
+      throw new Error(`Retired Agent dependency in product bundle: ${path}`);
+    }
     if (forbidden.test(path) || /(?:^|\/)pg-native(?:\/|$)|node_modules\/pg\/lib\/native(?:\/|\.)/.test(path)) {
       throw new Error(`Non-production dependency in product bundle: ${path}`);
     }
-    if (!/^(?:(?:(?:apps\/local-runtime|packages\/(?:product-runtime|contracts|storage|learning-space))\/)?node_modules\/|apps\/local-runtime\/src\/|packages\/(?:product-runtime|storage|learning-space)\/src\/|packages\/contracts\/(?:src|dist)\/)/.test(path)) {
+    if (!/^(?:(?:(?:apps\/local-runtime|packages\/(?:product-runtime|contracts|storage|learning-space|agent-runtime|agents|model-gateway))\/)?node_modules\/|apps\/local-runtime\/src\/|packages\/(?:product-runtime|storage|learning-space|agent-runtime|agents|model-gateway)\/src\/|packages\/contracts\/(?:src|dist)\/)/.test(path)) {
       throw new Error(`Dependency outside the product production graph: ${path}`);
     }
   }
@@ -261,16 +264,56 @@ export async function stagePdfRuntime(app, platform, cache = join(homedir(), '.c
   return directories;
 }
 
-export async function buildApplication(app, platform = `${process.platform}-${process.arch}`, cache) {
-  const require = createRequire(join(root, 'packages/product-runtime/package.json'));
-  const driver = JSON.parse(await readFile(require.resolve('pg/package.json'), 'utf8'));
-  if (driver.version !== '8.16.3') throw new Error(`Expected pg 8.16.3; found ${driver.version}. Run npm ci first.`);
+// Follow public exports rather than assuming a subpath is a same-named source file.
+async function workspaceSource(sourceRoot, specifier) {
+  const [, name, ...parts] = specifier.split('/');
+  const directory = join(sourceRoot, 'packages', name);
+  const metadata = JSON.parse(await readFile(join(directory, 'package.json'), 'utf8'));
+  const subpath = parts.length ? `./${parts.join('/')}` : '.';
+  const exports = metadata.exports;
+  const entries = exports && typeof exports === 'object' && !Array.isArray(exports)
+    && Object.keys(exports).some(key => key.startsWith('.')) ? exports : { '.': exports };
+  let target = entries[subpath], replacement;
+  if (!Object.hasOwn(entries, subpath)) {
+    const patterns = Object.keys(entries).filter(key => key.includes('*')).sort((a, b) =>
+      b.indexOf('*') - a.indexOf('*') || b.length - a.length);
+    for (const key of patterns) {
+      const [before, after] = key.split('*');
+      if (subpath.startsWith(before) && subpath.endsWith(after) && subpath.length >= before.length + after.length) {
+        replacement = subpath.slice(before.length, subpath.length - after.length);
+        target = entries[key]; break;
+      }
+    }
+  }
+  const runtimeTarget = value => {
+    if (typeof value === 'string' || value == null) return value;
+    if (Array.isArray(value)) return value.map(runtimeTarget).find(item => item != null);
+    for (const [condition, entry] of Object.entries(value)) {
+      if (['node', 'import', 'default'].includes(condition)) {
+        const selected = runtimeTarget(entry);
+        if (selected !== undefined) return selected;
+      }
+    }
+  };
+  target = runtimeTarget(target);
+  if (typeof target !== 'string') throw new Error(`No runtime export for ${specifier}`);
+  if (replacement !== undefined) target = target.replaceAll('*', replacement);
+  if (!/^\.\/dist\/.+\.(?:js|mjs|cjs)$/.test(target) || target.split('/').includes('..')) {
+    throw new Error(`Unsupported source export for ${specifier}: ${target}`);
+  }
+  return join(directory, target.replace(/^\.\/dist\//, 'src/').replace(/\.js$/, '.ts').replace(/\.mjs$/, '.mts').replace(/\.cjs$/, '.cts'));
+}
+
+/** Bundle the production source graph without downloading platform resources. */
+export async function bundleApplication(app, { sourceRoot = root, entryPoints = {
+  cli: 'apps/local-runtime/src/cli.ts', daemon: 'packages/product-runtime/src/daemon.ts',
+  'product-runtime': 'packages/product-runtime/src/index.ts',
+  'pdf-engine-worker': 'packages/learning-space/src/pdf-engine/pdf-engine-worker.ts',
+} } = {}) {
+  sourceRoot = await realpath(sourceRoot);
   const { build } = await import('esbuild');
   const result = await build({
-    absWorkingDir: root,
-    entryPoints: { cli: 'apps/local-runtime/src/cli.ts', daemon: 'packages/product-runtime/src/daemon.ts',
-      'product-runtime': 'packages/product-runtime/src/index.ts',
-      'pdf-engine-worker': 'packages/learning-space/src/pdf-engine/pdf-engine-worker.ts' },
+    absWorkingDir: sourceRoot, entryPoints,
     outdir: app, bundle: true, splitting: false, platform: 'node', target: 'node24', format: 'esm',
     packages: 'bundle', external: [...builtin, ...pdfExternals], sourcemap: false, metafile: true, write: true,
     legalComments: 'eof', logLevel: 'warning',
@@ -279,12 +322,10 @@ export async function buildApplication(app, platform = `${process.platform}-${pr
     plugins: [{
       name: 'product-production-only',
       setup(plugin) {
-        plugin.onResolve({ filter: /^@xunjie\/learning-space$/ }, () => ({ path: join(root, 'packages/learning-space/src/index.ts') }));
-        plugin.onResolve({ filter: /^@xunjie\/product-runtime$/ }, () => ({ path: join(root, 'packages/product-runtime/src/index.ts') }));
-        plugin.onResolve({ filter: /^@xunjie\/storage$/ }, () => ({ path: join(root, 'packages/storage/src/index.ts') }));
-        plugin.onResolve({ filter: /^@xunjie\/contracts(?:\/[^/]+)?$/ }, args => ({
-          path: join(root, 'packages/contracts/src', `${args.path === '@xunjie/contracts' ? 'index' : args.path.split('/')[2]}.ts`),
-        }));
+        plugin.onResolve({ filter: /^@xunjie\/(?:contracts|storage|learning-space|product-runtime|agent-runtime|agents|model-gateway)(?:\/.*)?$/ }, async args => {
+          try { return { path: await workspaceSource(sourceRoot, args.path) }; }
+          catch (error) { return { errors: [{ text: error.message }] }; }
+        });
         // pg's optional native getter must keep its MODULE_NOT_FOUND semantics,
         // without resolving either libpq bindings or the Cloudflare-only SDK.
         plugin.onResolve({ filter: /^\.\/native$/ }, args => slash(args.importer).endsWith('/pg/lib/index.js')
@@ -297,7 +338,15 @@ export async function buildApplication(app, platform = `${process.platform}-${pr
       },
     }],
   });
-  assertProductionGraph(result.metafile);
+  assertProductionGraph(result.metafile, sourceRoot);
+  return result;
+}
+
+export async function buildApplication(app, platform = `${process.platform}-${process.arch}`, cache) {
+  const require = createRequire(join(root, 'packages/product-runtime/package.json'));
+  const driver = JSON.parse(await readFile(require.resolve('pg/package.json'), 'utf8'));
+  if (driver.version !== '8.16.3') throw new Error(`Expected pg 8.16.3; found ${driver.version}. Run npm ci first.`);
+  const result = await bundleApplication(app);
   for (const name of ['cli.js', 'daemon.js', 'product-runtime.js', 'pdf-engine-worker.js']) await assertNoWorkspacePath(join(app, name));
   const recordedMetafile = { ...result.metafile, outputs: Object.fromEntries(
     Object.entries(result.metafile.outputs).map(([path, details]) => [`app/${slash(relative(app, resolve(root, path)))}`, details]),

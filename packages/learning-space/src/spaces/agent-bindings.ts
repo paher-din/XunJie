@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { StorageError, type Migration, type OwnedStorage } from '@xunjie/storage';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import { teachingAgentBindingInputSchema, teachingAgentBindingSchema, type TeachingAgentBinding } from '@xunjie/contracts/teaching-agent';
+import { agentSessionsCapability } from '@xunjie/contracts/agent-service';
 
 export const memberAgentBindingMigration: Migration = { version: 10, name: 'member-agent-service-bindings', sql: `
   CREATE TABLE member_agent_bindings(space_id uuid NOT NULL,principal_id uuid NOT NULL,body jsonb NOT NULL,
@@ -18,6 +19,7 @@ export function createMemberAgentBindings(storage: OwnedStorage, authorize: (ide
   return { read,
     async bind(value: unknown) {
       const input = teachingAgentBindingInputSchema.parse(value);
+      if (!input.target.capabilities.includes(agentSessionsCapability)) throw new StorageError('incompatible');
       await authorize(input.identity);
       const binding = teachingAgentBindingSchema.parse({ version: 1, connectionId: input.connectionId,
         target: input.target, installationId: input.installationId,

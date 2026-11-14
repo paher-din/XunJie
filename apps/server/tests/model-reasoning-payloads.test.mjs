@@ -15,10 +15,10 @@ const temporary = await mkdtemp(join(tmpdir(), 'xj-reasoning-payloads-'));
 after(() => rm(temporary, { recursive: true, force: true }));
 await symlink(join(repository, 'node_modules'), join(temporary, 'node_modules'), 'junction');
 await build({ stdin: { contents: `
-  export * from './packages/learning-space/src/model-connections/transport.ts';
-  export * from './packages/learning-space/src/model-connections/capabilities.ts';
-  export * from './packages/learning-space/src/model-connections/service.ts';
-  export { createChatWork } from './packages/learning-space/src/model-connections/chat-work.ts';
+  export * from './packages/model-gateway/src/transport.ts';
+  export * from './packages/model-gateway/src/capabilities.ts';
+  export * from './packages/model-gateway/src/service.ts';
+  export { createChatWork } from './packages/model-gateway/src/chat-work.ts';
 `, resolveDir: repository }, outfile: join(temporary, 'source.mjs'), bundle: true, platform: 'node',
   format: 'esm', packages: 'external', alias: { '@xunjie/contracts': join(repository, 'packages/contracts/src') } });
 const { adapterReady, connectionCheckPayload, limitPayload, runModel, measuredCapabilities, decideModelCapabilities,

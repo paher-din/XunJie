@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { canonicalDigest } from '../teaching-agent/identity.js';
+import { canonicalDigest } from '@xunjie/storage/identity';
 import { Script } from 'node:vm';
 import { z } from 'zod';
 import { StorageError, type OwnedStorage, type OwnedTransaction, type Migration } from '@xunjie/storage';

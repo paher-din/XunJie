@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { randomUUID } from 'node:crypto';
 import { StorageError } from '@xunjie/storage';
-import type { TeachingToolData } from '@xunjie/learning-space';
+import type { TeachingToolData } from '@xunjie/agents';
 import { anyExecutionActionSchema, executionQuerySchema, type AnyExecutionAction } from '@xunjie/contracts/execution';
 import { createExecutionRouting, createSchoolExecutionHandler,
   type SchoolExecutionAuthorization, type SchoolExecutionSource } from '../dist/execution-routing.js';

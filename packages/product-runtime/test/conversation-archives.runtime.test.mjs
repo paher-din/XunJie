@@ -9,8 +9,9 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import * as storage from '@xunjie/storage';
 import { activitySchema, conversationArchiveStateSchema, conversationArchiveSetSchema,
   conversationArchiveImportSchema } from '@xunjie/contracts/learning-data';
-import { createLearningData, learningMigrations, validateLearningData, createSpaces, spaceMigrations,
-  createLearningEntry, createLearningAuthority } from '@xunjie/learning-space';
+import { createLearningData, learningMigrations, validateLearningData, createSpaces, spaceMigrations } from '@xunjie/learning-space';
+import { createLearningEntry } from '@xunjie/product-runtime/learning-http';
+import { createLearningAuthority } from '@xunjie/product-runtime/learning-http/authority';
 import { nativeFixture } from '../../storage/test/native-fixture.mjs';
 import { createSchoolClient } from '../dist/school-client.js';
 import { createConnectionAuthority } from '@xunjie/product-runtime/connections';

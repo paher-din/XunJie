@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { randomUUID } from 'node:crypto';
-import { createLearningModelService, createLearningModelClient } from '../../../packages/learning-space/dist/model-connections/service.js';
+import { createLearningModelService, createLearningModelClient } from '../../../packages/model-gateway/dist/service.js';
 import { StorageError } from '@xunjie/storage';
 const identity = { kind: 'personal', name: '学习', environmentId: randomUUID(), spaceId: randomUUID(), principalId: randomUUID() };
 
@@ -18,9 +18,9 @@ test('the explicit learning boundary rejects unknown operations, extra arguments
 
 import { provisionStorage, openStorage, createFileBackend } from '@xunjie/storage';
 import { nativeFixture } from '../../../packages/storage/test/native-fixture.mjs';
-import { createModelGateway, modelMigrations } from '../../../packages/learning-space/dist/model-connections/index.js';
-import { createModelDeviceTasks } from '../../../packages/learning-space/dist/model-connections/device-tasks.js';
-import { defaultLearningAdmissionPolicy } from '../../../packages/learning-space/dist/model-connections/learning-admission.js';
+import { createModelGateway, modelMigrations } from '../../../packages/model-gateway/dist/index.js';
+import { createModelDeviceTasks } from '../../../packages/model-gateway/dist/device-tasks.js';
+import { defaultLearningAdmissionPolicy } from '../../../packages/model-gateway/dist/learning-admission.js';
 
 test('versioned learning tasks survive reopen and reject replacing original owner or recovery generation', { timeout: 60000 }, async () => {
   const fixture = await nativeFixture(); let storage;

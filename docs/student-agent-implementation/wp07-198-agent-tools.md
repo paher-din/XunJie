@@ -1,6 +1,8 @@
 # WP07 #198：读取作品、课程工具与结果解释
 
-本轮实现对应 [#198](https://github.com/paher-din/XunJie/issues/198)，基线 `e39462c`，分支 `wp07`。运行设计见[实施选择](specs/wp07-agent-tools.md)，所有权与接口见 [teaching-agent README](../../packages/learning-space/src/teaching-agent/README.md)，旧消费者的迁接归属见[入口迁移清单](wp07-198-legacy-consumers.md)。
+本文保留旧版本的验收历史；旧 Agent 探针已退休，文中脚本名仅标识原证据来源。当前 session v2 工程入口为 [conversation-native.runtime.test.mjs](../../packages/agents/test/conversation-native.runtime.test.mjs)、[tool-discovery.runtime.test.mjs](../../packages/agents/test/tool-discovery.runtime.test.mjs)。这些测试不继承本页的历史通过结论，真实供应商、桌面与跨机结果须另行验收。
+
+本轮实现对应 [#198](https://github.com/paher-din/XunJie/issues/198)，基线 `e39462c`，分支 `wp07`。运行设计见[实施选择](specs/wp07-agent-tools.md)，所有权与接口见 [teaching-agent README](../../packages/agents/README.md)，旧消费者的迁接归属见[入口迁移清单](wp07-198-legacy-consumers.md)。
 
 ## 实现
 
@@ -36,11 +38,11 @@
 
 ## 验证证据
 
-真实模型验收使用受限的 `deepseek-flash` [探针](../../scripts/probe-teaching-tools.mjs)：Chat Completions、Responses、Messages 各完成一次实际 `read_work` 与后续解释，共 6 次生成，均 HTTP 200，无重试。证据含协议、SDK 版本、真实工具结果、用量与回答摘要：[real-model.json](evidence/wp07-198/real-model.json)。探针的生成次数、输出和超时边界仅属于验收，不是产品配置。
+真实模型验收使用受限的 `deepseek-flash` 历史脚本 `probe-teaching-tools.mjs`（已退役）：Chat Completions、Responses、Messages 各完成一次实际 `read_work` 与后续解释，共 6 次生成，均 HTTP 200，无重试。证据含协议、SDK 版本、真实工具结果、用量与回答摘要：[real-model.json](evidence/wp07-198/real-model.json)。探针的生成次数、输出和超时边界仅属于验收，不是产品配置。
 
 Chrome 用例 [teachingTools.spec.ts](../../apps/web/e2e/teachingTools.spec.ts) 使用生产 HTTP、真实 PostgreSQL、固定作品与 WP03 样例。模型 transport 只控制工具选择和时序；作品读取、WASM 聚合与原生连续状态均由真实实现产生。覆盖固定版本、结果定位、刷新、丢失接受回包、原浏览器失联、等待、停止与新问题草稿保留。
 
-恢复测试 [teaching-agent.tools-recovery.runtime.test.mjs](../../apps/server/tests/teaching-agent.tools-recovery.runtime.test.mjs) 另覆盖结果关联前中断、双推进者、原执行输入丢回执、停止许可竞争、已结算用量保留及真实晚结果唯一消费。宿主与原生通道测试覆盖可信发起者、浏览器身份、能力门控、跨活动拒绝及撤权回收。
+当时的 `teaching-agent.tools-recovery.runtime.test.mjs` 已随旧执行器退役；当前原执行输入丢回执、浏览器 claim 和真实晚结果归档由 [agent-tool-recovery.runtime.test.mjs](../../apps/server/tests/agent-tool-recovery.runtime.test.mjs) 验证，停止与撤权回收由 [agent-deployment-cleanup.runtime.test.mjs](../../apps/server/tests/agent-deployment-cleanup.runtime.test.mjs) 验证。通用许可、并发推进及用量恢复见 [新内核测试](../../packages/agent-runtime/test/)。这些入口替代旧代码，历史验收数字仅对应下述原记录。
 
 Windows 验收使用已登录桌面的普通用户令牌。相同受限原生启动器在 OpenSSH 的 Session 0 中退出 `0xc0000142`；改由 `InteractiveToken / Limited` 的任务运行后，正式工具用例通过，未放宽隔离规则。这与 [WP03 已记录的运行边界](wp03-course-execution-plan.md) 一致。
 

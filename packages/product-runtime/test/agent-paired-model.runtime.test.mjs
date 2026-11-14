@@ -6,7 +6,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:http';
+import { question, versionHeaders, completed } from './support/installed-agent-v2.mjs';
 import { openProductRuntime, resolveCredential, createOutboundConnection } from '@xunjie/product-runtime';
+import { createChunkClient } from '@xunjie/storage/chunk-channel';
+import { createAgentDependencyClient } from '@xunjie/agents/transport/session-dependencies';
 
 const resources = { nodePath: process.execPath, nodeVersion: '24.21.0',
   postgresBin: process.env.XUNJIE_PRODUCT_POSTGRES_BIN, postgresVersion: '18.6',
@@ -29,7 +32,7 @@ for (const profile of ['model', 'local']) test(`a separate Agent uses an activel
   });
   await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
   const request = async (endpoint, route, body, headers = {}) => {
-    const response = await fetch(endpoint+'/api/learning/'+route, { headers: { 'content-type': 'application/json', ...headers },
+    const response = await fetch(endpoint+'/api/learning/'+route, { headers: { 'content-type': 'application/json', ...versionHeaders(route), ...headers },
       ...(body === undefined ? {} : { method: 'POST', body: JSON.stringify(body) }) });
     const value = await response.json();
     assert.equal(response.status, 200, route+': '+JSON.stringify(value));
@@ -56,15 +59,15 @@ for (const profile of ['model', 'local']) test(`a separate Agent uses an activel
     const activity = await schoolApi('activities', { requestId: randomUUID(), goal: '学校作品与本机模型', question: '', references: [] });
     assert.equal(activity.target.serviceId, dataService.serviceId);
     const acceptGrant = await agent.authorize({ sourceEnvironmentId: dataService.environmentId, sourceServiceId: dataService.serviceId,
-      sourceInstallationId: schoolState.environment.installationId, capabilities: ['teaching.agent'] }, agentService.serviceId);
+      sourceInstallationId: schoolState.environment.installationId, capabilities: ['agent.sessions.v2'] }, agentService.serviceId);
     await school.connect({ connectionId: agentConnectionId, sourceEnvironmentId: dataService.environmentId, sourceServiceId: dataService.serviceId,
-      target: agentService, requiredCapabilities: ['teaching.agent'], optionalCapabilities: [], credentialRef: 'paired-agent' }, acceptGrant.token);
+      target: agentService, requiredCapabilities: ['agent.sessions.v2'], optionalCapabilities: [], credentialRef: 'paired-agent' }, acceptGrant.token);
     await schoolApi('manage/agent-binding', { requestId: randomUUID(), identity, connectionId: agentConnectionId,
       target: agentService, installationId: agentState.environment.installationId }, admin);
     const dependencyGrant = await school.authorize({ sourceEnvironmentId: agentService.environmentId, sourceServiceId: agentService.serviceId,
-      sourceInstallationId: agentState.environment.installationId, capabilities: ['teaching.dependencies'] }, dataService.serviceId);
+      sourceInstallationId: agentState.environment.installationId, capabilities: ['agent.dependencies.v2'] }, dataService.serviceId);
     await agent.connect({ connectionId: dependencyConnectionId, sourceEnvironmentId: agentService.environmentId, sourceServiceId: agentService.serviceId,
-      target: dataService, requiredCapabilities: ['teaching.dependencies'], optionalCapabilities: [], credentialRef: 'paired-dependencies' }, dependencyGrant.token);
+      target: dataService, requiredCapabilities: ['agent.dependencies.v2'], optionalCapabilities: [], credentialRef: 'paired-dependencies' }, dependencyGrant.token);
     const connectionId = randomUUID();
     await deviceApi('client/start', { requestId: connectionId, schoolEndpoint: schoolState.endpoint });
     await schoolApi('connections/approve', { requestId: connectionId });
@@ -103,39 +106,29 @@ for (const profile of ['model', 'local']) test(`a separate Agent uses an activel
       source: { kind: 'personal', connectionId: modelConnectionId, grantId: useGrantId } }, selected);
     assert.equal(deviceSelection.version, 2);
     assert.deepEqual(await schoolApi('models/selection'), deviceSelection);
-    const capability = await schoolApi(`agent/${activity.activityId}/capabilities`);
-    assert.equal(capability.modelAvailable, true, JSON.stringify(capability));
-    const requestId = randomUUID();
-    await schoolApi(`intents/${activity.activityId}`, { requestId, receiver: capability.receiver,
-      scope: { environmentId: identity.environmentId, spaceId: identity.spaceId, principalId: identity.principalId, activityId: activity.activityId },
-      draft: { token: randomUUID(), question: '请用当前获准个人模型解释原活动', references: [], bases: [] }, works: [], evidence: [] });
-    assert.equal((await schoolApi(`intents/${activity.activityId}/${requestId}/dispatch`, {})).state, 'accepted');
-    const deadline = Date.now()+90000; let conversation;
-    do {
-      conversation = await schoolApi(`agent/${activity.activityId}/conversation`);
-      if (conversation.runs.some(run => ['completed', 'failed', 'paused'].includes(run.state))) break;
-      await new Promise(resolve => setTimeout(resolve, 200));
-    } while (Date.now()<deadline);
-    assert.equal(conversation.runs[0]?.state, 'completed', JSON.stringify(conversation));
-    assert.equal(conversation.runs[0].model.connectionId, modelConnectionId);
-    assert.equal(conversation.messages.at(-1).text, '来自获准设备模型的回答');
+    const session = await schoolApi('agent-sessions/workspace', { activityId: activity.activityId, target: activity.target });
+    const input = question(activity, session, '请用当前获准个人模型解释原活动');
+    const receipt = await schoolApi(`agent-sessions/${session.sessionId}/inputs`, input);
+    const conversation = await completed(schoolApi, session.sessionId, receipt.runId);
+    const snapshot = await schoolApi(`agent-sessions/${session.sessionId}/snapshots/${receipt.runId}`);
+    const step = snapshot.steps.find(step => step.operation.kind === 'model.call');
+    assert.equal(step.result.value.attempt.connection.connectionId, modelConnectionId);
+    assert.equal(conversation.messages.filter(item => item.role === 'assistant').at(-1).text, '来自获准设备模型的回答');
     assert.equal(payloads.length, 1);
     await device.stop(); await device.start();
-    assert.deepEqual(await schoolApi(`agent/${activity.activityId}/conversation`), conversation,
+    assert.deepEqual(await schoolApi(`agent-sessions/${session.sessionId}/conversation`), conversation,
       'Model owner restart preserves the original completed activity record.');
     const originalQuery = createOutboundConnection({ connection: { connectionId: dependencyConnectionId,
       sourceEnvironmentId: agentService.environmentId, sourceServiceId: agentService.serviceId, target: dataService,
-      requiredCapabilities: ['teaching.dependencies'], optionalCapabilities: [], credentialRef: 'paired-dependencies' },
+      requiredCapabilities: ['agent.dependencies.v2'], optionalCapabilities: [], credentialRef: 'paired-dependencies' },
       credential: async () => dependencyGrant.token, allowInsecureLoopback: true, timeoutMs: 15000 });
-    const originalReply = await originalQuery.request('teaching.dependencies', { version: 1, operation: 'model', identity,
-      activityId: activity.activityId, args: [{ identity, operation: 'checks.read', args: [conversation.runs[0].attemptId] }] });
-    assert.equal(originalReply.ok, true, JSON.stringify(originalReply));
-    const originalAttempt = originalReply.value;
+    const originalDependencies = createAgentDependencyClient(createChunkClient(call => originalQuery.request('agent.dependencies.v2', call)));
+    const originalAttempt = await originalDependencies.forSession(identity, session.sessionId).models.checks.read(identity, step.operation.operationId);
     assert.equal(originalAttempt.state, 'completed');
-    assert.equal(originalAttempt.attemptId, conversation.runs[0].attemptId);
+    assert.equal(originalAttempt.attemptId, step.operation.operationId);
     assert.equal(payloads.length, 1, 'reopening the original result never creates a model call');
     assert.equal((await schoolApi('activities/'+activity.activityId)).target.serviceId, dataService.serviceId);
-    assert.equal((await schoolApi(`agent/${activity.activityId}/requests/${requestId}`)).state, 'accepted');
+    assert.deepEqual(await schoolApi(`agent-sessions/${session.sessionId}/requests/${input.requestId}`), { receipt, input });
   } finally {
     await Promise.allSettled([agent.stop(), device.stop(), school.stop()]);
     upstream.closeAllConnections(); await new Promise(resolve => upstream.close(resolve));

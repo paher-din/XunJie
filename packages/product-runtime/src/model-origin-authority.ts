@@ -1,5 +1,6 @@
 import { StorageError } from '@xunjie/storage';
-import type { createModelGateway, createPairedLearningModels, PairedLearningOptions } from '@xunjie/learning-space';
+import type { createModelGateway, PairedLearningOptions } from '@xunjie/model-gateway';
+import type { createPairedLearningModels } from '@xunjie/model-gateway/paired-learning';
 import type { RuntimeService } from '@xunjie/contracts/product-runtime';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import { recoveryPredecessors } from './recovery-successions.js';
@@ -38,7 +39,8 @@ export function withModelOriginRecovery(root: string, paired: ReturnType<typeof 
     async authorizeTask(...args: Parameters<typeof paired.authorizeTask>) {
       const permit = await paired.authorizeTask(...args);
       const { task } = await models.deviceTasks.read(...args);
-      if (task.operation !== 'learning' || task.formatVersion !== 2) throw new StorageError('forbidden');
+      if (task.operation !== 'learning' || task.formatVersion !== 2 && task.formatVersion !== 3) throw new StorageError('forbidden');
+      if (task.formatVersion === 2) return permit;
       return { ...permit, successions: await recoveryPredecessors(root, task.origin.service, task.origin.installationId) };
     },
   };

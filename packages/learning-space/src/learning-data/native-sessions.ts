@@ -589,8 +589,7 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
         return confirmObservation(sessionRef, input.controlId, reconciled.seq, reconciled.state, reconciled.at, reconciled.sessionState);
       }
     }
-    if (Number(row.applied_seq) !== input.expectedSeq) fail('identity-conflict');
-    const seq = Number(row.applied_seq) + 1;
+    const seq = input.expectedSeq + 1;
     const reserved = await storage.request({ requestId: 'native-control:' + input.controlId,
       fingerprint: digest({ sessionRef, inputDigest, seq }) }, async tx => {
       const { rows: [currentActivity] } = await tx.query('SELECT body FROM activities WHERE id=$1 FOR SHARE', [activityId]);
@@ -601,22 +600,24 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
         || current.supervisor_epoch !== supervisorEpoch || current.executor_instance_id !== entry.process.instanceId) fail('forbidden');
       if (['succeeded', 'failed', 'cancelled'].includes(String(current.state)) || current.stop_requested
         || !['running', 'paused'].includes(String(current.state)) || current.status_knowledge !== 'confirmed' || current.state !== allowedState) fail('invalid');
-      if (Number(current.applied_seq) !== input.expectedSeq) fail('identity-conflict');
       const { rows: [clash] } = await tx.query(`SELECT control_id FROM native_session_operations
         WHERE session_ref=$1 AND seq=$2 AND status='dispatching'`, [sessionRef, seq]);
-      if (clash) fail('identity-conflict');
+      const rejected = Number(current.applied_seq) !== input.expectedSeq || !!clash;
       const inserted = await tx.query(`INSERT INTO native_session_operations(control_id,session_ref,seq,operation_id,
-        input_digest,parameters,status,effect) VALUES($1,$2,$3,$4,$5,$6,'dispatching',$7) ON CONFLICT(control_id) DO NOTHING RETURNING control_id`,
-        [input.controlId, sessionRef, seq, input.operationId, inputDigest, JSON.stringify(input.parameters), input.effect]);
+        input_digest,parameters,status,effect,reason) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT(control_id) DO NOTHING RETURNING control_id`,
+        [input.controlId, sessionRef, seq, input.operationId, inputDigest, JSON.stringify(input.parameters),
+          rejected ? 'rejected' : 'dispatching', input.effect, rejected ? JSON.stringify(reasonOf('invalid-input',
+            `本次输入未派发：expectedSeq=${input.expectedSeq}，当前 appliedSeq=${Number(current.applied_seq)}${clash ? '，该位置已有输入待确认' : ''}。`)) : null]);
       if (!inserted.rowCount) {
         const { rows: [known] } = await tx.query('SELECT * FROM native_session_operations WHERE control_id=$1',
           [input.controlId]);
         if (!known || known.input_digest !== inputDigest) fail('identity-conflict');
-        return { seq: Number(known.seq), applied: known.status === 'applied' };
+        return { seq: Number(known.seq), applied: known.status === 'applied', rejected: known.status === 'rejected' };
       }
-      return { seq, applied: false };
+      return { seq, applied: false, rejected };
     });
-    const booked = reserved.result as { seq: number; applied: boolean };
+    const booked = reserved.result as { seq: number; applied: boolean; rejected: boolean };
+    if (booked.rejected) fail('identity-conflict');
     if (booked.applied) return queryOf((await findRef(sessionRef))!);
     await verifyPlacement(identity, await options.activity(identity, activityId), action);
     await assertGeneration((await findRef(sessionRef))!);

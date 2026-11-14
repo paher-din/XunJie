@@ -3,7 +3,7 @@ import { useToastFeedback } from '@xunjie/ui/feedback'
 import { z } from 'zod'
 import { componentChangeSchema, componentStateName, componentReply, matchesComponentState } from '@xunjie/contracts/components'
 import { actionInputSchema } from '@xunjie/contracts/action-intents'
-import { teachingConversationSchema, teachingStudentResponseInputSchema, teachingStudentResponseReceiptSchema } from '@xunjie/contracts/teaching-agent'
+import { agentWaitReceiptSchema } from '@xunjie/contracts/agent-service'
 import { teachingArtifactReferenceCopy } from '@xunjie/contracts/teaching-artifacts-reference'
 import { questionWorkBasisSchema } from '@xunjie/contracts/question-drafts'
 import { personalMaterialVersionContentSchema } from '@xunjie/contracts/personal-materials'
@@ -15,7 +15,7 @@ import { useSemanticSource, componentSource } from '../components/workspace/refe
 import { artifactExecutionAction } from './execution'
 import { ArtifactExecutions } from './ArtifactExecutions'
 import { actionScopeFromWorkspaceKey } from '../reliable-workspace/actions'
-import { agentControlStore, protectAgentOperation, deliverAgentOperation, confirmAgentOperation } from '../reliable-workspace/agent-controls'
+import { agentControlStore, protectAgentOperation, confirmAgentOperation } from '../reliable-workspace/agent-controls'
 import { frameTheme, hashBytes, artifactViewUrl, bootstrapMessage } from './frame'
 import type { TeachingArtifactsController } from './useTeachingArtifacts'
 
@@ -117,13 +117,15 @@ export function ArtifactView({ revision, controller }: { revision: TeachingArtif
                   return
                 }
                 if (!userGesture) throw new Error('forbidden')
-                const conversation = teachingConversationSchema.parse(await request(`agent/${revision.activityId}/conversation`)); assert()
-                const question = input.questionId ? conversation.questions.find(question => question.questionId === input.questionId) : undefined
+                const agent = sessionLatest.current.agent
+                if (!agent?.sessionId) throw new Error('capability-unavailable')
+                const conversation = await agent.client.conversation(agent.sessionId); assert()
+                const question = input.questionId ? conversation.waits.find(wait => wait.waitId === input.questionId || wait.presentation.questionId === input.questionId) : undefined
                 if (question) {
-                  const fixed = teachingStudentResponseInputSchema.parse({ requestId: input.requestId, questionVersion: question.version, waitVersion: question.waitVersion,
-                    answer: input.optionId ? { kind: 'choice', optionId: input.optionId } : { kind: 'text', text: input.text } })
-                  pending = { requestId: input.requestId, route: `agent/${revision.activityId}/questions/${question.questionId}/responses`,
-                    queryRoute: `agent/${revision.activityId}/responses/${input.requestId}`, input: fixed }
+                  if (question.kind !== 'user' || question.state !== 'pending') throw new Error('conflict')
+                  const fixed = { requestId: input.requestId, expectedVersion: question.version,
+                    answer: input.optionId ? { kind: 'choice', optionId: input.optionId } : { kind: 'text', text: input.text } }
+                  pending = { requestId: input.requestId, route: `${agent.sessionId}/waits/${question.waitId}/responses`, queryRoute: '', input: fixed }
                   await protectAgentOperation(key, workspace.key, pending)
                 } else {
                   if (input.questionId) throw new Error('resource-unavailable')
@@ -137,7 +139,12 @@ export function ArtifactView({ revision, controller }: { revision: TeachingArtif
                 }
               }
               if (pending) {
-                payload = await deliverAgentOperation(pending, request, value => teachingStudentResponseReceiptSchema.parse(value))
+                const agent = sessionLatest.current.agent
+                if (!agent?.sessionId || !pending.route.startsWith(agent.sessionId + '/waits/')) throw new Error('conflict')
+                const confirmed = agentWaitReceiptSchema.parse(await agent.client.request(pending.route, pending.input))
+                if (confirmed.waitId !== pending.route.split('/')[2]) throw new Error('conflict')
+                payload = confirmed
+                await agent.refresh()
                 await confirmAgentOperation(key, pending, payload)
               }
             }

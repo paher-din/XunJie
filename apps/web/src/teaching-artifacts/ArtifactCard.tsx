@@ -7,7 +7,7 @@ import type { ArtifactEntry, TeachingArtifactsController } from './useTeachingAr
 import { frameTheme } from './frame'
 import './teaching-artifacts.css'
 
-export function ArtifactPreview({ preview }: { preview: TeachingArtifactPreview }) {
+export function ArtifactPreview({ preview }: { preview: Pick<TeachingArtifactPreview, 'html'> & Partial<Pick<TeachingArtifactPreview, 'commandId' | 'attemptId'>> }) {
   const [theme, setTheme] = useState(frameTheme)
   useEffect(() => {
     const observer = new MutationObserver(() => setTheme(frameTheme()))

@@ -7,7 +7,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { provisionStorage, openStorage, createFileBackend, StorageError, prepareStorageRestore, finalizeStorageRestore } from '@xunjie/storage';
 import { nativeFixture } from '../../../packages/storage/test/native-fixture.mjs';
-const { createModelGateway, modelMigrations } = await import('../../../packages/learning-space/dist/model-connections/index.js');
+const { createModelGateway, modelMigrations } = await import('../../../packages/model-gateway/dist/index.js');
 
 test('origin ownership survives owner reopen and independent backup restore without pinning a dispatch lease', { timeout: 60000 }, async () => {
   const fixture = await nativeFixture(), target = await nativeFixture(); let storage, restored;

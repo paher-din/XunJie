@@ -10,7 +10,7 @@
 
 </div>
 
-项目正在进行新一轮设计与重构，已定设计、Wayfinder 本地决议和实施总览见[本轮架构与设计](docs/student-agent-implementation/README.md)。开发规则见 [AGENTS.md](AGENTS.md)，UI 设计遵循根目录 [DESIGN.md](DESIGN.md)。旧文档及其证据已移入 [docs/archive/](docs/archive/)，停止使用和维护，不作为本轮开发依据。以下使用说明对应现有演示实现。
+本轮 Agent 运行时迁移已完成，当前 session v2 架构、Wayfinder 本地决议和实施记录见[本轮架构与设计](docs/student-agent-implementation/README.md)。开发规则见 [AGENTS.md](AGENTS.md)，UI 设计遵循根目录 [DESIGN.md](DESIGN.md)。旧文档及其证据已移入 [docs/archive/](docs/archive/)，停止使用和维护，不作为本轮开发依据。以下使用说明对应现有演示实现。
 
 WP02 正式学习空间已统一复用产品外壳、首页与沉浸工作区；实际产品包与普通 Web 默认入口消费同一实现。当前能力、启动方式和后续 WP 接入见 [Web 入口](apps/web/README.md#正式产品入口与后续-wp)，真实前后界面及验收边界见 [#159 交付](docs/student-agent-implementation/wp02-product-ui.md)。
 
@@ -78,7 +78,7 @@ Windows 也可双击 `dist/product-win32-x64/xunjie.cmd`，macOS 可双击 `dist
 
 [本轮架构与设计](docs/student-agent-implementation/README.md) · [领域术语](CONTEXT.md) · [协作规范](AGENTS.md) · [UI 设计规范](DESIGN.md) · [正式 UI 组件库](packages/ui/README.md) · [Web 运行说明](apps/web/README.md) · [工程入口与后续接入](docs/student-agent-implementation/engineering-entrypoints.md)
 
-师生共用 `apps/web`（`@xunjie/web`）；后端与既有 runner 位于 `apps/server`（`@xunjie/server`）；真实跨端 wire 契约从 `packages/contracts`（`@xunjie/contracts`）的公开导出消费；新 PostgreSQL 与所属资源机制见 [packages/storage](packages/storage/README.md)。依赖统一在仓库根执行 `npm ci`，使用根 `package-lock.json`。
+师生共用 `apps/web`（`@xunjie/web`）；后端与既有 runner 位于 `apps/server`（`@xunjie/server`）；真实跨端 wire 契约从 `packages/contracts`（`@xunjie/contracts`）的公开导出消费；Agent 分为[通用内核](packages/agent-runtime/README.md)、[场景与 v2 传输](packages/agents/README.md)、[模型 Gateway](packages/model-gateway/README.md)，学习领域数据见 [learning-space](packages/learning-space/README.md)，可信宿主见 [product-runtime](packages/product-runtime/README.md)。新 PostgreSQL 与所属资源机制见 [packages/storage](packages/storage/README.md)。依赖统一在仓库根执行 `npm ci`，使用根 `package-lock.json`。
 
 在仓库根执行 `npm run typecheck`、`npm run build`、`npm test`，分别完成 workspace 的类型检查、构建和测试。单工程开发命令使用 `-w` 指定 workspace，例如 `npm run dev -w @xunjie/web`；后端配置与启动边界见[开发工具](docs/development-tooling.md#新-agent-的工具入口)。
 

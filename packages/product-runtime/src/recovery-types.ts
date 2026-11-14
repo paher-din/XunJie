@@ -2,11 +2,10 @@ import type { RuntimeEnvironment } from '@xunjie/contracts/product-runtime';
 import type { MaintenanceParticipant } from './maintenance.js';
 
 /** One accepted command that the owner had not settled when maintenance closed its gates. */
-export interface BoundaryUnresolved {
+interface BoundaryUnresolvedCommand {
   requestId: string;
   inputDigest: string;
   executionRef: string;
-  activityId: string;
   /** Where the command really runs: the browser owner, a local native session or a receiving node. */
   location: string;
   state: string;
@@ -17,6 +16,11 @@ export interface BoundaryUnresolved {
   nodeId?: string;
   executorInstanceId?: string;
 }
+/** Agent commands identify a real session; execution commands retain their real activity. */
+export type BoundaryUnresolved = BoundaryUnresolvedCommand & (
+  | { sessionId: string; activityId?: string }
+  | { activityId: string; sessionId?: string }
+);
 
 /**
  * What one owner observed at the maintenance boundary. It is written into the encrypted owner data,

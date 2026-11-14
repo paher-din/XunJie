@@ -2,19 +2,23 @@ import { createTeachingArtifacts, teachingArtifactMigration, validateTeachingArt
 import { createHash, randomUUID } from 'node:crypto';
 import { studyCopyMigration, createStudyCopies, validateStudyCopies } from './study-copies.js';
 import { schoolDeliveryMigration, createSchoolDeliveries, validateSchoolDeliveries } from './school-deliveries.js';
+import { agentSessionMigration, validateAgentSessions } from './agent-sessions.js';
+import { sessionMaterialMigration, validateSessionMaterials } from './session-materials.js';
+import { personalProjectMigration, validatePersonalProjects } from './personal-projects.js';
+import { learningSkillsMigration, validateSkills } from './skills.js';
 import { agentExecutionOriginMigration, agentExecutionAuthorityMigration } from './agent-executions.js';
 import { activityAgentRouteMigration, validateActivityAgentRoutes } from './agent-routes.js';
 import { agentPreferenceMigration, createAgentPreferences, validateAgentPreferences } from './agent-preferences.js';
 import { conversationArchiveMigration, createConversationArchives, validateConversationArchives } from './conversation-archives.js';
 import { conversationHistoryMigration, createConversationHistory, validateConversationHistory } from './conversation-history.js';
-import { chunkChannelMigrationSql, createChunkChannel } from '../teaching-agent/chunk-channel.js';
+import { chunkChannelMigrationSql, createChunkChannel } from '@xunjie/storage/chunk-channel';
 import { z } from 'zod';
 import { StorageError } from '@xunjie/storage';
 import type { OwnedStorage, Migration } from '@xunjie/storage';
 import { createActivitySchema, activitySchema, courseActivityResultSchema } from '@xunjie/contracts/learning-data';
 import type { CreateActivity, LearningActivity, CourseActivityResult } from '@xunjie/contracts/learning-data';
 import { teachingDependencyCallSchema } from '@xunjie/contracts/teaching-agent';
-import { isTeachingDependencyRead } from '../teaching-agent/dependency-semantics.js';
+import { isTeachingDependencyRead } from './dependency-semantics.js';
 import { createCourseActivitySchema, courseActivityBindingSchema } from '@xunjie/contracts/courses';
 import type { CourseBindingAuthority } from '@xunjie/contracts/courses';
 import type { SpaceIdentity, SpaceAuthority } from '@xunjie/contracts/spaces';
@@ -38,6 +42,8 @@ export type { NativeSessionHostOptions } from './native-sessions.js';
 export { collectExecutionBoundary, validateExecutionBoundary, executionMaintenanceFormatVersion, executionMaintenanceKind } from './maintenance.js';
 export type { ExecutionBoundaryMaterial, UnresolvedCommand, UnresolvedDisposition } from './maintenance.js';
 export { createMaterialSearch } from './material-search.js';
+export { createSkills, learningSkillsMigration, validateSkills } from './skills.js';
+export type { SkillsOwner } from './skills.js';
 
 export const learningMigrations: readonly Migration[] = [{ version: 1, name: 'course-free-activities', sql: `
   CREATE TABLE activities (id uuid PRIMARY KEY,space_environment_id uuid NOT NULL,space_id uuid NOT NULL,
@@ -54,7 +60,8 @@ export const learningMigrations: readonly Migration[] = [{ version: 1, name: 'co
 ` }, questionDraftMigration, actionIntentMigration, executionMigration, nativeSessionMigration, sessionRecoveryMigration, nativeChannelMigration,
 executionActionTextMigration, channelExecutionMigration, nativeChannelTargetMigration, nativeChannelObservationMigration,
 nativeChannelCancellationMigration, nativeChannelCleanupMigration, channelCheckpointMigration, agentExecutionMigration, activityAgentRouteMigration,
-{ version: 19, name: 'learning-owner-agent-chunk-channel', sql: chunkChannelMigrationSql }, agentExecutionOriginMigration, agentPreferenceMigration, agentExecutionAuthorityMigration, pdfMaterialMigration, personalMaterialMigration, teachingArtifactMigration, conversationArchiveMigration, conversationHistoryMigration, executionRecordMigration, studyCopyMigration, schoolDeliveryMigration];
+{ version: 19, name: 'learning-owner-agent-chunk-channel', sql: chunkChannelMigrationSql }, agentExecutionOriginMigration, agentPreferenceMigration, agentExecutionAuthorityMigration, pdfMaterialMigration, personalMaterialMigration, teachingArtifactMigration, conversationArchiveMigration, conversationHistoryMigration, executionRecordMigration, studyCopyMigration, schoolDeliveryMigration,
+agentSessionMigration, sessionMaterialMigration, personalProjectMigration, learningSkillsMigration];
 const fingerprint = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const scope = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId];
 const fail = (code: 'missing' | 'forbidden' | 'identity-conflict'): never => { throw new StorageError(code); };
@@ -74,6 +81,10 @@ function requestResult(row: Record<string, unknown>): CourseActivityResult {
 }
 
 export async function validateLearningData(storage: OwnedStorage) {
+  await validateSkills(storage);
+  await validatePersonalProjects(storage);
+  await validateAgentSessions(storage);
+  await validateSessionMaterials(storage);
   await validateStudyCopies(storage);
   await validateSchoolDeliveries(storage);
   await validateTeachingArtifacts(storage);

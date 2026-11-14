@@ -1,5 +1,7 @@
 # WP08 #220：长对话压缩与模型延续
 
+本文保留旧版本的验收历史；旧 Agent 探针已退休，文中脚本名仅标识原证据来源。当前 session v2 工程入口为 [conversation-native.runtime.test.mjs](../../packages/agents/test/conversation-native.runtime.test.mjs)、[tool-discovery.runtime.test.mjs](../../packages/agents/test/tool-discovery.runtime.test.mjs)。这些测试不继承本页的历史通过结论，真实供应商、桌面与跨机结果须另行验收。
+
 对应 [#220](https://github.com/paher-din/XunJie/issues/220)，基于 #215 的固定装配与持久换段。仅改变模型使用的长历史；学生完整交流、作品、固定引用和工具结果继续从原 owner 读取。
 
 ## 行为与边界

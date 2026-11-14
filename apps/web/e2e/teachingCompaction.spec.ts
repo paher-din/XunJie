@@ -1,117 +1,99 @@
-import { evidenceDirectory } from './evidence'
 import { test, expect } from '@playwright/test'
 import { randomUUID } from 'node:crypto'
-import { mkdir, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
 import type { ModelConnection } from '@xunjie/contracts/model-connections'
-import { fixture, reply, until } from '../../server/tests/support/teaching-input-control.mjs'
+import type { AgentConversation } from '@xunjie/contracts/agent-service'
+import type { AgentEvent, AgentInputReceipt, AgentRun } from '@xunjie/contracts/agent-runtime'
+import type { AgentSession } from '@xunjie/contracts/agent-sessions'
+import { fixture, reply, replyStudentPolicy, until } from '../../server/tests/support/session-product.mjs'
+import { REAL_URL } from './env'
 
 test.use({ trace: 'off' })
-const output = evidenceDirectory('wp08-220-chrome', process.env.XUNJIE_COMPACTION_EVIDENCE)
 
-test('formal long conversation preserves history, draft and controls across compaction and restart', async ({ page, browser }) => {
+test('real session v2 compaction preserves complete visible history, draft and controls across restart and a native route change', async ({ page }) => {
   test.setTimeout(180000)
-  if (output) await mkdir(output, { recursive: true })
-  let releaseSummary!: () => void, releaseLast!: () => void, startedSummary = false, holdLast = false
-  const summaryGate = new Promise<void>(resolve => { releaseSummary = resolve })
-  const lastGate = new Promise<void>(resolve => { releaseLast = resolve })
+  let releaseSummary!: () => void, releaseLast!: () => void, summaries = 0, answers = 0, holdLast = false
+  const summaryGate = new Promise<void>(resolve => { releaseSummary = resolve }), lastGate = new Promise<void>(resolve => { releaseLast = resolve })
   const f = await fixture(async (payload, response) => {
-    let source: { sourceDigest: string; retainedDigest: string; retained: { id: string }[]; messages: { eventId: string }[] } | undefined
-    for (const message of payload.messages as { content: unknown }[]) {
-      const texts = typeof message.content === 'string' ? [message.content]
-        : Array.isArray(message.content) ? message.content.map(part => part.text) : []
-      for (const text of texts) {
-        try { const value = JSON.parse(text); if (value.kind === 'xunjie.context-compaction') source = value } catch { /* student text */ }
-      }
-    }
-    if (source) {
-      startedSummary = true; await summaryGate
+    if (replyStudentPolicy(payload, response)) return
+    if (payload.messages.some((message: any) => message.role === 'system' && typeof message.content === 'string' && message.content.startsWith('CONVERSATION_COMPACTION_V1\n'))) {
+      const content = payload.messages.at(-1)!.content
+      const source = JSON.parse(typeof content === 'string' ? content : content.map((part: any) => part.text ?? '').join(''))
+      summaries++; await summaryGate
       reply(response, { text: JSON.stringify({ version: 1, sourceDigest: source.sourceDigest, retainedDigest: source.retainedDigest,
-        retainedIds: source.retained.map(item => item.id), facts: [{ text: '原观测是 37，原因仍未知。', sources: [source.messages[0].eventId] }],
+        retainedIds: source.retained.map((item: any) => item.id), facts: [{ text: '原观测是 37，原因仍未知。', sources: [source.messages[0].eventId] }],
         inferences: [], contradictions: [], unknowns: [], unfinished: [] }) })
-    } else {
-      if (holdLast) await lastGate
-      reply(response, { text: startedSummary ? '沿原观测 37 继续，原因仍需核实。' : '历史观测 37，保留未知原因。' })
+      return
     }
+    answers++
+    if (holdLast) await lastGate
+    reply(response, { text: summaries ? '沿原观测 37 继续，原因仍需核实。' : '历史观测 37，保留未知原因。' })
   })
   try {
     await f.configure()
-    const activity = await f.activity('长对话保留原始依据')
+    const session = await f.api<AgentSession>('agent-sessions', { requestId: randomUUID(), sessionId: randomUUID(), scenario: 'student-assistant', title: '长对话保留原始依据' })
+    await page.route('**/api/learning/**', async route => {
+      const url = new URL(route.request().url())
+      await route.fulfill({ response: await route.fetch({ url: new URL(url.pathname + url.search, f.endpoint).href,
+        headers: { ...route.request().headers(), origin: new URL(f.endpoint).origin, 'sec-fetch-site': 'same-origin' } }) })
+    })
+    const base = `agent-sessions/${session.sessionId}`, read = () => f.api<AgentConversation>(base + '/conversation')
+    const open = () => page.goto(`${REAL_URL}/?view=agent&space=personal&session=${session.sessionId}`)
     for (let index = 0; index < 7; index++) {
-      const accepted = await f.send(activity, `历史记录 ${index + 1}：` + 'observation 37; cause unconfirmed. '.repeat(280))
-      await until(async () => (await f.api(`agent/${activity.activityId}/runs/${accepted.runId}`)).state === 'completed', 'Historical turn completes.')
+      const accepted = await f.api<AgentInputReceipt>(base + '/inputs', { requestId: randomUUID(), sessionId: session.sessionId, mode: 'steering', context: {},
+        text: `历史记录 ${index + 1}：` + 'observation 37; cause unconfirmed. '.repeat(280) })
+      await until(async () => (await f.api<AgentRun>(base + '/runs/' + accepted.runId)).state === 'completed', 'The original historical Run finishes.')
     }
-    await page.goto(f.endpoint + '/?space=personal&activity=' + activity.activityId)
-    await expect(page.locator('#activity-title')).toHaveText('长对话保留原始依据')
-    await page.getByRole('button', { name: '打开对话', exact: true }).click()
-    const question = page.getByLabel('你的问题', { exact: true })
-    await question.fill('请继续解释原观测，未知原因不要说成结论。')
-    await page.getByRole('button', { name: '发送问题', exact: true }).click()
-    await until(() => startedSummary, 'Real RunDriver begins its summary request.')
-    await question.fill('尚未发送的中文草稿')
-    await question.focus()
-    await question.evaluate(element => element.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true })))
-    await page.keyboard.press('Enter')
-    await expect(question).toHaveValue(/尚未发送的中文草稿/)
-    await question.evaluate(element => element.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true })))
-    if (output) await page.screenshot({ path: join(output, `summary-pending-${process.platform}.png`) })
+    expect(answers).toBe(7); expect(summaries).toBe(0)
+    await open()
+    const composer = page.getByLabel('向 Agent 提问', { exact: true }), visible = page.getByRole('region', { name: '与 Agent 的对话', exact: true })
+    await composer.fill('请继续解释原观测，未知原因不要说成结论。')
+    await page.getByRole('button', { name: '发送消息', exact: true }).click()
+    await until(() => summaries === 1, 'The real common pipeline begins its fixed summary operation.')
+    await expect(composer).toHaveValue('')
+    await composer.fill('尚未发送的中文草稿'); await composer.focus()
+    await composer.evaluate(element => element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', isComposing: true, bubbles: true })))
+    await expect(composer).toHaveValue('尚未发送的中文草稿')
+    expect((await read()).inputs).toHaveLength(8)
+    expect((await read()).messages.some((message: any) => message.text.includes('retainedDigest'))).toBe(false)
     releaseSummary()
-    await expect(page.locator('.teaching-message.assistant').last()).toContainText('沿原观测 37 继续', { timeout: 30000 })
-    await expect(question).toBeFocused()
-    await expect(question).toHaveValue(/尚未发送的中文草稿/)
-    await expect(page.locator('.teaching-message.student')).toHaveCount(8)
-    await expect(page.locator('.teaching-message.assistant')).toHaveCount(8)
-    await expect(page.getByRole('region', { name: '与 Agent 的对话' })).not.toContainText('retainedDigest')
-    const events = await f.api(`agent/${activity.activityId}/events`)
-    expect(events.filter((event: { kind: string }) => event.kind === 'context-compacted')).toHaveLength(1)
-    const conversation = await f.api(`agent/${activity.activityId}/conversation`)
-    expect(f.payloads).toHaveLength(9)
-    if (output) await page.screenshot({ path: join(output, `conversation-after-${process.platform}.png`) })
-    await page.reload()
-    await page.getByRole('button', { name: '打开对话', exact: true }).click()
-    await expect(question).toHaveValue(/尚未发送的中文草稿/)
-    await expect(page.locator('.teaching-message.student')).toHaveCount(8)
-    expect(f.payloads).toHaveLength(9)
-    await f.restart()
-    await page.goto(f.endpoint + '/?space=personal&activity=' + activity.activityId)
-    await page.getByRole('button', { name: '打开对话', exact: true }).click()
-    await expect(page.locator('.teaching-message.assistant').last()).toContainText('沿原观测 37 继续')
-    expect(await f.api(`agent/${activity.activityId}/conversation`)).toEqual(conversation)
-    expect(f.payloads).toHaveLength(9)
+    await expect(visible.locator('.chat-message.agent').last()).toContainText('沿原观测 37 继续', { timeout: 30000 })
+    await expect(composer).toBeFocused(); await expect(composer).toHaveValue('尚未发送的中文草稿')
+    await expect(visible.locator('[data-message-id]')).toHaveCount(16)
+    await expect(visible).not.toContainText('retainedDigest')
+    const events = await f.api<AgentEvent[]>(base + '/events'), before = await read()
+    expect(events.filter((event: any) => event.kind === 'context-compacted')).toHaveLength(1)
+    const count = f.payloads.length
+    await page.reload(); await expect(composer).toHaveValue('尚未发送的中文草稿')
+    await expect(visible.locator('[data-message-id]')).toHaveCount(16)
+    expect(f.payloads).toHaveLength(count)
+    await f.restart(); await open()
+    await expect(visible.locator('[data-message-id]')).toHaveCount(16)
+    await expect(composer).toHaveValue('尚未发送的中文草稿')
+    expect(await read()).toEqual(before); expect(f.payloads).toHaveLength(count)
 
-    const existing = (await f.api('models/connections') as ModelConnection[])[0]
-    const connectionId = randomUUID()
-    await f.api('models/connections', { requestId: randomUUID(), connectionId, expectedVersion: 0,
-      name: '继续学习模型', protocol: existing.protocol, baseUrl: existing.baseUrl, path: existing.path,
-      modelId: 'fixture-compaction-successor', dialect: existing.dialect, parameterMode: existing.parameterMode,
-      enabled: true, contextWindow: 262144, maxOutputTokens: 2048, credential: { action: 'replace', value: 'synthetic-compaction-key' } })
-    await page.reload()
-    await page.getByRole('button', { name: '打开对话', exact: true }).click()
-    await expect(question).toHaveValue(/尚未发送的中文草稿/)
+    const existing = (await f.api('models/connections') as ModelConnection[])[0], connectionId = randomUUID(), grantId = randomUUID()
+    await f.api('models/connections', { requestId: randomUUID(), connectionId, expectedVersion: 0, name: '继续学习模型',
+      protocol: existing.protocol, baseUrl: existing.baseUrl, path: existing.path, modelId: 'fixture-compaction-successor',
+      dialect: existing.dialect, parameterMode: existing.parameterMode, enabled: true, contextWindow: 262144, maxOutputTokens: 2048,
+      credential: { action: 'replace', value: 'synthetic-compaction-key' } })
+    await f.api('models/grants', { requestId: randomUUID(), connectionId, grantId, owner: 'self' })
+    await page.reload(); await expect(composer).toHaveValue('尚未发送的中文草稿')
     await page.getByRole('button', { name: '切换模型', exact: true }).click()
-    const switched = page.waitForResponse(response => response.url().endsWith('/model-switches') && response.request().method() === 'POST')
-    await page.getByRole('menu', { name: '模型', exact: true })
-      .getByRole('menuitemradio', { name: 'fixture-compaction-successor 继续学习模型', exact: true }).click()
-    const switchResponse = await switched
-    expect(switchResponse.status()).toBe(200)
-    expect((await switchResponse.json()).state).toBe('completed')
+    const switched = page.waitForResponse(response => new URL(response.url()).pathname.endsWith('/models/selection') && response.request().method() === 'POST')
+    await page.getByRole('menuitemradio').filter({ hasText: '继续学习模型' }).click()
+    expect((await switched).status()).toBe(200)
     holdLast = true
-    await question.fill('继续当前问题，但允许我停止。')
-    await page.getByRole('button', { name: '发送问题', exact: true }).click()
-    await until(() => f.payloads.length === 10, 'The explicitly selected model receives the follow-up.')
-    expect(f.payloads[9].model).toBe('fixture-compaction-successor')
-    await question.fill('停止期间保留的新草稿')
-    await page.getByRole('button', { name: '停止', exact: true }).click()
-    releaseLast()
-    await expect(page.getByText('回答已停止，已发生的内容仍保留。')).toBeVisible({ timeout: 30000 })
-    await expect(question).toHaveValue('停止期间保留的新草稿')
-    await page.emulateMedia({ colorScheme: 'dark' })
-    await page.setViewportSize({ width: 900, height: 900 })
-    if (output) await page.screenshot({ path: join(output, `controls-after-${process.platform}.png`) })
-    expect(f.failures).toEqual([])
-    if (output) await writeFile(join(output, `chrome-${process.platform}.json`), JSON.stringify({ measuredAt: new Date().toISOString(),
-      platform: process.platform, browser: browser.version(), channel: process.env.XUNJIE_E2E_BROWSER_CHANNEL,
-      headed: true, modelRequests: f.payloads.length, compactions: 1, completeHistory: true, draftAndFocus: true,
-      compositionEventsOnly: true, restartPureRead: true, originalModelSelection: true, stop: true }, null, 2) + '\n')
+    await composer.fill('继续当前问题，但允许我停止。')
+    await page.getByRole('button', { name: '发送消息', exact: true }).click()
+    await until(() => answers === 9, 'The selected native route receives the actual answer request.')
+    expect(f.payloads.at(-1)?.model).toBe('fixture-compaction-successor')
+    expect(JSON.stringify(f.payloads.at(-1))).toContain('原观测是 37')
+    const running = (await read()).runs.find((run: any) => run.state === 'running')
+    await expect(composer).toHaveValue(''); await composer.fill('停止期间保留的新草稿')
+    await page.getByRole('button', { name: '停止回答', exact: true }).click(); releaseLast()
+    await expect.poll(async () => (await f.api<AgentRun>(base + '/runs/' + running!.runId)).state).toBe('stopped')
+    await expect(composer).toHaveValue('停止期间保留的新草稿')
+    await expect(page.getByRole('button', { name: '停止回答', exact: true })).not.toBeVisible()
+    expect(summaries).toBe(1); expect(f.failures).toEqual([])
   } finally { releaseSummary(); releaseLast(); await f.close() }
 })

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { SpaceIdentity } from './spaces.js';
 
 /** Transported files are inert values, never filesystem entries or executable capabilities. */
 export const teachingSkillLimits = { skills: 32, versions: 16, files: 4096,
@@ -61,10 +62,14 @@ export const courseSkillPackageSchema = teachingSkillReferenceSchema.extend({ so
 export type CourseSkillPackage = z.infer<typeof courseSkillPackageSchema>;
 export const courseSkillPackagesSchema = z.array(courseSkillPackageSchema).max(teachingSkillLimits.selections)
   .refine(items => new Set(items.map(item => item.skillId)).size === items.length, 'Duplicate course skill');
-export const teachingSkillRangeSchema = z.discriminatedUnion('kind', [
+export const librarySkillRangeSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('all') }).strict(), z.object({ kind: z.literal('self-study') }).strict(),
   z.object({ kind: z.literal('course'), courseId: z.uuid() }).strict(),
   z.object({ kind: z.literal('activity'), activityId: z.uuid() }).strict(),
+]);
+export const teachingSkillRangeSchema = z.discriminatedUnion('kind', [
+  ...librarySkillRangeSchema.options,
+  z.object({ kind: z.literal('session'), sessionId: z.uuid() }).strict(),
 ]);
 export type TeachingSkillRange = z.infer<typeof teachingSkillRangeSchema>;
 export const teachingSkillSelectSchema = z.object({ requestId: z.uuid(), range: teachingSkillRangeSchema,
@@ -83,6 +88,7 @@ export const teachingSkillCatalogEntrySchema = teachingSkillReferenceSchema.exte
 export type TeachingSkillCatalogEntry = z.infer<typeof teachingSkillCatalogEntrySchema>;
 export const teachingSkillListSchema = z.object({ skills: z.array(teachingSkillCatalogEntrySchema),
   selections: z.array(teachingSkillSelectSchema.omit({ requestId: true })).max(64) }).strict();
+export type TeachingSkillList = z.infer<typeof teachingSkillListSchema>;
 /** Freeze this value in the run snapshot. Replay consumes it without calling the current owner. */
 export const teachingSkillLoadedSchema = teachingSkillReferenceSchema.extend({ source: z.string(), packageVersion: z.string(),
   packageDigest: digest, path: teachingSkillPathSchema, encoding: z.enum(['utf8', 'base64']), mediaType: z.string(),
@@ -95,6 +101,67 @@ export const teachingSkillLoadSchema = teachingSkillReferenceSchema.extend({ run
   length: z.number().int().positive().max(6000).default(6000),
 }).strict();
 export type TeachingSkillLoad = z.input<typeof teachingSkillLoadSchema>;
+/** The module and selected package are fixed before dispatch; a name is never a recovery identity. */
+export const sessionSkillLoadSchema = teachingSkillLoadSchema.extend({ selectionDigest: digest, packageDigest: digest,
+  moduleId: z.string().min(1).max(200), moduleVersion: z.number().int().positive() }).strict();
+export type SessionSkillLoad = z.input<typeof sessionSkillLoadSchema>;
 export const teachingSkillStateSchema = z.object({ catalog: z.array(teachingSkillCatalogEntrySchema).max(1024),
   loaded: z.array(teachingSkillLoadedSchema).max(128) }).strict();
 export type TeachingSkillState = z.infer<typeof teachingSkillStateSchema>;
+export const sessionSkillStateSchema = teachingSkillStateSchema.extend({ selectionDigest: digest }).strict();
+export type SessionSkillState = z.infer<typeof sessionSkillStateSchema>;
+export const sessionSkillSelectSchema = teachingSkillSelectSchema.pick({ requestId: true, skills: true }).strict();
+export type SessionSkillSelect = z.infer<typeof sessionSkillSelectSchema>;
+export const skillsScopeSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('library') }).strict(),
+  z.object({ kind: z.literal('session'), sessionId: z.uuid() }).strict(),
+]);
+export type SkillsScope = z.infer<typeof skillsScopeSchema>;
+
+/** Host migration only: the exact package versions and global toggles move through their owning API. */
+export const skillLibrarySnapshotSchema = z.object({ formatVersion: z.literal(1), packages: z.array(z.object({
+  skillId: z.uuid(), version: z.number().int().positive().max(teachingSkillLimits.versions), disabled: z.boolean(), removed: z.boolean(),
+  versions: z.array(teachingSkillVersionSchema).min(1).max(teachingSkillLimits.versions),
+}).strict()).max(teachingSkillLimits.skills),
+  selections: z.array(teachingSkillSelectSchema.omit({ requestId: true })).max(64),
+}).strict();
+export type SkillLibrarySnapshot = z.infer<typeof skillLibrarySnapshotSchema>;
+
+export const librarySkillSelectSchema = teachingSkillSelectSchema.extend({ range: librarySkillRangeSchema }).strict();
+export type LibrarySkillSelect = z.infer<typeof librarySkillSelectSchema>;
+export interface SessionSkillReadGuard {
+  assertDispatch?(): Promise<void>;
+  toolNames?: string[];
+}
+/**
+ * scope.kind=library: GET /api/learning/skills; POST /api/learning/skills/{import,select,disable,document,remove}.
+ * The host supplies the current personal-library identity/permissions; no activity or Agent runtime is required.
+ */
+export interface SkillsLibraryPort {
+  /** activityId is retained for retiring callers; the global library HTTP route does not supply it. */
+  list(identity: SpaceIdentity, activityId?: string): Promise<TeachingSkillList>;
+  import(identity: SpaceIdentity, input: TeachingSkillImport): Promise<TeachingSkillCatalogEntry>;
+  select(identity: SpaceIdentity, input: LibrarySkillSelect): Promise<TeachingSkillList>;
+  disable(identity: SpaceIdentity, input: z.infer<typeof teachingSkillDisableSchema>): Promise<TeachingSkillCatalogEntry>;
+  document(identity: SpaceIdentity, reference: TeachingSkillReference): Promise<TeachingSkillDocument>;
+  remove(identity: SpaceIdentity, input: z.infer<typeof teachingSkillRemoveSchema>): Promise<{ skillId: string }>;
+}
+/**
+ * scope.kind=session: GET /api/learning/agent-sessions/:sessionId/skills -> resolveSession;
+ * POST /api/learning/agent-sessions/:sessionId/skills/select -> selectSession (body excludes range/owner).
+ * loadSession/reconcileSession are the fixed-command owner API for installed server tool modules.
+ */
+export interface SessionSkillsPort {
+  resolveSession(identity: SpaceIdentity, sessionId: string, toolNames?: string[]): Promise<SessionSkillState>;
+  selectSession(identity: SpaceIdentity, sessionId: string, input: SessionSkillSelect): Promise<SessionSkillState>;
+  loadSession(identity: SpaceIdentity, sessionId: string, input: SessionSkillLoad, guard?: SessionSkillReadGuard): Promise<TeachingSkillLoaded>;
+  reconcileSession(identity: SpaceIdentity, sessionId: string, input: SessionSkillLoad): Promise<TeachingSkillLoaded | null>;
+}
+export interface SkillLibraryTransferPort {
+  exportLibrary(identity: SpaceIdentity): Promise<SkillLibrarySnapshot>;
+  adoptLibrary(identity: SpaceIdentity, input: { requestId: string; library: SkillLibrarySnapshot }): Promise<void>;
+}
+export interface SkillsPort extends SkillsLibraryPort, SessionSkillsPort, SkillLibraryTransferPort {
+  /** Pure owner maintenance; it never asks current member or model owners for authority. */
+  validate(): Promise<void>;
+}

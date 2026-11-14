@@ -4,8 +4,8 @@ import { randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
 import { provisionStorage, openStorage, createFileBackend, StorageError } from '@xunjie/storage';
 import { nativeFixture } from '../../../packages/storage/test/native-fixture.mjs';
-import { createModelGateway, modelMigrations } from '../../../packages/learning-space/dist/model-connections/index.js';
-import { routeModels } from '../../../packages/learning-space/dist/model-connections/wire.js';
+import { createModelGateway, modelMigrations } from '../../../packages/model-gateway/dist/index.js';
+import { routeModels } from '../../../packages/model-gateway/dist/wire.js';
 
 test('directory storage, owning-account credentials and lifecycle use native PostgreSQL', { timeout: 90000 }, async t => {
   const fixture = await nativeFixture();

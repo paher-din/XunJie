@@ -7,12 +7,18 @@ import { buildServer } from './build-server.mjs';
 
 const repository = dirname(dirname(fileURLToPath(import.meta.url)));
 const workspaces = {
-  contracts: 'packages/contracts', storage: 'packages/storage', 'learning-space': 'packages/learning-space',
+  contracts: 'packages/contracts', storage: 'packages/storage',
+  'agent-runtime': 'packages/agent-runtime', 'model-gateway': 'packages/model-gateway',
+  'learning-space': 'packages/learning-space', agents: 'packages/agents',
   server: 'apps/server', 'product-runtime': 'packages/product-runtime', ui: 'packages/ui', web: 'apps/web', 'local-runtime': 'apps/local-runtime',
 };
 const dependencies = {
-  contracts: [], storage: ['contracts'], 'learning-space': ['contracts', 'storage'], server: ['contracts', 'storage', 'learning-space'],
-  'product-runtime': ['contracts', 'storage', 'learning-space'], ui: [], web: ['contracts', 'ui'], 'local-runtime': ['product-runtime'],
+  contracts: [], storage: ['contracts'],
+  'agent-runtime': ['contracts', 'storage'], 'model-gateway': ['contracts', 'storage'],
+  'learning-space': ['contracts', 'storage'],
+  agents: ['agent-runtime', 'model-gateway', 'learning-space', 'contracts', 'storage'],
+  server: ['contracts', 'storage', 'agents', 'agent-runtime', 'model-gateway', 'learning-space'],
+  'product-runtime': ['contracts', 'storage', 'agents', 'agent-runtime', 'model-gateway', 'learning-space'], ui: [], web: ['contracts', 'ui'], 'local-runtime': ['product-runtime'],
 };
 const excluded = name => /(?:^|\/)(?:node_modules|dist|dist-runtime|\.git|\.cache|\.verification|\.playwright|test-results|playwright-report|evidence)(?:\/|$)/.test(name)
   || /\.tsbuildinfo$/.test(name);
@@ -154,7 +160,7 @@ export async function createBuildTasks({ root = repository, env = process.env } 
 }
 
 export function expandTargets(targets = 'all') {
-  const all = ['contracts', 'storage', 'learning-space', 'server', 'product-runtime', 'ui', 'web', 'web:runtime', 'local-runtime'];
+  const all = [...Object.keys(workspaces), 'web:runtime'];
   return [...new Set((Array.isArray(targets) ? targets : [targets]).flatMap(value => {
     const target = value.replace(/^@xunjie\//, '');
     if (['all', 'test', 'tools:test'].includes(target)) return all;
@@ -163,6 +169,8 @@ export function expandTargets(targets = 'all') {
     if (target.endsWith(':test')) {
       const name = target.slice(0, -5);
       if (['server', 'product-runtime', 'local-runtime'].includes(name)) return all;
+      // The learning-data HTTP body tests consume the public product HTTP adapter.
+      if (name === 'learning-space') return ['product-runtime'];
       if (name in workspaces) return name === 'web' ? ['web', 'web:runtime'] : [name];
     }
     if (target in workspaces || ['web:runtime', 'web:src', 'web:node'].includes(target)

@@ -7,6 +7,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openProductRuntime, resolveCredential } from '@xunjie/product-runtime';
+import { createAgentDependencyClient } from '@xunjie/agents/transport/session-dependencies';
+import { StorageError } from '@xunjie/storage';
 import { createOutboundConnection } from '@xunjie/product-runtime/connections';
 
 const resources = { nodePath: process.execPath, nodeVersion: '24.21.0',
@@ -77,9 +79,14 @@ test('school device setup retries safely and isolates approved member connection
     assert.ok(client.agentBinding.executionConnectionId);
     assert.equal(fingerprint(JSON.parse(await resolveCredential(schoolRoot, 'school-device-setup-' + connectionId)).result), fingerprint(firstJournal.result));
     const bearer = token => ({ authorization: `Bearer ${token}` });
-    const input = { connectionId, installationId: deviceState.environment.installationId,
+    const input = { version: 2, connectionId, installationId: deviceState.environment.installationId,
       deviceModules: deviceState.environment.services.filter(service => service.unit !== 'client') };
     const setup = async (body, token, status = 200) => (await schoolApi('connections/device-setup', body, bearer(token), status)).value;
+    assert.equal(firstJournal.result.version, 2);
+    assert.equal(client.grant.deviceSetup.version, 2);
+    assert.equal((await setup({ ...input, version: 1 }, client.grant.token, 409)).error, 'incompatible');
+    assert.equal((await setup({ ...input, deviceModules: input.deviceModules.map(item => item.unit === 'teaching-agent'
+      ? { ...item, capabilities: ['teaching.agent'] } : item) }, client.grant.token, 409)).error, 'incompatible');
     assert.equal(fingerprint(await setup(input, client.grant.token)), fingerprint(firstJournal.result));
     assert.equal((await setup({ ...input, installationId: randomUUID() }, client.grant.token, 409)).error, 'identity-conflict');
     const changedPayload = { ...input, deviceModules: input.deviceModules.map((service, index) => index === 0
@@ -94,7 +101,7 @@ test('school device setup retries safely and isolates approved member connection
       return (await schoolApi('connections/exchange', { requestId, verifier })).value;
     }
     const secondConnection = await approve(first);
-    const secondInput = { connectionId: secondConnection.connectionId, installationId: secondState.environment.installationId,
+    const secondInput = { version: 2, connectionId: secondConnection.connectionId, installationId: secondState.environment.installationId,
       deviceModules: secondState.environment.services.filter(service => service.unit !== 'client') };
     assert.equal((await setup(secondInput, secondConnection.token, 409)).error, 'identity-conflict');
     assert.equal(fingerprint(await setup(input, client.grant.token)), fingerprint(firstJournal.result), 'conflicting device leaves the first binding intact');
@@ -108,19 +115,30 @@ test('school device setup retries safely and isolates approved member connection
     const source = input.deviceModules.find(service => service.unit === 'teaching-agent');
     function dependency(grant) {
       return createOutboundConnection({ connection: { connectionId: randomUUID(), sourceEnvironmentId: source.environmentId,
-        sourceServiceId: source.serviceId, target: firstJournal.result.target, requiredCapabilities: ['teaching.dependencies'],
+        sourceServiceId: source.serviceId, target: firstJournal.result.target, requiredCapabilities: ['agent.dependencies.v2'],
         optionalCapabilities: [], credentialRef: 'fixture' }, credential: async () => grant.token, allowInsecureLoopback: true });
     }
     const firstDependency = dependency(firstJournal.result.agent), foreignDependency = dependency(foreignSetup.agent);
-    const read = (transport, identity, activityId) => transport.request('teaching.dependencies', { directRead: 1,
-      input: { version: 1, operation: 'activity', identity, args: [activityId] } });
-    assert.equal((await read(firstDependency, first.identity, firstActivity.activityId)).value.activityId, firstActivity.activityId);
-    assert.equal((await read(foreignDependency, foreign.identity, foreignActivity.activityId)).value.activityId, foreignActivity.activityId);
+    const requests = new Map();
+    const read = async (transport, identity, activityId) => {
+      const key = identity.principalId + ':' + activityId;
+      if (!requests.has(key)) requests.set(key, { sessionId: randomUUID(), requestId: randomUUID() });
+      const fixed = requests.get(key);
+      const client = createAgentDependencyClient(call => transport.request('agent.dependencies.v2', call));
+      try {
+        await client.sessions.create(identity, { ...fixed, scenario: 'workspace-assistant',
+          workspace: { activityId, target: { environmentId: firstJournal.result.target.environmentId,
+            serviceId: firstJournal.result.target.serviceId, version: 1 } } });
+        return await client.forSession(identity, fixed.sessionId).workspace();
+      } catch (error) { if (error instanceof StorageError) return { error: error.code }; throw error; }
+    };
+    assert.equal((await read(firstDependency, first.identity, firstActivity.activityId)).activityId, firstActivity.activityId);
+    assert.equal((await read(foreignDependency, foreign.identity, foreignActivity.activityId)).activityId, foreignActivity.activityId);
     assert.deepEqual(await read(firstDependency, foreign.identity, foreignActivity.activityId), { error: 'forbidden' });
     assert.deepEqual(await read(foreignDependency, first.identity, firstActivity.activityId), { error: 'forbidden' });
     await schoolApi('connections/revoke', { connectionId }, first.headers);
     assert.deepEqual(await read(firstDependency, first.identity, firstActivity.activityId), { error: 'forbidden' });
-    assert.equal((await read(foreignDependency, foreign.identity, foreignActivity.activityId)).value.activityId, foreignActivity.activityId);
+    assert.equal((await read(foreignDependency, foreign.identity, foreignActivity.activityId)).activityId, foreignActivity.activityId);
     await schoolApi('connections/device-setup', input, bearer(client.grant.token), 403);
     const replacement = await setup(secondInput, secondConnection.token);
     assert.equal(replacement.connectionId, secondConnection.connectionId, 'an explicitly revoked device does not block its replacement');

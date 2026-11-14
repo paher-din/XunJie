@@ -6,6 +6,21 @@
 
 `@xunjie/product-runtime` 提供本机/学校可信宿主共用的运行生命周期、连接授权、维护、完整备份、隔离恢复及接管编排。CLI 见 [apps/local-runtime](../../apps/local-runtime/README.md)，既有运行交接见 [#143](../../docs/student-agent-implementation/runtime-acceptance.md)，#145 的命令、失败处理和实际验收见 [维护与恢复](../../docs/student-agent-implementation/maintenance-acceptance.md)，组合结论见 [WP01 父票验收](../../docs/student-agent-implementation/wp01-acceptance.md)。
 
+## Session v2 与 HTTP 边界
+
+本包是可信组合层：安装/部署、身份与连接、领域 owner 路由、模型/工具工厂、HTTP、维护与恢复由宿主装配；[agent-runtime](../agent-runtime/README.md) 负责持久推进，[agents](../agents/README.md) 负责场景，[model-gateway](../model-gateway/README.md) 负责 SDK 与模型事实，[learning-space](../learning-space/README.md) 负责学习领域数据。
+
+`createProductAgent` 共用两种场景装配和 defer-recovery 生命周期；`session-runtime` 组合实际目录、原 Agent owner、模型/工具依赖与 direct runner。普通 `student-assistant` session 不先创建 activity；`workspace-assistant` session 绑定真实 activity/target，固定输入保留 `context.action`，由实际领域 owner 校验作品和引用。
+
+`learning-http/sessions-http` 在学校 forwarding 前处理 `/api/learning/agent-sessions`，要求 `x-xj-agent-contract: 2`，可信身份来自本机或经核对的连接，核验 expected subject 与 namespace。根 GET 返回 `{items}`，create 返回真实 session；目录保存标题/置顶/归档/删除，不作为内核 RunStore。
+
+- `/:sessionId/conversation?after=` 返回产品投影；原消息、Run、输入、等待、工具反馈和成功工作区结果按稳定身份合并。snapshot 保持独立调试接口。
+- `/:sessionId/inputs`、`requests/:requestId`、`inputs/:inputId/control` 负责接收、原回执及 CAS edit/remove/move；停止/继续和用户回应沿原 run/wait 身份操作。
+- `/:sessionId/materials/*`、`pdf/*`、`skills`、`skills/select` 使用明确 session scope；全局 `/skills` 是独立个人库。资料与 Skills 由所属 learning-data owner 保存，sessionId 不替代 activityId。
+- `agent.sessions.v2` / `agent.dependencies.v2` 为显式 version 2 RPC；独立 Agent 的 dependency factory 从当前可信 source/call 取得权限。initialize 只向已授权宿主开放，resolveWait 仅用于可信服务结果，不接受浏览器自报执行成功。
+
+旧 `/agent/:activityId/*` 与旧教学协议明确拒绝 incompatible，不将旧请求改派成新会话。模块和服务标识沿用 `teaching-agent`、`model-connection`；源码包拆分不改变部署拓扑。旧开发数据须按[显式重置](../../docs/deployment.md#旧开发-agent-数据的显式重置)处理。当前源码接线、工程回归与真实 UI/供应商/跨机验收分别记录；本 README 不给出本轮已验收声明。
+
 ## 默认学校客户端
 
 默认本机启用 `space-course`、`learning-data`、`teaching-agent`、`model-connection`、`tool-execution`，学校只启用前两个模块，保存账号／课程、活动登记、领取回执、明确提交及学校收件回执。其余学习过程在本机。`school-client` 有本机 `studyCopies`、学校授权元数据允许本机学习，且连接无显式 `localBinding`／`modelBinding` 时采用 `localStudy`；原 Web API 路径不变，默认 Agent、模型、执行及作品／草稿等过程访问转入本机。学校按实际启用模块及成员／活动固定 owner 判定模式，旧显式混合绑定、学校过程数据及独立 Agent／模型部署继续由原接口和授权装配，不能作为默认接入步骤。
@@ -49,15 +64,15 @@ import {
 
 ## owner 与维护装配
 
-默认 daemon 在有数据库的产品组合中注册 runtime、空间/课程、学习数据、模型连接和教学 Agent owner，提供[真实学习入口](../learning-space/src/learning-entry/README.md)；没有数据库的客户端组合仍可显式连接学校，但不具备默认本机学习副本。`model` 组合持有身份/课程和模型服务，`agent` 组合仅持有 runtime 与独立教学 Agent。生产依赖不得导入验收 owner 或测试宿主。
+默认 daemon 在有数据库的产品组合中注册 runtime、空间/课程、学习数据、模型连接和教学 Agent owner，提供[真实学习入口](src/learning-http/index.ts)；没有数据库的客户端组合仍可显式连接学校，但不具备默认本机学习副本。`model` 组合持有身份/课程和模型服务，`agent` 组合仅持有 runtime 与独立教学 Agent。生产依赖不得导入验收 owner 或测试宿主。
 
-显式独立 Agent 通过 `agent.dependencyConnectionId` 固定依赖连接，向学习数据服务调用 `teaching.dependencies`；学习数据服务通过 `teaching.agent` 调用实际 Agent。每个 serviceId 只发布自身实际装配的能力。维护者使用 `authorize(input,targetServiceId)` 签发对应授权，并配置成员 Agent 与独立模型设备绑定，学生继续使用原活动界面。连接、路由、任务及分片资源随各自所属 owner 参加维护、备份和隔离恢复。
+显式独立 Agent 通过 `agent.dependencyConnectionId` 固定依赖连接，向学习数据 owner 调用 `agent.dependencies.v2`；可信宿主通过 `agent.sessions.v2` 调用固定的 Agent owner。每个 serviceId 只发布自身实际装配的能力。维护者使用 `authorize(input,targetServiceId)` 签发对应授权，并配置成员 Agent 与独立模型绑定，学生使用同一正式对话和工作区界面。连接、路由、任务及分片资源随各自所属 owner 参加维护、备份和隔离恢复。
 
-`createProductLearningApplication` 装配生产业务和 HTTP，`createLearningRecoveryTargets` 按备份实际描述提供空间/课程、学习数据、模型连接及教学 Agent owner 的独立恢复目标，使用与验收限制见 [#149 交接](../../docs/student-agent-implementation/wp02-identity-activity.md) 与[模型连接](../learning-space/src/model-connections/README.md)。完整默认组合共五个 owner（含 runtime），独立 Agent 组合共两个。
+`createProductLearningApplication` 装配生产业务和 HTTP，`createLearningRecoveryTargets` 按备份实际描述提供空间/课程、学习数据、模型连接及教学 Agent owner 的独立恢复目标，使用与验收限制见 [#149 交接](../../docs/student-agent-implementation/wp02-identity-activity.md) 与[模型连接](../model-gateway/README.md)。实际 owner 集合由 environment.services、部署启用集合和 requiredServiceIds 核对，源码包的数量不是 owner 数量。
 
-教学 Agent 的正常与独立装配均登记领域清单；目标通过所属 owner 的 `validateTeachingBoundary` 重读记录和资源原字节核对，运行层不枚举或修改 Agent 业务表。返回的还原 owner 保留同一领域清单接口，供隔离校验及后续备份使用。维护与接管沿用本模块的关闸、源退休、接收端撤权及命名空间流程；见 [#204 交付](../../docs/student-agent-implementation/wp07-204-conversation-recovery.md)。
+Agent 的正常与独立装配均使用 agentServiceMigrations（core v1–v8 + chunk v9），并登记 Agent runtime boundary 与 service source closure；目标通过 `validateAgentServiceStorage` / `validateAgentServiceSources` 核对内核记录、输入、等待及 chunk 原资源，运行层不枚举或修改场景业务表。返回的还原 owner 保留同一领域清单接口，供隔离校验及后续备份使用。维护与接管沿用本模块的关闸、源退休、接收端撤权及命名空间流程；历史交付见 [#204 交付](../../docs/student-agent-implementation/wp07-204-conversation-recovery.md)。
 
-恢复 WP06 之前的三 owner 备份时，隔离目标保留原 owner 集合，通过原有精确版本校验完成接管；接管后正常停止并启动一次，才初始化空的模型 owner。新模型配置不会从 legacy 或其他空间自动导入。新的四 owner 备份已包含模型配置、加密凭据和原生检查资源，按正常流程完整恢复。
+恢复按备份实际 owner 集合、schema 版本与边界格式核验。旧教学 schema 不属于 session v2 的自动恢复兼容范围；开发数据重置也不是旧备份升级或生产恢复流程。已有安装的升级、隔离、源退休和唯一写方规则仍按下文执行。
 
 每个 owner 提供 `MaintenanceParticipant` 与 `RecoveryOwner.export/release`，宿主以 requiredServiceIds 列明必需服务。全部参与者关闭新写/派发、排空并确认同一边界后才导出任何 owner。只注册 participant 而缺少 recovery owner、遗漏必需参与者或验证失败均不得生成可用完整备份。`resourceRoots` 须列出真实资源位置，备份目录不得与环境/文件资源根重叠。
 
@@ -100,6 +115,7 @@ takeover 要求最新且仍 held 的源备份、源 `retire` 绑定证明及全�
 ## 验证命令
 
 ```sh
+# 会准备依赖并写构建输出；共享 checkout 先协调统一构建
 npm run typecheck -w @xunjie/product-runtime
 npm run build -w @xunjie/product-runtime
 npm test -w @xunjie/product-runtime

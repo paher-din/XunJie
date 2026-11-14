@@ -1,10 +1,9 @@
-import { spawnSync } from 'node:child_process';
 import { mkdtemp, mkdir, readFile, rm } from 'node:fs/promises';
 import { rmSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { ensureBuild } from './build.mjs';
 import { createProductDevFrontend } from './product-dev-frontend.mjs';
 
 const repository = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -33,12 +32,8 @@ try {
   if (environment.profile !== 'local' || !['127.0.0.1', '::1'].includes(configuration.host)) {
     throw new Error('Product development requires an existing local loopback environment.');
   }
-  const require = createRequire(join(repository, 'packages/product-runtime/package.json'));
-  const compiler = require.resolve('typescript/bin/tsc');
-  const compile = spawnSync(process.execPath, [compiler, '-p', join(repository, 'packages/product-runtime/tsconfig.json'),
-    '--outDir', runtimeOutput, '--declaration', 'false'], { cwd: repository, stdio: 'inherit' });
-  if (compile.error) throw compile.error;
-  if (compile.status !== 0) throw new Error('Product runtime compilation failed.');
+  // The build entry prepares workspace dependencies before emitting the temporary host.
+  await ensureBuild('product-runtime', { args: ['--outDir', runtimeOutput, '--declaration', 'false'] });
   const { prepareProductDevelopment, assertProductDevelopmentServices } = await import(pathToFileURL(join(runtimeOutput, 'development.js')).href);
   const prepared = await prepareProductDevelopment(root);
   if (prepared.upgraded) console.log('已迁接旧版开发环境，将按部署配置创建实际服务。');

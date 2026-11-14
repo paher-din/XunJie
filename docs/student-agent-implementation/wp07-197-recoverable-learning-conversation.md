@@ -1,6 +1,6 @@
 # WP07 #197 可恢复的基础学习对话
 
-2026-11-05（Asia/Shanghai），分支 `wp07`，双轴审查基线 `6b4c3ee`。实现见 [teaching-agent README](../../packages/learning-space/src/teaching-agent/README.md)，审查记录见 [双轴审查](wp07-197-code-review.md)。
+2026-11-05（Asia/Shanghai），分支 `wp07`，双轴审查基线 `6b4c3ee`。实现见 [teaching-agent README](../../packages/agents/README.md)，审查记录见 [双轴审查](wp07-197-code-review.md)。
 
 ## 本轮范围决定
 

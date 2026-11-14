@@ -7,8 +7,8 @@ import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:http';
 import { openProductRuntime, resolveCredential } from '@xunjie/product-runtime';
 import { createFileBackend, openStorage } from '@xunjie/storage';
-import { createSpaces, createCourses, createLearningData, createTeachingTools,
-  spaceCourseMigrations, learningMigrations } from '@xunjie/learning-space';
+import { createSpaces, createCourses, createLearningData, spaceCourseMigrations, learningMigrations } from '@xunjie/learning-space';
+import { createTeachingTools } from '@xunjie/agents';
 import { aluPackage, aluCoursePackage } from '../../../../components/alu-experiment/package.mjs';
 
 /** Production imports, eligibility and native PG owners; no simulation or model is substituted. */
@@ -31,7 +31,7 @@ export async function aluTeachingFixture(t, { priorCourse } = {}) {
   const adminHeaders = { authorization: 'Bearer ' + await resolveCredential(root, 'control') };
   const api = async (route, body, headers = adminHeaders) => {
     const response = await fetch(new URL('/api/learning/' + route, endpoint), {
-      headers: { 'content-type': 'application/json', ...headers },
+      headers: { 'content-type': 'application/json', 'x-xj-agent-contract': '2', ...headers },
       ...(body === undefined ? {} : { method: 'POST', body: JSON.stringify(body) }) });
     const value = await response.json();
     assert.equal(response.status, 200, route + ': ' + JSON.stringify(value));
@@ -95,18 +95,19 @@ export async function aluTeachingModel(t, f, answer) {
     contextWindow: 262144, maxOutputTokens: 2048, credential: { action: 'replace', value: 'synthetic-alu-test-key' } });
   await f.api('models/grants', { requestId: randomUUID(), grantId, connectionId, owner: 'self' });
   await f.api('models/selection', { requestId: randomUUID(), expectedVersion: 0, source: { kind: 'personal', connectionId, grantId } });
+  let session;
   return { payloads, errors,
     async send(question, works = [], references = [], bases = []) {
       const input = structuredClone(f.scope.input);
       input.requestId = randomUUID(); input.works = works;
       input.draft = { token: randomUUID(), question, references, bases };
-      input.receiver = (await f.api(`agent/${f.activity.activityId}/capabilities`)).receiver;
-      await f.api(`intents/${f.activity.activityId}`, input);
-      const receipt = await f.api(`intents/${f.activity.activityId}/${input.requestId}/dispatch`, {});
-      assert.equal(receipt.state, 'accepted');
-      return JSON.parse(receipt.receipt.detail).runId;
+      session = await f.api('agent-sessions/workspace', { activityId: f.activity.activityId, target: f.activity.target });
+      input.receiver = { receiverId: 'teaching-agent:' + session.owner.target.serviceId, location: 'local', kind: 'question' };
+      const receipt = await f.api(`agent-sessions/${session.sessionId}/inputs`, { requestId: randomUUID(), sessionId: session.sessionId,
+        text: question, context: { action: input } });
+      return receipt.runId;
     },
-    async conversation() { return f.api(`agent/${f.activity.activityId}/conversation`); },
+    async conversation() { return f.api(`agent-sessions/${session.sessionId}/conversation`); },
   };
 }
 

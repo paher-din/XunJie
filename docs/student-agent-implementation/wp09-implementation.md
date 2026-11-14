@@ -1,5 +1,7 @@
 # WP09：可交互教学内容实施与验收
 
+本文保留旧版本的验收历史；旧 Agent 探针已退休，文中脚本名仅标识原证据来源。当前 session v2 工程入口为 [teaching-artifact-generation.runtime.test.mjs](../../apps/server/tests/teaching-artifact-generation.runtime.test.mjs)、[teaching-artifact-stop-adopt.runtime.test.mjs](../../apps/server/tests/teaching-artifact-stop-adopt.runtime.test.mjs)、[workspace-assistant.runtime.test.mjs](../../packages/agents/test/workspace-assistant.runtime.test.mjs)。这些测试不继承本页的历史通过结论，真实供应商、桌面与跨机结果须另行验收。
+
 规范：[WP09：可交互教学内容](https://github.com/paher-din/XunJie/issues/224)。实施基线为 `main@58c7cc5fee18bc3baf6ab874467fba6d57de4e17`。本记录区分设计、实现和实际验证，不复制 issue 的动态实施状态。
 
 ## 实现与所有权
@@ -75,27 +77,14 @@ WP03 三类公开入口回归均使用真实 Chrome：[标注 26 个场景](evid
 
 深色与实际 ALU 结果：[深色教学页面](evidence/wp09/real-models-product-dark.png)、[渐进预览](evidence/wp09/after/streaming-dark.png)、[ALU 原结果与生成页](evidence/wp09/alu/generated-page-comparison.png)。
 
-## 复跑入口
+## 当前工程回归入口
 
-使用完整 Node 24.21.0/npm，产品包内 Node/PostgreSQL 为 24.21.0/18.6。`npm run verify` 必须使用完整 Node 安装；紧凑产品 Node 目录不提供 npm。先串行准备依赖，避免测试分组启动时与其他构建并发重装根依赖。
+使用 Node 24.21.0 和支持的 `XUNJIE_PRODUCT_POSTGRES_BIN`；先由协调方统一准备 workspace 产物。已有产物时直接运行，不在共享构建期间重复 build：
 
 ```sh
-rtk bypass npm run verify
-
-# 正式产品包：分别构建，保留各包自己的资源清单。
-rtk bypass npm run package:product -- --platform darwin-arm64 --out dist/wp09-macos-r7
-rtk bypass npm run package:product -- --platform win32-x64 --out dist/wp09-win32-r7
-
-# 实际课程执行、状态与原结果核对；受控页面，不产生模型费用。
-dist/wp09-macos-r7/resources/node/bin/node scripts/probe-wp09-alu.mjs \
-  --product dist/wp09-macos-r7 --out docs/student-agent-implementation/evidence/wp09/alu
-
-# 真实双机及关联恢复，内部保留真实供应商的有界调用预算。
-dist/wp09-macos-r7/resources/node/bin/node scripts/probe-wp09-cross.mjs \
-  --product dist/wp09-macos-r7 --windows-product dist/wp09-win32-r7 \
-  --model real --out .verification/wp09-cross-rerun.json
+node --test --test-concurrency=1 apps/server/tests/teaching-artifact-generation.runtime.test.mjs apps/server/tests/teaching-artifact-stop-adopt.runtime.test.mjs packages/agents/test/workspace-assistant.runtime.test.mjs
 ```
 
-本次已完成的恢复均沿原候选续验；现有结果可直接按保留证据复核。上面的真实供应商命令会创建新的隔离验收并产生新模型调用，不覆盖本次证据。临时私有 root、凭据及原生完整输出不提交；失败记录保持失败状态。
+这些是当前 session v2 工程入口，结果须按本次实际执行单独记录。历史产品包、真实供应商、桌面输入法与跨机验收不由上述测试替代。
 
-教学效果不由上述工程或操作结果推断。真实学生教学研究尚未执行。
+领域产物与实际 Icarus 浏览器专项仍保留 [ALU 执行 probe](../../scripts/probe-wp09-alu.mjs)，不经过旧 Agent runtime；本轮未运行。教学效果仍需真实学生研究。

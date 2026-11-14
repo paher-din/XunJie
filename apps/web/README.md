@@ -22,21 +22,23 @@ XunJie 主仓库的师生共用 Web 工程。首次内容由设计仓库 `XunJie
 
 ## 正式产品入口与后续 WP
 
-本机产品、学校网页及混合连接共用 [`product/LearningApp.tsx`](src/product/LearningApp.tsx)，普通 Web 的默认入口与产品包 `build:runtime` 都装配这一个应用。`runtime/` 只保留启动装配和 `?diagnostics=1` 辅助诊断，不再承载独立学习页面。正式产品消费 `/api/learning/*` 的新空间身份、活动、课程发布、作品、问题草稿与动作接口；不会在请求失败时回退演示课程或旧 Session。
+本机产品、学校网页及混合连接共用 [`product/LearningApp.tsx`](src/product/LearningApp.tsx)，普通 Web 的默认入口与产品包 `build:runtime` 都装配这一个应用。`runtime/` 只保留启动装配和 `?diagnostics=1` 辅助诊断，不再承载独立学习页面。正式产品消费 `/api/learning/*` 的空间身份、活动、课程发布、作品、问题草稿与 session v2 接口；不会在请求失败时回退演示课程或旧 Session。
 
 | 位置 | 当前职责与后续接入 |
 | --- | --- |
 | [`components/ShellFrame.tsx`](src/components/ShellFrame.tsx)、[`ProductShell`](src/components/ProductShell.tsx) | 从原 AppShell 抽出的共享外壳、品牌、导航轨道、主题与焦点；以新空间身份与实际可用能力驱动。新导航在此增补。 |
 | [`product/ProductHome.tsx`](src/product/ProductHome.tsx)、[`ProductShell`](src/components/ProductShell.tsx) | 复用旧版看板与课程卡，按学校／个人空间呈现课程和自主活动。缺少学习统计时保留看板空态，不补演示进度；学校连接与个人模型配置集中在设置页。 |
-| [`product/ProductAgent.tsx`](src/product/ProductAgent.tsx)、[`ProductConversation.tsx`](src/product/ProductConversation.tsx) | Agent 输入框以首问建立活动并可靠交接，后续对话沿用该活动的草稿与动作；需要作品或材料时进入同一活动工作区。 |
-| [`product/ActivityPage.tsx`](src/product/ActivityPage.tsx) | 既有沉浸工作区的目标／材料入口、`CenterToolArea`、文件条与问题面板。课程工具、执行结果（WP03）接中心工具区；Agent（WP07）接同一讨论位置与真实 receiver。 |
+| [`product/ProductAgent.tsx`](src/product/ProductAgent.tsx)、[`SessionConversation.tsx`](src/product/SessionConversation.tsx)、[`agent-sessions.ts`](src/product/agent-sessions.ts) | 普通首问建立个人 session，不创建 activity。沿原 requestId 核对接纳回执；历史、新建、重命名、置顶、归档和删除接入现有侧栏。 |
+| [`product/ActivityPage.tsx`](src/product/ActivityPage.tsx)、[`PersonalProjectPlan.tsx`](src/product/PersonalProjectPlan.tsx) | 保留目标／材料、`CenterToolArea`、文件条与问题面板；真实 activity 使用独立 workspace session。个人项目的 title/goal/stages 来自 project 读取接口，在原布局显示任务清单。 |
 | [`product/ActivityWorkspace.tsx`](src/product/ActivityWorkspace.tsx)、[`FileTabs`](src/components/workspace/FileTabs.tsx) | 稳定对象身份上的创建、编辑、改名、删除和同名重建；复用 Monaco、原文投影和选区交互。 |
-| [`product/ActivityReferences.tsx`](src/product/ActivityReferences.tsx)、[`ActivityActions`](src/product/ActivityActions.tsx) | 装配唯一可靠会话，登记固定材料／作品引用、持久问题草稿、待发与真实回执。没有真实接收方时保留草稿并禁用发送。 |
-| [`reliable-workspace`](src/reliable-workspace/README.md) | 作品、问题、引用和动作的唯一持久状态权威；本机保护、冲突、离开与恢复均调用其公开接口，页面不另建仓库、保存队列或派发循环。 |
+| [`product/ActivityReferences.tsx`](src/product/ActivityReferences.tsx)、[`ActivityActions`](src/product/ActivityActions.tsx) | 维护可靠作品、固定引用和问题草稿。workspace 输入直接以 v2 accept 保存固定 `context.action`，receiver 沿已保存 session owner 的原身份；不再先调用旧 question intent dispatch。 |
+| [`reliable-workspace`](src/reliable-workspace/README.md) | 工作区作品、草稿、引用与动作的持久状态权威；本机保护、冲突、离开与恢复调用其公开接口。普通 session 首问另有持久 outbox，接纳未知时先 query 原 request，避免重复输入。 |
 
 活动地址使用 `?space=<key>&activity=<id>`，课程选择使用 `course` 查询参数。浏览器前进／后退与页面导航同样先完成离开保护；保护失败留在原活动并提供复制、导出。退出与空间切换继续核对原身份，异步结果按视图代次隔离。新产品没有手动保存、确认／冻结前置操作或常态保存状态。
 
-侧栏的 Agent 对话使用 `?view=agent`，发送首问后停留在该活动的对话页；从对话进入工作区不会创建第二个活动。个人资料与学习看板只展示已有身份及统计事实，尚无画像或统计时显示空态。
+侧栏普通对话使用 `?view=agent&session=<id>`，始终以本机 personal identity 调用 `/api/learning/agent-sessions` 并携带 `x-xj-agent-contract: 2`；工作区使用真实 activity 的独立 session，可属于学校身份。切页不停止后台运行，回到页面继续读取当前 conversation 并按消息身份稳定合并增量。输入待发编辑、移除、steering、停止、继续与提问回应使用 v2 操作；snapshot 仅是独立调试接口。
+
+资料统一走 `/agent-sessions/:sessionId/materials/*` 和 `pdf/*`；会话技能从 `/agent-sessions/:sessionId/skills` 读取或选择，全局 `/skills` 只管理个人库。真实工具成功返回的 workspace 投影使用现有 MessageTaskCard，创建后刷新 CourseTiles；个人项目标题可由真实 project 内容补全。个人资料与学习看板只展示已有身份及统计事实。以上是源码接线说明，真实 host、浏览器与跨连接验收须单独报告。
 
 WP07 #198 将普通 Web（含非 prep 开发模式）的 `/#/agent`、`/#/agent/:conversationId` 接入同一个 `LearningApp`：有正式 `space` / `activity` 查询参数时读取原活动，否则显示学习空间首页，由已有活动或新学习目标进入同一讨论面板。从旧任务、设置等 hash 路由站内进入 Agent 时，先退出旧路由并保留 URL 外层查询参数，再打开正式学习空间；不嵌套第二个工作区。旧个人聊天 ID 不转换为活动 ID，也不重发旧问题、迁写旧历史或回退 `/api/agent/*`、`student_help`。只有显式 `dev:prep` 保留旧 `AgentPage` 作为隔离演示参考。保留的旧消费者、后续迁移归属和验证边界见 [#198 旧消费者清单](../../docs/student-agent-implementation/wp07-198-legacy-consumers.md)。
 
@@ -44,7 +46,7 @@ WP07 #198 将普通 Web（含非 prep 开发模式）的 `/#/agent`、`/#/agent/
 
 WP04 的正式 ALU 单次实验已接入同一活动页、作品和组件工具区，复用可靠编辑、公共执行、固定结果及资源保留。课程包见 [ALU 导入说明](../../components/alu-experiment/README.md)，实际 Windows 产品包/普通 Web、离线运行、双标签及界面对照见 [#192 本机交付](../../docs/student-agent-implementation/wp04-192-windows-acceptance.md)；Mac 和独立学校 HTTPS 验收边界单独记录。
 
-WP06 #164 已在同一外壳加入“模型设置”（`?settings=models`），通过 `PersonalModelSettings` / 纯展示 `ModelTab` 消费独立模型 owner：管理本人连接，保存前或保存后进行有限 Chat 文本检查，查询原检查及取消。普通正式 Web 和独立产品包使用同一实现。检查成功不验证图像/工具/strict schema，也不启用真实 Agent；模型未配置不阻止活动、作品和问题草稿。协议、凭据及恢复边界见[模型连接模块](../../packages/learning-space/src/model-connections/README.md)。旧设置控制器显式使用 `LegacyModelTab`，不与正式配置双写或相互回退。
+WP06 #164 已在同一外壳加入“模型设置”（`?settings=models`），通过 `PersonalModelSettings` / 纯展示 `ModelTab` 消费独立模型 owner：管理本人连接，保存前或保存后进行有限 Chat 文本检查，查询原检查及取消。普通正式 Web 和独立产品包使用同一实现。检查成功不验证图像/工具/strict schema，也不启用真实 Agent；模型未配置不阻止活动、作品和问题草稿。协议、凭据及恢复边界见[模型连接模块](../../packages/model-gateway/README.md)。旧设置控制器显式使用 `LegacyModelTab`，不与正式配置双写或相互回退。
 
 正式交付执行 `npm run build:runtime -w @xunjie/web` 与 `npm run package:product -- --platform <目标平台>`，后者提供真实宿主与同源 API；单独运行 Vite 默认页只提供前端，须由产品宿主提供 `/api/learning`。`npm run dev:prep -w @xunjie/web` 是原已确认 UI 的隔离参考。新界面与证据见 [#159 实施与验收](../../docs/student-agent-implementation/wp02-product-ui.md)。
 
@@ -320,7 +322,7 @@ CI 一律新起，避免断言打在陈旧进程上）。首次使用需安装�
 
 ## 旧教学宿主的个人模型配置与独立聊天
 
-本节记录旧宿主与个人聊天实现，不能作为 #198 正式 Agent 的当前说明。正式 Agent 已由上述 `LearningApp` 活动对话承载；旧聊天页面只在显式准备模式展示。旧设置和教师模型消费者仍在使用的共享服务继续保留，完整清单见 [#198 旧消费者清单](../../docs/student-agent-implementation/wp07-198-legacy-consumers.md)。
+本节记录旧宿主与个人聊天实现，不能作为 #198 正式 Agent 的当前说明。正式 Agent 已由上述 `LearningApp` 的 session v2 普通对话与工作区对话承载；旧聊天页面只在显式准备模式展示。旧设置和教师模型消费者仍在使用的共享服务继续保留，完整清单见 [#198 旧消费者清单](../../docs/student-agent-implementation/wp07-198-legacy-consumers.md)。
 
 新版正常宿主提供个人模型 API。登录后进入「设置 → 模型」，添加公网 HTTPS 的 OpenAI 兼容 Base URL、API Key 和准确的模型 ID，选择默认模型并启用。界面等待服务端保存成功才生效；重新打开只显示 Key 是否已保存与掩码，浏览器不持久保存明文 Key。连接测试由服务端读取供应商模型列表，不等同于付费生成验证。
 

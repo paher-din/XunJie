@@ -9,7 +9,8 @@ import { agentExecutionMigration, agentExecutionOriginMigration, agentExecutionA
 import { channelExecutionMigration, channelCheckpointMigration } from '../../../packages/learning-space/dist/learning-data/channel-executions.js';
 import { collectExecutionBoundary, validateExecutionBoundary } from '../../../packages/learning-space/dist/learning-data/maintenance.js';
 import { createNativeChannel, nativeChannelMigration, nativeChannelTargetMigration, nativeChannelObservationMigration, nativeChannelCancellationMigration, nativeChannelCleanupMigration } from '../../../packages/learning-space/dist/learning-data/native-channel.js';
-import { nativeSessionMigration } from '../../../packages/learning-space/dist/learning-data/native-sessions.js';
+import { nativeSessionMigration, validateNativeSessions } from '../../../packages/learning-space/dist/learning-data/native-sessions.js';
+import { teachingArtifactMigration } from '../../../packages/learning-space/dist/learning-data/teaching-artifacts.js';
 import { sessionRecoveryMigration } from '../../../packages/learning-space/dist/learning-data/session-checkpoints.js';
 import { createWorks, workMigration } from '../../../packages/learning-space/dist/learning-data/works.js';
 import { accumulatorPackage } from '../../../components/state-accumulator/package.mjs';
@@ -20,7 +21,7 @@ const hash = value => createHash('sha256').update(JSON.stringify(canonicalValue(
 async function fixture() {
   const pg = await nativeFixture();
   const migrations = [{ version: 1, name: 'activities', sql: 'CREATE TABLE activities(id uuid PRIMARY KEY,body jsonb NOT NULL);' },
-    workMigration, executionMigration, nativeSessionMigration, sessionRecoveryMigration, executionActionTextMigration, channelExecutionMigration, channelCheckpointMigration, nativeChannelMigration, nativeChannelTargetMigration, nativeChannelObservationMigration, nativeChannelCancellationMigration, nativeChannelCleanupMigration, agentExecutionMigration, agentExecutionOriginMigration, agentExecutionAuthorityMigration].map((m, i) => ({ ...m, version: i + 1 }));
+    workMigration, executionMigration, nativeSessionMigration, sessionRecoveryMigration, executionActionTextMigration, channelExecutionMigration, channelCheckpointMigration, nativeChannelMigration, nativeChannelTargetMigration, nativeChannelObservationMigration, nativeChannelCancellationMigration, nativeChannelCleanupMigration, agentExecutionMigration, agentExecutionOriginMigration, agentExecutionAuthorityMigration, teachingArtifactMigration].map((m, i) => ({ ...m, version: i + 1 }));
   const binding = await provisionStorage({ admin: pg.admin,
     owner: { environmentId: randomUUID(), serviceId: randomUUID() }, password: randomUUID(), migrations }).catch(async error => { await pg.close(); throw error; });
   const storage = await openStorage({ binding, migrations, backend: createFileBackend({ id: 'files', root: pg.root + '/objects' }) });
@@ -112,10 +113,117 @@ test('trusted execution owner runs an agent session, preserves prior input, fenc
   } finally { await f.close(); }
 });
 
+test('a native expectedSeq conflict retains a rejected original receipt without changing or stopping the parent session', { timeout: 120000 }, async () => {
+  const f = await fixture();
+  try {
+    const started = await f.owner.agent.dispatch(f.identity, f.activity.activityId, f.context, f.action);
+    assert.equal(started.session.appliedSeq, 0, 'starting a session does not apply a control');
+    const input = { controlId: randomUUID(), operationId: 'advance', effect: 'input', expectedSeq: 2, parameters: { value: 1 } };
+    const context = { ...f.context, commandId: input.controlId };
+    await assert.rejects(f.owner.agent.control(f.identity, f.activity.activityId, context, f.action.requestId, input), { code: 'identity-conflict' });
+    const rejected = await f.owner.controlReceipt(f.identity, f.activity.activityId, f.action.requestId, input.controlId);
+    assert.ok(rejected, 'the owner must retain its definite no-effect rejection for recovery');
+    assert.equal(rejected.status, 'rejected');
+    assert.equal(rejected.seq, 3);
+    assert.equal(rejected.query.state, 'running');
+    assert.equal(rejected.query.stopRequested, false);
+    assert.equal(rejected.query.session.appliedSeq, 0);
+    assert.deepEqual(rejected.query.session.observation, { value: 0, total: 0, applied: 0 });
+    await assert.rejects(f.owner.agent.control(f.identity, f.activity.activityId, context, f.action.requestId, input), { code: 'invalid' });
+    assert.deepEqual(await f.owner.controlReceipt(f.identity, f.activity.activityId, f.action.requestId, input.controlId), rejected);
+    await assert.rejects(f.owner.agent.control(f.identity, f.activity.activityId, context, f.action.requestId,
+      { ...input, expectedSeq: 0 }), { code: 'identity-conflict' });
+    const valid = { ...input, controlId: randomUUID(), expectedSeq: 0 };
+    const applied = await f.owner.agent.control(f.identity, f.activity.activityId,
+      { ...f.context, commandId: valid.controlId }, f.action.requestId, valid);
+    assert.equal(applied.executionRef, started.executionRef);
+    assert.equal(applied.state, 'running');
+    assert.equal(applied.session.appliedSeq, 1);
+    assert.deepEqual(applied.session.observation, { value: 1, total: 1, applied: 1 });
+    assert.equal((await f.owner.controlReceipt(f.identity, f.activity.activityId, f.action.requestId, input.controlId)).status, 'rejected');
+    await f.owner.agent.validate();
+    await validateNativeSessions(f.storage);
+  } finally { await f.close(); }
+});
+
+test('actual tools report native sequence rejection as a no-effect model error before and after a concurrent advance', { timeout: 120000 }, async t => {
+  const f = await fixture();
+  try {
+    const { createTeachingTools } = await import('../../../packages/agents/dist/workspace-assistant/tools/tools.js');
+    const scope = { identity: f.identity, activity: f.activity, runId: f.context.runId, stepId: f.context.stepId,
+      snapshotId: f.context.snapshotId, assertDispatch: f.context.assertDispatch,
+      input: { requestId: randomUUID(), scope: actionScope(f.identity, f.activity.activityId),
+        receiver: { receiverId: 'teaching-agent', kind: 'question', location: 'local' },
+        draft: { token: 'fixed', question: 'apply one original input', references: [], bases: [] }, works: [], evidence: [] } };
+    const host = createTeachingTools({ learning: () => ({ open: f.authorize, works: f.works, executions: f.owner }),
+      courses: { verifyComponentReference: async () => {} } });
+    const prepare = args => host.prepare(scope, { callId: randomUUID(), name: 'course_operation',
+      arguments: { componentKey: 'counter', operationId: 'advance', parameters: { value: 1 }, ...args } }, randomUUID());
+    const start = await prepare({ operationId: 'start_session', parameters: {} });
+    const begun = await host.dispatch(scope, start);
+    assert.equal(begun.state, 'completed');
+    assert.equal(begun.result.query.session.appliedSeq, 0);
+    assert.notEqual(begun.result.query.confirmedSeq, 0, 'confirmedSeq is not the input appliedSeq');
+
+    const wrong = await prepare({ requestId: start.commandId, expectedSeq: 2 });
+    const rejected = await host.dispatch(scope, wrong);
+    assert.equal(rejected.state, 'failed');
+    assert.equal(rejected.feedback.outcome, 'error');
+    assert.equal(rejected.result.controlReceipt.status, 'rejected');
+    assert.deepEqual(rejected.result.controlState, { expectedSeq: 2, appliedSeq: 0, effectApplied: false });
+    assert.equal(rejected.result.operationCompleted, false);
+    assert.equal(rejected.result.query.state, 'running');
+    assert.equal(rejected.result.query.stopRequested, false);
+    assert.equal((await host.reconcileOriginal(scope, wrong)).state, 'failed', 'recovery reads the original rejection, not parent running');
+
+    const late = await prepare({ requestId: start.commandId, expectedSeq: 0 });
+    const control = { controlId: randomUUID(), operationId: 'advance', effect: 'input', expectedSeq: 0, parameters: { value: 2 } };
+    await f.owner.agent.control(f.identity, f.activity.activityId, { ...f.context, commandId: control.controlId }, start.commandId, control);
+    const conflict = await host.dispatch(scope, late);
+    assert.equal(conflict.state, 'failed');
+    assert.equal(conflict.feedback.outcome, 'error');
+    assert.deepEqual(conflict.result.controlState, { expectedSeq: 0, appliedSeq: 1, effectApplied: false });
+    assert.deepEqual(conflict.result.query.session.observation, { value: 2, total: 2, applied: 1 });
+    assert.equal((await host.reconcileOriginal(scope, late)).state, 'failed');
+    assert.equal((await host.reconcileOriginal(scope, wrong)).result.controlState.appliedSeq, 1);
+
+    const unsent = await prepare({ requestId: start.commandId, expectedSeq: 1 });
+    const unconfirmed = await host.reconcileOriginal(scope, unsent);
+    assert.equal(unconfirmed.state, 'unknown', 'a parent session cannot prove an unsent control accepted');
+    assert.equal(unconfirmed.result.operationCompleted, false);
+    assert.equal(unconfirmed.result.query.state, 'running');
+    assert.equal(unconfirmed.result.query.stopRequested, false);
+    const valid = await prepare({ requestId: start.commandId, expectedSeq: 1 });
+    const applied = await host.dispatch(scope, valid);
+    assert.equal(applied.state, 'completed');
+    assert.deepEqual(applied.result.query.session.observation, { value: 3, total: 3, applied: 2 });
+    await t.test('recovery rejects another control, request, execution or subject receipt', async () => {
+      const readReceipt = f.owner.controlReceipt;
+      const original = await readReceipt(f.identity, f.activity.activityId, start.commandId, valid.commandId);
+      try {
+        for (const foreign of [
+          { ...original, controlId: randomUUID() },
+          { ...original, requestId: randomUUID() },
+          { ...original, executionRef: randomUUID() },
+          { ...original, query: { ...original.query, requestId: randomUUID() } },
+          { ...original, query: { ...original.query, executionRef: randomUUID() } },
+          { ...original, query: { ...original.query, scope: { ...original.query.scope, principalId: randomUUID() } } },
+        ]) {
+          f.owner.controlReceipt = async () => foreign;
+          await assert.rejects(host.reconcileOriginal(scope, valid), { code: 'identity-conflict' });
+        }
+      } finally { f.owner.controlReceipt = readReceipt; }
+      assert.deepEqual((await host.reconcileOriginal(scope, valid)).result.controlState,
+        { expectedSeq: 1, appliedSeq: 2, effectApplied: true });
+    });
+    await f.owner.agent.validate();
+  } finally { await f.close(); }
+});
+
 test('tool host freezes an approved work and runs manifest-declared stateful operations through the actual owner', { timeout: 120000 }, async () => {
   const f = await fixture();
   try {
-    const { createTeachingTools } = await import('../../../packages/learning-space/dist/teaching-agent/tools.js');
+    const { createTeachingTools } = await import('../../../packages/agents/dist/workspace-assistant/tools/tools.js');
     const file = { objectId: randomUUID(), contentId: randomUUID(), name: 'notes.txt', kind: 'text', encoding: 'utf8', mediaType: 'text/plain', value: 'fixed: 1, 2, 2' };
     await f.works.sync(f.identity, f.activity.activityId, { requestId: randomUUID(), baseRevision: 0, files: [file] });
     const scope = { identity: f.identity, activity: f.activity, runId: f.context.runId, stepId: f.context.stepId,
@@ -126,7 +234,8 @@ test('tool host freezes an approved work and runs manifest-declared stateful ope
     const host = createTeachingTools({ learning: () => ({ open: f.authorize, works: f.works, executions: f.owner }),
       courses: { verifyComponentReference: async () => {} } });
     const definitions = await host.definitions(scope);
-    assert.deepEqual(definitions.map(d => d.name).sort(), ['course_operation', 'execution_query', 'execution_stop', 'read_material', 'read_reference', 'read_result', 'read_work']);
+    assert.deepEqual(definitions.map(d => d.name).sort(), ['course_operation', 'execution_query', 'execution_stop', 'generate_teaching_artifact',
+      'read_material', 'read_reference', 'read_result', 'read_student_facts', 'read_teaching_artifact', 'read_work', 'search_materials']);
     const intent = (name, args) => ({ callId: randomUUID(), name, arguments: args });
     await assert.rejects(host.prepare(scope, intent('read_work', { objectId: file.objectId, contentId: file.contentId, path: '/' }), randomUUID()), { code: 'invalid' });
     await assert.rejects(host.prepare(scope, intent('read_work', { objectId: file.objectId, contentId: randomUUID() }), randomUUID()), { code: 'forbidden' });
@@ -179,7 +288,7 @@ test('browser handoff survives owner reconstruction, requires a live permit and 
   const f = await fixture();
   let reopened;
   try {
-    const { createTeachingTools } = await import('../../../packages/learning-space/dist/teaching-agent/tools.js');
+    const { createTeachingTools } = await import('../../../packages/agents/dist/workspace-assistant/tools/tools.js');
     const { aggregationPackage } = await import('../../../components/table-aggregation/package.mjs');
     const published = await aggregationPackage(), manifest = published.manifest;
     const binding = { key: 'table', definition: { manifest, digest: 'b'.repeat(64) }, configuration: {}, materialIds: [] };
@@ -297,8 +406,8 @@ test('PNG work evidence uses the fixed verified WP06 route and durable image res
   const f = await fixture();
   let modelStorage;
   try {
-    const { createTeachingTools } = await import('../../../packages/learning-space/dist/teaching-agent/tools.js');
-    const { createModelGateway, modelMigrations } = await import('../../../packages/learning-space/dist/model-connections/index.js');
+    const { createTeachingTools } = await import('../../../packages/agents/dist/workspace-assistant/tools/tools.js');
+    const { createModelGateway, modelMigrations } = await import('../../../packages/model-gateway/dist/index.js');
     const binding = await provisionStorage({ admin: f.pg.admin, owner: { environmentId: randomUUID(), serviceId: randomUUID() },
       password: randomUUID(), migrations: modelMigrations });
     modelStorage = await openStorage({ binding, migrations: modelMigrations,

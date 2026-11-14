@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createModelProfiles } from '../../../packages/learning-space/dist/model-connections/profiles.js';
+import { createModelProfiles } from '../../../packages/model-gateway/dist/profiles.js';
 
 const day = 24 * 60 * 60 * 1000;
 const interval = 10 * 60 * 1000;

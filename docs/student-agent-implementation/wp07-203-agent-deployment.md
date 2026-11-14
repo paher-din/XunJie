@@ -1,5 +1,7 @@
 # WP07 #203：Agent 独立部署与跨机验收
 
+本文保留旧版本的验收历史；旧 Agent 探针已退休，文中脚本名仅标识原证据来源。当前 session v2 工程入口为 [agent-connection-v2.runtime.test.mjs](../../packages/product-runtime/test/agent-connection-v2.runtime.test.mjs)、[standalone-agent.runtime.test.mjs](../../packages/product-runtime/test/standalone-agent.runtime.test.mjs)、[agent-browser-v3.runtime.test.mjs](../../apps/server/tests/agent-browser-v3.runtime.test.mjs)。这些测试不继承本页的历史通过结论，真实供应商、桌面与跨机结果须另行验收。
+
 [需求 #203](https://github.com/paher-din/XunJie/issues/203)的实现、工程验证和本票部署验收已完成。`final-r4` 两平台完整产品包对应推送前整合 #199 之前的 #203 源码；六个真实模型主循环及 Windows 独立 Agent 生命周期检查全部通过，一次性环境已清理。后续源码整合的验证边界见下文。
 
 [双轴审查与需求对应](wp07-203-code-review.md) · [工程证据](evidence/wp07-203/engineering-verification.json) · [部署与耗时汇总](evidence/wp07-203/deployment-verification.json) · [最终清理](evidence/wp07-203/final-task-cleanup-r4.json)
@@ -29,7 +31,7 @@
 
 ## 真实端点与浏览器结果
 
-[正式探针](../../scripts/probe-agent-deployment.mjs)使用生产 HTTP/capability、真实 DeepSeek `deepseek-flash`、课程表格聚合组件与实际浏览器 broker/WASM，不替换模型、执行结果或 Wait。固定初始样例通过正式 workspace API 保存并加入问题的固定作品版本；实际结果为 12 行、3 组、总平均分 `83.33333333333333`。
+历史脚本 `probe-agent-deployment.mjs`（已退役）使用生产 HTTP/capability、真实 DeepSeek `deepseek-flash`、课程表格聚合组件与实际浏览器 broker/WASM，不替换模型、执行结果或 Wait。固定初始样例通过正式 workspace API 保存并加入问题的固定作品版本；实际结果为 12 行、3 组、总平均分 `83.33333333333333`。
 
 | 模式 | 浏览器 | 结果与真实请求 | 证据 |
 | --- | --- | --- | --- |
@@ -93,24 +95,12 @@ r1/r2/r3 主循环是被替代候选的诊断证据，最终结果只以上表 r
 
 [整合验证记录](evidence/wp07-203/integration-verification.json)：完整门禁通过，包括类型、构建、公共 wire、文档链接及 unit 28、server 88、tools 45 个任务。相关原生初轮 44 项中 43 通过，1 项因旧对话夹具提前冻结事件前缀失败；修正夹具并补充超期场景后，受影响的两个产品集成用例均通过。桌面 Chrome 10 项通过、2 项旧 UI 基线截图跳过，未改写 #199 的 Windows 原始截图。工程、浏览器与原始失败日志一并保留；本次未重新进行跨机产品包或教学效果验收。
 
-## 复验入口
+## 当前工程回归入口
 
-使用 Node 24.21.0 与仓库依赖，先完成构建，再执行原生回归；运行原生产品夹具期间保持共享 `dist` 稳定。打包使用新的输出目录；正式 CLI 和独立 Agent 配置见 [local-runtime](../../apps/local-runtime/README.md)。
-
-```sh
-npm run verify -- --jobs 3
-npm run package:product -- --platform darwin-arm64 --profile full --out dist/product-darwin-arm64-wp07-replay
-npm run package:product -- --platform win32-x64 --profile full --out dist/product-win32-x64-wp07-replay
-```
-
-真实端点探针使用 `--mode local|school|agent|cross|windows-agent`，协议使用 `--protocol chat-completions|responses|messages`。例如：
+使用 Node 24.21.0 和支持的 `XUNJIE_PRODUCT_POSTGRES_BIN`；先由协调方统一准备 workspace 产物。已有产物时直接运行，不在共享构建期间重复 build：
 
 ```sh
-wp07_product="$PWD/dist/product-darwin-arm64-wp07-203-final-r4"
-wp07_node="$wp07_product/resources/node/bin/node"
-wp07_evidence=docs/student-agent-implementation/evidence/wp07-203
-"$wp07_node" scripts/probe-agent-deployment.mjs --mode local --product "$wp07_product" \
-  --max-generations 40 --out "$wp07_evidence/replay-local-chat.json"
+node --test --test-concurrency=1 packages/product-runtime/test/agent-connection-v2.runtime.test.mjs packages/product-runtime/test/standalone-agent.runtime.test.mjs apps/server/tests/agent-browser-v3.runtime.test.mjs
 ```
 
-跨机复验前重新同步探针与公开 CA，按当前 LAN 地址准备新证书和私钥；本轮测试密钥已删除。`cross` 通过 `--ssh win --remote-product ... --remote-script ... --remote-ca ... --lan-host ... --certificate ... --key ...` 指定维护连接和 HTTPS 资源，`windows-agent` 沿同一 SSH 控制入口且强制零生成。凭据从既有私有配置或 `--credentials-file` 读取，保持同一输出目录的实际调用账本，不把新报告当作计数重置。
+这些是当前 session v2 工程入口，结果须按本次实际执行单独记录。历史产品包、真实供应商、桌面输入法与跨机验收不由上述测试替代。

@@ -6,6 +6,7 @@ import { ContinueTaskCard, CourseTiles, HomeCourseRegion, HomeIntro, HomeSection
 import './product-home.css'
 
 export interface ProductHomeProps {
+  projectTitles?: Record<string, string>
   accountName: string
   personalActivities: LearningActivity[] | null
   schoolActivities: LearningActivity[] | null
@@ -39,7 +40,7 @@ function readLayout(key: string): DashboardLayout {
   return defaultDashboardLayout()
 }
 
-export function ProductHome({ accountName, personalActivities: personalData, schoolActivities: schoolData, courses,
+export function ProductHome({ projectTitles = {}, accountName, personalActivities: personalData, schoolActivities: schoolData, courses,
   personalKey, schoolKey, initialCategory = schoolKey ? 'school' : 'personal', dashboardKey,
   busy, onOpenActivity, onOpenCourse, onStartConversation, onRefresh, personalError, schoolError, onConnectSchool }: ProductHomeProps) {
   const [category, setCategory] = useState(initialCategory)
@@ -66,8 +67,8 @@ export function ProductHome({ accountName, personalActivities: personalData, sch
     <HomeIntro title={<>{greeting}，{accountName}</>} date={<>{now.getMonth() + 1} 月 {now.getDate()} 日</>} />
     <DashboardSection data={{}} tasks={null} now={now} layout={layout} onLayoutChange={changeLayout}
       periodLabel="学习概览" editHint="添加或移出看板组件；暂无统计的数据会显示空态。"
-      continueSlot={recent ? <ContinueTaskCard tag="继续学习" title={activityTitle(recent)}
-        description={recent.goal && recent.goal !== activityTitle(recent) ? recent.goal : undefined}
+      continueSlot={recent ? <ContinueTaskCard tag="继续学习" title={(projectTitles[recent.activityId] || activityTitle(recent))}
+        description={recent.goal && recent.goal !== (projectTitles[recent.activityId] || activityTitle(recent)) ? recent.goal : undefined}
         meta="最近创建的进行中活动" metaClassName="db-side" action="继续学习"
         onOpen={() => onOpenActivity(recent.activityId, sourceKey!)} /> : <div className="product-home-continue-empty">
           <p>{currentActivities === null ? '学习活动尚未加载' : '从一个问题开始学习'}</p>
@@ -93,7 +94,7 @@ export function ProductHome({ accountName, personalActivities: personalData, sch
             : personalActivities.length === 0 ? <div className="empty product-home-empty">暂无自主学习活动。<button type="button" className="outline" disabled={busy} onClick={onStartConversation}>开始对话</button></div>
               : <CourseTiles courses={personalActivities.map(activity => activity.activityId)} idKind="activity"
                 toneOf={id => activitiesById.get(id)!.index}
-                titleOf={id => activityTitle(activitiesById.get(id)!.activity)}
+                titleOf={id => projectTitles[id] || activityTitle(activitiesById.get(id)!.activity)}
                 summaryOf={id => activitiesById.get(id)!.activity.status === 'closed' ? '已关闭' : '进行中'}
                 actionOf={id => activitiesById.get(id)!.activity.status === 'closed' ? '查看活动' : '继续学习'}
                 onOpen={id => onOpenActivity(id, personalKey!)} />}
@@ -101,7 +102,7 @@ export function ProductHome({ accountName, personalActivities: personalData, sch
     {category === 'school' && !error && currentActivities && currentActivities.length > 0 && <section aria-labelledby="school-activities-title">
       <HomeSectionHeading title="我的学习活动" count={`${currentActivities.length} 个`} />
       <LearningCardGrid>{register => currentActivities.map((activity, index) => <LearningTaskCard
-        key={activity.activityId} activityId={activity.activityId} title={activityTitle(activity)}
+        key={activity.activityId} activityId={activity.activityId} title={projectTitles[activity.activityId] || activityTitle(activity)}
         goal={activity.course?.objectives[0] || activity.question || undefined}
         badge={<span className={'status' + (activity.status === 'closed' ? ' pending' : '')}>{activity.status === 'closed' ? '已关闭' : '进行中'}</span>}
         footer={activity.course?.courseName ?? '自主学习'} action={activity.status === 'closed' ? '查看活动' : '继续学习'}

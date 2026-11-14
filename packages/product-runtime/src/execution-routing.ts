@@ -5,7 +5,7 @@ import { spaceIdentitySchema, type SpaceIdentity } from '@xunjie/contracts/space
 import { anyExecutionActionSchema, agentExecutionAssociationSchema, agentBrowserCommandSchema,
   executionControlSchema, executionStopSchema, executionQuerySchema, executionArtifactSchema,
   executionControlReceiptSchema, type AnyExecutionAction } from '@xunjie/contracts/execution';
-import type { TeachingToolData } from '@xunjie/learning-space';
+import type { TeachingToolData } from '@xunjie/agents';
 import type { CapabilityHandler } from './connections.js';
 
 type Executions = TeachingToolData['executions'];

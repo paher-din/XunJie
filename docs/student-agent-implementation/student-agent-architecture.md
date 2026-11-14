@@ -1,6 +1,6 @@
 # 循阶学生端 Agent 架构
 
-更新：2026-10-29。状态：长期目标架构设计；总体运行、部署与 Agent 能力已形成具体方案，本轮新增消息调度、过程展示、自主学习与完整请求走查。Robert 指出的 tool_use、Skills、MCP、plugin、system prompt 覆盖缺口已有逐项契约；方案仍按具体问题修订，总体设计已按[最终决议](https://github.com/paher-din/XunJie/issues/119#issuecomment-6443526782)定稿。产品要求、工程取舍与实测结果分开记录，见[需求与决策记录](student-agent-decisions.md)；本文不表示代码已经实现。
+更新：2026-11-14。本文区分当前源码职责与长期产品目标。当前 Agent 采用独立 session v2、通用内核、场景能力、模型 Gateway 和学习领域 owner；包入口见下表，部署与旧开发数据处理见[部署说明](../deployment.md)。运行/真实 UI/跨机验收由实际执行结果说明；不以本文或工程编译通过代替验收，重构计划最终状态由主负责人维护。长期产品目标和历史选型依据保留在后文。
 
 决策入口：[学生端 Agent 与工作区重新设计：数字逻辑与部件设计先行](https://github.com/paher-din/XunJie/issues/112)。本文汇总领域与产品行为；[总体运行与部署设计](references/2026-10-27-overall-architecture-proposal.md)定义模块组合、持久运行、部署和演进契约；[Agent 能力与质量契约](references/2026-10-27-agent-capabilities-design.md)补充工具、Skills/MCP/Plugin、Prompt、上下文、Memory 与回合行为；[覆盖审计](references/2026-10-27-agent-design-coverage-audit.md)保留问题来源和覆盖状态。局部决议以对应议题为准，执行方向及教师易用性依据[本地优先执行决议](https://github.com/paher-din/XunJie/issues/114#issuecomment-6363162710)。
 
@@ -12,11 +12,11 @@
 
 本轮聚焦学生端。教师如何交付课程、哪些材料只供教师使用，以及学生过程如何留下证据，属于必须保留的接口；教师端 Agent 与教学分析系统暂不展开。
 
-当前实现仍要求手动确认作品与冻结快照，学生辅导是一次有限动作，课程面板包含固定分支。已有运行输入绑定、执行记录和沙箱生命周期可以复用。源码依据及技术前提见[事实核对](references/2026-10-18-architecture-checks.md)；重构切换时还需处理教师端共享的提交和模型接口。
+旧实现的手动冻结、有限辅导与课程固定分支是历史重构背景；[早期事实核对](references/2026-10-18-architecture-checks.md)不作为当前源码入口。正式界面沿用同一 LearningApp 和组件库，普通对话与真实工作区分别接入 session v2；本文中的后续教学、画像与协作目标仍需各自的实现和验收。
 
-2026-10-28 已澄清：旧版未发布、只有开发数据，按新模型直接重建 schema 和接口；旧原件保留、按需提取，不做旧 API、旧会话或生产双写兼容。未来已发布数据的升级与恢复契约继续成立。ALU 和伯克利 STAT 20 / Flights 的具体内容是开发、验收与演示资料，准备这些资料属于开发交付，但不是产品功能本身。教师端课程设计与制作仍是产品能力，当前阶段只展开必要接口，深入设计留在后续教师端主题。来源与工程安排见[重构方案](references/2026-10-28-rebuild-storage-and-acceptance-proposal.md)。
+2026-10-28 已澄清：旧版未发布、只有开发数据，按新模型和[显式开发数据重置](../deployment.md#旧开发-agent-数据的显式重置)处理 schema 与接口；旧原件按维护者的实际保留安排读取，不做旧 API、旧会话或生产双写兼容。未来已发布数据的升级与恢复契约继续成立。ALU 和伯克利 STAT 20 / Flights 的具体内容是开发、验收与演示资料，准备这些资料属于开发交付，但不是产品功能本身。教师端课程设计与制作仍是产品能力，当前阶段只展开必要接口，深入设计留在后续教师端主题。来源与工程安排见[重构方案](references/2026-10-28-rebuild-storage-and-acceptance-proposal.md)。
 
-权威事务记录已确认本机与共享端统一原生 PostgreSQL，由产品管理本机实例；同机可共用物理实例，保持服务的事实所有权。浏览器草稿与执行器内部文件按职责保存，资源默认文件、可选 S3 兼容后端。直接重建与存储依据见[本地最终决议](wayfinder/student-agent/rebuild-storage.md)和[重构方案](references/2026-10-28-rebuild-storage-and-acceptance-proposal.md)；安装和持久恢复探针尚未执行。
+权威事务记录已确认本机与共享端统一原生 PostgreSQL，由产品管理本机实例；同机可共用物理实例，保持服务的事实所有权。浏览器草稿与执行器内部文件按职责保存，资源默认文件、可选 S3 兼容后端。直接重建与存储依据见[本地最终决议](wayfinder/student-agent/rebuild-storage.md)和[重构方案](references/2026-10-28-rebuild-storage-and-acceptance-proposal.md)；安装、持久恢复及本机/学校开发环境切换已完成本轮验收，范围与未执行项见[重构实施状态](agent-runtime-refactor-plan.md#6-实施状态2026-11-14)。
 
 2026-10-29 实施交接：按[实施总览](student-agent-implementation-overview.md)划分工作包和 `blocked by`，每包完成自身范围与已完成依赖的完整验收，不另设整轮重构总验收。全部 Wayfinder 结论和研究附件从[本地决议索引](wayfinder/student-agent/README.md)进入。
 
@@ -27,10 +27,22 @@
 - 学生作品、实际执行输入和教学证据必须由循阶掌握；模型会话只是一次推理所用的表示，不能成为这些事实的唯一存储。
 - 教师决定课程组件及运行方案，平台检查实际设备并按方案调度。尽量在学生本机运行，仅为本地确实不能满足的能力配置远端路径；学生不选节点。
 - 课程组件与生成教学页面共用状态、选区、事件和隔离宿主。组件定义可复用，教学产物实例保留学习过程，两者不需要两套运行设施。
-- 教学协调负责触发、上下文取证与交付；自有持久 RunDriver 负责一次逻辑运行的完整调度、等待、取消、预算和恢复。模型连接按[三协议决议](https://github.com/paher-din/XunJie/issues/115#issuecomment-6346123203)采用直接协议 SDK 加薄适配。
+- 教学协调负责触发、上下文取证与交付；独立 `@xunjie/agent-runtime` 负责一次逻辑运行的完整调度、等待、取消、预算和恢复。模型连接按[三协议决议](https://github.com/paher-din/XunJie/issues/115#issuecomment-6346123203)采用直接协议 SDK 加薄适配。
 - 支持个人全本地、组织统一部署和模块本地/云端组合；客户端、空间/课程、学习数据、教学协调/Agent、模型连接和工具执行构成六个部署单元，同机可合设进程，跨机保持同一契约。
 
-[内核研究与接入探针](references/2026-10-27-agent-kernel-reuse-research.md)比较自有持久 driver、Pi core、Pi durable 与 DeepSeek Harness 后，长期选择自有持久 RunDriver：运行阶段直接表达原生结果、命令回执、等待、预算和取消条件，本机与共享服务使用同一恢复规则，减少框架特定消息与重放策略的适配。项目长期承担调度、领取、预算、取消、恢复和记录升级。Pi durable 整体托管是有实质收益的替代，现有证据没有证明它总成本更高；本次选择也不以教学事实自有或流程短为推导前提。不预设未来换框架，实际问题发生时再修订。详细取舍见 [ADR 0002](adr/0002-own-teaching-state-and-effect-control.md)。
+持久步骤、效果许可、预算、等待与恢复由自有通用内核承担，业务场景不再自建推进循环。[早期内核比较](references/2026-10-27-agent-kernel-reuse-research.md)和 [ADR 0002](adr/0002-own-teaching-state-and-effect-control.md)记录原 driver 选型理由；当前源码已拆分为下列包，不继续使用旧 teaching runtime、lease 或 v1 transport。
+
+| 包 | 当前职责 | 依赖边界 |
+| --- | --- | --- |
+| [contracts](../../packages/contracts/package.json) | 浏览器安全 JSON schema、公开 port 与 session/dependency v2 wire | 不依赖 Node/SDK 或 core ReturnType |
+| [storage](../../packages/storage/README.md) | owner 事务、资源、迁移、维护与持久 chunk | contracts |
+| [agent-runtime](../../packages/agent-runtime/README.md) | session、输入、Run、operation、permit、wait、进度与恢复 | contracts/storage |
+| [model-gateway](../../packages/model-gateway/README.md) | 配置、凭据、三协议、原生段、attempt 和调用结果 | contracts/storage |
+| [learning-space](../../packages/learning-space/README.md) | 身份/课程与学习数据；目录、个人项目、资料和 Skills | contracts/storage |
+| [agents](../../packages/agents/README.md) | 普通与 workspace 场景、conversation pipeline、能力和传输 adapter | runtime/model/learning/contracts/storage |
+| [product-runtime](../../packages/product-runtime/README.md) | 可信身份、连接、工厂、HTTP、部署与生命周期组合 | agents/runtime/model/learning 等公开入口 |
+
+源码包名不代替部署 module ID：`teaching-agent` 与 `model-connection` 继续持有原服务/存储身份。普通首页首问只创建 personal session；workspace session 才绑定真实 activity/target。模型和工具的 scope 由可信 host 与原 permit 校验，不从浏览器自报身份或模型文本授予权限。
 
 ```mermaid
 flowchart TB
@@ -38,8 +50,8 @@ flowchart TB
     Components["CourseComponent<br/>视图、命令、Agent 工具、观察、选区"]
     Host["统一工作区宿主 + Workspace SDK<br/>课程组件、教学卡片、隔离页面、选区与事件"]
     State["LiveWorkspace<br/>学生作品与当前工作区事实"]
-    Runtime["TeachingRuntime<br/>教学触发、上下文、教学进展与投递"]
-    Driver["RunDriver + RunStore<br/>持久步骤、等待、取消、预算与恢复"]
+    Runtime["Agent 场景与能力<br/>@xunjie/agents"]
+    Driver["AgentRuntime<br/>独立 session、operation、permit 与恢复"]
     Assembly["Agent 装配<br/>工具、Skills、Prompt 与上下文快照"]
     Executor["ToolExecutor<br/>执行意图、依据校验、结果与恢复"]
     Nodes["执行节点<br/>浏览器、本地组件或远端环境"]
@@ -80,8 +92,8 @@ flowchart TB
 | --- | --- | --- |
 | 工作区宿主与 SDK | 组件和产物呈现、公共选区与引用、装配、状态桥接与生命周期 | 每门课程的业务分支、教学判断 |
 | LiveWorkspace | 自动同步的作品、对象、需要恢复的交互状态与来源关系 | 将任务成功直接解释为知识掌握，或接管临时浮层位置与焦点 |
-| TeachingRuntime | 介入时机、关注对象、教学进展、上下文构造、动作候选与交付 | 用某家模型的会话数据替代领域状态 |
-| RunDriver / RunStore | 请求内的持久步骤、调度、预算、等待、取消及恢复；每个运行只有一个有效推进者 | 替代作品、执行结果和学习证据的实际所有者 |
+| Agent 场景与能力 | 介入时机、关注对象、教学进展、上下文构造、动作候选与交付 | 用某家模型的会话数据替代领域状态 |
+| AgentRuntime | 请求内的持久步骤、调度、预算、等待、取消及恢复；每个运行只有一个有效推进者 | 替代作品、执行结果和学习证据的实际所有者 |
 | ToolExecutor | 执行读、算、写命令，保存执行意图与结果，处理重复与未知结果 | 决定学生下一步应该学什么 |
 | ModelGateway | 路线与协议能力、模型调用、取消、超时、用量与原生回放 | 修改工作区、发布教学动作 |
 | 教学产物定义与资源 | 内容、依赖、状态 schema、来源及发布状态 | 另存一份可变交互状态，或把教学示意当作实验事实 |
@@ -176,13 +188,17 @@ LiveWorkspace 是同一个工作区对象体系：绑定的学习数据服务持
 
 综合功能、操作体验、异步协作和本机试用结果，负责人已确认各开发者按需运行本机 Phoenix + SQLite（[L33](student-agent-decisions.md#来源与状态)），以同仓可选 OTel/OpenInference 集成和 TypeScript 评估工具追踪完整 Agent。团队共享含报告与结构化材料的 ZIP 调试包、固定案例和实验结果，沿现有文件链路按稳定编号交接，不部署常驻共享观测数据库。集成代码和合成案例可同仓公开；平台数据、真实运行内容和秘密配置留在仓库外，默认关闭观测，开启后默认只到本机，详见[本机运行与开发协作](references/2026-10-27-agent-evaluation-integration.md)。该设施不要求学生安装，平台或共享服务不可用不影响 RunStore 与学习事实。规则回归、模型辅助评分、人工复核及真实教学效果分别报告；两平台核心 UI 与小型合成记录跨独立实例传递已通过，见[本机试用](references/2026-10-27-observability-local-trial.md)；产品接入、真实模型、附件及更大负载仍需验证。完整能力边界见[研究报告](references/2026-10-27-agent-observability-evaluation-research.md)。
 
-## 教学运行时与工具执行
+## Session v2、场景与工具执行
 
-TeachingRuntime 中的 TeachingController 负责教学触发、上下文和交付规则；LearningActivity 是独立保存的跨交互活动，RunDriver 负责请求内的持久模型/工具步骤。教学协调与 RunDriver 属于同一部署单元，分别维护活动触发和逻辑运行；不会各自调度同一个 Run。学生始终面对一个连续的 Agent，后台生成或画像更新按需作为有明确身份与预算的运行处理。
+`createStudentAssistant` 与 `createWorkspaceAssistant` 在共同 conversation pipeline 上装配行为；`createProductAgent` 与 session-runtime 由可信宿主提供真实 owner、模型、工具和生命周期。LearningActivity 是学习领域对象，Agent session 是独立持久对话；普通提问不为满足引擎条件伪造 activity。
 
-活动状态保存当前目标、课程要求、作品与结果依据、已尝试方法、等待事项、帮助历史及目标切换关系；活动生命周期、等待对象和目标达成情况分别表达。返回时恢复这些状态，保留暂停，不重放失效提示或默认重跑未知结果的操作。不同课程可使用不同活动顺序与进展判据；聊天摘要辅助恢复，不能取代实际作品和执行事实。
+目录保存身份、scenario、固定 Agent owner 和标题/归档等元数据；core 保存原输入、Run、step、operation、permit、wait、state/sessionState 与事件。workspace 输入保留 `context.action` 中固定的作品/引用，并由学习数据 factory 校验。资料与 Skills 保留 session/workspace scope，个人项目有真实计划和独立 workspace session。
 
-Run 从请求接收到完成、失败或取消保持同一身份，可以多轮生成、校验、修订并跨进程等待。`waiting` 不是终态，释放模型连接和内存处理者；匹配结果到达后核对取消、预算与依据，继续原 Run。独立新问题创建新 Run，取消后的晚结果不复活旧运行。完整状态与存储接口见[持久运行契约](references/2026-10-27-overall-architecture-proposal.md#持久运行契约)。[本地执行决议](https://github.com/paher-din/XunJie/issues/114#issuecomment-6363162710)同时支持有限作业、保持状态的会话和无需计算的工具活动；会话的暂停、单步、复位、检查点和断连续接按实际能力声明。
+`agent.sessions.v2` 与 `agent.dependencies.v2` 均显式 version 2。可信 HTTP 在 forwarding 前处理 `/api/learning/agent-sessions`，核验 `x-xj-agent-contract: 2`、当前主体、expected subject 与 namespace。原 `requestId` 回执、input CAS 控制、stop/continue 与 wait response 各自关联原对象。initialize 由认证 host 允许，resolveWait 仅用于可信服务的实际结果。
+
+Run 保留原输入与 effect 身份；waiting 释放处理者，匹配的可信结果或明确用户回应才能按原预算/permit 推进。新 steering 可中断明确允许的用户等待，不构造回应；旧晚结果不复活已停止运行。未知外部效果先通过原 operation 核对，不以换 owner、换工具名或新 requestId 重放。`conversation` 为 UI 的稳定增量投影，`snapshot` 为独立调试读取，二者不透传 SDK 原生对象。
+
+以下主动引导、画像和课程协作内容为产品目标，按实际业务能力逐项接入上述内核与 owner，不再引入另一套 RunDriver。
 
 主动观察先对事件合并、去重并判断时机，需要理解时才调用模型。学生提问优先；输入中、刚拒绝提示或已有待回应教学活动时，应避免反复打断。
 
@@ -222,7 +238,7 @@ IP 是教学动作的呈现载体。TeachingAction 表达为什么介入、说�
 
 | 路线 | 可复用的部分 | 本轮判断 |
 | --- | --- | --- |
-| 直接协议 SDK + 薄 adapter | HTTP、SSE、原生响应、取消与错误对象；部分原生流聚合 | 模型连接层已采用，配合长期自有持久 RunDriver |
+| 直接协议 SDK + 薄 adapter | HTTP、SSE、原生响应、取消与错误对象；部分原生流聚合 | 模型连接层已采用，配合独立通用 Agent 内核 |
 | AI SDK Core + 有界 driver | 模型协议适配、流、工具 schema、结构化生成 | 此前候选；本轮未选作连接基础。固定 OpenAI provider 的两条 Responses 路线实测存在原生保真或流校验失败 |
 | Pi core | 有状态内层循环、输入队列、上下文准备、工具前后钩子 | 异步屏障与取消已测；未替代关键持久恢复职责，本设计不接入其消息循环 |
 | Pi durable | 持久任务、检查点、等待与恢复调度 | 有实测收益的整体托管替代；本设计选择直接表达运行阶段并承担调度维护，未证明自研总成本更低 |
@@ -268,14 +284,14 @@ IP 是教学动作的呈现载体。TeachingAction 表达为什么介入、说�
 
 首条 ALU 的局部路径已确定为浏览器 Worker 内 Icarus/WASM，界面直接交互，省去该活动的本机组件和 localhost 连接。它仍需可复现构建、诊断修正、目标设备矩阵与产品集成验收；其他能力按任务需要选择浏览器、自动准备的本机环境或教师已配置的必要远端路径。详见[正式决议](https://github.com/paher-din/XunJie/issues/114#issuecomment-6363162710)及[探针记录](references/2026-10-23-local-execution-proposal.md)。
 
-前端 React/TypeScript 与可信进程 Node.js/TypeScript 是现有技术基础。需要区分代码模块、可独立部署单元和安装组合：个人安装可合并多个职责，学校可集中或拆开部署，有明确网络契约的能力才承诺远端组合。不能因为采用同一语言就假定全部模块只能共置，也不把每个内部类都变成独立服务。每份可变事实需要明确责任方，具体数据位置、数据库和资源存储按组合需求选择；当前开发 SQLite 布局不锁定产品方案。
+前端 React/TypeScript 与可信进程 Node.js/TypeScript 是现有技术基础。需要区分代码模块、可独立部署单元和安装组合：个人安装可合并多个职责，学校可集中或拆开部署，有明确网络契约的能力才承诺远端组合。不能因为采用同一语言就假定全部模块只能共置，也不把每个内部类都变成独立服务。每份可变事实需要明确责任方，具体数据位置、数据库和资源存储按组合需求选择；早期 SQLite 布局属于历史实现；当前 owner 事务统一使用原生 PostgreSQL，不作为新部署选项保留。
 
 | 部署单元 | 负责的事情 | 部署与扩展边界 |
 | --- | --- | --- |
 | 客户端与工作区宿主 | 编辑、选区、交互页面、本机草稿及最后展示核对 | 交互在用户设备；页面可从本机或远端提供 |
 | 空间与课程服务 | 空间身份/成员关系、课程与工具发布、教师共享入口及交付回执 | 本机、校内或云端；个人空间不依赖中央账号 |
 | 学习数据服务 | 作品、活动、证据、画像、设置与资源引用 | 本机或共享服务；按空间/主体隔离，每份可变事实只有一个负责更新的服务 |
-| 教学协调与 Agent 运行服务 | 触发、上下文、投递及持久 RunDriver | 本机或共享服务；调用其他组件接口，不直接访问其数据库 |
+| Agent 场景与运行服务 | 场景上下文、能力装配及通用内核；module ID 为 teaching-agent | 本机或共享服务；调用其他组件接口，不直接访问其数据库 |
 | 模型连接组件 | 协议 SDK、端点凭据、调用尝试与原生结果 | 与 Agent 合设或独立；学校/个人连接可选，凭据留在持有组件 |
 | 工具执行组件 | 固定输入、实际执行、状态与回执 | 课程指定的浏览器、可信本机或必要远端能力；位置不改变命令语义 |
 

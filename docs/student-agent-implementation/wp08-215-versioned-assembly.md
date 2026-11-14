@@ -1,5 +1,7 @@
 # WP08 #215：学习对话的版本化能力装配
 
+本文保留旧版本的验收历史；旧 Agent 探针已退休，文中脚本名仅标识原证据来源。当前 session v2 工程入口为 [conversation-native.runtime.test.mjs](../../packages/agents/test/conversation-native.runtime.test.mjs)、[tool-discovery.runtime.test.mjs](../../packages/agents/test/tool-discovery.runtime.test.mjs)。这些测试不继承本页的历史通过结论，真实供应商、桌面与跨机结果须另行验收。
+
 本票对应[现有学习对话接入版本化能力装配](https://github.com/paher-din/XunJie/issues/215)，规范及已确认的主测试边界见母票 [Agent 能力、上下文与扩展](https://github.com/paher-din/XunJie/issues/214)。基线为包含 WP04/WP07 最终修复的 `c484c492`，继续原 `wp08` 分支。
 
 学生沿原无课程活动与 ALU 入口提问。新请求保存完整 AgentDefinition、实际解析的 Prompt/工具/executor、上下文清单和原生请求；配置更新、换模型与重启均不改写旧快照。未新增学生需要操作的装配或换段入口。
@@ -29,6 +31,6 @@
 
 真实协议请求由 `scripts/probe-teaching-tools.mjs` 另行验证：每条获准 DeepSeek 路线最多 2 次、2048 输出 token/次、30 秒/次、0 自动重试，对照实际发送字节摘要与快照。Command Code 沿用 WP06 豁免。正式 Chrome 与 ALU 真实 Icarus Worker/WASM 的产品结果分别登记，固定模型案例不证明教学效果。
 
-后续工具发现的真实验收暴露了共用换段的供应商约束：缺少当前用户意图时，DeepSeek 会把末尾 assistant 事实解释为待续的思考轮并返回 400。本票重新打开后已回补并新增[真实装配换段探针](../../scripts/probe-teaching-assembly-transition.mjs)：三协议各 2 次真实请求均通过，同一 Run 的 V1→V2 Prompt、原效果、末尾用户意图、实际 transport 和快照逐项核对；同进程重新创建 owner 后纯读不产生新请求。该补验不宣称进程重启或浏览器验收。
+后续工具发现的真实验收暴露了共用换段的供应商约束：缺少当前用户意图时，DeepSeek 会把末尾 assistant 事实解释为待续的思考轮并返回 400。本票重新打开后已回补并新增历史脚本 `probe-teaching-assembly-transition.mjs`（已退役）：三协议各 2 次真实请求均通过，同一 Run 的 V1→V2 Prompt、原效果、末尾用户意图、实际 transport 和快照逐项核对；同进程重新创建 owner 后纯读不产生新请求。该补验不宣称进程重启或浏览器验收。
 
 工程、真实协议、桌面 Chrome 与跨机结果分别见[验收证据](evidence/wp08-215/README.md)。首次完整工程验证使用了不含 npm 的分发 Node，开发工具组失败；改用完整 Node 24.21.0 并修复安装竞争后重新核验。教学效果未评估。

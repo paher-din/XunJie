@@ -5,7 +5,7 @@
 - 旧版 UI 预览 `npm run dev:prep -w @xunjie/web`（组件实屏为 `/ui-catalog.html`）；
 - 统一检查 `npm run typecheck`、`npm test`、`npm run build`
 - 完整门禁 `npm run verify`（`-- --list` 查阶段，`-- --group <prepare|unit|server|tools|tests>` 跑单组）
-- 浏览器验收入口 `npm run test:e2e -w @xunjie/web
+- 浏览器验收入口 `npm run test:e2e -w @xunjie/web`
 - 后端  `npm run build`  `npm start -w @xunjie/server
 
 ## 执行与协作

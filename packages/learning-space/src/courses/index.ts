@@ -1,7 +1,7 @@
 import { courseComponentReferenceVerificationSchema } from '@xunjie/contracts/courses';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
-import { parseTeachingSkillPackage } from '../teaching-agent/skills-package.js';
+import { parseTeachingSkillPackage } from '../skill-packages.js';
 import { StorageError } from '@xunjie/storage';
 import type { Migration, OwnedStorage } from '@xunjie/storage';
 import {

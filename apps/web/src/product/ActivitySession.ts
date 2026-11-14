@@ -6,11 +6,14 @@ import type { ComponentInteractions } from '../component-host/interactions'
 import type { ExecutionController } from '../tool-execution/controller'
 import type { NativeSessionController } from '../tool-execution/session-controller'
 import type { AgentInteractionController } from './AgentInteraction'
+import type { AgentSessionController } from './useAgentSession'
+import type { AgentSession } from '@xunjie/contracts/agent-sessions'
 import type { LearningReadCache } from './learning-read-cache'
 
 export const ActivitySessionContext = createContext<{
   workspace: ReliableWorkspace; draft: ReliableQuestionDraft; actions: ReliableActions; execution: ExecutionController
   sessions: NativeSessionController; interactions: ComponentInteractions; inputInteraction: AgentInteractionController
+  agent?: AgentSessionController; agentSession?: AgentSession; agentSessionError?: string; retryAgentSession?: () => void
   readCache?: LearningReadCache; viewActive?: boolean
 } | null>(null)
 export function useActivitySession() {

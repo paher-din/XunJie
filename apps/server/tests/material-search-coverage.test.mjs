@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createHash, randomUUID } from 'node:crypto';
-import { createMaterialSearch } from '../../../packages/learning-space/dist/learning-data/material-search.js';
-import { pdfReferenceCopy } from '../../../packages/contracts/dist/pdf-materials.js';
+import { createMaterialSearch } from '@xunjie/learning-space/learning-data/material-search';
+import { pdfReferenceCopy } from '@xunjie/contracts/pdf-materials';
 
 const digest = value => createHash('sha256').update(value).digest('hex');
 const identity = { environmentId: randomUUID(), spaceId: randomUUID(), principalId: randomUUID(), kind: 'personal', name: '检索学生' };

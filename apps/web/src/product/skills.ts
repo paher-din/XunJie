@@ -4,13 +4,15 @@ import type { SpaceIdentity } from '@xunjie/contracts/spaces'
 import { teachingSkillListSchema,
   teachingSkillImportSchema, teachingSkillImportFailureSchema, teachingSkillLimits, teachingSkillPathSchema, type TeachingSkillImport } from '@xunjie/contracts/agent-skills'
 import { learningSubjectRequest } from './learningTransport'
+import { AgentSessionsClient } from './agent-sessions'
+import { sessionSkillStateSchema, sessionSkillSelectSchema } from '@xunjie/contracts/agent-skills'
 import type { LearningReadCache } from './learning-read-cache'
 
 export const skillCatalogSchema = teachingSkillListSchema.extend({ selections: teachingSkillListSchema.shape.selections.optional() })
 export type SkillCatalog = z.infer<typeof skillCatalogSchema>
 export type SkillCatalogEntry = SkillCatalog['skills'][number]
-export const skillCatalogCacheKey = (namespace: string, identity: SpaceIdentity, activityId?: string) =>
-  JSON.stringify(['skill-catalog', namespace, identity.environmentId, identity.spaceId, identity.principalId, activityId ?? null])
+export const skillCatalogCacheKey = (namespace: string, identity: SpaceIdentity, sessionId?: string) =>
+  JSON.stringify(['skill-catalog', namespace, identity.environmentId, identity.spaceId, identity.principalId, sessionId ?? null])
 const catalogChanges = new Set<(namespace: string, sender: object) => void>()
 
 /** Question pins may use another fixed version; disabled or unavailable packages stay unavailable. */
@@ -21,9 +23,9 @@ export function draftSkillOption(skill: SkillCatalogEntry) {
     ...(unavailable ? { unavailable } : {}) }
 }
 
-export function useSkillCatalog(identity: SpaceIdentity, spaceKey: string, namespace: string, activityId?: string, enabled = true, cache?: LearningReadCache) {
-  const scope = JSON.stringify([namespace, spaceKey, identity.environmentId, identity.spaceId, identity.principalId, activityId])
-  const cacheKey = skillCatalogCacheKey(namespace, identity, activityId)
+export function useSkillCatalog(identity: SpaceIdentity, spaceKey: string, namespace: string, sessionId?: string, enabled = true, cache?: LearningReadCache) {
+  const scope = JSON.stringify([namespace, spaceKey, identity.environmentId, identity.spaceId, identity.principalId, sessionId])
+  const cacheKey = skillCatalogCacheKey(namespace, identity, sessionId)
   const current = useRef(scope), live = useRef(false), reads = useRef(0)
   const client = useRef({})
   current.current = scope
@@ -35,9 +37,12 @@ export function useSkillCatalog(identity: SpaceIdentity, spaceKey: string, names
   const latest = useRef(state)
   latest.current = state
   const request = useCallback(async (route: string, body?: unknown) => {
-    // An activity's pinned owner remains authoritative even if the member binding changes.
-    const boundRoute = activityId && (route === 'skills' || route.startsWith('skills/')) ? `agent/${activityId}/${route}` : route
-    const result = await learningSubjectRequest(identity, spaceKey, namespace, boundRoute, body,
+    let result: unknown
+    if (sessionId) {
+      if (route !== 'skills' && route !== 'skills/select') throw new Error('会话技能目录只支持读取和选择；请在设置中管理个人技能库。')
+      const client = new AgentSessionsClient({ identity, spaceKey, namespace })
+      result = await client.request(`${sessionId}/${route}`, body === undefined ? undefined : sessionSkillSelectSchema.parse(body))
+    } else result = await learningSubjectRequest(identity, spaceKey, namespace, route, body,
       route === 'skills/import' ? teachingSkillLimits.importTimeoutMs : undefined)
     if (body !== undefined && ['skills/import', 'skills/select', 'skills/disable', 'skills/remove'].includes(route))
       for (const changed of catalogChanges) changed(namespace, client.current)
@@ -49,7 +54,7 @@ export function useSkillCatalog(identity: SpaceIdentity, spaceKey: string, names
     const active = () => live.current && current.current === scope && reads.current === epoch
     if (!silent && active()) setState(previous => ({ ...previous, loading: true }))
     try {
-      const load = async () => skillCatalogSchema.parse(await request('skills'))
+      const load = async (): Promise<SkillCatalog> => { const value = await request('skills'); return sessionId ? { skills: sessionSkillStateSchema.parse(value).catalog, selections: [] } : skillCatalogSchema.parse(value) }
       const data = cache ? await cache.read(spaceKey, cacheKey, load, { maxAgeMs: 0 }) : await load()
       if (active()) setState({ scope, data, loading: false, error: '', epoch })
       return data
@@ -59,7 +64,7 @@ export function useSkillCatalog(identity: SpaceIdentity, spaceKey: string, names
         ...(silent && previous.data ? {} : { error: '暂时无法加载技能。' }) }))
       return null
     }
-  }, [scope, activityId, request, cache, spaceKey, cacheKey])
+  }, [scope, sessionId, request, cache, spaceKey, cacheKey])
   // Merge a confirmed write receipt without waiting for a full reread; older in-flight reads are retired.
   const apply = useCallback((entry: SkillCatalogEntry) => {
     const previous = latest.current

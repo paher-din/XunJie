@@ -2,10 +2,10 @@
 import { registerHooks } from 'node:module';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-const require = createRequire(new URL('../../../packages/learning-space/package.json', import.meta.url));
+const require = createRequire(new URL('../../../packages/model-gateway/package.json', import.meta.url));
 const ts = require('typescript');
 const root = new URL('../../../', import.meta.url);
-const files = ['packages/learning-space/src/model-connections/service.ts', 'packages/learning-space/src/model-connections/paired-learning.ts', 'packages/learning-space/src/model-connections/index.ts', 'packages/learning-space/src/model-connections/selection.ts', 'packages/learning-space/src/model-connections/device-tasks.ts', 'packages/product-runtime/src/school-client.ts'];
+const files = ['packages/model-gateway/src/service.ts', 'packages/model-gateway/src/paired-learning.ts', 'packages/model-gateway/src/index.ts', 'packages/model-gateway/src/selection.ts', 'packages/model-gateway/src/device-tasks.ts', 'packages/model-gateway/src/origins.ts', 'packages/model-gateway/src/session-permits.ts', 'packages/product-runtime/src/model-origin-authority.ts', 'packages/product-runtime/src/school-client.ts'];
 const edited = new Map(files.map(file => [new URL(file.replace('/src/', '/dist/').replace(/\.ts$/, '.js'), root).href, new URL(file, root).href]));
 registerHooks({
   resolve(specifier, context, next) {

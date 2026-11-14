@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdtemp, mkdir, writeFile, readFile, rm, cp, utimes, stat, readdir } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, readFile, rm, cp, utimes, stat, readdir, symlink } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { tmpdir, hostname } from 'node:os';
 import { dirname, join } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
@@ -11,6 +12,7 @@ import { ensureBuild, expandTargets, normalizePassthroughArgs, parseBuildArgs, r
 import { scanServerOutput } from './build-server.mjs';
 
 const paths = { contracts: 'packages/contracts', storage: 'packages/storage', 'learning-space': 'packages/learning-space',
+  'agent-runtime': 'packages/agent-runtime', 'model-gateway': 'packages/model-gateway', agents: 'packages/agents',
   server: 'apps/server', 'product-runtime': 'packages/product-runtime', ui: 'packages/ui', web: 'apps/web', 'local-runtime': 'apps/local-runtime' };
 const compiler = `import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { basename, resolve, join } from 'node:path';
@@ -291,6 +293,7 @@ test('workspace test targets prepare real emitted dependencies and keep both web
   assert.deepEqual(expandTargets('server:test'),expandTargets('all'));
   assert.deepEqual(expandTargets('product-runtime:test'),expandTargets('all'));
   assert.deepEqual(expandTargets('web:test'),['web','web:runtime']);
+  assert.deepEqual(expandTargets('learning-space:test'),['product-runtime']);
   assert.deepEqual(expandTargets('@xunjie/storage'),['storage']);
 });
 
@@ -445,4 +448,47 @@ test('abort terminates a real command and prevents caching its partial output',a
   await assert.rejects(run);
   await assert.rejects(readFile(join(root,'.cache/xunjie-build/one.json')),{code:'ENOENT'});
   assert.deepEqual(await import('node:fs/promises').then(fs=>fs.readdir(join(root,'.cache/xunjie-build/locks'))),[]);
+});
+
+test('public workspace builds prepare executable Agent dependencies and refresh their consumers after source edits', async t => {
+  const root = await fixture(t);
+  const require = createRequire(import.meta.url);
+  const typescript = dirname(require.resolve('typescript/package.json'));
+  const sources = {
+    contracts: 'export const value = 1;',
+    storage: 'export { value } from "@xunjie/contracts";',
+    'agent-runtime': 'import { value } from "@xunjie/storage"; export const runtime = value + 1;',
+    'model-gateway': 'import { value } from "@xunjie/storage"; export const model = value + 2;',
+    'learning-space': 'export { value as learning } from "@xunjie/storage";',
+    agents: 'import { runtime } from "@xunjie/agent-runtime"; import { model } from "@xunjie/model-gateway"; import { learning } from "@xunjie/learning-space"; export const agent = runtime + model + learning;',
+    'product-runtime': 'export { agent } from "@xunjie/agents";',
+  };
+  await mkdir(join(root, 'node_modules/@xunjie'), { recursive: true });
+  for (const [name, source] of Object.entries(sources)) {
+    const path = paths[name];
+    await put(root, `${path}/package.json`, JSON.stringify({ name: `@xunjie/${name}`, type: 'module', exports: './dist/index.js' }));
+    await put(root, `${path}/src/index.ts`, source);
+    await put(root, `${path}/tsconfig.json`, JSON.stringify({ compilerOptions: { module: 'NodeNext', target: 'ES2022', outDir: 'dist', rootDir: 'src', declaration: true, strict: true, types: [] }, include: ['src'] }));
+    await rm(join(root, path, 'node_modules/typescript'), { recursive: true });
+    await symlink(typescript, join(root, path, 'node_modules/typescript'), 'junction');
+    await symlink(join(root, path), join(root, 'node_modules/@xunjie', name), 'junction');
+  }
+  const consumer = (entry = '@xunjie/product-runtime') => {
+    const result = spawnSync(process.execPath, ['--input-type=module', '-e', `import {agent} from ${JSON.stringify(entry)}; console.log(agent);`], { cwd: root, encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+    return result.stdout.trim();
+  };
+  await ensureBuild('product-runtime', { root, args: ['--outDir', join(root, 'product-dev'), '--declaration', 'false'], ...quiet });
+  assert.equal(consumer('./product-dev/index.js'), '6');
+  await ensureBuild('typecheck', { root, ...quiet });
+  assert.equal(consumer(), '6');
+  await put(root, 'packages/agent-runtime/src/index.ts', 'import { value } from "@xunjie/storage"; export const runtime = value + 4;');
+  await ensureBuild('@xunjie/product-runtime', { root, ...quiet });
+  assert.equal(consumer(), '9');
+  for (const name of ['agent-runtime', 'model-gateway', 'agents']) {
+    await ensureBuild(`@xunjie/${name}:typecheck`, { root, ...quiet });
+    await ensureBuild(`@xunjie/${name}`, { root, ...quiet });
+  }
+  await ensureBuild('all', { root, ...quiet });
+  assert.equal(consumer(), '9');
 });

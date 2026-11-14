@@ -1,0 +1,547 @@
+import { createHash } from 'node:crypto';
+import { compileOutputSchema } from '@xunjie/model-gateway/chat-native';
+import { z } from 'zod';
+import { StorageError } from '@xunjie/storage';
+import { actionInputSchema } from '@xunjie/contracts/action-intents';
+import { componentInstanceId, componentStateName, matchesComponentState } from '@xunjie/contracts/components';
+import { canonicalValue, decideExecutionPlacement, defaultExecutionLimits, executionActionSchema, anyExecutionActionSchema, executionControlSchema, isTerminalExecutionState,
+  type AnyExecutionAction, type ExecutionDevice, type ExecutionQuery } from '@xunjie/contracts/execution';
+import type { ModelToolIntent } from '@xunjie/contracts/model-connections';
+import type { TeachingToolData } from './tool-data.js';
+import type { createCourses } from '@xunjie/learning-space/courses';
+import type { AgentExecutionContext, AgentExecutionOrigin } from '@xunjie/learning-space/learning-data/agent-executions';
+import { verifyPlannedExecution } from '@xunjie/learning-space/learning-data/plan';
+import type { TeachingToolHost, TeachingToolScope, TeachingToolCleanupScope, TeachingPreparedTool, TeachingToolOutcome } from '../../capabilities/tool-discovery/tool-types.js';
+import { teachingDefinitions, teachingContributions } from './tools-schema.js';
+import { aluVerificationAction } from './alu-tools.js';
+import { imageRoute, retainWorkImage, type TeachingImageModels } from '../../capabilities/documents/tools-images.js';
+import { pdfReadingOutcome, pdfSearchOutcome, pdfTextInputSchema, pdfTextOutcome } from '../../capabilities/documents/tools-pdf.js';
+import { pdfReadInputSchema, pdfFindInputSchema } from '@xunjie/contracts/pdf-materials';
+import { materialSearchInputSchema, personalMaterialReadSchema } from '@xunjie/contracts/personal-materials';
+import { artifactPublishInput } from './tools-artifacts.js';
+import { teachingPublicArguments } from '../help-policy.js';
+
+const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(canonicalValue(value))).digest('hex');
+function fail(code: 'forbidden' | 'missing' | 'invalid' | 'identity-conflict' | 'corrupt' | 'unavailable'): never { throw new StorageError(code); }
+const freeze = <T>(value: T): T => {
+  if (value && typeof value === 'object') { Object.freeze(value); for (const child of Object.values(value)) freeze(child); }
+  return value;
+};
+type HostScope = TeachingToolScope & { assertDispatch?: () => Promise<void>; device?: ExecutionDevice };
+type Courses = Pick<ReturnType<typeof createCourses>, 'referenceText' | 'verifyComponentReference' | 'readComponent' | 'readComponentAlgorithm'>;
+/** Compatibility name for hosts already consuming this exported port. */
+export type TeachingToolsLearning = TeachingToolData;
+export function createTeachingTools(options: {
+  learning: () => TeachingToolData;
+  courses: Courses;
+  models?: TeachingImageModels;
+  /** Alternative to scope.assertDispatch for hosts that reconstruct a permit by original association. */
+  executionOrigin?: () => AgentExecutionOrigin | undefined;
+  authorizeDispatch?: (scope: TeachingToolScope, command: TeachingPreparedTool) => Promise<void>;
+  device?: (scope: TeachingToolScope) => Promise<ExecutionDevice | undefined>;
+  environment?: (scope: TeachingToolScope) => Promise<{ device: ExecutionDevice; remoteAvailable: boolean }>;
+  /** Narrow teaching-agent owner read; facts never come from the browser or a demo profile. */
+  studentFacts?: { read(identity: TeachingToolScope['identity'], activityId: string, input: unknown):
+    Promise<{ facts: unknown[]; activity: { activityId: string; goal: string; courseId: string | null };
+      continuation: { state: string; detail: string }; unknown: string[] }> };
+  /** Read one permitted skill attachment through the selected-skill guard. */
+  skillRead?: (scope: TeachingToolScope, skillId: string, version: number, path: string) => Promise<{ content: string; digest: string }>;
+}): TeachingToolHost & { reconcileOriginal: TeachingToolHost['reconcile'] } {
+  const learning = options.learning;
+  async function authorize(scope: TeachingToolCleanupScope) {
+    actionInputSchema.parse(scope.input);
+    const identity = { environmentId: scope.identity.environmentId, spaceId: scope.identity.spaceId,
+      principalId: scope.identity.principalId, activityId: scope.activity.activityId };
+    if (digest(scope.input.scope) !== digest(identity) || digest(scope.activity.identity) !== digest(scope.identity)) fail('forbidden');
+    const current = await learning().open(scope.identity, scope.activity.activityId);
+    if (digest(current.course ?? null) !== digest(scope.activity.course ?? null)) fail('identity-conflict');
+    if (current.course?.helpPolicy?.questions === 'disabled') fail('forbidden');
+    return current;
+  }
+  function context(scope: TeachingToolCleanupScope, command: TeachingPreparedTool): AgentExecutionContext {
+    const origin = options.executionOrigin?.();
+    // Reconciliation/claim reads use the already accepted original command.
+    return { ...(origin ? { origin } : {}), runId: scope.runId, stepId: scope.stepId, commandId: command.commandId, snapshotId: scope.snapshotId,
+      assertDispatch: async () => {
+        if ((scope as HostScope).assertDispatch) await (scope as HostScope).assertDispatch!();
+        else if (options.authorizeDispatch) await options.authorizeDispatch(scope as TeachingToolScope, command);
+        else fail('forbidden');
+      } };
+  }
+  function scopeBasis(scope: TeachingToolCleanupScope) {
+    return { identity: scope.identity, activityId: scope.activity.activityId, runId: scope.runId,
+      stepId: scope.stepId, snapshotId: scope.snapshotId, segmentId: scope.segmentId ?? null, input: scope.input, course: scope.activity.course ?? null };
+  }
+  function approvedFile(scope: TeachingToolScope, objectId: string, contentId: string) {
+    const files = [...scope.input.works, ...scope.input.draft.bases];
+    const file = files.find(item => item.objectId === objectId && item.contentId === contentId);
+    const ref = scope.input.draft.references.find(item => item.source.kind === 'work'
+      && item.source.objectId === objectId && item.source.contentId === contentId);
+    if (!file && !ref) fail('forbidden');
+    return { file, ref };
+  }
+  async function originalQuery(scope: TeachingToolScope, command: TeachingPreparedTool, requestId: string, approved = false) {
+    const ref = scope.input.draft.references.find(item => item.source.kind === 'component'
+      && item.source.origin === 'execution-result' && item.source.requestId === requestId);
+    if (approved && ref) {
+      await learning().drafts.verifyReferences(scope.identity, scope.activity.activityId, { references: [ref], bases: [] });
+      const query = await learning().executions.read(scope.identity, scope.activity.activityId, requestId);
+      if (query && (ref.source.kind !== 'component' || query.executionRef !== ref.source.executionRef)) fail('identity-conflict');
+      return query;
+    }
+    return learning().executions.agent.read(scope.identity, scope.activity.activityId, context(scope, command), requestId);
+  }
+  async function prepare(scope: TeachingToolScope, intent: ModelToolIntent, commandId: string, fixed?: AnyExecutionAction): Promise<TeachingPreparedTool> {
+    await authorize(scope); z.uuid().parse(commandId);
+    const definition = teachingContributions(scope).find(item => item.definition.name === intent.name
+      && (intent.name !== 'course_operation' || item.source.componentKey === intent.arguments.componentKey))?.definition;
+    if (!definition || !compileOutputSchema(definition.inputSchema)(intent.arguments)) fail('invalid');
+    for (const key of ['objectId', 'contentId', 'referenceId', 'materialId', 'requestId'])
+      if (Object.hasOwn(intent.arguments, key) && !z.uuid().safeParse(intent.arguments[key]).success) fail('invalid');
+    for (const key of ['artifactId', 'revisionId', 'parentRevisionId'])
+      if (intent.arguments[key] != null && !z.uuid().safeParse(intent.arguments[key]).success) fail('invalid');
+    const args = structuredClone(intent.arguments), name = intent.name;
+    let effect: TeachingPreparedTool['effect'] = 'read', location: TeachingPreparedTool['location'] = 'owner';
+    let conflictKey = scope.activity.activityId, detail: Record<string, unknown> = {};
+    if (name === 'generate_teaching_artifact') {
+      if (!scope.attemptId || teachingPublicArguments(scope.activity, args).rejectedByHelpPolicy) fail('forbidden');
+      const input = artifactPublishInput(args, commandId);
+      if (input.artifactId && input.parentRevisionId)
+        await learning().artifacts.revision(scope.identity, scope.activity.activityId, input.artifactId, input.parentRevisionId);
+      effect = 'input';
+      detail = { input, origin: { runId: scope.runId, stepId: scope.stepId, attemptId: scope.attemptId,
+        snapshotId: scope.snapshotId, commandId } };
+    } else if (name === 'read_teaching_artifact') {
+      if (args.artifactId == null) {
+        if (args.revisionId !== null) fail('invalid');
+        detail = { artifacts: await learning().artifacts.list(scope.identity, scope.activity.activityId) };
+      } else {
+        const artifactId = z.uuid().parse(args.artifactId);
+        const artifact = await learning().artifacts.read(scope.identity, scope.activity.activityId, artifactId);
+        const revisionId = args.revisionId == null ? artifact.activeRevisionId ?? artifact.latestRevisionId : z.uuid().parse(args.revisionId);
+        detail = { artifact, revision: await learning().artifacts.revision(scope.identity, scope.activity.activityId, artifactId, revisionId) };
+      }
+    } else if (name === 'read_work') {
+      const { file, ref } = approvedFile(scope, String(args.objectId), String(args.contentId));
+      const version = await learning().works.inspectVersion(scope.identity, scope.activity.activityId,
+        { objectId: String(args.objectId), contentId: String(args.contentId) });
+      const sourceState = !version.retained ? 'missing' : version.isCurrent ? 'fixed-current'
+        : version.everPublished ? 'older-version' : 'fixed-unpublished';
+      detail = { ...(file ? { file } : {}), ...(ref ? { reference: ref } : {}), objectId: args.objectId, contentId: args.contentId,
+        provenance: { ...version, sourceState },
+        ...(file?.mediaType === 'image/png' ? { imageRoute: await imageRoute(scope, options.models) } : {}) };
+    } else if (name === 'read_pdf_text') {
+      const input = pdfTextInputSchema.parse(args);
+      const reference = scope.input.draft.references.find(item => item.referenceId === input.referenceId && item.source.kind === 'pdf');
+      if (!reference || reference.source.kind !== 'pdf') fail('forbidden');
+      await learning().drafts.verifyReferences(scope.identity, scope.activity.activityId, { references: [reference], bases: [] });
+      const reading = await learning().pdf.reading(scope.identity, scope.activity.activityId, input.readingId);
+      if (!reading || reading.documentId !== reference.source.documentId
+        || reading.documentSha256 !== reference.source.documentSha256) fail('forbidden');
+      detail = { reference, input };
+    } else if (name === 'read_pdf' || name === 'find_pdf') {
+      const reference = scope.input.draft.references.find(item => item.referenceId === args.referenceId && item.source.kind === 'pdf');
+      if (!reference || reference.source.kind !== 'pdf') fail('forbidden');
+      await learning().drafts.verifyReferences(scope.identity, scope.activity.activityId, { references: [reference], bases: [] });
+      const input = name === 'find_pdf' ? pdfFindInputSchema.parse({ requestId: commandId, documentId: reference.source.documentId,
+        pages: args.pages, query: args.query }) : pdfReadInputSchema.parse({ requestId: commandId, documentId: reference.source.documentId,
+        pages: args.pages, region: args.region });
+      detail = { reference, input, ...(name === 'read_pdf' ? { imageRoute: await imageRoute(scope, options.models) } : {}) };
+    } else if (name === 'read_reference') {
+      const reference = scope.input.draft.references.find(item => item.referenceId === args.referenceId);
+      if (!reference) fail('forbidden');
+      detail = { reference, ...(reference.source.kind === 'pdf' ? { imageRoute: await imageRoute(scope, options.models) } : {}) };
+    } else if (name === 'read_personal_material') {
+      const materialId = z.uuid().parse(args.materialId), version = z.number().int().positive().max(64).parse(args.version);
+      const input = personalMaterialReadSchema.parse({ start: args.start, length: args.length });
+      const reference = scope.input.draft.references.find(item => item.source.kind === 'personal-material'
+        && item.source.materialId === materialId && item.source.version === version);
+      if (!reference) fail('forbidden');
+      await learning().drafts.verifyReferences(scope.identity, scope.activity.activityId, { references: [reference], bases: [] });
+      detail = { reference, input: { materialId, version, ...input } };
+    } else if (name === 'search_materials') {
+      detail = { input: materialSearchInputSchema.parse({ query: args.query, ...(args.scope == null ? {} : { scope: args.scope }) }) };
+    } else if (name === 'read_student_facts') {
+      if (!options.studentFacts) fail('unavailable');
+      detail = { input: { ...(args.query == null ? {} : { query: args.query }), scope: args.scope } };
+    } else if (name === 'read_material') {
+      const course = scope.activity.course, material = course?.materials.find(item => item.materialId === args.materialId);
+      if (!course || !material) fail('forbidden');
+      if (!/^(text\/(plain|markdown|csv)|application\/json)(;|$)/.test(material.mediaType)) fail('invalid');
+      detail = { source: { kind: 'course-material', courseId: course.courseId, taskId: course.taskId,
+        releaseId: course.releaseId, contentDigest: course.contentDigest, materialId: material.materialId,
+        materialSha256: material.sha256, mediaType: material.mediaType } };
+    } else if (name === 'course_operation') {
+      const binding = scope.activity.course?.components?.find(item => item.key === args.componentKey);
+      if (!binding || !scope.activity.course) fail('forbidden');
+      const manifest = binding.definition.manifest;
+      await options.courses.verifyComponentReference(scope.identity, { releaseId: scope.activity.course.releaseId,
+        key: binding.key, definitionDigest: binding.definition.digest });
+      if (manifest.formatVersion === 3) {
+        const action = aluVerificationAction(scope, binding, commandId, String(args.operationId), args.parameters);
+        const coursePlan = scope.activity.course.executionPlan;
+        if (coursePlan && 'version' in coursePlan && coursePlan.version === 2) {
+          const budgets = coursePlan.placements.find(item => item.componentKey === binding.key
+            && item.operationId === action.execution.operation.operationId)?.budgets ?? fail('forbidden');
+          for (const key of Object.keys(action.execution.limits))
+            action.execution.limits[key as keyof typeof action.execution.limits] = Math.min(
+              action.execution.limits[key as keyof typeof action.execution.limits], budgets[key] ?? 0);
+        }
+        for (const file of action.execution.basis.works) {
+          const original = await learning().works.content(scope.identity, scope.activity.activityId, file.contentId);
+          if (original.objectId !== file.objectId || original.value !== file.value || original.kind !== file.kind
+            || original.encoding !== file.encoding || original.mediaType !== file.mediaType) fail('corrupt');
+        }
+        return freeze(structuredClone({ version: 1, commandId, name, arguments: args, effect: 'execute' as const,
+          location: 'browser' as const, conflictKey: conflictKey + ':component:' + binding.key,
+          basis: { scope: scopeBasis(scope), binding, action, requestId: commandId } }));
+      }
+      if (manifest.formatVersion !== 1) fail('invalid');
+      const fixedAction = fixed?.protocolVersion === 2 ? fixed : undefined;
+      const native = !!manifest.session;
+      const operationId = native ? manifest.session!.operation.operationId : String(args.operationId);
+      const declared = manifest.operations?.find(item => item.operationId === operationId);
+      location = native ? 'native' : 'browser'; effect = native ? 'input' : 'execute';
+      conflictKey += ':component:' + binding.key;
+      verifyPlannedExecution(scope.activity, { key: binding.key, definitionDigest: binding.definition.digest, operationId, location });
+      if (native && args.operationId !== 'start_session') {
+        const control = executionControlSchema.parse({ controlId: commandId, operationId, effect: 'input',
+          expectedSeq: args.expectedSeq, parameters: args.parameters });
+        const original = await learning().executions.agent.original(scope.identity, scope.activity.activityId,
+          { runId: scope.runId, stepId: scope.stepId, snapshotId: scope.snapshotId, commandId, assertDispatch: async () => fail('forbidden') }, String(args.requestId));
+        if (!original || original.action.execution.instance.key !== binding.key
+          || original.action.execution.instance.definitionDigest !== binding.definition.digest) fail('forbidden');
+        location = original.action.receiver.location === 'remote' ? 'remote' : 'native';
+        detail = { binding, control, requestId: args.requestId, original: { action: original.action, association: original.association } };
+      } else {
+        const stateFile = [...scope.input.works, ...scope.input.draft.bases].find(item => item.name === componentStateName(binding.key));
+        if (stateFile && !matchesComponentState(binding, scope.activity.activityId, stateFile)) fail('invalid');
+        // An absent state means the declared initial state. Never substitute a newer workspace version.
+        const resources = native ? [] : [{ kind: 'entry', ...manifest.entry }, { kind: 'algorithm', ...manifest.algorithm!.resource }];
+        const planId = native ? 'native-session' : 'browser-job';
+        const limits = native ? { timeMs: Math.min(defaultExecutionLimits.timeMs, manifest.session!.budgets.operationTimeoutMs), memoryPages: 1,
+          inputBytes: manifest.session!.budgets.inputBytes, outputBytes: manifest.session!.budgets.outputBytes,
+          concurrentJobs: Math.min(2, manifest.session!.budgets.concurrentSessions), queuedJobs: Math.min(4, manifest.session!.budgets.queuedSessions) }
+          : { ...defaultExecutionLimits, timeMs: declared!.budgets.timeMs,
+            memoryPages: manifest.algorithm!.memoryPages, outputBytes: declared!.budgets.outputBytes };
+        const environment = native && !fixedAction ? await options.environment?.(scope) : undefined;
+        const device = fixedAction ? fixedAction.execution.device : native
+          ? (scope as HostScope).device ?? environment?.device ?? await options.device?.(scope) : undefined;
+        let receiverLocation = fixedAction?.receiver.location ?? 'local';
+        if (native && !fixedAction && scope.activity.course.executionPlan) {
+          if (!device) fail('unavailable');
+          const placement = decideExecutionPlacement({ componentKey: binding.key, operationId, kind: 'session', adapter: manifest.session!,
+            plan: scope.activity.course.executionPlan, device, remoteAvailable: environment?.remoteAvailable ?? false });
+          if (placement.location !== 'native' || placement.owner !== 'device' && placement.owner !== 'school-node') fail('unavailable');
+          receiverLocation = placement.owner === 'school-node' ? 'remote' : 'local';
+        }
+        if (native && receiverLocation === 'remote') location = 'remote';
+        const coursePlan = scope.activity.course.executionPlan;
+        const teacherBudgets = coursePlan && 'version' in coursePlan && coursePlan.version === 2
+          ? coursePlan.placements.find(item => item.componentKey === binding.key && item.operationId === operationId)?.budgets : undefined;
+        if (teacherBudgets) for (const key of (native ? ['inputBytes', 'outputBytes'] : Object.keys(limits)))
+          limits[key as keyof typeof limits] = Math.min(limits[key as keyof typeof limits], teacherBudgets[key] ?? 0);
+        if (teacherBudgets && native) {
+          limits.timeMs = Math.min(limits.timeMs, teacherBudgets.operationTimeoutMs!);
+          limits.concurrentJobs = Math.min(limits.concurrentJobs, teacherBudgets.concurrentSessions!);
+          limits.queuedJobs = Math.min(limits.queuedJobs, teacherBudgets.queuedSessions!);
+        }
+        const action = executionActionSchema.parse({ protocolVersion: 2, kind: 'execution', requestId: commandId,
+          scope: { environmentId: scope.identity.environmentId, spaceId: scope.identity.spaceId,
+            principalId: scope.identity.principalId, activityId: scope.activity.activityId },
+          receiver: { receiverId: native ? 'native-execution' : 'browser-execution', location: receiverLocation, kind: 'execution' },
+          execution: { instance: { instanceId: componentInstanceId(scope.activity.activityId, binding.key), key: binding.key,
+            componentId: manifest.componentId, componentVersion: manifest.version, definitionDigest: binding.definition.digest,
+            hostApiVersion: manifest.hostApiVersion, stateVersion: manifest.stateVersion },
+            operation: { operationId, effect: native ? 'input' : 'execute' }, parameters: args.parameters,
+            basis: { works: stateFile ? [stateFile] : [], state: stateFile ? { name: stateFile.name,
+              contentId: stateFile.contentId, sha256: digest(JSON.parse(stateFile.value)) } : null,
+              expected: { stateContentId: stateFile?.contentId ?? null }, resources }, limits,
+            plan: { planId, planVersion: 1, location: native ? 'native' : 'browser', kind: native ? 'session' : 'job',
+              planDigest: digest({ planId, planVersion: 1, componentId: manifest.componentId, componentVersion: manifest.version, operationId }) },
+            ...(native ? { session: { adapterId: manifest.session!.adapterId, adapterVersion: manifest.session!.adapterVersion,
+              limits: Object.fromEntries(['operationTimeoutMs', 'idleMs', 'maxMs', 'memoryMiB', 'concurrentSessions', 'queuedSessions']
+                .map(key => [key, Math.min((manifest.session!.budgets as Record<string, number>)[key]!, teacherBudgets?.[key] ?? Infinity)])) } } : {}),
+            ...(device ? { device } : {}), initiator: { kind: 'agent', principalId: scope.identity.principalId } } });
+        detail = { binding, action, requestId: commandId };
+      }
+    } else {
+      const reference = name !== 'execution_stop' ? scope.input.draft.references.find(item => item.source.kind === 'component'
+        && item.source.origin === 'execution-result' && item.source.requestId === args.requestId) : undefined;
+      const original = reference ? null : await learning().executions.agent.original(scope.identity, scope.activity.activityId,
+        { runId: scope.runId, stepId: scope.stepId, snapshotId: scope.snapshotId, commandId, assertDispatch: async () => fail('forbidden') }, String(args.requestId));
+      if (!reference && !original) fail('forbidden');
+      detail = { requestId: args.requestId, ...(reference ? { reference } : { original: original ? { action: original.action, association: original.association } : null }) };
+      if (name === 'execution_stop') { effect = 'stop'; conflictKey += ':execution:' + String(args.requestId); }
+    }
+    return freeze(structuredClone({ version: 1, commandId, name, arguments: args, effect, location, conflictKey,
+      basis: { scope: scopeBasis(scope), ...detail } }));
+  }
+  async function check(scope: TeachingToolScope, command: TeachingPreparedTool) {
+    await authorize(scope);
+    if (command.version !== 1 || digest(command.basis.scope) !== digest(scopeBasis(scope))) fail('identity-conflict');
+    const fresh = await prepare(scope, { callId: command.commandId, name: command.name, arguments: command.arguments }, command.commandId,
+      command.basis.action ? anyExecutionActionSchema.parse(command.basis.action) : undefined);
+    // Publication metadata was observed at preparation, not a condition that can replace or
+    // invalidate the approved bytes when a later edit moves the head.
+    const comparable = command.name === 'read_work'
+      ? { ...fresh, basis: { ...fresh.basis, provenance: command.basis.provenance } }
+      : command.name === 'read_teaching_artifact' ? { ...fresh, basis: { ...fresh.basis,
+        ...(command.basis.artifacts ? { artifacts: command.basis.artifacts } : {}),
+        ...(command.basis.artifact ? { artifact: command.basis.artifact, revision: command.basis.revision } : {}) } } : fresh;
+    if (digest(comparable) !== digest(command)) fail('identity-conflict');
+  }
+  function outcome(command: TeachingPreparedTool, state: TeachingToolOutcome['state'], result: Record<string, unknown>, label: string,
+    query?: ExecutionQuery | null): TeachingToolOutcome {
+    const text = JSON.stringify({ state, ...result });
+    return { state, feedback: { outcome: state === 'failed' ? 'error' : state === 'not-dispatched' ? 'not-executed' : 'success',
+      text, images: [] }, result,
+      source: { label, ...(command.arguments.componentKey ? { componentKey: String(command.arguments.componentKey) } : {}),
+        ...(query ? { requestId: query.requestId } : {}),
+        ...(command.arguments.contentId ? { contentId: String(command.arguments.contentId) } : {}) },
+      ...(query ? { execution: { requestId: query.requestId, executionRef: query.executionRef, inputDigest: query.inputDigest } } : {}) };
+  }
+  async function queryOutcome(scope: TeachingToolCleanupScope, command: TeachingPreparedTool, query: ExecutionQuery | null) {
+    if (!query) return null;
+    let state: TeachingToolOutcome['state'] = query.statusKnowledge === 'unknown' ? 'unknown'
+      : query.state === 'failed' || query.state === 'cancelled' ? 'failed' : query.state === 'succeeded' ? 'completed' : 'accepted';
+    const control = command.basis.control as { controlId: string; expectedSeq: number } | undefined;
+    let receipt;
+    if (control) {
+      receipt = await learning().executions.controlReceipt(scope.identity, scope.activity.activityId, query.requestId, control.controlId);
+      if (receipt && (receipt.controlId !== control.controlId || receipt.requestId !== query.requestId
+        || receipt.executionRef !== query.executionRef || receipt.query.requestId !== query.requestId
+        || receipt.query.executionRef !== query.executionRef || digest(receipt.query.scope) !== digest(query.scope))) fail('identity-conflict');
+      if (receipt) query = receipt.query;
+      if (receipt?.status === 'applied') state = 'completed';
+      else if (receipt?.status === 'rejected') state = 'failed';
+      else if (receipt?.status === 'dispatching') state = 'accepted';
+      else state = 'unknown'; // A parent session is not an acceptance receipt for this control.
+    } else if (command.name === 'course_operation' && query.session && query.state === 'running'
+      && query.statusKnowledge === 'confirmed') state = 'completed';
+    if (command.effect === 'read') state = 'completed';
+    if (command.name === 'execution_stop' && query.statusKnowledge === 'confirmed' && isTerminalExecutionState(query.state)) state = 'completed';
+    const artifact = query.output ? await learning().executions.artifact(scope.identity, scope.activity.activityId, query.requestId) : null;
+    return outcome(command, state, { query, ...(receipt ? { controlReceipt: receipt } : {}), ...(artifact ? { artifact } : {}),
+      ...(control ? { operationObservation: query.session?.observations.find(item => item.controlId === control.controlId) ?? null,
+        controlState: { expectedSeq: control.expectedSeq, appliedSeq: query.session?.appliedSeq ?? null,
+          effectApplied: receipt?.status === 'applied' ? true : receipt?.status === 'rejected' ? false : null } } : {}),
+      operationCompleted: state === 'completed', sessionOngoing: !!query.session && ['running', 'paused'].includes(query.state) }, '原执行结果', query);
+  }
+  async function dispatch(scope: TeachingToolScope, command: TeachingPreparedTool): Promise<TeachingToolOutcome> {
+    await check(scope, command);
+    const a = command.arguments, id = scope.activity.activityId;
+    if (command.name === 'generate_teaching_artifact') {
+      const input = artifactPublishInput(a, command.commandId);
+      const artifact = await learning().artifacts.publish(scope.identity, id, input, {
+        origin: command.basis.origin as import('@xunjie/contracts/teaching-artifacts').TeachingArtifactOrigin,
+        assertDispatch: context(scope, command).assertDispatch,
+      });
+      return outcome(command, 'completed', { artifact }, '活动教学内容');
+    }
+    if (command.name === 'read_teaching_artifact') {
+      if (command.basis.revision) {
+        const fixed = command.basis.revision as import('@xunjie/contracts/teaching-artifacts').TeachingArtifactRevision;
+        const revision = await learning().artifacts.revision(scope.identity, id, fixed.artifactId, fixed.revisionId);
+        if (digest(revision) !== digest(fixed)) fail('corrupt');
+        return outcome(command, 'completed', { artifact: command.basis.artifact, revision }, '固定教学内容');
+      }
+      return outcome(command, 'completed', { artifacts: command.basis.artifacts }, '本活动教学内容');
+    }
+    if (command.name === 'read_pdf_text') {
+      const input = pdfTextInputSchema.parse(command.basis.input);
+      const reference = scope.input.draft.references.find(item => item.referenceId === input.referenceId && item.source.kind === 'pdf');
+      if (!reference || reference.source.kind !== 'pdf') fail('forbidden');
+      const reading = await learning().pdf.reading(scope.identity, id, input.readingId);
+      if (!reading || reading.documentId !== reference.source.documentId
+        || reading.documentSha256 !== reference.source.documentSha256) fail('forbidden');
+      return pdfTextOutcome(reading, input);
+    }
+    if (command.name === 'find_pdf') {
+      await context(scope, command).assertDispatch();
+      const result = await learning().pdf.find(scope.identity, id, command.basis.input);
+      return pdfSearchOutcome(result, String(a.referenceId));
+    }
+    if (command.name === 'read_pdf') {
+      let reading = await learning().pdf.reading(scope.identity, id, command.commandId);
+      if (!reading) {
+        await context(scope, command).assertDispatch();
+        reading = await learning().pdf.read(scope.identity, id, command.basis.input);
+      }
+      return pdfReadingOutcome(scope, options.models, command, reading);
+    }
+    if (command.name === 'read_work') {
+      const { file, ref } = approvedFile(scope, String(a.objectId), String(a.contentId));
+      let stored;
+      try { stored = await learning().works.content(scope.identity, id, String(a.contentId)); }
+      catch (error) {
+        if (!(error instanceof StorageError) || !['missing', 'resource-gone', 'unavailable', 'corrupt'].includes(error.code)) throw error;
+        const sourceState = error.code === 'missing' ? 'missing' : error.code === 'corrupt' ? 'corrupt' : 'unavailable';
+        return outcome(command, 'failed', { objectId: a.objectId, contentId: a.contentId, sourceState, code: error.code }, '固定作品来源');
+      }
+      if (stored.objectId !== a.objectId || stored.contentId !== a.contentId) fail('identity-conflict');
+      if (file && (file.value !== stored.value || file.encoding !== stored.encoding || file.kind !== stored.kind
+        || file.mediaType !== stored.mediaType)) fail('corrupt');
+      const content = { ...stored, name: file?.name ?? ref?.sourceName ?? String(a.objectId) };
+      if (content.mediaType === 'image/png') {
+        const route = command.basis.imageRoute as { available?: boolean } | undefined;
+        if (!options.models || !route?.available) return outcome(command, 'failed',
+          { objectId: content.objectId, contentId: content.contentId, sourceState: 'unavailable', code: 'image-capability-unverified' }, content.name);
+        const retained = await retainWorkImage(scope, options.models, command.commandId, content);
+        const result = outcome(command, 'completed', { file: content, image: retained.image,
+          ...(command.basis.provenance as Record<string, unknown>) }, content.name);
+        result.feedback = { outcome: 'success', images: [retained.reference], text: JSON.stringify({
+          objectId: content.objectId, contentId: content.contentId, name: content.name, mediaType: content.mediaType,
+          byteLength: retained.byteLength, image: retained.reference, sha256: retained.image.sha256,
+          ...(command.basis.provenance as Record<string, unknown>) }) };
+        return result;
+      }
+      if (content.encoding === 'base64' || !/^(text\/|application\/(json|vnd\.xunjie\.component-state\+json))/.test(content.mediaType))
+        return outcome(command, 'failed', { objectId: content.objectId, contentId: content.contentId,
+          mediaType: content.mediaType, sourceState: 'unavailable', code: 'unsupported-media-type' }, content.name);
+      return outcome(command, 'completed', { file: content, ...(command.basis.provenance as Record<string, unknown>) }, content.name);
+    }
+    if (command.name === 'read_reference') {
+      const reference = scope.input.draft.references.find(item => item.referenceId === a.referenceId)!;
+      await learning().drafts.verifyReferences(scope.identity, id, { references: [reference], bases: scope.input.draft.bases
+        .filter(file => 'contentId' in reference.source && file.contentId === reference.source.contentId) });
+      if (reference.source.kind === 'pdf') {
+        const reading = await learning().pdf.reading(scope.identity, id, reference.source.readingId);
+        if (!reading) fail('missing');
+        return pdfReadingOutcome(scope, options.models, command, reading, reference);
+      }
+      return outcome(command, 'completed', { reference }, reference.sourceName);
+    }
+    if (command.name === 'read_personal_material') {
+      const input = command.basis.input as { materialId: string; version: number; start: number; length: number };
+      const content = await learning().materials.readRange(scope.identity, id, input.materialId, input.version,
+        { start: input.start, length: input.length });
+      return outcome(command, 'completed', { reference: command.basis.reference, ...content }, content.name);
+    }
+    if (command.name === 'search_materials') {
+      const input = materialSearchInputSchema.parse(command.basis.input);
+      const references = scope.input.draft.references;
+      const result = await learning().search.search(scope.identity, id, input, {
+        pdfReferences: references.filter(reference => reference.source.kind === 'pdf'),
+        personalReferences: references.filter(reference => reference.source.kind === 'personal-material'),
+        ...(scope.input.draft.skills ? { skillReferences: scope.input.draft.skills } : {}),
+        ...(scope.skillState ? { skillState: scope.skillState } : {}),
+        ...(options.skillRead ? { skillRead: (skillId: string, version: number, path: string) =>
+          options.skillRead!(scope, skillId, version, path).then(item => ({ content: item.content, digest: item.digest })) } : {}) });
+      return outcome(command, 'completed', { search: result }, '材料检索');
+    }
+    if (command.name === 'read_student_facts') {
+      if (!options.studentFacts) fail('unavailable');
+      const stored = command.basis.input as { query?: string | null; scope?: string } | undefined;
+      const result = await options.studentFacts.read(scope.identity, id,
+        { ...(stored?.query == null ? {} : { query: stored.query }), ...(stored?.scope ? { scope: stored.scope } : {}) });
+      return outcome(command, 'completed', { facts: result.facts, activity: result.activity, continuation: result.continuation,
+        unknown: result.unknown }, '学生事实与偏好');
+    }
+    if (command.name === 'read_material') {
+      const source = command.basis.source;
+      return outcome(command, 'completed', { source, ...await options.courses.referenceText(scope.identity, source) }, '课程开放材料');
+    }
+    if (command.name === 'course_operation') {
+      const ctx = context(scope, command), requestId = String(command.basis.requestId);
+      let query;
+      try {
+        query = command.basis.control
+          ? await learning().executions.agent.control(scope.identity, id, ctx, requestId, command.basis.control)
+          : await learning().executions.agent.dispatch(scope.identity, id, ctx, command.basis.action);
+      } catch (error) {
+        if (command.basis.control && error instanceof StorageError && ['identity-conflict', 'invalid'].includes(error.code)) {
+          const original = await learning().executions.agent.read(scope.identity, id, ctx, requestId);
+          const rejected = await queryOutcome(scope, command, original);
+          if ((rejected?.result.controlReceipt as { status?: string } | undefined)?.status === 'rejected') return rejected!;
+        }
+        throw error;
+      }
+      return await queryOutcome(scope, command, query) ?? outcome(command, 'accepted',
+        { requestId, delivery: 'waiting-browser', action: command.basis.action }, '等待原浏览器执行');
+    }
+    if (command.name === 'execution_stop') return await stop(scope, command) ?? outcome(command, 'not-dispatched', { requestId: a.requestId }, '原执行尚未确认');
+    const query = await originalQuery(scope, command, String(a.requestId), true);
+    return await queryOutcome(scope, command, query) ?? outcome(command, 'not-dispatched', { requestId: a.requestId }, '原执行尚未确认');
+  }
+  async function reconcile(scope: TeachingToolScope, command: TeachingPreparedTool) {
+    if (command.name === 'generate_teaching_artifact') {
+      await authorize(scope);
+      const artifact = await learning().artifacts.receipt(scope.identity, scope.activity.activityId, command.commandId);
+      return artifact ? outcome(command, 'completed', { artifact }, '活动教学内容') : null;
+    }
+    await check(scope, command);
+    if (command.effect === 'read') return dispatch(scope, command);
+    const requestId = String(command.basis.requestId ?? command.arguments.requestId ?? command.commandId);
+    const query = await learning().executions.agent.read(scope.identity, scope.activity.activityId, context(scope, command), requestId);
+    return await queryOutcome(scope, command, query) ?? cancellationOutcome(scope, command, requestId);
+  }
+  /** Kernel recovery may inspect retained receipts/associations, but must never prepare or repeat a read. */
+  async function reconcileOriginal(scope: TeachingToolScope, command: TeachingPreparedTool) {
+    if (command.version !== 1 || digest(command.basis.scope) !== digest(scopeBasis(scope))) fail('identity-conflict');
+    if (command.name === 'generate_teaching_artifact') return reconcile(scope, command);
+    if (command.effect === 'read') return null;
+    await authorize(scope);
+    const requestId = String(command.basis.requestId ?? command.arguments.requestId ?? command.commandId);
+    const ctx = context({ ...scope, assertDispatch: async () => fail('forbidden') }, command);
+    const query = await learning().executions.agent.read(scope.identity, scope.activity.activityId, ctx, requestId);
+    const retained = await queryOutcome(scope, command, query) ?? await cancellationOutcome(scope, command, requestId);
+    if (retained) return retained;
+    if (command.name === 'course_operation' && !command.basis.control) {
+      const original = await learning().executions.agent.original(scope.identity, scope.activity.activityId, ctx, requestId);
+      if (original && original.action.execution.plan.location === 'browser'
+        && digest(original.action) === digest(command.basis.action)) return outcome(command, 'accepted',
+          { requestId, delivery: 'waiting-browser', action: original.action }, '等待原浏览器执行');
+    }
+    return null;
+  }
+  async function cancellationOutcome(scope: TeachingToolCleanupScope, command: TeachingPreparedTool, requestId: string, cleanup = false) {
+    const inspect = cleanup ? learning().executions.agent.cleanupStatus : learning().executions.agent.status;
+    const status = await inspect(scope.identity, scope.activity.activityId, context(scope, command), requestId);
+    if (!status?.cancelled) return null;
+    return outcome(command, status.claimed ? 'unknown' : 'not-dispatched',
+      { requestId, cancelled: true, delivery: status.claimed ? 'stopping-original-browser' : 'cancelled-before-dispatch',
+        browserId: status.browserId }, status.claimed ? '正在核对原浏览器停止' : '已取消待发命令');
+  }
+  async function stop(scope: TeachingToolCleanupScope, command: TeachingPreparedTool) {
+    // Cleanup checks the durable original capability, not current eligibility for new effects.
+    if (command.version !== 1 || digest(command.basis.scope) !== digest(scopeBasis(scope))) fail('identity-conflict');
+    if (command.name === 'generate_teaching_artifact') {
+      // Content publication has no external execution to cancel. Preserve a committed original;
+      // an unconfirmed publication is never repeated while stopping the Run.
+      const artifact = await learning().artifacts.receipt(scope.identity, scope.activity.activityId, command.commandId);
+      return artifact ? outcome(command, 'completed', { artifact, cleanupCompleted: true }, '已保留的教学内容')
+        : outcome(command, 'not-dispatched', { requestId: command.commandId, cleanupCompleted: true }, '生成已停止');
+    }
+    if (command.effect === 'read') return null;
+    const requestId = String(command.basis.requestId ?? command.arguments.requestId ?? command.commandId);
+    const query = await learning().executions.agent.cleanup(scope.identity, scope.activity.activityId, context(scope, command), requestId,
+      { stopId: stopId(command.commandId), reason: '' });
+    if (!query) return cancellationOutcome(scope, command, requestId, true);
+    try {
+      // Normal eligibility may expose the original late result/artifact. Revoked callers
+      // receive only the restricted cleanup proof below, never source/result contents.
+      await authorize(scope);
+      const evidence = await queryOutcome(scope, command, query);
+      if (evidence) {
+        const completed = query.statusKnowledge === 'confirmed' && isTerminalExecutionState(query.state);
+        return outcome(command, completed ? evidence.state : query.statusKnowledge === 'unknown' ? 'unknown' : 'accepted',
+          { ...evidence.result, cleanup: true, stopId: stopId(command.commandId), cleanupCompleted: completed,
+            sessionStopped: !!query.session && completed }, '原执行清理', query);
+      }
+    } catch (error) {
+      if (!(error instanceof StorageError) || !['forbidden', 'identity-conflict', 'missing'].includes(error.code)) throw error;
+    }
+    const completed = query.statusKnowledge === 'confirmed' && isTerminalExecutionState(query.state);
+    const state = completed ? command.name === 'execution_stop' || query.state === 'succeeded' ? 'completed' : 'failed' : 'unknown';
+    return outcome(command, state,
+      { query, cleanup: true, stopId: stopId(command.commandId), cleanupCompleted: completed, operationCompleted: state === 'completed',
+        sessionStopped: !!query.session && completed, sessionOngoing: !!query.session && ['running', 'paused'].includes(query.state) }, '原执行清理', query);
+  }
+  return { contributions: async scope => { await authorize(scope); return teachingContributions(scope); },
+    definitions: async scope => { await authorize(scope); return teachingDefinitions(scope); }, prepare, dispatch, reconcile, reconcileOriginal, stop };
+}
+function stopId(commandId: string) {
+  const hex = createHash('sha256').update('agent-stop:' + commandId).digest('hex');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+}

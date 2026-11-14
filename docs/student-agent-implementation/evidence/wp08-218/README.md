@@ -1,5 +1,7 @@
 # [WP08：PDF 添加、按页阅读与固定引用](https://github.com/paher-din/XunJie/issues/218)验收证据
 
+本文保留旧版本的验收历史；旧 Agent 探针已退休，文中脚本名仅标识原证据来源。当前 session v2 工程入口为 [pdf-agent.runtime.test.mjs](../../../../apps/server/tests/pdf-agent.runtime.test.mjs)、[workspace-assistant.runtime.test.mjs](../../../../packages/agents/test/workspace-assistant.runtime.test.mjs)、[pdf-recovery.runtime.test.mjs](../../../../apps/server/tests/pdf-recovery.runtime.test.mjs)。这些测试不继承本页的历史通过结论，真实供应商、桌面与跨机结果须另行验收。
+
 实现说明与界面对照见 [PDF 交付](../../wp08-218-pdf.md)。JSON 记录实际输入摘要、固定页图摘要、调用状态和检查结果；不保存模型凭据。日期采用运行记录中的 UTC 时间。
 
 最终 [Standards / Spec 双轴审查](review.md) 均无未关闭项。
@@ -43,9 +45,9 @@ rtk bypass node scripts/with-native-desktop-lock.mjs --platform macos \
   --session CHAT_ID --purpose 'PDF Chrome acceptance' -- node scripts/probe-pdf-ui.mjs
 ```
 
-真实模型 `scripts/probe-pdf-learning.mjs` 使用 `--product PRODUCT --credentials-file PRIVATE_FILE --out REPORT`；`--browser --course --followup --protocol chat-completions` 验证课程页面、实际模型和追问，`--scan` 验证无文字层页。调用次数、输出预算和超时写入报告。网络分类适配仅用于当前宿主代理 DNS；真实 TLS 请求与生产请求语义摘要仍逐次比对，未替换供应商回答。
+历史真实模型证据由现已退役的 `scripts/probe-pdf-learning.mjs` 产生，原报告的调用次数、预算、失败及通过状态保留。当前 PDF 工程入口见本页开头，不能据此宣称新版本已完成真实供应商验收。
 
-Windows 浏览器通过已登录交互用户的 scheduled task 运行；SSH 仅控制，不能把 SSH session 的截图算桌面验收。跨机脚本的参数见 `scripts/probe-pdf-cross.mjs --help`，凭据只留在 Mac。
+Windows 浏览器通过已登录交互用户的 scheduled task 运行；SSH 仅控制，不能把 SSH session 的截图算桌面验收。旧 `probe-pdf-cross.mjs` 已退役；当前跨 owner 数据与图片归属见 [workspace assistant 测试](../../../../packages/agents/test/workspace-assistant.runtime.test.mjs)，真实双机网络和 Windows 桌面须另行验收。
 
 ## 解释边界
 

@@ -29,7 +29,7 @@ WP06 [#166：Responses 完整接入](https://github.com/paher-din/XunJie/issues/
 
 WP06 [#167：Anthropic Messages 完整接入](https://github.com/paher-din/XunJie/issues/167)见[实施方案](wp06-messages.md)和[交付记录](../wp06-messages-acceptance.md)，复用现有模型 owner，Mac 后续交接 #178。
 
-[#165：学校／个人模型选择与 Chat 原生续接](https://github.com/paher-din/XunJie/issues/165)见[实施方案](wp06-selection-chat-continuations.md)、[模型 owner](../../../packages/learning-space/src/model-connections/README.md)及[分项验收](../wp06-chat-selection-acceptance.md)。Mac 后续验收统一交接 #178。
+[#165：学校／个人模型选择与 Chat 原生续接](https://github.com/paher-din/XunJie/issues/165)见[实施方案](wp06-selection-chat-continuations.md)、[模型 owner](../../../packages/model-gateway/README.md)及[分项验收](../wp06-chat-selection-acceptance.md)。Mac 后续验收统一交接 #178。
 
 ## WP04 实施子票
 

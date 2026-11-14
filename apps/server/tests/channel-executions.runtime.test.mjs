@@ -323,7 +323,7 @@ async function approvedLocalProcess(t, cleanupBoundary = 'revocation') {
     if (cleanupBoundary === 'agent') assert.equal(agentClaims, 4, 'the fixed node rechecks every start/input permit');
     assert.equal(children.length, 1);
     if (cleanupBoundary === 'agent-stop-tool') {
-      const { createTeachingTools } = await import('../../../packages/learning-space/dist/teaching-agent/tools.js');
+      const { createTeachingTools } = await import('../../../packages/agents/dist/workspace-assistant/tools/tools.js');
       const scope = { identity, activity, runId: agentRunId, stepId: randomUUID(), snapshotId: randomUUID(),
         assertDispatch: contextFor(requestId).assertDispatch,
         input: { requestId: randomUUID(), scope: action.scope,

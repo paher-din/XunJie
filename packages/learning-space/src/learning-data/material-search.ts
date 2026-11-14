@@ -1,15 +1,15 @@
 import { createHash } from 'node:crypto';
-import { z } from 'zod';
 import { StorageError } from '@xunjie/storage';
+import type { OwnedStorage } from '@xunjie/storage';
+import type { MaterialScopeInput, MaterialSearchSelection } from '@xunjie/contracts/session-materials';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import type { LearningActivity } from '@xunjie/contracts/learning-data';
 import type { CourseBindingAuthority } from '@xunjie/contracts/courses';
-import type { TeachingSkillReference, TeachingSkillState } from '@xunjie/contracts/agent-skills';
-import type { QuestionReferenceInput } from '@xunjie/contracts/question-drafts';
 import { materialSearchInputSchema, materialSearchResultSchema, materialSearchScopeSchema, PERSONAL_MATERIAL_LIMITS, type MaterialSearchMatch,
   type MaterialSearchResult, type MaterialSearchSourceState, type MaterialSourceRef } from '@xunjie/contracts/personal-materials';
-import type { createPdfMaterials } from './pdf-materials.js';
-import type { createPersonalMaterials } from './personal-materials.js';
+import type { PdfMaterials } from './pdf-materials.js';
+import type { PersonalMaterials } from './personal-materials.js';
+import { createMaterialScopeAccess, materialHasScope, normalizeMaterialScope, type MaterialScopeOptions } from './session-materials.js';
 
 const digest = (bytes: Uint8Array | string) => createHash('sha256').update(bytes).digest('hex');
 const textMedia = (mediaType: string) => {
@@ -32,21 +32,37 @@ const excerpt = (text: string, index: number, length: number) => text.slice(Math
  * fixed-version snippets with their actual read method and coverage. It never writes an index
  * that could outlive its original: sources are read at query time.
  */
-export function createMaterialSearch(options: {
+export type { MaterialSearchSelection } from '@xunjie/contracts/session-materials';
+export interface SearchOwner<S extends MaterialScopeInput> {
+  search(identity: SpaceIdentity, scope: S, value: unknown, selection?: MaterialSearchSelection): Promise<MaterialSearchResult>;
+}
+interface WorkspaceSearchOptions {
   open(identity: SpaceIdentity, activityId: string): Promise<LearningActivity>;
   courses?: Pick<CourseBindingAuthority, 'readMaterial'>;
-  pdf?: Pick<ReturnType<typeof createPdfMaterials>, 'reading'>;
-  personal?: Pick<ReturnType<typeof createPersonalMaterials>, 'original'>;
-}) {
-  async function search(identity: SpaceIdentity, activityId: string, value: unknown, selection: {
-    pdfReferences?: QuestionReferenceInput[];
-    personalReferences?: QuestionReferenceInput[];
-    skillReferences?: TeachingSkillReference[];
-    skillState?: TeachingSkillState;
-    skillRead?: (skillId: string, version: number, path: string) => Promise<{ content: string; digest: string }>;
-  } = {}): Promise<MaterialSearchResult> {
+  pdf?: Pick<PdfMaterials<string>, 'reading'>;
+  personal?: Pick<PersonalMaterials<string>, 'original'>;
+}
+interface ScopedSearchOptions extends MaterialScopeOptions {
+  storage: OwnedStorage;
+  courses?: Pick<CourseBindingAuthority, 'readMaterial'>;
+  pdf?: Pick<PdfMaterials, 'reading'>;
+  personal?: Pick<PersonalMaterials, 'original'>;
+}
+export function createMaterialSearch(options: WorkspaceSearchOptions): SearchOwner<string>;
+export function createMaterialSearch(options: ScopedSearchOptions): SearchOwner<MaterialScopeInput>;
+export function createMaterialSearch(options: WorkspaceSearchOptions | ScopedSearchOptions): SearchOwner<MaterialScopeInput> | SearchOwner<string> {
+  async function search(identity: SpaceIdentity, scopeInput: MaterialScopeInput, value: unknown, selection: MaterialSearchSelection = {}): Promise<MaterialSearchResult> {
     const input = materialSearchInputSchema.parse(value);
-    const activity = await options.open(identity, activityId);
+    const scope = normalizeMaterialScope(scopeInput);
+    let activity: LearningActivity | undefined;
+    if ('openScope' in options) activity = (await createMaterialScopeAccess(options.storage, options).open(identity, scope)).activity;
+    else {
+      if (scope.kind !== 'workspace') throw new StorageError('forbidden');
+      activity = await options.open(identity, scope.activityId);
+      if (activity.activityId !== scope.activityId || activity.identity.environmentId !== identity.environmentId
+        || activity.identity.spaceId !== identity.spaceId || activity.identity.principalId !== identity.principalId
+        || activity.identity.kind !== identity.kind) throw new StorageError('forbidden');
+    }
     // A caller that omits an explicit source list gets the current draft selection; an explicit
     // empty list remains an intentional empty scope. The effective scope is recorded below.
     const personalIds = input.scope.personalMaterialIds ?? (selection.personalReferences ?? [])
@@ -79,9 +95,9 @@ export function createMaterialSearch(options: {
       if (matches.length >= PERSONAL_MATERIAL_LIMITS.searchMatches && haystack.indexOf(needle, from) >= 0) truncated = true;
     };
     // Course materials: the course release is the authority; a failed read is reported without a title.
-    if (input.scope.courseMaterials && !activity.course) {
+    if (input.scope.courseMaterials && !activity?.course) {
       sources.push({ state: 'no-access', detail: '当前活动不属于课程，未搜索课程材料' });
-    } else if (input.scope.courseMaterials && activity.course && options.courses?.readMaterial) {
+    } else if (input.scope.courseMaterials && activity?.course && options.courses?.readMaterial) {
       for (const material of activity.course.materials) {
         if (material.mediaType.toLowerCase().split(';')[0]!.trim() === 'application/pdf') {
           add(undefined, 'not-indexed', undefined, 'PDF 课程材料请在其引用范围内检索原生文字层');
@@ -108,11 +124,14 @@ export function createMaterialSearch(options: {
         const key = reference.source.materialId + ':' + reference.source.version;
         if (seen.has(key)) continue; seen.add(key);
         try {
-          const fixed = await options.personal.original(identity, activityId, reference.source.materialId, reference.source.version);
-          if (fixed.version.sha256 !== reference.source.sha256) throw new StorageError('identity-conflict');
+          if (!materialHasScope(reference.source, scope)) throw new StorageError('identity-conflict');
+          const fixed = await (options.personal as Pick<PersonalMaterials, 'original'>).original(identity, scopeInput, reference.source.materialId, reference.source.version);
+          if (!materialHasScope(fixed.material, scope) || fixed.material.materialId !== reference.source.materialId
+            || fixed.version.version !== reference.source.version || fixed.version.materialId !== reference.source.materialId
+            || fixed.version.sha256 !== reference.source.sha256) throw new StorageError('identity-conflict');
           if (fixed.material.removedAt) throw new StorageError('forbidden');
           add({ kind: 'personal-material', id: reference.source.materialId, version: String(fixed.version.version),
-            sha256: fixed.version.sha256, label: fixed.version.name }, 'searched', fixed.text);
+            sha256: fixed.version.sha256, label: fixed.version.name, ...(scope.kind === 'session' ? { scope } : {}) }, 'searched', fixed.text);
         } catch (error) { const [state, detail] = sourceFailure(error, '个人材料版本不可读取'); add(undefined, state, undefined, detail); }
       }
       const seenIds = new Set([...seen].map(key => key.slice(0, key.lastIndexOf(':'))));
@@ -128,13 +147,15 @@ export function createMaterialSearch(options: {
         const readingId = reference.source.readingId;
         if (seen.has(readingId)) continue; seen.add(readingId);
         try {
-          const reading = await options.pdf.reading(identity, activityId, readingId);
-          if (!reading || reading.activityId !== activityId || reading.documentId !== reference.source.documentId
+          if (!materialHasScope(reference.source, scope)) throw new StorageError('identity-conflict');
+          const reading = await (options.pdf as Pick<PdfMaterials, 'reading'>).reading(identity, scopeInput, readingId);
+          if (!reading || !materialHasScope(reading, scope) || reading.documentId !== reference.source.documentId
             || reading.documentSha256 !== reference.source.documentSha256) throw new StorageError('identity-conflict');
           const pages = reading.pages.filter(page => page.state === 'ready');
           const text = pages.map(page => page.text).join('\n');
           const source: MaterialSourceRef = { kind: 'pdf', id: readingId, version: reading.documentSha256,
-            sha256: reading.documentSha256, label: reading.documentName, documentId: reading.documentId, readingId };
+            sha256: reading.documentSha256, label: reading.documentName, documentId: reading.documentId, readingId,
+            ...(scope.kind === 'session' ? { scope } : {}) };
           add(source, pages.length < reading.pages.length ? 'partial-failure' : pages.some(page => page.text) ? 'searched' : 'no-text',
             text || undefined, pages.length < reading.pages.length ? '部分页不可读取' : undefined, 'native-pdf-text', (index, length) => {
               let offset = 0;

@@ -1,5 +1,7 @@
 # #212 Mac 与真实跨机的学习对话恢复验收（已有环境）
 
+本文保留旧版本的验收历史；旧 Agent 探针已退休，文中脚本名仅标识原证据来源。当前 session v2 工程入口为 [recovery-agent-sessions.runtime.test.mjs](../../packages/product-runtime/test/recovery-agent-sessions.runtime.test.mjs)、[teaching-agent.independent-recovery.runtime.test.mjs](../../apps/server/tests/teaching-agent.independent-recovery.runtime.test.mjs)、[teaching-agent.recovery.runtime.test.mjs](../../apps/server/tests/teaching-agent.recovery.runtime.test.mjs)。这些测试不继承本页的历史通过结论，真实供应商、桌面与跨机结果须另行验收。
+
 本票在既有 `wp07` 分支实施，不新开或合并 PR。验收基线为 `087e7f9c7df5fdd593cd8f581537094ac0724858`，另含本票发现的接收端兼容修复。来源为 [#212](https://github.com/paher-din/XunJie/issues/212)，父票为 [#204](https://github.com/paher-din/XunJie/issues/204)。
 
 使用执行者已有的 Apple Silicon Mac（Darwin 27.2.0、Node 24.21.0、原生 PostgreSQL 18.6、桌面 Chrome 156.0.8078.80）和已有获准的另一台 Windows 主机（Windows 11 build 26200、Node 24.21.0）。未准备或搭建新的 Mac 环境，未并入 #155、#209、#210。密钥、密码和 token 只存在于被忽略的 `.verification/` 目录，未进入 Git、提交、命令行参数或证据文件。
@@ -100,23 +102,15 @@ darwin full 包通过包内 CLI 完成安装、启动、停止；维护/学生�
 5. 重跑 `client/complete`（已交换）或 `connect`（已登记）会分别报 403/`Connection already registered`；复跑脚本按本地凭据与安装登记幂等跳过。
 6. 混合设备的动作能力表为空是既有产品行为（`school-client` 的本地 learning-data 没有注入 action receiver），因此混合证据只准备动作、不派发；不作为缺陷修改。
 
-复跑入口（配置、密钥和完整包在验收时生成，验收后已按本票清理；复跑时重新生成同形配置即可）：
+## 当前工程回归入口
+
+使用 Node 24.21.0 和支持的 `XUNJIE_PRODUCT_POSTGRES_BIN`；先由协调方统一准备 workspace 产物。已有产物时直接运行，不在共享构建期间重复 build：
 
 ```sh
-# 原生恢复（真实 PG，仓库内 Node 24.21.0）
-XUNJIE_PRODUCT_POSTGRES_BIN=/opt/homebrew/opt/postgresql@18/bin \
-  .verification/node24-bin/node --test --test-reporter=tap apps/server/tests/teaching-agent.recovery.runtime.test.mjs
-
-# 学校/混合（Mac 侧）
-.verification/node24-bin/node scripts/cross-machine-recovery-school.mjs --phase=<setup|backup-restore|takeover|hybrid-member|hybrid-approve> \
-  --product=<darwin-arm64 full 包> --root=<school-target> \
-  --config=<hybrid-school-config.json> --out=<report.json> --work=<inputs>
-
-# Windows 侧（经已获准 SSH 主机；runner 只是固定引号的 PowerShell 包装）
-powershell -File <ticket-local>\run-hybrid.ps1 -Phase <phase> -Out <report.json>
+node --test --test-concurrency=1 packages/product-runtime/test/recovery-agent-sessions.runtime.test.mjs apps/server/tests/teaching-agent.independent-recovery.runtime.test.mjs apps/server/tests/teaching-agent.recovery.runtime.test.mjs
 ```
 
-`scripts/cross-machine-recovery-{fixture,school,client,agent,hybrid,forwarder}.mjs` 为可复跑的验收驱动；只控制外部模型 transport，学生/依赖流量使用真实 HTTPS。
+这些是当前 session v2 工程入口，结果须按本次实际执行单独记录。历史产品包、真实供应商、桌面输入法与跨机验收不由上述测试替代。
 
 ## 清理
 

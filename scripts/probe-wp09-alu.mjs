@@ -1,6 +1,7 @@
 import { probeEvidenceDirectory, writeEvidence, captureEvidence } from './lib/probe-evidence.mjs';
 // Formal product/Chrome + actual Icarus. The generated-package fixture is controlled;
-// real supplier generation is covered by probe-wp09-real-models.mjs.
+// Native generation behavior is covered by apps/server/tests/teaching-artifact-generation.runtime.test.mjs;
+// live supplier acceptance is separate from this controlled UI/execution probe.
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { mkdtemp, mkdir, readFile, rm } from 'node:fs/promises';

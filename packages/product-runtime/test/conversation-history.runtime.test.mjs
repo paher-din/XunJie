@@ -7,8 +7,7 @@ import { promisify } from 'node:util';
 import * as storage from '@xunjie/storage';
 import { activitySchema, conversationHistoryItemSchema, conversationHistoryStateSchema,
   conversationHistoryUpdateSchema } from '@xunjie/contracts/learning-data';
-import { createLearningData, learningMigrations, validateLearningData, createSpaces, spaceMigrations,
-} from '@xunjie/learning-space';
+import { createLearningData, learningMigrations, validateLearningData, createSpaces, spaceMigrations } from '@xunjie/learning-space';
 import { nativeFixture } from '../../storage/test/native-fixture.mjs';
 
 const update = (activityId, action, fields = {}) => ({ requestId: randomUUID(), activityId, action, ...fields });

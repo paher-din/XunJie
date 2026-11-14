@@ -4,6 +4,7 @@ import serverTimings from './server-test-weights.json' with { type: 'json' };
 
 export const targetDirectories = {
   server: 'apps/server', contracts: 'packages/contracts', storage: 'packages/storage',
+  'agent-runtime': 'packages/agent-runtime', agents: 'packages/agents', 'learning-space': 'packages/learning-space',
   'product-runtime': 'packages/product-runtime', tools: 'tools', checks: 'scripts',
 };
 export const groups = ['prepare', 'unit', 'server', 'tools', 'tests'];
@@ -11,7 +12,7 @@ export const verifyUsage = 'Usage: npm run verify [-- --group prepare|unit|serve
   + 'No arguments: prepare, then all local tests. tests: unit + server + tools. Tests always run; only builds are cached.\n'
   + 'Jobs: 1..4 (default 4). Shards: server --shard uses measured-weight LPT, longest first; unsharded server stays lexical; tools has four fixed shards.\n'
   + 'Results go to the console. --report-dir explicitly saves raw logs and a latest.json summary for diagnosis.';
-export const testUsage = 'Usage: node scripts/test.mjs <server|contracts|product-runtime|storage|tools|checks> [--external] [--shard i/n] [--jobs N] [--report-dir DIR] [--list | --help]';
+export const testUsage = `Usage: node scripts/test.mjs <${Object.keys(targetDirectories).join('|')}> [--external] [--shard i/n] [--jobs N] [--report-dir DIR] [--list | --help]`;
 
 export function parseOptions(args, mode = 'verify') {
   const usage = mode === 'verify' ? verifyUsage : testUsage;
@@ -107,13 +108,14 @@ export function discoverTests(root, target, { external = false, shard } = {}) {
     exclude: ['**/node_modules/**', '**/dist/**', '**/evidence/**', '**/docs/archive/**'],
   }).map(path => path.replaceAll('\\', '/')).sort();
   const selected = discovered.filter(path => isExternalTest(path) === external);
-  if (!selected.length && target !== 'contracts') throw new Error(`No ${external ? 'external' : 'local'} tests discovered in ${directory}`);
+  // A native-only workspace contributes no local tasks; it is never counted as a passed native test.
+  if (!selected.length && target !== 'contracts' && (external || !discovered.some(isExternalTest))) throw new Error(`No ${external ? 'external' : 'local'} tests discovered in ${directory}`);
   return shardTests(selected, target, shard).map(path => `${directory}/${path}`);
 }
 
 export function targetTasks(root, target, files) {
   const directory = targetDirectories[target];
-  const group = ['checks', 'contracts', 'storage', 'product-runtime'].includes(target) ? 'unit' : target;
+  const group = ['server', 'tools'].includes(target) ? target : 'unit';
   return files.map(file => ({
     name: file, group, cwd: join(root, directory),
     command: file.endsWith('.py') ? 'python3' : process.execPath,
@@ -133,7 +135,10 @@ export function discoverTestWorkspaces(root) {
     .filter(path => /^(?:apps|packages)\//.test(path))
     .map(path => ({ directory: path.slice(0, -'/package.json'.length),
       manifest: JSON.parse(readFileSync(join(root, path), 'utf8')) }))
-    .filter(workspace => typeof workspace.manifest.scripts?.test === 'string' && workspace.manifest.scripts.test.trim());
+    .filter(workspace => typeof workspace.manifest.scripts?.test === 'string' && workspace.manifest.scripts.test.trim()
+      || Object.values(targetDirectories).includes(workspace.directory)
+        && globSync('**/*.test.{ts,mjs,py}', { cwd: join(root, workspace.directory),
+          exclude: ['**/node_modules/**', '**/dist/**', '**/evidence/**', '**/docs/archive/**'] }).length > 0);
 }
 
 function npmCli() {

@@ -18,7 +18,7 @@
 | --- | --- | --- |
 | [学习空间 package](../../../packages/learning-space/README.md)及其 spaces owner | 主体、成员、会话、客户端授权、成员级学习数据绑定 | 同一空间/课程 owner 内的课程、任务、发布、课程资格及访问投影 |
 | [学习数据 owner](../../../packages/learning-space/src/learning-data/README.md) | 无课程活动、稳定请求身份、回执、列出、重开和状态变化 | 可选课程绑定、跨 owner 创建协调及课程依据读取 |
-| [生产 HTTP 入口](../../../packages/learning-space/src/learning-entry/README.md) | 真实身份解析、管理入口、已安装客户端学校代理 | 课程管理和学生端路由、代理能力及权限检查 |
+| [生产 HTTP 入口](../../../packages/product-runtime/README.md#session-v2-与-http-边界) | 真实身份解析、管理入口、已安装客户端学校代理 | 课程管理和学生端路由、代理能力及权限检查 |
 | [活动 wire](../../../packages/contracts/src/learning-data.ts)与[身份 wire](../../../packages/contracts/src/spaces.ts) | 浏览器可消费的严格 schema、身份与服务绑定 | 课程公开投影、固定发布引用、课程活动输入和错误契约 |
 | [生产学习页面](../../../apps/web/src/product/LearningApp.tsx) | 空间切换、活动请求身份及重开 | 课程列表、任务/版本详情、开放材料和课程活动入口 |
 | [WP01 存储](../../../packages/storage/README.md)及[产品运行接线](../../../packages/product-runtime/src/learning-entry.ts) | 所属事务、资源确认、维护参与者和恢复目标 | 新迁移、资源引用、领域校验与跨 owner 关联核对 |

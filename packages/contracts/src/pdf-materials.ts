@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { sessionMaterialScopeSchema } from './session-materials.js';
 
 export const PDF_LIMITS = { inputBytes: 20 * 1024 * 1024, pages: 200, pagesPerRead: 2,
   imageBytes: 262144, imageDimension: 2048, timeoutMs: 30000 } as const;
@@ -18,6 +19,9 @@ export const pdfDocumentSchema = z.object({ documentId: z.uuid(), activityId: z.
   courseSource: z.object({ releaseId: z.uuid(), materialId: z.uuid() }).strict().optional(),
   detail: z.string().max(2000).optional() }).strict();
 export type PdfDocument = z.infer<typeof pdfDocumentSchema>;
+export const sessionPdfDocumentSchema = pdfDocumentSchema.omit({ activityId: true }).extend({ scope: sessionMaterialScopeSchema }).strict();
+export const scopedPdfDocumentSchema = z.union([pdfDocumentSchema, sessionPdfDocumentSchema]);
+export type ScopedPdfDocument = z.infer<typeof scopedPdfDocumentSchema>;
 export const pdfReadInputSchema = z.object({ requestId: z.uuid(), documentId: z.uuid(),
   pages: z.array(z.number().int().min(1).max(100000)).min(1).max(PDF_LIMITS.pagesPerRead)
     .refine(pages => new Set(pages).size === pages.length), region: pdfRegionSchema.nullable() }).strict();
@@ -33,6 +37,9 @@ export const pdfReadingSchema = z.object({ readingId: z.uuid(), documentId: z.uu
   documentSha256: digest, documentName: z.string(), coordinates: z.literal('rotated-cropbox-top-left-normalized'),
   requestedPages: pdfReadInputSchema.shape.pages, region: pdfRegionSchema.nullable(), pages: z.array(pdfPageSchema).min(1).max(2) }).strict();
 export type PdfReading = z.infer<typeof pdfReadingSchema>;
+export const sessionPdfReadingSchema = pdfReadingSchema.omit({ activityId: true }).extend({ scope: sessionMaterialScopeSchema }).strict();
+export const scopedPdfReadingSchema = z.union([pdfReadingSchema, sessionPdfReadingSchema]);
+export type ScopedPdfReading = z.infer<typeof scopedPdfReadingSchema>;
 export const pdfFindInputSchema = pdfReadInputSchema.omit({ region: true }).extend({ query: z.string().min(1).max(200) }).strict();
 export const pdfSearchResultSchema = z.object({ source: z.object({ kind: z.literal('pdf'), activityId: z.uuid(),
   documentId: z.uuid(), documentSha256: digest, readingId: z.uuid() }).strict(),
@@ -45,11 +52,16 @@ export const pdfSearchResultSchema = z.object({ source: z.object({ kind: z.liter
 
 export const pdfReferenceSourceSchema = z.object({ kind: z.literal('pdf'), activityId: z.uuid(), documentId: z.uuid(),
   documentSha256: digest, readingId: z.uuid() }).strict();
+export const scopedPdfReferenceSourceSchema = z.union([pdfReferenceSourceSchema,
+  pdfReferenceSourceSchema.omit({ activityId: true }).extend({ scope: sessionMaterialScopeSchema }).strict()]);
+export type ScopedPdfReferenceSource = z.infer<typeof scopedPdfReferenceSourceSchema>;
+export const scopedPdfSearchResultSchema = pdfSearchResultSchema.extend({ source: scopedPdfReferenceSourceSchema }).strict();
+export type ScopedPdfSearchResult = z.infer<typeof scopedPdfSearchResultSchema>;
 export const pdfReferenceTargetSchema = z.object({ pages: pdfReadInputSchema.shape.pages,
   region: pdfRegionSchema.nullable(), coordinates: z.literal('rotated-cropbox-top-left-normalized') }).strict();
 /** The source owner checks this copy against the retained reading, never browser-supplied text. */
 export function pdfReferenceCopy(value: unknown): string {
-  const reading = pdfReadingSchema.parse(value);
+  const reading = scopedPdfReadingSchema.parse(value);
   if (reading.pages.length !== reading.requestedPages.length || reading.pages.some((page, i) =>
     page.page !== reading.requestedPages[i] || page.state !== 'ready' || !page.image)) throw new Error('PDF pages unavailable');
   return reading.pages.map(page => `${reading.documentName} · PDF 第 ${page.page} 页（标签 ${page.label}）\n`

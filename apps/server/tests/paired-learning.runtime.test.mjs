@@ -1,10 +1,11 @@
+import './model-cleanup-source-loader.mjs';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { randomUUID } from 'node:crypto';
 import { provisionStorage, openStorage, createFileBackend, StorageError } from '@xunjie/storage';
 import { nativeFixture } from '../../../packages/storage/test/native-fixture.mjs';
-import { createModelGateway, modelMigrations } from '../../../packages/learning-space/dist/model-connections/index.js';
-import { createPairedLearningModels } from '../../../packages/learning-space/dist/model-connections/paired-learning.js';
+import { createModelGateway, modelMigrations } from '../../../packages/model-gateway/dist/index.js';
+import { createPairedLearningModels } from '../../../packages/model-gateway/dist/paired-learning.js';
 
 test('model-device binding is independent, verified against the actual poll source, and preparation enqueues without invented run IDs', { timeout: 60000 }, async () => {
   const fixture = await nativeFixture(); let storage;
@@ -12,7 +13,7 @@ test('model-device binding is independent, verified against the actual poll sour
     const owner = { environmentId: randomUUID(), serviceId: randomUUID() };
     const binding = await provisionStorage({ admin: fixture.admin, owner, password: randomUUID(), migrations: modelMigrations });
     storage = await openStorage({ binding, migrations: modelMigrations, backend: createFileBackend({ id: 'files', root: fixture.root + '/objects' }) });
-    let models = await createModelGateway(storage, { authorize: async () => {} });
+    let models = await createModelGateway(storage, { authorizePermit: async () => {}, authorize: async () => {} });
     const identity = { environmentId: owner.environmentId, spaceId: randomUUID(), principalId: randomUUID(), kind: 'school', name: '成员' };
     const device = { owner: { environmentId: randomUUID(), serviceId: randomUUID() }, installationId: randomUUID(), grantId: randomUUID(), connectionId: randomUUID() };
     let agentGrantActive = true; const authorizations = [];
@@ -24,21 +25,21 @@ test('model-device binding is independent, verified against the actual poll sour
     const source = { sourceEnvironmentId: device.owner.environmentId, sourceServiceId: device.owner.serviceId, sourceInstallationId: device.installationId, grantId: device.grantId, connectionId: device.connectionId };
     assert.deepEqual(await paired.authorizePoll(identity, source), { grantId: device.grantId, installationId: device.installationId });
     await assert.rejects(paired.authorizePoll(identity, { ...source, sourceServiceId: randomUUID() }), { code: 'forbidden' });
-    const origin = { activityId: randomUUID(), operationId: randomUUID(), service: { environmentId: randomUUID(), serviceId: randomUUID() }, installationId: randomUUID(), grantId: randomUUID() };
+    const origin = { operationId: randomUUID(), service: { environmentId: randomUUID(), serviceId: randomUUID() }, installationId: randomUUID(), grantId: randomUUID() };
     const request = { operation: 'selection.read', identity, args: [] };
     await assert.rejects(paired.request(request, origin), { code: 'unavailable' });
     const originalAgentGrant = origin.grantId;
     agentGrantActive = false;
     await assert.rejects(paired.authorizeTask(identity, { grantId: device.grantId, installationId: device.installationId }, origin.operationId), { code: 'forbidden' });
     assert.equal(authorizations.at(-1).grantId, originalAgentGrant);
-    assert.equal(authorizations.at(-1).activityId, origin.activityId);
+    assert.equal(authorizations.at(-1).sessionId, undefined);
     agentGrantActive = true;
     assert.deepEqual(await paired.authorizeTask(identity, { grantId: device.grantId, installationId: device.installationId }, origin.operationId), { authorized: true });
     await assert.rejects(paired.authorizeTask(identity, { grantId: randomUUID(), installationId: device.installationId }, origin.operationId), { code: 'forbidden' });
-    await assert.rejects(paired.request({ operation: 'checks.dispatch', identity, args: [randomUUID()] }, { ...origin, operationId: randomUUID() }), { code: 'forbidden' });
+    await assert.rejects(paired.request({ operation: 'checks.dispatch', identity, args: [randomUUID()] }, { ...origin, operationId: randomUUID() }), { code: 'incompatible' });
     await storage.close();
     storage = await openStorage({ binding, migrations: modelMigrations, backend: createFileBackend({ id: 'files', root: fixture.root + '/objects' }) });
-    models = await createModelGateway(storage, { authorize: async () => {} });
+    models = await createModelGateway(storage, { authorizePermit: async () => {}, authorize: async () => {} });
     paired = createPairedLearningModels(storage, models, options);
     const replacement = { owner: { environmentId: randomUUID(), serviceId: randomUUID() }, installationId: randomUUID(), grantId: randomUUID(), connectionId: randomUUID() };
     await paired.bind(identity, { requestId: randomUUID(), expectedVersion: 1, ...replacement });
@@ -49,11 +50,11 @@ test('model-device binding is independent, verified against the actual poll sour
     assert.equal(tasks[0].attemptId, undefined);
     assert.equal(tasks[0].origin.authority, undefined);
     assert.equal(tasks[0].origin.installationId, origin.installationId);
-    assert.equal(tasks[0].origin.activityId, origin.activityId);
+    assert.equal(tasks[0].origin.sessionId, undefined);
     await models.deviceTasks.complete(identity, { grantId: device.grantId, installationId: device.installationId }, origin.operationId, { ok: true, value: { version: 0, selected: null, options: [] } });
     assert.equal((await paired.request(request, origin)).ok, true);
     assert.deepEqual(await paired.authorizeTask(identity, { grantId: device.grantId, installationId: device.installationId }, origin.operationId), { authorized: true });
-    await assert.rejects(paired.request({ ...request, operation: 'selection.snapshot', args: [0] }, origin), { code: 'identity-conflict' });
+    await assert.rejects(paired.request({ ...request, operation: 'selection.snapshot', args: [0] }, origin), { code: 'incompatible' });
     await assert.rejects(paired.request({ ...request, identity: { ...identity, principalId: randomUUID() } }, origin), { code: 'identity-conflict' });
     await assert.rejects(paired.request(request, { ...origin, operationId: randomUUID(),
       authority: { driverId: 'driver', runId: randomUUID(), activityId: randomUUID(), generation: 1 } }));
@@ -63,7 +64,7 @@ test('model-device binding is independent, verified against the actual poll sour
 
 import { createServer } from 'node:http';
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { createLearningModelClient, createLearningModelService } from '../../../packages/learning-space/dist/model-connections/service.js';
+import { createLearningModelClient, createLearningModelService } from '../../../packages/model-gateway/dist/service.js';
 
 test('Agent API queues to the independently bound personal model; selection changes and replacement devices cannot redirect original segments or results', { timeout: 60000 }, async () => {
   const fixture = await nativeFixture(); let hubStorage; let deviceStorage; let hub; let device; let running = true; let worker; let workerError; let paired; let binding; let resume;
@@ -82,12 +83,12 @@ test('Agent API queues to the independently bound personal model; selection chan
       return openStorage({ binding, migrations: modelMigrations, backend: createFileBackend({ id: 'files', root: fixture.root + '/' + name }) });
     }
     hubStorage = await open('hub'); deviceStorage = await open('device');
-    hub = await createModelGateway(hubStorage, { holder: 'school', authorize: async () => {} });
+    hub = await createModelGateway(hubStorage, { authorizePermit: async () => {}, holder: 'school', authorize: async () => {} });
     const identity = { environmentId: hubStorage.owner.environmentId, spaceId: randomUUID(), principalId: randomUUID(), kind: 'school', name: '成员' };
     const personal = { ...identity, kind: 'personal', environmentId: deviceStorage.owner.environmentId, spaceId: randomUUID() };
     const taskContext = new AsyncLocalStorage();
-    const agent = { service: { environmentId: randomUUID(), serviceId: randomUUID() }, installationId: randomUUID(), grantId: randomUUID() };
-    const authority = { driverId: 'actual-test-driver', runId: randomUUID(), activityId: randomUUID(), generation: 1 };
+    const agent = { formatVersion: 3, sessionId: randomUUID(), service: { environmentId: randomUUID(), serviceId: randomUUID() }, installationId: randomUUID(), grantId: randomUUID() };
+    const authority = { sessionId: agent.sessionId, runId: randomUUID(), stepId: randomUUID(), operationId: randomUUID(), generation: 1 };
     let permits = true; let agentGrantActive = true; let paused = false; let queued;
     const authorizeOrigin = async (actor, origin, request) => {
       assert.equal(actor.principalId, identity.principalId);
@@ -95,11 +96,11 @@ test('Agent API queues to the independently bound personal model; selection chan
       assert.deepEqual(origin.service, agent.service); assert.equal(origin.installationId, agent.installationId); assert.equal(origin.grantId, agent.grantId);
       if (request.operation === 'checks.receive' || request.operation === 'checks.dispatch') {
         assert.ok(permits);
-        assert.equal(origin.authority.runId, authority.runId); assert.equal(origin.authority.activityId, authority.activityId);
-        if (origin.authority.generation !== authority.generation || origin.authority.driverId !== authority.driverId) throw new StorageError('stale-generation');
+        assert.equal(origin.authority.runId, authority.runId); assert.equal(origin.authority.sessionId, authority.sessionId);
+        if (origin.authority.generation !== authority.generation) throw new StorageError('stale-generation');
       }
     };
-    device = await createModelGateway(deviceStorage, { holder: 'device', authorize: async () => {
+    device = await createModelGateway(deviceStorage, { authorizePermit: async () => {}, holder: 'device', authorize: async () => {
       const task = taskContext.getStore();
       if (task) await paired.authorizeTask(task.request.identity, { grantId: binding.grantId, installationId: binding.installationId }, task.taskId);
     }, schoolDefault: async () => (await hub.selection.schoolSnapshot(identity)).choice });
@@ -119,7 +120,7 @@ test('Agent API queues to the independently bound personal model; selection chan
       while (running) {
         const pair = await paired.authorizePoll(identity, pollSource);
         for (const task of await hub.deviceTasks.pending(identity, pair)) {
-          assert.equal(task.formatVersion, 2);
+          assert.equal(task.formatVersion, 3);
           if (paused) { queued(); await new Promise(resolve => { resume = resolve; }); }
           const service = createLearningModelService(device, async actor => { await paired.authorizeTask(actor, pair, task.taskId); });
           const reply = await taskContext.run(task, () => service(task.request));
@@ -129,8 +130,8 @@ test('Agent API queues to the independently bound personal model; selection chan
       }
     })().catch(error => { workerError = error; running = false; });
     let segmentContext;
-    const client = createLearningModelClient(request => paired.request(request, { ...agent, operationId: randomUUID(),
-      ...(request.operation === 'checks.receive' || request.operation === 'checks.dispatch' ? { authority } : {}), ...(segmentContext ? { segmentId: segmentContext } : {}) }));
+    const client = createLearningModelClient(request => { request = sessionRequest(request, authority); return paired.request(request, { ...agent, operationId: randomUUID(),
+      ...(request.operation === 'checks.receive' || request.operation === 'checks.dispatch' ? { authority: { ...authority } } : {}), ...(segmentContext ? { segmentId: segmentContext } : {}) }); });
     // A binding advertises an owner; it cannot replace Root's explicit school choice.
     await hub.selection.save(identity, { requestId: randomUUID(), expectedVersion: 0, source: { kind: 'school', connectionId: schoolId } });
     const rootChoice = await client.selection.read(identity);
@@ -140,7 +141,7 @@ test('Agent API queues to the independently bound personal model; selection chan
     await hub.selection.save(identity, { requestId: randomUUID(), expectedVersion: 1, source: { kind: 'personal', connectionId: personalId, grantId } });
     assert.equal((await client.selection.snapshot(identity, 2)).choice.kind, 'personal');
     const segmentId = randomUUID(), attemptId = randomUUID(); segmentContext = segmentId;
-    await client.segments.create(identity, { requestId: randomUUID(), segmentId, purpose: 'learning', source: { selected: true, selectionVersion: 2 }, prefix: { system: '原请求', tools: [] }, portable: [] });
+    await client.segments.create(identity, { requestId: randomUUID(), segmentId, sessionId: authority.sessionId, purpose: 'learning', source: { selected: true, selectionVersion: 2 }, prefix: { system: '原请求', tools: [] }, portable: [] });
     const accepted = await client.checks.receive(identity, { attemptId, segmentId, purpose: 'learning', expectedSequence: 0,
       input: { text: '解释原输入', images: [], toolResults: [] }, limits: { maxOutputTokens: 256, timeoutMs: 30000 } });
     assert.equal(accepted.state, 'accepted'); assert.equal(sent.length, 0);
@@ -150,15 +151,15 @@ test('Agent API queues to the independently bound personal model; selection chan
     const oldDispatch = paired.request({ operation: 'checks.dispatch', identity, args: [attemptId] },
       { ...agent, operationId: oldDispatchId, authority: oldLease, segmentId });
     await oldTaskQueued;
-    Object.assign(authority, { generation: authority.generation + 1, driverId: 'replacement-agent-driver' });
+    Object.assign(authority, { generation: authority.generation + 1 });
     paused = false; resume();
     assert.deepEqual(await oldDispatch, { ok: false, code: 'stale-generation' });
     const originalTask = await hub.deviceTasks.read(identity, { grantId: binding.grantId, installationId: binding.installationId }, oldDispatchId);
     assert.deepEqual(originalTask.task.origin.authority, oldLease, 'each task retains its complete original lease');
     await assert.rejects(hub.deviceTasks.enqueue(identity, { grantId: binding.grantId, installationId: binding.installationId },
-      { ...originalTask.task, origin: { ...originalTask.task.origin, authority } }), { code: 'identity-conflict' });
+      { ...originalTask.task, origin: { ...originalTask.task.origin, authority: { ...authority, stepId: randomUUID() } } }));
     await assert.rejects(paired.request({ operation: 'checks.dispatch', identity, args: [attemptId] },
-      { ...agent, operationId: oldDispatchId, authority, segmentId }), { code: 'identity-conflict' });
+      { ...agent, operationId: oldDispatchId, authority: { ...authority, stepId: randomUUID() }, segmentId }), { code: 'identity-conflict' });
     await assert.rejects(paired.authorizeTask(identity, { grantId: binding.grantId, installationId: binding.installationId }, oldDispatchId), { code: 'stale-generation' });
     const stillAccepted = await client.checks.read(identity, attemptId);
     assert.equal(stillAccepted.attemptId, attemptId); assert.equal(stillAccepted.state, 'accepted'); assert.equal(sent.length, 0);
@@ -189,7 +190,7 @@ test('Agent API queues to the independently bound personal model; selection chan
     await hub.selection.save(identity, { requestId: randomUUID(), expectedVersion: 2, source: { kind: 'school', connectionId: schoolId } });
     const schoolSegment = randomUUID(); segmentContext = schoolSegment;
     assert.equal((await client.selection.snapshot(identity, 3)).choice.kind, 'school');
-    await client.segments.create(identity, { requestId: randomUUID(), segmentId: schoolSegment, purpose: 'learning', source: { selected: true, selectionVersion: 3 }, prefix: { system: '', tools: [] }, portable: [] });
+    await client.segments.create(identity, { requestId: randomUUID(), segmentId: schoolSegment, sessionId: authority.sessionId, purpose: 'learning', source: { selected: true, selectionVersion: 3 }, prefix: { system: '', tools: [] }, portable: [] });
     assert.equal((await hub.segments.read(identity, schoolSegment)).connection.connectionId, schoolId);
     assert.equal((await client.checks.read(identity, attemptId)).connection.connectionId, personalId);
     // A replacement device becomes the current binding. Old routes still use the old authenticated poller.
@@ -226,7 +227,7 @@ test('Root choice unifies school, Root self and device grants without redirectin
       const backend = createFileBackend({ id: 'files', root: fixture.root + '/' + name });
       const storage = await openStorage({ binding, migrations: modelMigrations, backend });
       stores.push(storage);
-      const gateway = await createModelGateway(storage, { holder: 'device', authorize: async () => {} });
+      const gateway = await createModelGateway(storage, { authorizePermit: async () => {}, holder: 'device', authorize: async () => {} });
       gateways.push(gateway); return [storage, gateway, binding, backend];
     };
     const [storage, root, rootBinding, rootBackend] = await open('root'), [deviceStorage, device] = await open('device');
@@ -241,9 +242,8 @@ test('Root choice unifies school, Root self and device grants without redirectin
     await root.selection.save(actor, { requestId: randomUUID(), expectedVersion: 0, source: { kind: 'personal', connectionId: selfId, grantId: selfGrant } });
     await device.save(personal, { ...base, requestId: randomUUID(), connectionId: deviceId, modelId: 'device' });
     await device.selection.createGrant(actor, personal, { requestId: randomUUID(), grantId: deviceGrant, connectionId: deviceId, owner: 'device' });
-    const origin = { service: { environmentId: randomUUID(), serviceId: randomUUID() }, installationId: randomUUID(), grantId: randomUUID(),
-      activityId: randomUUID() };
-    const authority = { driverId: 'original-driver', runId: randomUUID(), activityId: origin.activityId, generation: 1 };
+    const origin = { formatVersion: 3, sessionId: randomUUID(), service: { environmentId: randomUUID(), serviceId: randomUUID() }, installationId: randomUUID(), grantId: randomUUID() };
+    const authority = { sessionId: origin.sessionId, runId: randomUUID(), stepId: randomUUID(), operationId: randomUUID(), generation: 1 };
     const paired = createPairedLearningModels(storage, root, { authorize: async () => {}, authorizeBinding: async () => {}, authorizeOrigin: async () => {}, assertWritable() {}, pollIntervalMs: 5, timeoutMs: 500 });
     const binding = await paired.bind(actor, { requestId: randomUUID(), expectedVersion: 0, owner: deviceStorage.owner, installationId: randomUUID(), grantId: randomUUID(), connectionId: randomUUID() });
     const pollBinding = { grantId: binding.grantId, installationId: binding.installationId };
@@ -258,15 +258,15 @@ test('Root choice unifies school, Root self and device grants without redirectin
         await new Promise(resolve => setTimeout(resolve, 5));
       }
     })().catch(error => { workerError = error; running = false; });
-    const client = createLearningModelClient(request => paired.request(request, { ...origin, operationId: randomUUID(),
-      ...(request.operation === 'checks.receive' || request.operation === 'checks.dispatch' ? { authority } : {}) }));
+    const client = createLearningModelClient(request => { request = sessionRequest(request, authority); return paired.request(request, { ...origin, operationId: randomUUID(),
+      ...(request.operation === 'checks.receive' || request.operation === 'checks.dispatch' ? { authority: { ...authority } } : {}) }); });
     const choices = await client.selection.read(actor);
     assert.equal(choices.version, 1); assert.equal(choices.selected.connection.connectionId, selfId);
     assert.deepEqual(new Set(choices.options.map(choice => choice.connection.connectionId)), new Set([schoolId, selfId, deviceId]));
     assert.deepEqual(await root.selection.read(actor), choices, 'Root HTTP reads the same pointer and options as the Agent');
     const make = async (version, connectionId, owner) => {
       const segmentId = randomUUID(), attemptId = randomUUID();
-      await client.segments.create(actor, { requestId: randomUUID(), segmentId, purpose: 'learning', source: { selected: true, selectionVersion: version }, prefix: { system: '', tools: [] }, portable: [] });
+      await client.segments.create(actor, { requestId: randomUUID(), segmentId, sessionId: authority.sessionId, purpose: 'learning', source: { selected: true, selectionVersion: version }, prefix: { system: '', tools: [] }, portable: [] });
       const received = await client.checks.receive(actor, { attemptId, segmentId, purpose: 'learning', expectedSequence: 0,
         input: { text: '固定owner', images: [], toolResults: [] }, limits: { maxOutputTokens: 32, timeoutMs: 30000 } });
       assert.equal(received.connection.connectionId, connectionId);
@@ -327,7 +327,7 @@ test('late device option receipts cannot roll back newer metadata or Root choice
     const owner = { environmentId: randomUUID(), serviceId: randomUUID() };
     const binding = await provisionStorage({ admin: fixture.admin, owner, password: randomUUID(), migrations: modelMigrations });
     storage = await openStorage({ binding, migrations: modelMigrations, backend: createFileBackend({ id: 'files', root: fixture.root + '/objects' }) });
-    const models = await createModelGateway(storage, { authorize: async () => {} });
+    const models = await createModelGateway(storage, { authorizePermit: async () => {}, authorize: async () => {} });
     const identity = { environmentId: owner.environmentId, spaceId: randomUUID(), principalId: randomUUID(), kind: 'school', name: 'Root成员' };
     const schoolId = randomUUID();
     const school = await models.school.save(identity.spaceId, { requestId: randomUUID(), connectionId: schoolId, expectedVersion: 0,
@@ -336,7 +336,7 @@ test('late device option receipts cannot roll back newer metadata or Root choice
     await models.selection.save(identity, { requestId: randomUUID(), expectedVersion: 0, source: { kind: 'school', connectionId: schoolId } });
     const paired = createPairedLearningModels(storage, models, { authorize: async () => {}, authorizeBinding: async () => {}, authorizeOrigin: async () => {}, assertWritable() {}, timeoutMs: 20, pollIntervalMs: 5 });
     const device = await paired.bind(identity, { requestId: randomUUID(), expectedVersion: 0, owner: { environmentId: randomUUID(), serviceId: randomUUID() }, installationId: randomUUID(), grantId: randomUUID(), connectionId: randomUUID() });
-    const context = { service: { environmentId: randomUUID(), serviceId: randomUUID() }, installationId: randomUUID(), grantId: randomUUID(), activityId: randomUUID() };
+    const context = { service: { environmentId: randomUUID(), serviceId: randomUUID() }, installationId: randomUUID(), grantId: randomUUID() };
     const old = { ...context, operationId: randomUUID() }, next = { ...context, operationId: randomUUID() };
     const request = { operation: 'selection.read', identity, args: [] };
     assert.equal((await paired.request(request, old)).value.selected.connection.connectionId, schoolId);
@@ -357,3 +357,11 @@ test('late device option receipts cannot roll back newer metadata or Root choice
     await models.validate();
   } finally { await storage?.close(); await fixture.close(); }
 });
+
+function sessionRequest(request, permit) {
+  if (!['checks.receive', 'checks.dispatch'].includes(request.operation)) return request;
+  const attemptId = request.operation === 'checks.receive' ? request.args[0].attemptId : request.args[0];
+  permit.operationId = attemptId;
+  const authority = { formatVersion: 1, permit: { ...permit } };
+  return { ...request, args: request.operation === 'checks.receive' ? [{ ...request.args[0], authority }] : [attemptId, authority] };
+}

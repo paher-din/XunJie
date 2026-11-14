@@ -29,16 +29,18 @@ const runtimeCopies = [
   ['apps/server/package.json', 'apps/server/package.json', false],
   ['package.json', 'package.json', false],
   ['package-lock.json', 'package-lock.json', false],
-  ['packages/contracts/package.json', 'node_modules/@xunjie/contracts/package.json', false],
-  ['packages/contracts/dist', 'node_modules/@xunjie/contracts/dist', true],
-  ['packages/storage/package.json', 'node_modules/@xunjie/storage/package.json', false],
-  ['packages/storage/dist', 'node_modules/@xunjie/storage/dist', true],
   ['tools/i0-cloud/cloud-host.mjs', 'tools/i0-cloud/cloud-host.mjs', false],
 ];
 const workspaceLinks = new Map([
   ['@xunjie/web', 'apps/web'], ['@xunjie/server', 'apps/server'],
   ['@xunjie/contracts', 'packages/contracts'], ['@xunjie/xj-dev', 'tools/xj-dev'],
   ['@xunjie/storage', 'packages/storage'],
+  ['@xunjie/learning-space', 'packages/learning-space'],
+  ['@xunjie/agent-runtime', 'packages/agent-runtime'],
+  ['@xunjie/model-gateway', 'packages/model-gateway'],
+  ['@xunjie/agents', 'packages/agents'],
+  ['@xunjie/product-runtime', 'packages/product-runtime'],
+  ['@xunjie/ui', 'packages/ui'], ['@xunjie/local-runtime', 'apps/local-runtime'],
   ['@xunjie/dev-access', 'tools/xj-dev-access'],
 ]);
 const testDirectories = new Set(['test', 'tests', '__tests__', 'fixtures', '__fixtures__']);
@@ -138,8 +140,29 @@ function writeDigestMap(dist) {
   return digests;
 }
 
+// Copy the server's declared production closure from the verified source build.
+// Workspace symlinks in the independent npm install are validated separately.
+function serverWorkspaceCopies(source) {
+  const names = new Set(['@xunjie/contracts', '@xunjie/storage']);
+  const queue = ['@xunjie/server', ...names];
+  for (const name of queue) {
+    const path = workspaceLinks.get(name);
+    require(path, 'RUNTIME_WORKSPACE_UNSUPPORTED');
+    const metadata = JSON.parse(readFileSync(join(source, path, 'package.json'), 'utf8'));
+    for (const dependency of Object.keys(metadata.dependencies ?? {})) {
+      if (!dependency.startsWith('@xunjie/') || names.has(dependency)) continue;
+      require(dependency !== '@xunjie/server' && workspaceLinks.get(dependency)?.startsWith('packages/'), 'RUNTIME_WORKSPACE_UNSUPPORTED');
+      names.add(dependency); queue.push(dependency);
+    }
+  }
+  return [...names].flatMap(name => [
+    [`${workspaceLinks.get(name)}/package.json`, `node_modules/${name}/package.json`, false],
+    [`${workspaceLinks.get(name)}/dist`, `node_modules/${name}/dist`, true],
+  ]);
+}
+
 function copyRuntime(source, runtime, dependencies = source) {
-  for (const [from, to, excludeTests] of runtimeCopies) {
+  for (const [from, to, excludeTests] of [...runtimeCopies, ...serverWorkspaceCopies(source)]) {
     const origin = join(from === 'node_modules' ? dependencies : source, from);
     require(existsSync(origin), 'RUNTIME_INPUT_REQUIRED');
     const destination = join(runtime, to);

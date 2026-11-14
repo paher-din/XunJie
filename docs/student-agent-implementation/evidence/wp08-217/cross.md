@@ -1,6 +1,8 @@
 # #217 跨机器 Skills 验收
 
-探针为 [probe-teaching-assembly-cross.mjs](../../../../scripts/probe-teaching-assembly-cross.mjs) 的 `--skills` 分支。沿用真实生产 owner、分发内 Node/PG、连接授权、模型 gateway、原 Action 与原 Agent 运行循环；不另实现 transport 或运行循环。
+本文保留旧版本的验收历史；旧 Agent 探针已退休，文中脚本名仅标识原证据来源。当前 session v2 工程入口为 [skills.runtime.test.mjs](../../../../packages/agents/test/skills.runtime.test.mjs)、[session-dependencies.runtime.test.mjs](../../../../packages/agents/test/session-dependencies.runtime.test.mjs)。这些测试不继承本页的历史通过结论，真实供应商、桌面与跨机结果须另行验收。
+
+探针为 历史脚本 `probe-teaching-assembly-cross.mjs`（已退役） 的 `--skills` 分支。沿用真实生产 owner、分发内 Node/PG、连接授权、模型 gateway、原 Action 与原 Agent 运行循环；不另实现 transport 或运行循环。
 
 实际结果：2026-11-07 19:31–19:32 UTC，10/10 通过，见 [真实跨机报告](cross-owner.json)。使用主 agent 确认的 `dist/wp08-217-macos` 与 `dist/wp08-217-windows`，没有构建或使用旧分发。两平台 application SHA256 为 `37cd20484c1be3464d9730fabbf65326e15495e53f1e48ada9419a33d5283ffb`。
 

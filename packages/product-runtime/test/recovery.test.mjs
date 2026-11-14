@@ -666,6 +666,44 @@ test('the public manifest carries aggregate boundary evidence without owner deta
   assert.ok(!text.includes('requestId'), 'per-command material stays inside the encrypted owner data');
 });
 
+test('boundary command references support sessions and existing execution activities', async t => {
+  for (const refs of [{ sessionId: randomUUID() }, { activityId: randomUUID() }, { sessionId: randomUUID(), activityId: randomUUID() }]) {
+    await t.test(Object.keys(refs).join('+'), async t => {
+      const f = await fixture(t), material = f.a.material;
+      const command = { requestId: randomUUID(), inputDigest: 'a'.repeat(64), executionRef: randomUUID(), ...refs,
+        location: refs.activityId ? 'native' : 'agent-runtime', state: 'received', statusKnowledge: 'confirmed',
+        stopRequested: false, disposition: 'accepted-not-started' };
+      f.a.material = async input => ({ ...await material(input), unresolved: [command] });
+      const directory = join(f.directory, 'backups'), targetRoot = join(f.directory, 'restored');
+      const manifest = await f.manager.backup({ directory, key: f.key });
+      assert.equal(manifest.boundary.services[0].unresolved, 1);
+      let validated = false;
+      await restoreRecoverySet({ backupDirectory: join(directory, manifest.backupId), targetRoot, key: f.key,
+        targets: [{ serviceId: f.serviceId, async restore({ recovery }) {
+          assert.deepEqual(recovery.material.unresolved, [command]); return owner(f.serviceId);
+        }, async validate() {}, async validateMaterial(_owner, restored) {
+          assert.deepEqual(restored.unresolved, [command]); validated = true;
+        } }] });
+      assert.equal(validated, true);
+      assert.equal(JSON.parse(await readFile(join(targetRoot, 'recovery-state.json'), 'utf8')).phase, 'isolated');
+    });
+  }
+});
+
+test('a boundary command requires at least one real nonempty session or activity reference', async t => {
+  for (const refs of [{}, { sessionId: '' }, { activityId: ' ' }, { sessionId: null }, { activityId: 1 },
+    { sessionId: randomUUID(), activityId: null }, { activityId: randomUUID(), sessionId: [] }]) {
+    await t.test(JSON.stringify(refs), async t => {
+      const f = await fixture(t), material = f.a.material, directory = join(f.directory, 'backups');
+      f.a.material = async input => ({ ...await material(input), unresolved: [{ requestId: randomUUID(), inputDigest: 'a'.repeat(64),
+        executionRef: randomUUID(), ...refs, location: 'agent-runtime', state: 'received', statusKnowledge: 'confirmed',
+        stopRequested: false, disposition: 'accepted-not-started' }] });
+      await assert.rejects(f.manager.backup({ directory, key: f.key }), { code: 'invalid-boundary-material' });
+      assert.deepEqual((await f.manager.catalog(directory, f.key)).backups, []);
+    });
+  }
+});
+
 test('a boundary that cannot be confirmed fails the backup and publishes nothing', async t => {
   const f = await fixture(t);
   const directory = join(f.directory, 'backups');

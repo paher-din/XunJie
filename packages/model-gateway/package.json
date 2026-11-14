@@ -1,0 +1,65 @@
+{
+  "name": "@xunjie/model-gateway",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Model connections, credentials, protocol execution and durable model ownership",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./service": {
+      "types": "./dist/service.d.ts",
+      "import": "./dist/service.js"
+    },
+    "./wire": {
+      "types": "./dist/wire.d.ts",
+      "import": "./dist/wire.js"
+    },
+    "./device-tasks": {
+      "types": "./dist/device-tasks.d.ts",
+      "import": "./dist/device-tasks.js"
+    },
+    "./paired-learning": {
+      "types": "./dist/paired-learning.d.ts",
+      "import": "./dist/paired-learning.js"
+    },
+    "./capabilities": {
+      "types": "./dist/capabilities.d.ts",
+      "import": "./dist/capabilities.js"
+    },
+    "./chat-native": {
+      "types": "./dist/chat-native.d.ts",
+      "import": "./dist/chat-native.js"
+    },
+    "./learning-admission": {
+      "types": "./dist/learning-admission.d.ts",
+      "import": "./dist/learning-admission.js"
+    },
+    "./origins": {
+      "types": "./dist/origins.d.ts",
+      "import": "./dist/origins.js"
+    }
+  },
+  "scripts": {
+    "build": "node ../../scripts/build.mjs model-gateway --",
+    "typecheck": "node ../../scripts/build.mjs model-gateway:typecheck"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "1.1.0",
+    "@xunjie/contracts": "0.1.0",
+    "@xunjie/storage": "0.1.0",
+    "ajv": "8.20.0",
+    "openai": "7.42.0",
+    "undici": "7.30.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.1",
+    "typescript": "~5.9.2"
+  }
+}

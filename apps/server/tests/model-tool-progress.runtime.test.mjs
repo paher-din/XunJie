@@ -4,8 +4,8 @@ import { randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
 import { provisionStorage, openStorage, createFileBackend, StorageError } from '@xunjie/storage';
 import { nativeFixture } from '../../../packages/storage/test/native-fixture.mjs';
-import { createModelGateway, modelMigrations } from '../../../packages/learning-space/dist/model-connections/index.js';
-import { createLearningModelService, createLearningModelClient } from '../../../packages/learning-space/dist/model-connections/service.js';
+import { createModelGateway, modelMigrations } from '../../../packages/model-gateway/dist/index.js';
+import { createLearningModelService, createLearningModelClient } from '../../../packages/model-gateway/dist/service.js';
 
 const deferred = () => { let resolve; const promise = new Promise(done => { resolve = done; }); return { promise, resolve }; };
 async function until(read, predicate) {

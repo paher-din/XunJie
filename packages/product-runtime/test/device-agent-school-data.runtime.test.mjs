@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:http';
+import { question, completed, versionHeaders } from './support/installed-agent-v2.mjs';
 import { openProductRuntime, resolveCredential } from '@xunjie/product-runtime';
 import { openStorage, createFileBackend } from '@xunjie/storage';
 import { learningMigrations } from '@xunjie/learning-space';
@@ -35,7 +36,7 @@ for (const dataAtDevice of [false, true]) test(`device Agent uses ${dataAtDevice
   });
   await new Promise(resolve => provider.listen(0, '127.0.0.1', resolve));
   const request = async (endpoint, route, body, headers = {}, expected = 200) => {
-    const response = await fetch(endpoint+'/api/learning/'+route, { headers: { 'content-type': 'application/json', ...headers },
+    const response = await fetch(endpoint+'/api/learning/'+route, { headers: { 'content-type': 'application/json', ...versionHeaders(route), ...headers },
       ...(body === undefined ? {} : { method: 'POST', body: JSON.stringify(body) }) });
     const value = await response.json();
     assert.equal(response.status, expected, route+': '+JSON.stringify(value));
@@ -52,7 +53,12 @@ for (const dataAtDevice of [false, true]) test(`device Agent uses ${dataAtDevice
     assert.deepEqual(schoolState.deployment.configuration.modules, schoolModules);
     assert.equal(schoolState.environment.services.some(item => ['teaching-agent', 'model-connection', 'tool-execution'].includes(item.unit)), false);
     assert.equal(schoolState.state, 'ready');
+    assert.equal(deviceState.environment.services.some(item => item.unit === 'learning-data'), dataAtDevice,
+      'a remote data owner does not cause a replacement local learning-data owner');
     assert.ok(deviceState.environment.services.find(item => item.unit === 'tool-execution'));
+    assert.ok(deviceState.environment.services.find(item => item.unit === 'model-connection'));
+    assert.ok(deviceState.environment.services.find(item => item.unit === 'teaching-agent')?.capabilities.includes('agent.sessions.v2'),
+      'a device Agent is available alongside the model and execution owners even when learning data lives at school');
     const admin = { authorization: 'Bearer '+await resolveCredential(schoolRoot, 'control') };
     const deviceAdmin = { authorization: 'Bearer '+await resolveCredential(deviceRoot, 'control') };
     const loginName = 'device-agent-'+randomUUID(), password = randomUUID();
@@ -69,7 +75,7 @@ for (const dataAtDevice of [false, true]) test(`device Agent uses ${dataAtDevice
     await deviceApi('client/complete', { requestId: connectionId });
     const agent = deviceState.environment.services.find(item => item.unit === 'teaching-agent');
     const source = dataAtDevice ? data : agent, destination = dataAtDevice ? schoolState.environment.services[0] : data;
-    const capability = dataAtDevice ? 'learning.authority' : 'teaching.dependencies';
+    const capability = dataAtDevice ? 'learning.authority' : 'agent.dependencies.v2';
     let grant;
     if (dataAtDevice) {
     grant = await school.authorize({ sourceEnvironmentId: source.environmentId, sourceServiceId: source.serviceId,
@@ -110,29 +116,19 @@ for (const dataAtDevice of [false, true]) test(`device Agent uses ${dataAtDevice
       name: '本机连接的学校笔记.md', mediaType: 'text/markdown', dataBase64: Buffer.from('固定笔记正文').toString('base64') }, connected)).value;
     assert.equal((await deviceApi(`materials/${activity.activityId}`, undefined, connected)).value[0].materialId, note.materialId);
     assert.equal((await deviceApi(`materials/${activity.activityId}/${note.materialId}/versions/1`, undefined, connected)).value.text, '固定笔记正文');
-    const capabilities = (await deviceApi(`agent/${activity.activityId}/capabilities`, undefined, connected)).value;
-    assert.equal(capabilities.modelAvailable, true, JSON.stringify(capabilities));
-    const requestId = randomUUID();
-    await deviceApi(`intents/${activity.activityId}`, { requestId, receiver: capabilities.receiver,
-      scope: { environmentId: identity.environmentId, spaceId: identity.spaceId, principalId: identity.principalId, activityId: activity.activityId },
-      draft: { token: randomUUID(), question: '请简短解释本机路径', references: [], bases: [] }, works: [], evidence: [] }, connected);
-    const receipt = (await deviceApi(`intents/${activity.activityId}/${requestId}/dispatch`, {}, connected)).value;
-    assert.equal(receipt.state, 'accepted');
-    let conversation;
-    const deadline = Date.now()+60000;
-    do {
-      conversation = (await deviceApi(`agent/${activity.activityId}/conversation`, undefined, connected)).value;
-      if (conversation.runs.some(run => ['completed', 'failed', 'paused'].includes(run.state))) break;
-      await new Promise(resolve => setTimeout(resolve, 50));
-    } while (Date.now()<deadline);
-    assert.equal(conversation.runs[0]?.state, 'completed', JSON.stringify(conversation));
+    const agentSession = (await deviceApi('agent-sessions/workspace', { activityId: activity.activityId, target: activity.target }, connected)).value;
+    assert.equal(agentSession.owner.target.environmentId, agent.environmentId);
+    assert.equal(agentSession.owner.target.serviceId, agent.serviceId, 'the real local Agent owns the kernel session');
+    if (!dataAtDevice) assert.deepEqual((await schoolApi(`agent-sessions/${agentSession.sessionId}`, undefined, member)).value, agentSession,
+      'the school learning-data owner retains the authoritative directory row');
+    const input = question(activity, agentSession, '请简短解释本机路径');
+    const receipt = (await deviceApi(`agent-sessions/${agentSession.sessionId}/inputs`, input, connected)).value;
+    const conversation = await completed(async (route, body) => (await deviceApi(route, body, connected)).value, agentSession.sessionId, receipt.runId);
+    assert.equal(conversation.messages.filter(item => item.role === 'assistant').at(-1).text, '本机直接生成的回答');
     assert.equal(generations, 1);
-    assert.equal((await (dataAtDevice ? deviceApi(`intents/${activity.activityId}/${requestId}`, undefined, connected)
-      : schoolApi(`intents/${activity.activityId}/${requestId}`, undefined, member))).value.state, 'accepted');
-    assert.deepEqual((await school.status()).deployment.configuration.modules, schoolModules);
     await device.stop(); await device.start();
-    assert.deepEqual((await deviceApi(`agent/${activity.activityId}/conversation`, undefined, connected)).value, conversation);
-    assert.equal((await deviceApi(`intents/${activity.activityId}/${requestId}/dispatch`, {}, connected)).value.state, 'accepted');
+    assert.deepEqual((await deviceApi(`agent-sessions/${agentSession.sessionId}/conversation`, undefined, connected)).value, conversation);
+    assert.deepEqual((await deviceApi(`agent-sessions/${agentSession.sessionId}/requests/${input.requestId}`, undefined, connected)).value, { receipt, input });
     assert.equal(generations, 1, 'restart and receipt recovery do not generate again');
     if (!dataAtDevice) {
       const published = await accumulatorPackage({ version: 1 });
@@ -213,7 +209,7 @@ for (const dataAtDevice of [false, true]) test(`device Agent uses ${dataAtDevice
       assert.equal((await school.status()).deployment.modules.find(item => item.unit === 'tool-execution').enabled, false);
     }
     await school.revoke(grant.grantId, destination.serviceId);
-    await deviceApi(`agent/${activity.activityId}/conversation`, undefined, connected, 403);
+    await deviceApi(`agent-sessions/${agentSession.sessionId}/conversation`, undefined, connected, 403);
     assert.equal(generations, 1, 'revocation cannot cause a fallback model call');
   } finally {
     await Promise.allSettled([device.stop(), school.stop()]);

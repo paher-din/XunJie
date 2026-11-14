@@ -6,10 +6,14 @@
 
 本目录集中保存架构、需求、实施总览、ADR、已有组件规范、Wayfinder 决议，以及研究与验证附件。后续本轮工作包以 GitHub 规范母票为审阅与拆票入口，`specs/` 保留索引及已有实施文档。
 
+2026-11-14 Agent 运行时迁移完成后，WP07/WP08 的交付与验收页保留当时的产品行为、证据和测试名，不能作为当前源码入口。当前包职责、session v2、测试命令和旧开发数据边界分别从[当前架构](student-agent-architecture.md)、[工程入口](engineering-entrypoints.md)及对应包 README 读取。
+
 最终结论从[Wayfinder 本地决议索引](wayfinder/student-agent/README.md)读取，包含完整决议、后续确认及研究附件入口。讨论与原始确认保留在 [GitHub 决策地图：学生端 Agent 与工作区重新设计](https://github.com/paher-din/XunJie/issues/112)。本地决议索引不复制 Issue 的动态认领或实施状态；实施工作包的边界与 `blocked by` 见总览，具体规范和实施票随后逐包形成。
 
 | 需要了解什么 | 阅读入口 |
 | --- | --- |
+| 当前 Agent 包职责、session v2、真实普通/工作区会话与部署 | [当前架构](student-agent-architecture.md) · [通用内核](../../packages/agent-runtime/README.md) · [场景与传输](../../packages/agents/README.md) · [模型 Gateway](../../packages/model-gateway/README.md) · [可信宿主](../../packages/product-runtime/README.md) |
+| 旧开发 Agent 数据的显式重置 | [部署与数据边界](../deployment.md#旧开发-agent-数据的显式重置)；不属于旧引擎/API 自动兼容 |
 | WP08 正式 PDF 添加、页/区域固定引用、真实页图入模与两平台证据 | [#218 PDF 交付](wp08-218-pdf.md) · [验收证据](evidence/wp08-218/README.md) |
 | 本轮有哪些工作包、前置依赖和完整验收边界 | [实施总览](student-agent-implementation-overview.md) |
 | WP02 的统一产品 UI、复用组件、前后截图及后续 WP 接入位置 | [产品 UI 整合与验收](wp02-product-ui.md) · [Web 接入表](../../apps/web/README.md#正式产品入口与后续-wp) |
@@ -31,7 +35,7 @@
 | WP07 的持久运行、session log、请求重建及正式学习对话 | [WP07：持久 Agent 与学习对话](https://github.com/paher-din/XunJie/issues/196) · [交付与验收](wp07-197-recoverable-learning-conversation.md) · [双轴审查](wp07-197-code-review.md) · [实施子票](specs/README.md#wp07-实施子票) |
 | WP07 固定作品读取、课程工具、持久等待与原执行核对 | [#198 实现与验收](wp07-198-agent-tools.md) · [实施选择](specs/wp07-agent-tools.md) · [双轴审查](wp07-198-code-review.md) · [旧消费者迁接归属](wp07-198-legacy-consumers.md) |
 | WP07 Agent 独立服务、固定活动路由与跨机设备模型 | [#203 部署与验收](wp07-203-agent-deployment.md) · [双轴审查](wp07-203-code-review.md) |
-| WP07 Agent 固定提问、可靠明确回应及原 Run 继续 | [#199 实现与验收](wp07-199-student-ask.md) · [实施选择](specs/wp07-student-ask.md) · [双轴审查](wp07-199-code-review.md) · [Agent owner](../../packages/learning-space/src/teaching-agent/README.md) |
+| WP07 Agent 固定提问、可靠明确回应及原 Run 继续 | [#199 实现与验收](wp07-199-student-ask.md) · [实施选择](specs/wp07-student-ask.md) · [双轴审查](wp07-199-code-review.md) · [Agent owner](../../packages/agents/README.md) |
 | WP07 忙碌时引导、FIFO 排队、输入修订及暂停选择继续 | [#200 实施选择](specs/wp07-input-control.md) · [实现与验收](wp07-200-input-control.md) · [双轴审查](wp07-200-code-review.md) |
 | WP07 #200 的 macOS 引导、排队与暂停续接实机验收 | [#210 macOS 验收](wp07-210-mac-acceptance.md) |
 | WP07 学习对话的完整备份、隔离还原与权威接管 | [#204 实施选择](specs/wp07-conversation-recovery.md) · [交付与验收](wp07-204-conversation-recovery.md) · [双轴审查](wp07-204-code-review.md) · [Mac/跨机交接 #212](https://github.com/paher-din/XunJie/issues/212) |
@@ -49,7 +53,7 @@
 | PR #177 审查报告的 12 项修复与回归 | [审查修复记录](wp06-pr177-review-fixes.md) |
 | WP06 Responses 原生结果、工具图像和持久续接 | [Responses 交付与验收](wp06-responses-acceptance.md) |
 | WP06 Messages 思考/签名、工具图像和持久续接 | [Messages 交付与验收](wp06-messages-acceptance.md) |
-| WP06 学校/个人来源选择、Chat 图片工具与原生续接的实际交付 | [选择与原生 Chat 验收](wp06-chat-selection-acceptance.md) · [模型 owner](../../packages/learning-space/src/model-connections/README.md) |
+| WP06 学校/个人来源选择、Chat 图片工具与原生续接的实际交付 | [选择与原生 Chat 验收](wp06-chat-selection-acceptance.md) · [模型 owner](../../packages/model-gateway/README.md) |
 | 学习空间身份、学校接入及无课程活动的生产入口和验证边界 | [学习空间身份与活动交接](wp02-identity-activity.md) |
 | 课程任务、固定发布、访问投影及跨 owner 活动建立的实施方案与验收记录 | [课程任务与固定发布版本实施方案](specs/wp02-course-task-releases.md) · [验收记录](wp02-course-releases-acceptance.md) |
 | 活动作品编辑、自动保存、本机保护、冲突与资源恢复 | [可靠作品编辑与自动保存](wp02-reliable-works.md) |
@@ -90,7 +94,7 @@
 | 教师组件库、组件接入、生成内容状态与版本更新 | [课程组件决议](wayfinder/student-agent/course-components.md)、[详细设计](references/2026-10-26-course-tool-host-proposal.md)及[宿主技术研究](references/2026-10-26-course-tool-host-research.md) |
 | GitHub 议题、原生依赖与后续会话工作方式 | [Issue tracker](../agents/issue-tracker.md) |
 | 教师设计运行方案、本地优先的理由 | [ADR 0001](adr/0001-teacher-owned-course-execution-plan.md) |
-| 自有持久 RunDriver 的长期选择、替代方案与维护责任 | [ADR 0002](adr/0002-own-teaching-state-and-effect-control.md) |
+| 历史持久 driver 选型、替代方案与维护责任；当前按通用内核包实现 | [ADR 0002](adr/0002-own-teaching-state-and-effect-control.md) |
 | 三协议实际端点、SDK 验证与模型连接层选择 | [端点评估与工程判断](references/2026-10-23-model-endpoint-assessment.md) |
 | 固定版本 SDK 如何保留原生续接数据 | [SDK 源码调查](references/2026-10-22-model-protocol-sdk-research.md) |
 | Agent 如何阅读 PDF，以及循阶的按页读取路线 | [PDF 能力调查](references/2026-10-22-agent-pdf-capabilities-research.md) |

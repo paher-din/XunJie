@@ -3,7 +3,8 @@ import test from 'node:test';
 import { createHash, randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
 import { createFileBackend, openStorage, provisionStorage } from '@xunjie/storage';
-import { createSpaces, createCourses, createLearningEntry, spaceCourseMigrations } from '@xunjie/learning-space';
+import { createSpaces, createCourses, spaceCourseMigrations } from '@xunjie/learning-space';
+import { createLearningEntry } from '@xunjie/product-runtime/learning-http';
 import { nativeFixture } from '../../../packages/storage/test/native-fixture.mjs';
 
 test('member permissions persist, constrain HTTP authority and revoke existing credentials', { timeout: 120000 }, async () => {

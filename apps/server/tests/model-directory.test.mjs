@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { randomUUID } from 'node:crypto';
-import { createCatalogueCache, CatalogueFailure, readCatalogueJson } from '../../../packages/learning-space/dist/model-connections/catalogue-cache.js';
-import { createModelDirectory, parseSupplierModels } from '../../../packages/learning-space/dist/model-connections/directory.js';
-import { createModelProfiles } from '../../../packages/learning-space/dist/model-connections/profiles.js';
+import { createCatalogueCache, CatalogueFailure, readCatalogueJson } from '../../../packages/model-gateway/dist/catalogue-cache.js';
+import { createModelDirectory, parseSupplierModels } from '../../../packages/model-gateway/dist/directory.js';
+import { createModelProfiles } from '../../../packages/model-gateway/dist/profiles.js';
 
 const json = value => new Response(JSON.stringify(value));
 const identity = { environmentId: randomUUID(), spaceId: randomUUID(), principalId: randomUUID(), kind: 'personal', name: '测试' };

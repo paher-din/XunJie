@@ -9,7 +9,7 @@ import { nativeFixture } from '../../../packages/storage/test/native-fixture.mjs
 import { learningMigrations, createLearningData, validateLearningData } from '../../../packages/learning-space/dist/learning-data/index.js';
 import { createSchoolDeliveries, schoolDeliveryMigration } from '../../../packages/learning-space/dist/learning-data/school-deliveries.js';
 import { studyCopyMigration, createStudyCopies, validateStudyCopies } from '../../../packages/learning-space/dist/learning-data/study-copies.js';
-import { createChunkChannel } from '../../../packages/learning-space/dist/teaching-agent/chunk-channel.js';
+import { createChunkChannel } from '../../../packages/storage/dist/chunk-channel.js';
 import { executionActionSchema } from '@xunjie/contracts/execution';
 import { semanticReferenceCopy } from '@xunjie/contracts/question-drafts';
 import { aggregationPackage } from '../../../components/table-aggregation/package.mjs';

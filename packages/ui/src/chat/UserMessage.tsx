@@ -5,8 +5,8 @@ import type {ChatImage} from './types'
 
 /**
  * 一条学生消息：气泡 + 消息级操作（复制 / 编辑，已确认 2026-10-11 第 24 条）。
- * 编辑就地改写：气泡隐掉、原位换成输入区，保存后由父级截掉其后内容并按新文本重新生成
- * （与第 9 条重试同一条语义）。原文留在 DOM 里，消息导航导轨的摘要不跟着断。
+ * 编辑就地改写：气泡隐掉、原位换成输入区，由宿主确认改写；可提供持久化的受控编辑草稿。
+ * 原文留在 DOM 里，消息导航导轨的摘要不跟着断。
  */
 export interface UserMessageProps {
   text: string
@@ -14,7 +14,10 @@ export interface UserMessageProps {
   /** 这条说出来的时刻；有就标在操作键左侧。 */
   at?: string
   /** 保存改写；不传则不给编辑键。 */
-  onEdit?: (next: string) => void
+  onEdit?: (next: string) => void | Promise<void>
+  /** Optional host-owned edit state survives view unmounts. */
+  editDraft?: { text: string; editing: boolean }
+  onEditDraftChange?: (draft: { text: string; editing: boolean }) => void
   /** 回合生成中：这一问正在被回答，编辑键先禁用。 */
   busy?: boolean
 }
@@ -25,9 +28,17 @@ export function UserMessage({
   onEdit,
   busy,
   images,
+  editDraft,
+  onEditDraftChange,
 }: UserMessageProps) {
-  const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState(text)
+  const [localEditing, setLocalEditing] = useState(false)
+  const [localDraft, setLocalDraft] = useState(text)
+  const editing = editDraft?.editing ?? localEditing
+  const draft = editDraft?.text ?? localDraft
+  const changeEdit = (text: string, editing: boolean) => {
+    if (editDraft) onEditDraftChange?.({ text, editing })
+    else { setLocalDraft(text); setLocalEditing(editing) }
+  }
   const [copied, setCopied] = useState(false)
   const [copyError,setCopyError]=useState(false)
   const fieldRef = useRef<HTMLTextAreaElement>(null)
@@ -42,8 +53,12 @@ export function UserMessage({
 
   const save = () => {
     const next = draft.trim()
-    setEditing(false)
-    if (next && next !== text) onEdit?.(next)
+    if (!editDraft) {
+      setLocalEditing(false)
+      if (next && next !== text) void onEdit?.(next)
+    } else if (next && next !== text) {
+      void Promise.resolve().then(() => onEdit?.(next)).then(() => changeEdit(next, false)).catch(() => {})
+    } else changeEdit(draft, false)
   }
 
   useEffect(() => {
@@ -67,14 +82,15 @@ export function UserMessage({
             rows={1}
             aria-label="修改这条消息"
             value={draft}
+            disabled={busy}
             onChange={(e) => {
-              setDraft(e.target.value)
+              changeEdit(e.target.value, true)
               grow()
             }}
             onKeyDown={(e) => {
               if (e.key === 'Escape') {
                 e.preventDefault()
-                setEditing(false)
+                changeEdit(text, false)
               } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
                 e.preventDefault()
                 save()
@@ -82,10 +98,10 @@ export function UserMessage({
             }}
           />
           <div className="user-edit-btns">
-            <button className="outline" onClick={() => setEditing(false)}>
+            <button className="outline" onClick={() => changeEdit(text, false)}>
               取消
             </button>
-            <button className="primary" disabled={!draft.trim()} onClick={save}>
+            <button className="primary" disabled={busy || !draft.trim()} onClick={save}>
               发送
             </button>
           </div>
@@ -116,8 +132,7 @@ export function UserMessage({
               title={busy ? '生成中不能改' : '编辑'}
               disabled={busy}
               onClick={() => {
-                setDraft(text)
-                setEditing(true)
+                changeEdit(text, true)
               }}
             >
               <Icon name="pen" size={16} />

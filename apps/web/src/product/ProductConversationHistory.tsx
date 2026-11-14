@@ -1,25 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { ConversationHistoryItem, LearningActivity } from '@xunjie/contracts/learning-data'
+import type { AgentSession } from '@xunjie/contracts/agent-sessions'
 import { ConversationPane } from '@xunjie/ui/foundation'
 import { Icon } from '@xunjie/ui/icons'
 import { useToastFeedback } from '@xunjie/ui/feedback'
-
-export { useConversationHistory } from './useConversationHistory'
 
 const PAGE_SIZE = 8
 const FOLDABLE_GROUPS = new Set(['置顶', '更早'])
 const CLOSED_MENU = { id: null as string | null, up: false, closing: false }
 
-export function conversationTitle(activity: LearningActivity, labels: readonly ConversationHistoryItem[]) {
-  return labels.find(item => item.activityId === activity.activityId)?.title || activity.goal || activity.question || '资料学习'
-}
-
-export function ProductConversationHistory({ activities, activeId, labels, archiveOpen, query, error, ready, busy,
+export function ProductConversationHistory({ sessions, activeId, archiveOpen, query, error, ready, busy,
   scopeKey, visible = true, readOnly = false, onNew, onOpen, onArchiveOpenChange, onQueryChange,
   onArchive, onRestore, onRename, onPin, onDelete, onRetry }: {
-  activities: LearningActivity[] | null
+  sessions: readonly AgentSession[]
   activeId?: string
-  labels: readonly ConversationHistoryItem[]
   archiveOpen: boolean
   query: string
   error: string
@@ -85,12 +78,9 @@ export function ProductConversationHistory({ activities, activeId, labels, archi
     return () => { document.removeEventListener('pointerdown', outside); document.removeEventListener('scroll', scroll, true); window.removeEventListener('resize', resize) }
   }, [menu.id, visible, closeMenu])
 
-  const states = useMemo(() => new Map(labels.map(item => [item.activityId, item])), [labels])
-  const conversations = useMemo(() => (activities ?? []).filter(activity => !activity.course && !states.get(activity.activityId)?.deleted)
-    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) || a.activityId.localeCompare(b.activityId))
-    .map(activity => ({ id: activity.activityId, title: states.get(activity.activityId)?.title || activity.goal || activity.question || '资料学习',
-      pinned: states.get(activity.activityId)?.pinned ?? false, archived: states.get(activity.activityId)?.archived ?? false,
-      createdAt: activity.createdAt })), [activities, states])
+  const conversations = useMemo(() => sessions.filter(item => !item.deleted)
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) || a.sessionId.localeCompare(b.sessionId))
+    .map(item => ({ id: item.sessionId, title: item.title || '新对话', pinned: item.pinned, archived: item.archived, createdAt: item.createdAt })), [sessions])
   const archived = conversations.filter(item => item.archived)
   const term = query.trim().toLowerCase()
   const matches = (item: { title: string }) => item.title.toLowerCase().includes(term)
@@ -107,8 +97,8 @@ export function ProductConversationHistory({ activities, activeId, labels, archi
     { label: '更早', items: visibleItems.filter(item => !(Date.parse(item.createdAt) >= yesterday)) },
   ].filter(group => group.items.length)
   useEffect(() => {
-    if (ready && activities !== null && archiveOpen && archived.length === 0) onArchiveOpenChange(false)
-  }, [ready, activities, archiveOpen, archived.length, onArchiveOpenChange])
+    if (ready && archiveOpen && archived.length === 0) onArchiveOpenChange(false)
+  }, [ready, archiveOpen, archived.length, onArchiveOpenChange])
   const focusSearch = () => requestAnimationFrame(() => { if (search.current?.isConnected && !search.current.closest('[inert]')) search.current.focus({ preventScroll: true }) })
   const focusPin = (id: string) => requestAnimationFrame(() => {
     const row = [...document.querySelectorAll<HTMLElement>('[data-conversation-id]')].find(item => item.dataset.conversationId === id && !item.closest('[inert]'))
@@ -119,7 +109,7 @@ export function ProductConversationHistory({ activities, activeId, labels, archi
 
   return <>
     {error && <div className="agent-side-empty" role={operationError ? undefined : 'alert'}>{!operationError && error} <button type="button" className="agent-side-clear" onClick={onRetry}>重试</button></div>}
-    {!ready || activities === null ? <>
+    {!ready ? <>
       <button type="button" className="agent-newchat" onClick={onNew}><span className="navicon"><Icon name="pen-new-square" size={14} /></span>新对话</button>
       <div className="agent-side-empty" role="status">{error ? '暂时无法显示对话' : ''}</div>
     </> : <ConversationPane archived={archived} archivedVisible={archived.slice(0, archivedShown)}

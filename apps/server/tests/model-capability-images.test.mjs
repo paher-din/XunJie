@@ -14,15 +14,15 @@ const temporary = await mkdtemp(join(tmpdir(), 'xj-capability-images-'));
 after(() => rm(temporary, { recursive: true, force: true }));
 await symlink(join(repository, 'node_modules'), join(temporary, 'node_modules'), 'junction');
 await build({ stdin: { contents: `
-  export * as capabilities from './packages/learning-space/src/model-connections/capabilities.ts';
+  export * as capabilities from './packages/model-gateway/src/capabilities.ts';
   export * as contracts from './packages/contracts/src/model-connections.ts';
-  export { createChatWork } from './packages/learning-space/src/model-connections/chat-work.ts';
-  export { routeModels } from './packages/learning-space/src/model-connections/wire.ts';
-  export { learningFailure } from './packages/learning-space/src/learning-entry/index.ts';
-  export { runChat } from './packages/learning-space/src/model-connections/chat.ts';
-  export { imageRoute } from './packages/learning-space/src/teaching-agent/tools-images.ts';
+  export { createChatWork } from './packages/model-gateway/src/chat-work.ts';
+  export { routeModels } from './packages/model-gateway/src/wire.ts';
+  export { learningFailure } from './packages/product-runtime/src/learning-http/index.ts';
+  export { runChat } from './packages/model-gateway/src/chat.ts';
+  export { imageRoute } from './packages/agents/src/capabilities/documents/tools-images.ts';
 `, resolveDir: repository }, outfile: join(temporary, 'source.mjs'), bundle: true, platform: 'node',
-  format: 'esm', packages: 'external', alias: { '@xunjie/contracts': join(repository, 'packages/contracts/src') } });
+  format: 'esm', packages: 'external', alias: { '@xunjie/contracts': join(repository, 'packages/contracts/src'), '@xunjie/model-gateway': join(repository, 'packages/model-gateway/src') } });
 const { capabilities, contracts, createChatWork, routeModels, learningFailure, runChat, imageRoute } = await import(pathToFileURL(join(temporary, 'source.mjs')));
 const identity = { kind: 'personal', environmentId: randomUUID(), spaceId: randomUUID(), principalId: randomUUID() };
 const tool = { name: 'read_marker', description: '', inputSchema: { type: 'object', properties: {}, additionalProperties: false } };

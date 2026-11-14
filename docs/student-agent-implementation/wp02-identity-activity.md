@@ -1,6 +1,6 @@
 # 学习空间身份与活动入口
 
-对应 [#149](https://github.com/paher-din/XunJie/issues/149)，范围依据 [WP02 规范](specs/wp02-learning-space-and-reliable-workspace.md)。生产 owner、HTTP 与公开接口说明见 [学习入口](../../packages/learning-space/src/learning-entry/README.md)。课程发布、作品与可靠草稿继续按后续子票接入。
+对应 [#149](https://github.com/paher-din/XunJie/issues/149)，范围依据 [WP02 规范](specs/wp02-learning-space-and-reliable-workspace.md)。生产 owner、HTTP 与公开接口说明见 [学习入口](../../packages/product-runtime/README.md#session-v2-与-http-边界)。课程发布、作品与可靠草稿继续按后续子票接入。
 
 ## 使用
 

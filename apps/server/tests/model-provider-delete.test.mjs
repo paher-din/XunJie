@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { randomUUID } from 'node:crypto';
 import { StorageError } from '@xunjie/storage';
-import { createModelGateway } from '../../../packages/learning-space/dist/model-connections/index.js';
+import { createModelGateway } from '../../../packages/model-gateway/dist/index.js';
 
 // Existing saved route whose DNS is no longer usable. Deletion must stay local.
 async function fixture() {

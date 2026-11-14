@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { materialScopeSchema, sessionMaterialScopeSchema } from './session-materials.js';
 
 /** Personal notes are UTF-8 text only. PDFs keep using the existing fixed PDF materials owner. */
 export const PERSONAL_MATERIAL_LIMITS = { inputBytes: 2 * 1024 * 1024, nameLength: 240,
@@ -35,9 +36,17 @@ export const personalMaterialSchema = z.object({ materialId: z.uuid(), activityI
   removedAt: z.iso.datetime().nullable(), versions: z.array(personalMaterialVersionSchema)
     .min(1).max(PERSONAL_MATERIAL_LIMITS.versions) }).strict();
 export type PersonalMaterial = z.infer<typeof personalMaterialSchema>;
+/** Workspace wire stays byte-for-byte compatible; session records never contain a fake activity id. */
+export const sessionPersonalMaterialSchema = personalMaterialSchema.omit({ activityId: true })
+  .extend({ scope: sessionMaterialScopeSchema }).strict();
+export const scopedPersonalMaterialSchema = z.union([personalMaterialSchema, sessionPersonalMaterialSchema]);
+export type ScopedPersonalMaterial = z.infer<typeof scopedPersonalMaterialSchema>;
 export const personalMaterialVersionContentSchema = z.object({ material: personalMaterialSchema,
   version: personalMaterialVersionSchema, text: z.string() }).strict();
 export type PersonalMaterialVersionContent = z.infer<typeof personalMaterialVersionContentSchema>;
+export const scopedPersonalMaterialVersionContentSchema = personalMaterialVersionContentSchema
+  .extend({ material: scopedPersonalMaterialSchema }).strict();
+export type ScopedPersonalMaterialVersionContent = z.infer<typeof scopedPersonalMaterialVersionContentSchema>;
 
 export const personalMaterialReadSchema = z.object({ start: z.number().int().nonnegative().max(100000000),
   length: z.number().int().min(1).max(PERSONAL_MATERIAL_LIMITS.readChars) }).strict();
@@ -51,6 +60,9 @@ export type PersonalMaterialReadResult = z.infer<typeof personalMaterialReadResu
 export const personalMaterialReferenceSourceSchema = z.object({ kind: z.literal('personal-material'),
   activityId: z.uuid(), materialId: z.uuid(), version: z.number().int().positive(), sha256: digest }).strict();
 export type PersonalMaterialReferenceSource = z.infer<typeof personalMaterialReferenceSourceSchema>;
+export const scopedPersonalMaterialReferenceSourceSchema = z.union([personalMaterialReferenceSourceSchema,
+  personalMaterialReferenceSourceSchema.omit({ activityId: true }).extend({ scope: sessionMaterialScopeSchema }).strict()]);
+export type ScopedPersonalMaterialReferenceSource = z.infer<typeof scopedPersonalMaterialReferenceSourceSchema>;
 
 export const materialSearchScopeSchema = z.object({ courseMaterials: z.boolean().default(true),
   personalMaterialIds: z.array(z.uuid()).max(64).optional(),
@@ -65,6 +77,7 @@ export const materialSourceRefSchema = z.object({ kind: z.enum(['course-material
   id: z.string().min(1).max(400), version: z.string().min(1).max(200), sha256: digest.optional(),
   label: z.string().min(1).max(300).optional(), releaseId: z.uuid().optional(), materialId: z.uuid().optional(),
   documentId: z.uuid().optional(), readingId: z.uuid().optional(), skillId: z.uuid().optional(),
+  scope: materialScopeSchema.optional(),
   path: z.string().min(1).max(240).optional() }).strict();
 export type MaterialSourceRef = z.infer<typeof materialSourceRefSchema>;
 export const materialSearchMatchSchema = z.object({ source: materialSourceRefSchema,

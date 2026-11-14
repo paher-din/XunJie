@@ -4,9 +4,9 @@ import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { provisionStorage, openStorage, createFileBackend, StorageError } from '@xunjie/storage';
 import { nativeFixture } from '../../../packages/storage/test/native-fixture.mjs';
-import { modelMigrations } from '../../../packages/learning-space/dist/model-connections/index.js';
-import { createChecks } from '../../../packages/learning-space/dist/model-connections/checks.js';
-import { learningAdmissionMigration, defaultLearningAdmissionPolicy } from '../../../packages/learning-space/dist/model-connections/learning-admission.js';
+import { modelMigrations } from '../../../packages/model-gateway/dist/index.js';
+import { createChecks } from '../../../packages/model-gateway/dist/checks.js';
+import { learningAdmissionMigration, defaultLearningAdmissionPolicy } from '../../../packages/model-gateway/dist/learning-admission.js';
 
 const migrations = modelMigrations.some(item => item.version === learningAdmissionMigration.version)
   ? modelMigrations : [...modelMigrations, learningAdmissionMigration];

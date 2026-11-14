@@ -1,5 +1,7 @@
 # #204 学习对话的备份、还原与接管
 
+本文保留旧版本的验收历史；旧 Agent 探针已退休，文中脚本名仅标识原证据来源。当前 session v2 工程入口为 [recovery-agent-sessions.runtime.test.mjs](../../packages/product-runtime/test/recovery-agent-sessions.runtime.test.mjs)、[teaching-agent.independent-recovery.runtime.test.mjs](../../apps/server/tests/teaching-agent.independent-recovery.runtime.test.mjs)、[teaching-agent.recovery.runtime.test.mjs](../../apps/server/tests/teaching-agent.recovery.runtime.test.mjs)。这些测试不继承本页的历史通过结论，真实供应商、桌面与跨机结果须另行验收。
+
 本次在同一 `wp07` 实施，不创建 PR。来源为 [#204](https://github.com/paher-din/XunJie/issues/204)，方案见[实施选择](specs/wp07-conversation-recovery.md)。Mac 与真实跨机验收由使用已有环境的执行者在新票 [#212](https://github.com/paher-din/XunJie/issues/212) 接手；本机多安装不计为跨机。
 
 ## 实现
@@ -74,21 +76,12 @@ Agent owner 新增自己的版本化维护清单，覆盖会话、请求、不�
 
 失败测试的个别未确认边界按安全约束拒绝正式停止，失败记录保留；核对确属本票后，单独停止其测试进程和一次性 PG，不把应急清理计为正式停止通过。正常 Chrome 两条路径清理结果分别记录。最后核查本票无残留运行进程，一次性数据库/密钥目录、隔离工程副本与旧候选包已删除，回收约 2.3 GiB。原开发实例仍运行；原工作区、资源缓存和无关资料保留。最终可复查的 Windows full 包保留在本机 `.verification/wp07-204/product-win32-x64-final`，原始日志和审阅证据也保留。
 
-## 复跑入口
+## 当前工程回归入口
 
-使用 Node 24.21.0、原生 PostgreSQL 18.6、已有桌面 Chrome，在独立临时目录执行。`XUNJIE_PRODUCT_POSTGRES_BIN` 指定实际 PG bin；`TEMP`/`TMP` 指向已允许的专用临时目录。仅控制合成外部模型 transport，使用真实产品、owner、PG、资源和 WP03 发布算法，无付费模型要求。
+使用 Node 24.21.0 和支持的 `XUNJIE_PRODUCT_POSTGRES_BIN`；先由协调方统一准备 workspace 产物。已有产物时直接运行，不在共享构建期间重复 build：
 
-```powershell
-node scripts/build.mjs product-runtime:test
-node --test --test-force-exit packages/contracts/test/teaching-event.test.ts
-node --test --test-concurrency=1 --test-force-exit apps/server/tests/agent-deployment-cleanup.runtime.test.mjs apps/server/tests/teaching-agent.recovery.runtime.test.mjs
-node --test --test-force-exit apps/server/tests/teaching-agent.independent-recovery.runtime.test.mjs
-node --test --test-force-exit packages/product-runtime/test/recovery-connections.test.mjs
-node scripts/probe-conversation-recovery.mjs
-node scripts/package-product.mjs --platform win32-x64 --profile full --cache <资源缓存> --out <新的候选目录>
-node scripts/probe-conversation-recovery.mjs --package <新的候选目录>
+```sh
+node --test --test-concurrency=1 packages/product-runtime/test/recovery-agent-sessions.runtime.test.mjs apps/server/tests/teaching-agent.independent-recovery.runtime.test.mjs apps/server/tests/teaching-agent.recovery.runtime.test.mjs
 ```
 
-Windows 原生会话清理测试还需 `XUNJIE_NATIVE_SESSION_HELPER` 指向实际产品包的 `resources/native/windows-session.exe`。独立 Agent 的可见 Chrome 场景可设置 `XUNJIE_RECOVERY_CHROME=1`，只运行 `--test-name-pattern="original student Wait"`；真实跨机另按 #212 的已有环境执行。
-
-Probe 用正式 CLI 安装、备份、独立只读还原、接管两次及停止，在 Chrome 提交对原问题的明确回应；报告位于 `XUNJIE_RECOVERY_EVIDENCE_DIR/report.json`，截图在同目录。备份密钥、数据库与测试账号仅在私有一次性目录，停机后清除；浏览器未同步草稿、临时流、编译缓存和活进程内存不被计入服务备份。原始本机日志、完整发现清单及源码摘要由分项证据记录，失败和未执行项不计通过。
+这些是当前 session v2 工程入口，结果须按本次实际执行单独记录。历史产品包、真实供应商、桌面输入法与跨机验收不由上述测试替代。

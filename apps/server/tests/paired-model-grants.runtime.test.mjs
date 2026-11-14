@@ -6,10 +6,10 @@ import { createServer } from 'node:http';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { provisionStorage, openStorage, createFileBackend, StorageError } from '@xunjie/storage';
 import { nativeFixture } from '../../../packages/storage/test/native-fixture.mjs';
-const { createModelGateway, modelMigrations } = await import('../../../packages/learning-space/dist/model-connections/index.js');
-const { createPairedLearningModels } = await import('../../../packages/learning-space/dist/model-connections/paired-learning.js');
-const { createLearningModelClient, createLearningModelService } = await import('../../../packages/learning-space/dist/model-connections/service.js');
-const { routeModels } = await import('../../../packages/learning-space/dist/model-connections/wire.js');
+const { createModelGateway, modelMigrations } = await import('../../../packages/model-gateway/dist/index.js');
+const { createPairedLearningModels } = await import('../../../packages/model-gateway/dist/paired-learning.js');
+const { createLearningModelClient, createLearningModelService } = await import('../../../packages/model-gateway/dist/service.js');
+const { routeModels } = await import('../../../packages/model-gateway/dist/wire.js');
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function setup() {
   const pg = await nativeFixture(), stores = [], gateways = [], received = [], pendingAcks = new Map();
@@ -32,9 +32,9 @@ async function setup() {
   const rootStorage = await open('root'), deviceStorage = await open('device');
   const identity = { environmentId: rootStorage.owner.environmentId, spaceId: randomUUID(), principalId: randomUUID(), kind: 'school', name: '原主体' };
   const personal = { ...identity, environmentId: deviceStorage.owner.environmentId, spaceId: randomUUID(), principalId: randomUUID(), kind: 'personal' };
-  const root = await createModelGateway(rootStorage, { holder: 'device', authorize: async () => {} }); gateways.push(root);
+  const root = await createModelGateway(rootStorage, { authorizePermit: async () => {}, holder: 'device', authorize: async () => {} }); gateways.push(root);
   let binding;
-  const device = await createModelGateway(deviceStorage, { holder: 'device', authorize: async () => {}, authorizationPollMs: 20,
+  const device = await createModelGateway(deviceStorage, { authorizePermit: async () => {}, holder: 'device', authorize: async () => {}, authorizationPollMs: 20,
     authorizeActive: async () => { const task = context.getStore(); if (task?.operation === 'learning') await paired.authorizeTask(identity, pair, task.taskId); } }); gateways.push(device);
   const base = { expectedVersion: 0, name: '原设备连接', protocol: 'chat-completions', baseUrl: `http://127.0.0.1:${upstream.address().port}/v1`, path: '/chat/completions',
     modelId: 'fixture', dialect: 'standard', parameterMode: 'plain', enabled: true, credential: { action: 'replace', value: 'synthetic-key' } };
@@ -50,10 +50,16 @@ async function setup() {
   const pair = { grantId: binding.grantId, installationId: binding.installationId };
   const source = { sourceEnvironmentId: binding.owner.environmentId, sourceServiceId: binding.owner.serviceId, sourceInstallationId: binding.installationId, grantId: binding.grantId, connectionId: binding.connectionId };
   const publish = async () => paired.publishChoices(identity, source, { requestId: randomUUID(), projection: await device.selection.read(identity, personal) });
-  const origin = { operationId: randomUUID(), service: { environmentId: randomUUID(), serviceId: randomUUID() }, installationId: randomUUID(), grantId: randomUUID(), activityId: randomUUID() };
-  const authority = { driverId: 'original-driver', runId: randomUUID(), activityId: origin.activityId, generation: 1 };
-  const client = createLearningModelClient(request => paired.request(request, { ...origin, operationId: randomUUID(),
-    ...(request.operation === 'checks.receive' || request.operation === 'checks.dispatch' ? { authority } : {}) }));
+  const origin = { formatVersion: 3, sessionId: randomUUID(), operationId: randomUUID(), service: { environmentId: randomUUID(), serviceId: randomUUID() }, installationId: randomUUID(), grantId: randomUUID() };
+  const authority = { sessionId: origin.sessionId, runId: randomUUID(), stepId: randomUUID(), operationId: randomUUID(), generation: 1 };
+  const client = createLearningModelClient(request => {
+    if (request.operation === 'checks.receive' || request.operation === 'checks.dispatch') {
+      authority.operationId = request.operation === 'checks.receive' ? request.args[0].attemptId : request.args[0];
+      const value = { formatVersion: 1, permit: { ...authority } };
+      request = { ...request, args: request.operation === 'checks.receive' ? [{ ...request.args[0], authority: value }] : [request.args[0], value] };
+    }
+    return paired.request(request, { ...origin, operationId: randomUUID(),
+    ...(request.operation === 'checks.receive' || request.operation === 'checks.dispatch' ? { authority: { ...authority } } : {}) }); });
   const worker = (async () => {
     while (running) {
       await paired.enqueueGrantChanges(identity, pair);
@@ -78,7 +84,7 @@ async function setup() {
       await delay(5);
     }
   })().catch(error => { workerError = error; running = false; });
-  return { root, device, identity, personal, selfId, personalId, schoolId, pair, binding, source, client, paired, publish, started, ended, received,
+  return { root, device, identity, personal, selfId, personalId, schoolId, pair, binding, source, client, paired, publish, sessionId: origin.sessionId, started, ended, received,
     setHoldSdk(value) { holdSdk = value; }, setHoldRevoke(value) { holdRevoke = value; }, setHoldAck(value) { holdAck = value; },
     async ack() { holdAck = false; for (const [id, receipt] of pendingAcks) await root.deviceTasks.complete(identity, pair, id, receipt); pendingAcks.clear(); },
     async grant(connectionId) { return routeModels(root, identity, 'models/grants', { requestId: randomUUID(), grantId: randomUUID(), connectionId, owner: 'device' }); },
@@ -118,7 +124,7 @@ test('Root revoke denies existing segments and stops the in-flight SDK before an
     await f.publish(); const grant = await f.grant(f.selfId);
     await f.root.selection.save(f.identity, { requestId: randomUUID(), expectedVersion: 0, source: { kind: 'personal', connectionId: f.selfId, grantId: grant.grantId } });
     const segmentId = randomUUID(), attemptId = randomUUID();
-    await f.client.segments.create(f.identity, { requestId: randomUUID(), segmentId, purpose: 'learning', source: { selected: true, selectionVersion: 1 }, prefix: { system: '', tools: [] }, portable: [] });
+    await f.client.segments.create(f.identity, { requestId: randomUUID(), segmentId, sessionId: f.sessionId, purpose: 'learning', source: { selected: true, selectionVersion: 1 }, prefix: { system: '', tools: [] }, portable: [] });
     await f.client.checks.receive(f.identity, { attemptId, segmentId, purpose: 'learning', expectedSequence: 0, input: { text: '原SDK', images: [], toolResults: [] }, limits: { maxOutputTokens: 32, timeoutMs: 30000 } });
     await f.root.selection.save(f.identity, { requestId: randomUUID(), expectedVersion: 1, source: { kind: 'school', connectionId: f.schoolId } });
     f.setHoldSdk(true); await f.client.checks.dispatch(f.identity, attemptId); await f.started.promise;
@@ -154,7 +160,7 @@ test('Root revoke denies existing segments and stops the in-flight SDK before an
     const fixed = await f.client.selection.pin(f.identity, pinId, direct.version);
     assert.equal(fixed.source.grantId, undefined);
     const directSegmentId = randomUUID(), directAttemptId = randomUUID();
-    await f.client.segments.create(f.identity, { requestId: randomUUID(), segmentId: directSegmentId, purpose: 'learning',
+    await f.client.segments.create(f.identity, { requestId: randomUUID(), segmentId: directSegmentId, sessionId: f.sessionId, purpose: 'learning',
       source: { selected: true, selectionVersion: direct.version, pinId }, prefix: { system: '', tools: [] }, portable: [] });
     await f.client.checks.receive(f.identity, { attemptId: directAttemptId, segmentId: directSegmentId, purpose: 'learning',
       expectedSequence: 0, input: { text: '直接使用本人配置', images: [], toolResults: [] }, limits: { maxOutputTokens: 32 } });
