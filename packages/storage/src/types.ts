@@ -15,6 +15,12 @@ export interface Migration {
   formerVersion?: number;
 }
 export interface QueryResult<T> { rows: T[]; rowCount: number; }
+/** A host-liveness lock held on one dedicated connection, independent of the transaction pool. */
+export interface HostLock {
+  /** Resolves when the dedicated connection drops and the lock is lost. Never resolves on clean release. */
+  readonly lost: Promise<void>;
+  release(): Promise<void>;
+}
 
 /** Only the owner module receives this interface; its database role cannot write another owner. */
 export interface OwnedTransaction {
@@ -38,6 +44,8 @@ export interface OwnedStorage {
   /** Host-only location for independent backup/restore placement checks. */
   readonly resourceLocation?: BlobBackend['location'];
   request(input: { requestId: string; fingerprint: string }, effect: (tx: OwnedTransaction) => Promise<unknown>): Promise<StorageReceipt>;
+  /** Try to hold a stable host-liveness lock on a dedicated connection. null means another host holds it. */
+  tryHostLock(key: string): Promise<HostLock | null>;
   receipt(requestId: string, fingerprint?: string): Promise<StorageReceipt | null>;
   read<T extends Record<string, unknown> = Record<string, unknown>>(sql: string, values?: readonly unknown[]): Promise<QueryResult<T>>;
   pendingIntents(): Promise<{ intentId: string; payload: unknown }[]>;

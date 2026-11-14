@@ -1,16 +1,98 @@
-import type { AgentDispatchPermit, AgentInput, AgentInputReceipt, AgentOperation, AgentRun, AgentRuntimeSession, AgentWait } from '@xunjie/contracts/agent-runtime';
+import type { SpaceIdentity } from '@xunjie/contracts/spaces';
+import type { AgentExecutionMode, AgentToolResult, AgentTurnBudget, AgentRuntimeSession } from '@xunjie/contracts/agent-runtime';
+import type { ModelImageRef, ModelTool, ModelToolIntent, ModelToolResult, ModelUsage, ModelConnection } from '@xunjie/contracts/model-connections';
 
 export type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
 export type Facts = { [key: string]: Json };
-export interface AgentAcceptedRequest { receipt: AgentInputReceipt; input: AgentInput; }
-/** Already filtered by the gateway. Only the Node host may publish operation progress. */
-export interface AgentModelProgress { revision: number; text: string; tools?: readonly Json[] | undefined; }
-export interface AgentProgressPort {
-  recordProgress(identity: AgentRuntimeSession['identity'], permit: AgentDispatchPermit, progress: AgentModelProgress): Promise<boolean>;
+
+/** One main-model tool call dispatched by the kernel, with a stable id and batch index. */
+export interface ToolCall {
+  toolCallId: string; nativeCallId: string; callIndex: number;
+  name: string; input: Facts; executionMode: AgentExecutionMode;
 }
-export interface AgentRecoveryPort {
-  /** Startup-only candidates. The host explicitly wakes them once; this starts no scanner. */
-  recoverableRuns(): Promise<AgentRun[]>;
+export interface AskInput {
+  presentation: Facts; deadline: string | null;
+}
+export type AskOutcome =
+  | { kind: 'answered'; questionId: string; version: number; answer: Facts }
+  | { kind: 'skipped'; questionId: string }
+  | { kind: 'closed'; questionId: string }
+  | { kind: 'expired'; questionId: string };
+/** Identity, correlation ids, cancellation and the ability to save a real question. No kernel DB. */
+export interface ToolContext {
+  identity: SpaceIdentity;
+  sessionId: string; turnId: string; stepId: string; toolCallId: string;
+  signal: AbortSignal;
+  /** The input range the model actually saw for this Step. */
+  inputIds: readonly string[];
+  ask(input: AskInput): Promise<AskOutcome>;
+}
+export interface AgentTool {
+  definition: ModelTool;
+  /** Tools that do not support background never expose the executionMode parameter. */
+  supportsBackground: boolean;
+  execute(call: ToolCall, context: ToolContext): Promise<AgentToolResult>;
+}
+
+export interface HistoryEntry { id: string; version: number; role: 'user' | 'assistant'; text: string; resultRef?: string; images?: ModelImageRef[]; }
+
+export interface ScenarioInput {
+  identity: SpaceIdentity; sessionId: string; turnId: string; stepId: string;
+  inputIds: readonly string[]; sessionState: Facts;
+}
+export interface ScenarioContext { system: string; facts: Facts; sources: Facts[]; }
+export interface CompactionSource { messages: HistoryEntry[]; remainder: HistoryEntry[]; sourceDigest: string;
+  sourceVersions: Facts; retainedDigest: string; policy: { maxSummaryTokens: number }; }
+export interface CompactionProvider {
+  id: string; version: number;
+  prompt(source: CompactionSource): { system: string; text: string };
+  parse(text: string, source: CompactionSource): Facts;
+}
+export interface AgentScenario {
+  id: string; version: number;
+  context(input: ScenarioInput): Promise<ScenarioContext>;
+  tools(input: ScenarioInput): Promise<readonly AgentTool[]>;
+  modelFacts?(facts: Facts): Facts;
+  authorizeHistory?(input: ScenarioInput, history: readonly HistoryEntry[]): Promise<HistoryEntry[]>;
+  validateAnswer?(presentation: Facts, answer: Facts): Promise<void>;
+  compaction?: {
+    provider: CompactionProvider; maxPerTurn: number;
+    needed(history: readonly HistoryEntry[], connection: ModelConnection, inputText: string): boolean;
+    select(history: readonly HistoryEntry[], blocks: { id: string; content: Facts }[]): CompactionSource | null;
+  };
+}
+
+/** The selected valid response of one logical generate (after any Attempts). */
+export interface GeneratedResponse {
+  attemptId: string; requestRef: string; responseRef: string | null;
+  text: string; toolIntents: readonly ModelToolIntent[]; usage: ModelUsage;
+  segmentId: string; segmentSequence: number;
+}
+export interface GenerateInput {
+  identity: SpaceIdentity; sessionId: string; turnId: string; stepId: string;
+  system: string; tools: readonly ModelTool[];
+  history: readonly HistoryEntry[];
+  text: string; images: readonly ModelImageRef[];
+  toolResults: readonly ModelToolResult[];
+  budget: AgentTurnBudget;
+  spent: { inputTokens: number; outputTokens: number; inputReserved: number; outputReserved: number };
+  signal: AbortSignal;
+  onProgress?(progress: { attemptId: string; text: string; revision: number; tools?: readonly Json[] }): Promise<void>;
+}
+/** Wraps the existing Gateway communication steps for one logical generate; no second loop. */
+export interface ModelPort {
+  generate(input: GenerateInput): Promise<GeneratedResponse>;
+  settleTools(identity: SpaceIdentity, segmentId: string, expectedSequence: number, results: readonly ModelToolResult[]): Promise<{ segmentId: string; sequence: number }>;
+  cancel(identity: SpaceIdentity, attemptId: string): Promise<void>;
+}
+
+export interface AgentProgressPort {
+  recordProgress(identity: SpaceIdentity, sessionId: string, turnId: string, stepId: string, attemptId: string,
+    progress: { revision: number; text: string; tools?: readonly Json[] }): Promise<boolean>;
+}
+export interface AgentCancellationTimers {
+  setTimeout(callback: () => void, delayMs: number): unknown;
+  clearTimeout(timer: unknown): void;
 }
 export interface AgentRuntimeLifecyclePort {
   closeWrites(): void;
@@ -19,93 +101,14 @@ export interface AgentRuntimeLifecyclePort {
   resume(): Promise<void>;
   close(): Promise<void>;
 }
-/** Host timers for failed original cancellation delivery, never a scan or business wake. */
-export interface AgentCancellationTimers {
-  setTimeout(callback: () => void, delayMs: number): unknown;
-  clearTimeout(timer: unknown): void;
+/** A task owner's terminal observation, converted to a notification by the product bridge. */
+export interface TaskTerminalFact {
+  taskId: string; taskVersion: string; terminalStatus: 'success' | 'failed' | 'cancelled';
+  summary: string; resultRef: string | null;
 }
-export interface AgentRunBudgetOptions {
-  maxSteps?: number | undefined; maxDispatches?: number | undefined; timeoutMs?: number | null | undefined;
+export interface SessionOwnerLock {
+  readonly instanceId: string;
+  readonly lost: Promise<void>;
+  release(): Promise<void>;
 }
-export interface AgentRunBudget {
-  maxSteps: number; maxDispatches: number; deadline: string | null; steps: number; dispatches: number;
-}
-export type AgentInputControl = { requestId: string; expectedVersion: number } & (
-  | { operation: 'edit'; text?: string | undefined; context?: Facts | undefined; mode?: AgentInput['mode'] | undefined }
-  | { operation: 'remove' }
-  | { operation: 'move'; mode: AgentInput['mode'] }
-);
-export interface AgentInputControlReceipt { requestId: string; input: AgentSessionInput; previousRunId?: string; }
-export interface AgentInputControlPort {
-  request(identity: AgentRuntimeSession['identity'], sessionId: string, requestId: string): Promise<AgentAcceptedRequest | null>;
-  inputControl(identity: AgentRuntimeSession['identity'], sessionId: string, inputId: string, control: AgentInputControl): Promise<AgentInputControlReceipt>;
-}
-export interface AgentSessionInput {
-  inputId: string; runId: string; version: number; mode: AgentInput['mode'];
-  state: 'pending' | 'adopted' | 'removed'; input: AgentInput; createdAt: string;
-}
-export interface AgentSessionSnapshot {
-  session: AgentRuntimeSession; runs: AgentRun[]; inputs: AgentSessionInput[]; waits: AgentWait[];
-}
-/** Product projection boundary. Events and full operation snapshots are separate reads. */
-export interface AgentSessionReadPort {
-  sessionSnapshot(identity: AgentRuntimeSession['identity'], sessionId: string): Promise<AgentSessionSnapshot>;
-}
-/** Trusted Node host notification; this is not a browser input or dispatch authorization. */
-export interface AgentWaitResolution {
-  requestId: string; waitId: string; expectedVersion: number; result: Facts;
-}
-export interface FixedAgentInput { inputId: string; version: number; sequence: number; input: AgentInput; }
-export interface AgentStep {
-  stepId: string; number: number; operation: AgentOperation; snapshot: Facts;
-  state: 'prepared' | 'dispatching' | 'waiting' | 'unknown' | 'completed';
-  result: AgentOperationResult | null;
-  continuationOpen: boolean;
-}
-export interface AgentExecutionSnapshot {
-  /** sessionState spans runs; state belongs to this run. Both are facts, not dispatch authority. */
-  session: AgentRuntimeSession; run: AgentRun; revision: number; state: Facts; sessionState: Facts;
-  budget: AgentRunBudget;
-  inputs: FixedAgentInput[]; steps: AgentStep[]; waits: AgentWait[];
-}
-export type AgentSnapshot = AgentExecutionSnapshot;
-export interface AgentOperationResult {
-  state: 'completed' | 'accepted' | 'failed' | 'unknown' | 'not-dispatched';
-  value: Facts;
-  /** Only an original operation known not to have started may be admitted again. */
-  retryAfterMs?: number;
-}
-export type AgentDecision =
-  | { kind: 'operation'; operation: AgentOperation; snapshot: Facts }
-  | { kind: 'complete'; events?: { kind: string; body: Facts }[] }
-  | { kind: 'pause'; reason: string };
-export interface AgentSettlement {
-  state: Facts;
-  /** Replaces session facts in the same transaction as this result and its events. */
-  sessionState?: Facts;
-  events?: { kind: string; body: Facts }[];
-  /** Explicitly retains authority for this original operation, independently of worker leases. */
-  keepDispatch?: boolean;
-  wait?: { kind: string; presentation: Facts; deadline: string | null; continuationOperationId?: string | undefined;
-    interruptible?: boolean | undefined };
-  complete?: boolean;
-  pause?: string;
-}
-/** Preparation and application may read facts, but never dispatch an external effect. */
-export interface AgentPipeline {
-  plan(snapshot: AgentExecutionSnapshot, ids: { stepId: string; operationId: string }): Promise<AgentDecision>;
-  dispatch(snapshot: AgentExecutionSnapshot, step: AgentStep, permit: AgentDispatchPermit,
-    assertDispatch: () => Promise<void>): Promise<AgentOperationResult>;
-  reconcile(snapshot: AgentExecutionSnapshot, step: AgentStep): Promise<AgentOperationResult | null>;
-  apply(snapshot: AgentExecutionSnapshot, step: AgentStep, result: AgentOperationResult): Promise<AgentSettlement>;
-  validateResponse?(snapshot: AgentExecutionSnapshot, wait: AgentWait, answer: Facts): Promise<void>;
-  /** Stop has already revoked dispatch. Resolve once the original owner durably receives cancellation;
-   * physical settlement belongs to that owner. Failed/unacknowledged delivery is retried idempotently. */
-  cancel?(snapshot: AgentExecutionSnapshot, step: AgentStep): Promise<void>;
-}
-export interface AgentExecutionStrategy {
-  wake(runId: string): void;
-  closeDispatch(): void;
-  drain(): Promise<void>;
-  close?(): Promise<void> | void;
-}
+export type { AgentRuntimeSession };
