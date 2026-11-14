@@ -1,6 +1,7 @@
 import { StorageError } from '@xunjie/storage';
 import { canonicalDigest, operationId } from '@xunjie/storage/identity';
-import { agentInputSchema, agentRuntimeSessionSchema, type AgentRuntimePort } from '@xunjie/contracts/agent-runtime';
+import { agentInputSchema, agentRuntimeSessionSchema, type AgentInput, type AgentQuestionResponse } from '@xunjie/contracts/agent-runtime';
+import type { AgentSessionPort, AgentInputControl } from '@xunjie/contracts/agent-service';
 import { createAgentSessionSchema, updateAgentSessionSchema, type AgentSession, type CreateAgentSession,
   type MarkAgentSessionReady, type UpdateAgentSession } from '@xunjie/contracts/agent-sessions';
 import type { SpaceIdentity, LearningTarget } from '@xunjie/contracts/spaces';
@@ -16,7 +17,7 @@ export interface AgentSessionDirectory {
 export interface AgentSessionApplicationHost {
   directory: AgentSessionDirectory;
   /** Resolves exactly this saved owner; implementations must not choose a fallback. */
-  runtime(session: AgentSession): Promise<AgentRuntimePort>;
+  runtime(session: AgentSession): Promise<AgentSessionPort>;
   deleted?(session: AgentSession): Promise<void>;
   /** Client delivery initializes at its owning Node host, after the directory is durable. */
   deferInitialization?(session: AgentSession): boolean;
@@ -30,7 +31,7 @@ export function createAgentSessionApplication(host: AgentSessionApplicationHost)
     if (host.deferInitialization?.(session)) return session;
     const runtime = await host.runtime(session);
     const input = agentRuntimeSessionSchema.parse({ sessionId: session.sessionId, identity: session.identity,
-      scenario: session.scenario, restartPolicy: session.scenario === 'student-assistant' ? 'explicit' : 'automatic', createdAt: session.createdAt });
+      scenario: session.scenario, createdAt: session.createdAt });
     const initialized = agentRuntimeSessionSchema.parse(await runtime.initialize(input));
     if (canonicalDigest(input) !== canonicalDigest(initialized)) throw new StorageError('identity-conflict');
     return host.directory.markReady(session.identity, {
@@ -76,22 +77,50 @@ export function createAgentSessionApplication(host: AgentSessionApplicationHost)
       return create(identity, { requestId: operationId('workspace-agent-session-create:' + sessionId), sessionId,
         scenario: 'workspace-assistant', workspace: { activityId, target } });
     },
-    async accept(identity: SpaceIdentity, value: unknown) {
+    async submit(identity: SpaceIdentity, value: unknown) {
       const input = agentInputSchema.parse(value);
       const { runtime } = await endpoint(identity, input.sessionId, true);
-      return runtime.accept(identity, input);
+      return runtime.submit(identity, input);
     },
-    async run(identity: SpaceIdentity, sessionId: string, runId: string) {
-      return (await endpoint(identity, sessionId)).runtime.run(identity, sessionId, runId);
+    async answerQuestion(identity: SpaceIdentity, sessionId: string, response: AgentQuestionResponse) {
+      const { runtime } = await endpoint(identity, sessionId, true);
+      return runtime.answerQuestion(identity, sessionId, response);
+    },
+    async inputControl(identity: SpaceIdentity, sessionId: string, inputId: string, control: AgentInputControl) {
+      const { runtime } = await endpoint(identity, sessionId, true);
+      return runtime.inputControl(identity, sessionId, inputId, control);
+    },
+    async turn(identity: SpaceIdentity, sessionId: string, turnId: string) {
+      return (await endpoint(identity, sessionId)).runtime.turn(identity, sessionId, turnId);
     },
     async events(identity: SpaceIdentity, sessionId: string, after = 0) {
       return (await endpoint(identity, sessionId)).runtime.events(identity, sessionId, after);
     },
-    async stop(identity: SpaceIdentity, sessionId: string, runId: string, requestId: string) {
-      return (await endpoint(identity, sessionId)).runtime.stop(identity, sessionId, runId, requestId);
+    async sessionSnapshot(identity: SpaceIdentity, sessionId: string) {
+      return (await endpoint(identity, sessionId)).runtime.sessionSnapshot(identity, sessionId);
     },
-    async continueRun(identity: SpaceIdentity, sessionId: string, runId: string, requestId: string) {
-      return (await endpoint(identity, sessionId, true)).runtime.continueRun(identity, sessionId, runId, requestId);
+    async conversation(identity: SpaceIdentity, sessionId: string, after = 0) {
+      return (await endpoint(identity, sessionId)).runtime.conversation(identity, sessionId, after);
+    },
+    async request(identity: SpaceIdentity, sessionId: string, requestId: string) {
+      return (await endpoint(identity, sessionId)).runtime.request(identity, sessionId, requestId);
+    },
+    async registerNotification(identity: SpaceIdentity, sessionId: string, originTurnId: string, fact: Parameters<AgentSessionPort['registerNotification']>[3]) {
+      const { runtime } = await endpoint(identity, sessionId, true);
+      return runtime.registerNotification(identity, sessionId, originTurnId, fact);
+    },
+    async recordProgress(identity: SpaceIdentity, sessionId: string, attemptId: string, progress: Parameters<AgentSessionPort['recordProgress']>[3]) {
+      return (await endpoint(identity, sessionId)).runtime.recordProgress(identity, sessionId, attemptId, progress);
+    },
+    async stop(identity: SpaceIdentity, sessionId: string, turnId: string, requestId: string) {
+      const { runtime } = await endpoint(identity, sessionId, true);
+      return runtime.stop(identity, sessionId, turnId, requestId);
+    },
+    async continueSession(identity: SpaceIdentity, sessionId: string, requestId: string) {
+      const { runtime } = await endpoint(identity, sessionId, true);
+      return runtime.continueSession(identity, sessionId, requestId);
     },
   };
 }
+
+export type { AgentInput };

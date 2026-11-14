@@ -1,67 +1,59 @@
 import { z } from 'zod';
-import { StorageError } from '@xunjie/storage';
-import type { AgentSessionReadPort } from '@xunjie/agent-runtime';
-import type { AgentRuntimePort } from '@xunjie/contracts/agent-runtime';
-import { agentConversationSchema, type AgentConversation } from '@xunjie/contracts/agent-service';
+import { agentConversationSchema, type AgentConversation, type AgentSessionPort } from '@xunjie/contracts/agent-service';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 
 type Message = AgentConversation['messages'][number];
-type Tool = AgentConversation['tools'][number];
 const record = (value: unknown): Record<string, unknown> =>
   value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
 const uuid = z.uuid();
 
-/** Product-sized facts. Native requests and complete tool originals stay behind snapshot/event reads. */
-export function createAgentConversationProjection(runtime: AgentSessionReadPort & Pick<AgentRuntimePort, 'events'>) {
+/** Product projection over kernel facts: inputs, turns, tool calls and streamed assistant text. */
+export function createAgentConversationProjection(runtime: Pick<AgentSessionPort, 'events' | 'sessionSnapshot'>) {
   return {
     async conversation(identity: SpaceIdentity, sessionId: string, after = 0): Promise<AgentConversation> {
-      // Read events first: a newly accepted run cannot appear here before it exists in the state view.
       const events = await runtime.events(identity, sessionId, after);
       const snapshot = await runtime.sessionSnapshot(identity, sessionId);
-      const runs = new Map(snapshot.runs.map(run => [run.runId, run]));
+      const turns = new Map(snapshot.turns.map(turn => [turn.turnId, turn]));
+      const steps = new Map(snapshot.steps.map(step => [step.stepId, step]));
       const messages = new Map<string, Message>();
-      const tools = new Map<string, Tool>();
-      const workspaces = new Map<string, AgentConversation['workspaces'][number]>();
       for (const input of snapshot.inputs) {
         if (input.state === 'removed') continue;
         const messageId = 'input:' + input.inputId;
-        messages.set(messageId, { messageId, inputId: input.inputId, runId: input.runId,
-          role: 'user', text: input.input.text, createdAt: input.createdAt, state: 'settled' });
+        messages.set(messageId, { messageId, turnId: input.turnId, inputId: input.inputId, role: 'user',
+          text: input.input.text, createdAt: input.createdAt, state: 'settled' });
       }
       for (const event of events) {
+        if (!['assistant', 'model-progress'].includes(event.kind)) continue;
         const body = event.body;
-        if (!['assistant', 'model-progress', 'tool-prepared', 'tool-result'].includes(event.kind)) continue;
-        const runId = uuid.parse(body.runId), run = runs.get(runId);
-        if (!run) throw new StorageError('corrupt');
-        if (event.kind === 'assistant' || event.kind === 'model-progress') {
-          if (typeof body.text !== 'string' || !body.text) continue;
-          const operationId = uuid.parse(body.attemptId ?? body.operationId);
-          const messageId = 'assistant:' + operationId;
-          const prior = messages.get(messageId);
-          const state = run.state === 'stopped' ? 'stopped' : run.state === 'failed' ? 'failed'
-            : event.kind === 'model-progress' && !['completed', 'paused'].includes(run.state) ? 'streaming' : 'settled';
-          messages.set(messageId, { messageId, runId, role: 'assistant', text: body.text,
-            createdAt: prior?.createdAt ?? event.createdAt, state });
-          continue;
-        }
-        const operationId = uuid.parse(body.commandId), prior = tools.get(operationId);
-        if (event.kind === 'tool-prepared') {
-          tools.set(operationId, { operationId, runId, name: String(body.name), state: run.state === 'stopped' ? 'stopped' : 'prepared' });
-          continue;
-        }
-        const outcome = record(body.outcome), feedback = record(outcome.feedback), result = record(outcome.result);
-        tools.set(operationId, { operationId, runId, name: typeof body.name === 'string' ? body.name : prior?.name ?? '工具调用',
-          state: outcome.state as Tool['state'], feedback: feedback as Tool['feedback'] });
-        const workspace = record(result.workspace);
-        if (outcome.state === 'completed' && Object.keys(workspace).length) workspaces.set(operationId, {
-          operationId, runId, workspace: z.record(z.string(), z.json()).parse(workspace),
-        });
+        if (typeof body.text !== 'string' || !body.text) continue;
+        const turnId = uuid.parse(String(body.turnId));
+        const attemptId = uuid.parse(String(body.attemptId));
+        const turn = turns.get(turnId);
+        const messageId = 'assistant:' + attemptId;
+        const prior = messages.get(messageId);
+        const state = turn?.state === 'stopped' ? 'stopped' : turn?.state === 'failed' ? 'failed'
+          : event.kind === 'model-progress' && turn?.state === 'active' ? 'streaming' : 'settled';
+        messages.set(messageId, { messageId, turnId, role: 'assistant', text: body.text,
+          createdAt: prior?.createdAt ?? event.createdAt, state });
+      }
+      const tools: AgentConversation['tools'] = [];
+      const workspaces: AgentConversation['workspaces'] = [];
+      for (const call of snapshot.toolCalls) {
+        const step = steps.get(call.stepId);
+        if (!step) continue;
+        tools.push({ toolCallId: call.toolCallId, turnId: step.turnId, stepId: call.stepId,
+          name: call.name, state: call.state, result: call.result });
+        const workspace = record(record(call.result).data).workspace;
+        const fixed = record(workspace);
+        if (Object.keys(fixed).length) workspaces.push({ toolCallId: call.toolCallId, turnId: step.turnId,
+          workspace: z.record(z.string(), z.json()).parse(fixed) });
       }
       return agentConversationSchema.parse({ sessionId, lastSeq: events.at(-1)?.seq ?? after,
         messages: [...messages.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.messageId.localeCompare(b.messageId)),
-        runs: snapshot.runs, inputs: snapshot.inputs.map(input => ({ inputId: input.inputId, runId: input.runId,
-          version: input.version, mode: input.mode, state: input.state, text: input.input.text, createdAt: input.createdAt })),
-        waits: snapshot.waits, tools: [...tools.values()], workspaces: [...workspaces.values()] });
+        turns: snapshot.turns,
+        inputs: snapshot.inputs.map(input => ({ inputId: input.inputId, turnId: input.turnId, version: input.version,
+          state: input.state, text: input.input.text, createdAt: input.createdAt })),
+        questions: snapshot.questions, tools, workspaces });
     },
   };
 }
