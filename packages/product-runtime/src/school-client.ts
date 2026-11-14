@@ -506,15 +506,15 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
         || JSON.stringify(canonicalValue(current.owner)) !== JSON.stringify(canonicalValue(original.owner))) throw new StorageError('identity-conflict');
       const prefix = `agent-sessions/${sessionId}`;
       switch (request.operation) {
-        case 'accept': return call(connection, prefix + '/inputs', request.args.input, true);
+        case 'submit': return call(connection, prefix + '/inputs', request.args.input, true);
         case 'conversation': return call(connection, prefix + '/conversation?after=' + request.args.after, undefined, true);
         case 'events': return call(connection, prefix + '/events?after=' + request.args.after, undefined, true);
-        case 'run': return call(connection, prefix + '/runs/' + request.args.runId, undefined, true);
-        case 'snapshot': return call(connection, prefix + '/snapshots/' + request.args.runId, undefined, true);
+        case 'turn': return call(connection, prefix + '/runs/' + request.args.turnId, undefined, true);
+        case 'sessionSnapshot': return call(connection, prefix + '/snapshots/' + sessionId, undefined, true);
         case 'request': return call(connection, prefix + '/requests/' + request.args.requestId, undefined, true);
-        case 'stop': case 'continueRun': return call(connection, prefix + '/runs/' + request.args.runId
-          + (request.operation === 'stop' ? '/stop' : '/continue'), { requestId: request.args.requestId }, true);
-        case 'respond': return call(connection, prefix + '/waits/' + request.args.response.waitId + '/responses', request.args.response, true);
+        case 'stop': return call(connection, prefix + '/runs/' + request.args.turnId + '/stop', { requestId: request.args.requestId }, true);
+        case 'continueSession': return call(connection, prefix + '/runs/' + sessionId + '/continue', { requestId: request.args.requestId }, true);
+        case 'answerQuestion': return call(connection, prefix + '/waits/' + request.args.response.questionId + '/responses', request.args.response, true);
         case 'inputControl': return call(connection, prefix + '/inputs/' + request.args.inputId + '/control', request.args.control, true);
         default: throw new StorageError('forbidden');
       }
