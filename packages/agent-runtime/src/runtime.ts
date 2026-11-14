@@ -3,9 +3,8 @@ import { StorageError, type OwnedStorage, type HostLock } from '@xunjie/storage'
 import { canonicalDigest, operationId } from '@xunjie/storage/identity';
 import { agentInputSchema, agentQuestionResponseSchema, type AgentInput, type AgentInputReceipt, type AgentRuntimeSession,
   type AgentTurn, type AgentQuestionResponse, type AgentQuestionReceipt, type AgentEvent } from '@xunjie/contracts/agent-runtime';
-import type { LearningModelPort } from '@xunjie/model-gateway/service';
 import { createAgentStore, type AgentStore, type AgentSessionSnapshot, type AgentSessionInput } from './store.js';
-import { createModelAdapter } from './model.js';
+import { createModelAdapter, type ModelGatewaySource } from './model.js';
 import { runTurn, type LoopDependencies } from './loop.js';
 import { createCancellationRunner, type TaskCancellationPort } from './interruption.js';
 import type { AgentScenario, AgentCancellationTimers, AskInput, AskOutcome, Facts, TaskTerminalFact } from './ports.js';
@@ -14,7 +13,7 @@ import type { TaskFactsPort } from './context.js';
 export interface AgentRuntimeOptions {
   authorize(identity: AgentRuntimeSession['identity']): Promise<void>;
   scenario: AgentScenario;
-  gateway: LearningModelPort;
+  gateway: ModelGatewaySource;
   taskFacts?: TaskFactsPort;
   taskCancellation?: TaskCancellationPort;
   budget?: { maxSteps?: number; maxToolCalls?: number; maxInputTokens?: number; maxOutputTokens?: number; maxCallMs?: number; hardDeadlineMs?: number };

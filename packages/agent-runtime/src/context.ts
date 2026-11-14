@@ -6,6 +6,7 @@ import type { AgentNotification, AgentTurnBudget } from '@xunjie/contracts/agent
 import type { AgentStore } from './store.js';
 import type { AgentScenario, Facts, HistoryEntry, ScenarioInput, CompactionSource } from './ports.js';
 import { conversationHistory, appendHistory, historyDigest } from './history.js';
+import { resolveGateway, type ModelGatewaySource } from './model.js';
 
 /** Latest task facts the scene/product can resolve for explicit references or unresolved effects. */
 export interface TaskFactsPort {
@@ -21,7 +22,7 @@ export interface ContextPlan {
   inputIds: string[]; notificationIds: string[];
 }
 export interface BuildContextOptions {
-  store: AgentStore; gateway: LearningModelPort; scenario: AgentScenario;
+  store: AgentStore; gateway: ModelGatewaySource; scenario: AgentScenario;
   taskFacts?: TaskFactsPort | undefined; budget: AgentTurnBudget;
   spent: { inputTokens: number; outputTokens: number; inputReserved: number; outputReserved: number };
 }
@@ -63,9 +64,10 @@ export async function buildContext(options: BuildContextOptions, input: Scenario
   const text = adopted.inputs.map(i => i.input.text).join('\n\n') + factsText + factsSection;
 
   // Compaction: a planning trigger only; the summary attempt is billed but adds no main Step.
-  const selection = await options.gateway.selection.read(input.identity);
+  const gateway = resolveGateway(options.gateway, input.identity, input.sessionId);
+  const selection = await gateway.selection.read(input.identity);
   if (selection.selected && scenario.compaction) {
-    const choice = await options.gateway.selection.snapshot(input.identity, selection.version);
+    const choice = await gateway.selection.snapshot(input.identity, selection.version);
     const state = await store.sessionState(input.sessionId);
     const adoptedDigest = (state.compactionAdoption as { sourceDigest?: string } | undefined)?.sourceDigest;
     if (scenario.compaction.needed(history, choice.choice.connection, text) && adoptedDigest !== canonicalDigest(history)) {
@@ -79,7 +81,8 @@ export async function buildContext(options: BuildContextOptions, input: Scenario
   return { system: prepared.system, tools, history, text, images: [], inputIds: adopted.inputs.map(i => i.inputId), notificationIds: consumed.map(n => n.notificationId) };
 }
 async function runCompaction(options: BuildContextOptions, input: ScenarioInput, source: CompactionSource): Promise<HistoryEntry[] | null> {
-  const { store, gateway, scenario } = options;
+  const { store, scenario } = options;
+  const gateway = resolveGateway(options.gateway, input.identity, input.sessionId);
   const compaction = scenario.compaction!;
   const selection = await gateway.selection.read(input.identity);
   if (!selection.selected) return null;

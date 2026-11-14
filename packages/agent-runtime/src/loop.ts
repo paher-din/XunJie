@@ -1,8 +1,8 @@
 import { operationId } from '@xunjie/storage/identity';
 import type { AgentTurn, AgentStep, AgentToolCall, AgentNotification, AgentToolResult } from '@xunjie/contracts/agent-runtime';
 import type { ModelToolResult } from '@xunjie/contracts/model-connections';
-import type { LearningModelPort } from '@xunjie/model-gateway/service';
 import type { AgentStore, AgentSessionInput } from './store.js';
+import type { ModelGatewaySource } from './model.js';
 import type { AgentScenario, AgentTool, ModelPort, ToolContext, AskInput, AskOutcome, Facts, ScenarioInput, Json } from './ports.js';
 import { buildContext, type TaskFactsPort } from './context.js';
 import { createToolRegistry, executeTools } from './tools.js';
@@ -11,7 +11,7 @@ import { budgetExhausted } from './budgets.js';
 import { AgentError } from './errors.js';
 
 export interface LoopDependencies {
-  store: AgentStore; model: ModelPort; gateway: LearningModelPort; scenario: AgentScenario;
+  store: AgentStore; model: ModelPort; gateway: ModelGatewaySource; scenario: AgentScenario;
   taskFacts?: TaskFactsPort | undefined;
   isActive(turnId: string): Promise<boolean>;
   signalFor(turnId: string): AbortSignal;
