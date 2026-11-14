@@ -1,11 +1,13 @@
-import type { AgentScenario, AgentTool, Facts } from '@xunjie/agent-runtime';
+import type { AgentScenario, AgentTool, Facts, ScenarioInput } from '@xunjie/agent-runtime';
 import { createUserQuestions, validateTeachingAnswer } from '../capabilities/user-questions/index.js';
 import { createConversationCompaction, type CompactionOptions } from '../capabilities/context-compaction/conversation.js';
 import { createLearningTools, type LearningToolsHost } from './tools/learning-tools.js';
 
 export interface StudentAssistantOptions {
   /** Product host supplies real owner sources and the fixed local personal creation ports. */
-  learning: LearningToolsHost;
+  learning?: LearningToolsHost;
+  /** A dependency host supplies the Step's tool set from the data owner; questions come with it. */
+  tools?(input: ScenarioInput): Promise<readonly AgentTool[]>;
   /** Optional injected capabilities, already assembled as kernel tools. */
   documents?: readonly AgentTool[];
   skills?: readonly AgentTool[];
@@ -26,14 +28,18 @@ create_personal_project 提交同一个 proposalKey 及 title、goal、stages、
 
 /** Scenario assembly only: the shared kernel supplies the serial model/tool loop. */
 export function createStudentAssistant(options: StudentAssistantOptions): AgentScenario {
-  const learning = createLearningTools(options.learning);
+  const learning = options.learning ? createLearningTools(options.learning) : undefined;
   const questions = createUserQuestions();
   const compaction = options.compaction === false ? undefined : createConversationCompaction(options.compaction ?? {});
   return {
     id: 'student-assistant', version: 2,
     // Query provenance comes from the injected owner tools, never invented from input context.
     async context() { return { system, facts: {} as Facts, sources: [] }; },
-    async tools() { return [...learning, questions, ...(options.documents ?? []), ...(options.skills ?? [])]; },
+    async tools(input) {
+      if (options.tools) return [...await options.tools(input)];
+      if (!learning) throw new Error('missing-student-scene');
+      return [...learning, questions, ...(options.documents ?? []), ...(options.skills ?? [])];
+    },
     async validateAnswer(presentation, answer) { validateTeachingAnswer(presentation, answer); },
     ...(compaction ? { compaction: { provider: compaction.provider, maxPerTurn: compaction.maxPerTurn,
       needed: compaction.needed, select: compaction.select } } : {}),

@@ -1,6 +1,6 @@
 import { StorageError } from '@xunjie/storage';
 import { canonicalDigest } from '@xunjie/storage/identity';
-import type { AgentScenario, AgentTool, Facts } from '@xunjie/agent-runtime';
+import type { AgentScenario, AgentTool, Facts, ScenarioInput } from '@xunjie/agent-runtime';
 import { activitySchema } from '@xunjie/contracts/learning-data';
 import { personalProjectSchema, type PersonalProject } from '@xunjie/contracts/student-learning';
 import { sameAgentSubject } from '@xunjie/contracts/agent-service';
@@ -14,6 +14,8 @@ export { createWorkspaceTools, resolveWorkspace, authorizedWorkspace, workspaceF
 export type { WorkspaceToolOptions } from './tools/module.js';
 export interface WorkspaceAssistantOptions extends WorkspaceToolOptions {
   project?(identity: SpaceIdentity, activityId: string): Promise<PersonalProject | null>;
+  /** A dependency host supplies the Step's tool set from the data owner; questions come with it. */
+  tools?(input: ScenarioInput): Promise<readonly AgentTool[]>;
   documents?: readonly AgentTool[];
   skills?: readonly AgentTool[];
   compaction?: CompactionOptions | false;
@@ -62,6 +64,7 @@ export function createWorkspaceAssistant(options: WorkspaceAssistantOptions): Ag
         ])] };
     },
     async tools(input) {
+      if (options.tools) return [...await options.tools(input)];
       return [...await createWorkspaceTools(options, input), questions, ...(options.documents ?? []), ...(options.skills ?? [])];
     },
     async validateAnswer(presentation, answer) { validateTeachingAnswer(presentation, answer); },

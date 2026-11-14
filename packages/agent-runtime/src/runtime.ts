@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { StorageError, type OwnedStorage, type HostLock } from '@xunjie/storage';
 import { canonicalDigest, operationId } from '@xunjie/storage/identity';
-import { agentInputSchema, agentQuestionResponseSchema, type AgentInput, type AgentInputReceipt, type AgentRuntimeSession,
-  type AgentTurn, type AgentQuestionResponse, type AgentQuestionReceipt, type AgentEvent } from '@xunjie/contracts/agent-runtime';
+import { agentInputSchema, agentQuestionResponseSchema, agentDispatchPermitSchema, type AgentInput, type AgentInputReceipt, type AgentRuntimeSession,
+  type AgentTurn, type AgentQuestionResponse, type AgentQuestionReceipt, type AgentEvent, type AgentDispatchPermit } from '@xunjie/contracts/agent-runtime';
 import { createAgentStore, type AgentStore, type AgentSessionSnapshot, type AgentSessionInput } from './store.js';
 import { createModelAdapter, type ModelGatewaySource } from './model.js';
 import { runTurn, type LoopDependencies } from './loop.js';
@@ -200,6 +200,13 @@ export function createAgentRuntime(storage: OwnedStorage, options: AgentRuntimeO
       await authorized(identity, sessionId);
       if (!dispatchOpen()) return false;
       return store.recordProgress(sessionId, attemptId, progress);
+    },
+    /** Cross-machine adapters mint a permit from the live call and the owner verifies the Step here. */
+    async assertDispatch(identity: AgentRuntimeSession['identity'], permit: AgentDispatchPermit): Promise<null> {
+      const input = agentDispatchPermitSchema.parse(permit);
+      await authorized(identity, input.sessionId);
+      if (!dispatchOpen()) throw new StorageError('stale-generation');
+      return store.assertDispatch(input);
     },
     closeWrites() { writesClosed = true; dispatchClosed = true; for (const c of turnControllers.values()) c.abort(); },
     closeDispatch() { dispatchClosed = true; for (const c of turnControllers.values()) c.abort(); },

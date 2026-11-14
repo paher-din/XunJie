@@ -2,14 +2,14 @@ import { z } from 'zod';
 import { spaceIdentitySchema, type SpaceIdentity } from './spaces.js';
 import { agentInputSchema, agentRuntimeSessionSchema, agentTurnSchema, agentEventSchema, agentInputReceiptSchema,
   agentQuestionSchema, agentQuestionResponseSchema, agentQuestionReceiptSchema, agentToolCallSchema, agentStepSchema,
-  agentNotificationSchema, agentTurnBudgetSchema,
+  agentNotificationSchema, agentTurnBudgetSchema, agentDispatchPermitSchema,
   type AgentInput, type AgentRuntimeSession, type AgentTurn, type AgentEvent, type AgentInputReceipt,
-  type AgentQuestionResponse, type AgentQuestionReceipt } from './agent-runtime.js';
+  type AgentQuestionResponse, type AgentQuestionReceipt, type AgentDispatchPermit } from './agent-runtime.js';
 
 export const agentSessionsCapability = 'agent.sessions.v3' as const;
 export const agentSessionOperationSchema = z.enum([
   'initialize', 'submit', 'answerQuestion', 'stop', 'continueSession', 'turn', 'events', 'conversation',
-  'sessionSnapshot', 'request', 'inputControl', 'registerNotification', 'recordProgress',
+  'sessionSnapshot', 'request', 'inputControl', 'registerNotification', 'recordProgress', 'assertDispatch',
 ]);
 const facts = z.record(z.string(), z.json());
 const inputControlBase = { requestId: z.uuid(), expectedVersion: z.number().int().positive() };
@@ -60,14 +60,17 @@ export const agentSessionCallSchema = z.discriminatedUnion('operation', [
   envelope.extend({ operation: z.literal('inputControl'), args: z.object({ inputId: z.uuid(), control: agentInputControlSchema }).strict() }),
   envelope.extend({ operation: z.literal('registerNotification'), args: z.object({ originTurnId: z.uuid(), fact: taskTerminalFactSchema }).strict() }),
   envelope.extend({ operation: z.literal('recordProgress'), args: z.object({ attemptId: z.uuid(), progress: z.object({ revision: z.number().int().positive(), text: z.string().max(1_000_000), tools: z.array(z.json()).max(128).optional() }).strict() }).strict() }),
+  envelope.extend({ operation: z.literal('assertDispatch'), args: z.object({ permit: agentDispatchPermitSchema }).strict() }),
 ]).superRefine((call, context) => {
   if (call.operation === 'submit' && call.args.input.sessionId !== call.sessionId)
     context.addIssue({ code: 'custom', path: ['args', 'input', 'sessionId'], message: 'Input belongs to another session.' });
+  if (call.operation === 'assertDispatch' && call.args.permit.sessionId !== call.sessionId)
+    context.addIssue({ code: 'custom', path: ['args', 'permit', 'sessionId'], message: 'Permit belongs to another session.' });
   if (call.operation === 'initialize' && (call.args.session.sessionId !== call.sessionId || !sameAgentSubject(call.args.session.identity, call.identity)))
     context.addIssue({ code: 'custom', path: ['args', 'session'], message: 'Initialization must preserve the authenticated session scope.' });
 });
 export type AgentSessionCall = z.infer<typeof agentSessionCallSchema>;
-export type BrowserAgentSessionCall = Exclude<AgentSessionCall, { operation: 'initialize' | 'registerNotification' | 'recordProgress' }>;
+export type BrowserAgentSessionCall = Exclude<AgentSessionCall, { operation: 'initialize' | 'registerNotification' | 'recordProgress' | 'assertDispatch' }>;
 
 export const agentAcceptedRequestSchema = z.object({ receipt: agentInputReceiptSchema, input: agentInputSchema }).strict()
   .refine(value => value.receipt.sessionId === value.input.sessionId && value.receipt.requestId === value.input.requestId);
@@ -110,9 +113,11 @@ export interface AgentSessionPort {
   inputControl(identity: SpaceIdentity, sessionId: string, inputId: string, control: AgentInputControl): Promise<AgentInputControlReceipt>;
   registerNotification(identity: SpaceIdentity, sessionId: string, originTurnId: string, fact: TaskTerminalFact): Promise<{ notificationId: string; turnId: string | null }>;
   recordProgress(identity: SpaceIdentity, sessionId: string, attemptId: string, progress: { revision: number; text: string; tools?: readonly unknown[] }): Promise<boolean>;
+  /** Live-Step check for a cross-machine adapter; not a loop phase and not a browser operation. */
+  assertDispatch(identity: SpaceIdentity, permit: AgentDispatchPermit): Promise<null>;
 }
-export type AgentSessionBackend = Omit<AgentSessionPort, 'request' | 'conversation' | 'inputControl'>
-  & Partial<Pick<AgentSessionPort, 'request' | 'conversation' | 'inputControl'>>;
+export type AgentSessionBackend = Omit<AgentSessionPort, 'request' | 'conversation' | 'inputControl' | 'assertDispatch'>
+  & Partial<Pick<AgentSessionPort, 'request' | 'conversation' | 'inputControl' | 'assertDispatch'>>;
 
 export const agentSessionResultSchemas = {
   initialize: agentRuntimeSessionSchema, submit: agentInputReceiptSchema, answerQuestion: agentQuestionReceiptSchema,
@@ -121,6 +126,7 @@ export const agentSessionResultSchemas = {
   request: agentAcceptedRequestSchema.nullable(), inputControl: agentInputControlReceiptSchema,
   registerNotification: z.object({ notificationId: z.uuid(), turnId: z.uuid().nullable() }).strict(),
   recordProgress: z.boolean(),
+  assertDispatch: z.null(),
 };
 export type AgentSessionResults = { [K in keyof typeof agentSessionResultSchemas]: z.infer<(typeof agentSessionResultSchemas)[K]> };
 
@@ -154,6 +160,7 @@ export function parseAgentSessionResult<C extends AgentSessionCall>(call: C, val
       const receipt = agentQuestionReceiptSchema.parse(result);
       matches = receipt.questionId === call.args.response.questionId; break;
     }
+    case 'assertDispatch': matches = call.args.permit.sessionId === call.sessionId; break;
     case 'conversation': matches = agentConversationSchema.parse(result).sessionId === call.sessionId; break;
     case 'sessionSnapshot': matches = agentSessionSnapshotSchema.parse(result).session.sessionId === call.sessionId; break;
     case 'events': {

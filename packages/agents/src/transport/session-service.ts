@@ -60,6 +60,10 @@ export function createAgentSessionService(agent: AgentSessionBackend, options: A
         output = await agent.recordProgress(identity, sessionId, call.args.attemptId,
           { revision: p.revision, text: p.text, ...(p.tools ? { tools: p.tools } : {}) }); break;
       }
+      case 'assertDispatch': {
+        if (typeof agent.assertDispatch !== 'function') throw new StorageError('incompatible');
+        output = await agent.assertDispatch(identity, call.args.permit); break;
+      }
     }
     return result(call, output);
   };
@@ -86,6 +90,7 @@ export function createAgentSessionClient(transport: (call: AgentSessionCall) => 
     recordProgress: (identity, sessionId, attemptId, progress) => invoke({ version: 3, operation: 'recordProgress', identity, sessionId,
       args: { attemptId, progress: { revision: progress.revision, text: progress.text,
         ...(progress.tools ? { tools: JSON.parse(JSON.stringify(progress.tools)) } : {}) } } }),
+    assertDispatch: (identity, permit) => invoke({ version: 3, operation: 'assertDispatch', identity, sessionId: permit.sessionId, args: { permit } }),
   };
 }
 
@@ -93,6 +98,7 @@ export function createAgentSessionClient(transport: (call: AgentSessionCall) => 
 export function createBrowserAgentSessionCall<O extends BrowserAgentSessionCall['operation']>(identity: SpaceIdentity, sessionId: string,
   operation: O, args: Extract<BrowserAgentSessionCall, { operation: O }>['args']): BrowserAgentSessionCall {
   const call = parseCall({ version: 3, identity, sessionId, operation, args });
-  if (call.operation === 'initialize' || call.operation === 'registerNotification' || call.operation === 'recordProgress') throw new StorageError('forbidden');
+  if (call.operation === 'initialize' || call.operation === 'registerNotification' || call.operation === 'recordProgress'
+    || call.operation === 'assertDispatch') throw new StorageError('forbidden');
   return call;
 }

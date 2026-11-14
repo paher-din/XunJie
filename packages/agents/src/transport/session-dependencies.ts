@@ -556,6 +556,7 @@ export function createAgentDependencyClient(send: (call: AgentDependencyCall) =>
         for (const offer of offers) {
           tools.push({ definition: offer.definition, supportsBackground: offer.supportsBackground,
             execute: (call, ctx) => invoke({ version: 2, operation: 'tools.execute', identity, sessionId,
+              permit: { sessionId: ctx.sessionId, runId: ctx.turnId, stepId: ctx.stepId, operationId: ctx.toolCallId, generation: 1 },
               args: { module, context: { sessionId: ctx.sessionId, turnId: ctx.turnId, stepId: ctx.stepId, toolCallId: ctx.toolCallId,
                 context: { system: '', facts: {}, sources: [] }, inputIds: [...ctx.inputIds] },
                 call: { toolCallId: call.toolCallId, nativeCallId: call.nativeCallId, callIndex: call.callIndex,
@@ -567,7 +568,15 @@ export function createAgentDependencyClient(send: (call: AgentDependencyCall) =>
     materials,
     models: createLearningModelClient(request => {
       actor(request.identity);
-      return invoke({ version: 2, operation: 'model', identity, sessionId,
+      // The kernel adapter mints the live attempt permit; the dependency transport forwards it unchanged.
+      const permit = (() => {
+        try {
+          if (request.operation === 'checks.receive') return modelLearningInputSchema.parse(request.args[0]).authority?.permit;
+          if (request.operation === 'checks.dispatch') return modelSessionAuthoritySchema.parse(request.args[1]).permit;
+        } catch { return undefined; }
+        return undefined;
+      })();
+      return invoke({ version: 2, operation: 'model', identity, sessionId, ...(permit ? { permit } : {}),
         args: { method: agentDependencyModelMethodSchema.parse(request.operation), args: jsonArgs(request.args) } });
     }),
     query: {

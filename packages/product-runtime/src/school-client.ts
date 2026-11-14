@@ -58,7 +58,6 @@ import { executionRecordEventSchema } from '@xunjie/contracts/execution-records'
 import { agentSessionSchema, createAgentSessionSchema, updateAgentSessionSchema, markAgentSessionReadySchema } from '@xunjie/contracts/agent-sessions';
 import { agentDispatchPermitSchema, type AgentDispatchPermit } from '@xunjie/contracts/agent-runtime';
 import { sameAgentSubject, type AgentSessionPort } from '@xunjie/contracts/agent-service';
-import { createWorkspaceToolModule } from '@xunjie/agents/workspace-assistant/index';
 import { createLearningQuery, type LearningQuerySource } from '@xunjie/learning-space/learning-data/learning-query';
 import { routeAgentSessions, type SessionHttpPort } from './learning-http/sessions-http.js';
 import type { AgentSessionDirectory } from './agent-sessions.js';
@@ -624,8 +623,8 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
         return createLearningModelService(local.models, async who => { await identityConnection(who); })(request);
       }),
       query: createLearningQuery({ sources: async () => [await querySource(identity)] }),
-      tools: async () => session.scenario === 'workspace-assistant' ? [createWorkspaceToolModule({ workspace, learning, courses,
-        environment: () => executionEnvironmentFor(identity) })] : [],
+      // The remote kernel keeps its own Step tools; this projection only exposes data reads.
+      tools: async () => [],
     };
   }
   async function querySource(identity: SpaceIdentity): Promise<LearningQuerySource> {

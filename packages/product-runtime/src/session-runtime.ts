@@ -1,7 +1,6 @@
 import { StorageError, type OwnedStorage } from '@xunjie/storage';
 import { canonicalDigest, operationId } from '@xunjie/storage/identity';
-import { createAgentRuntime, type AgentScenario, type TaskFactsPort, type TaskCancellationPort } from '@xunjie/agent-runtime';
-import type { LearningModelPort } from '@xunjie/model-gateway/service';
+import { createAgentRuntime, type AgentScenario, type ModelGatewaySource, type TaskFactsPort, type TaskCancellationPort } from '@xunjie/agent-runtime';
 import type { AgentSession } from '@xunjie/contracts/agent-sessions';
 import type { AgentSessionPort } from '@xunjie/contracts/agent-service';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
@@ -14,7 +13,7 @@ export interface SessionRuntimeHostOptions {
   authorize(identity: SpaceIdentity): Promise<void>;
   /** One scene dispatcher; it selects student/workspace per session and injects concrete tools. */
   scenario: AgentScenario;
-  gateway: LearningModelPort;
+  gateway: ModelGatewaySource;
   taskFacts?: TaskFactsPort;
   taskCancellation?: TaskCancellationPort;
   remote?(session: AgentSession): Promise<AgentSessionPort>;
@@ -57,6 +56,9 @@ export function createSessionRuntimeHost(options: SessionRuntimeHostOptions) {
     },
     async continueSession(identity, sessionId, requestId) {
       await saved(identity, sessionId, true); return runtime.continueSession(identity, sessionId, requestId);
+    },
+    async assertDispatch(identity, permit) {
+      await saved(identity, permit.sessionId, true); return runtime.assertDispatch(identity, permit);
     },
     async inputControl(identity, sessionId, inputId, control) {
       await saved(identity, sessionId, true); return runtime.inputControl(identity, sessionId, inputId, control);

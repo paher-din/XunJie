@@ -2,8 +2,10 @@ import { join } from 'node:path';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { z } from 'zod';
 import { StorageError, type OwnedStorage, type StorageBinding } from '@xunjie/storage';
+import { operationId } from '@xunjie/storage/identity';
 import { createChunkChannel } from '@xunjie/storage/chunk-channel';
 import { agentSessionCallSchema, agentSessionsCapability, sameAgentSubject } from '@xunjie/contracts/agent-service';
+import { activitySchema } from '@xunjie/contracts/learning-data';
 import type { AgentSession } from '@xunjie/contracts/agent-sessions';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import { agentDependenciesCapability } from '@xunjie/contracts/agent-dependencies';
@@ -44,7 +46,7 @@ export function createStandaloneAgentApplication(options: {
   });
   // Admission belongs to one incoming call, never to a run or a background wake.
   const admissions = new AsyncLocalStorage<{ active: boolean; reusable: boolean; session?: AgentSession }>();
-  const canReuseAdmission = (operation: string) => ['initialize', 'assertDispatch', 'run', 'events', 'conversation', 'snapshot', 'request'].includes(operation);
+  const canReuseAdmission = (operation: string) => ['initialize', 'assertDispatch', 'turn', 'events', 'conversation', 'sessionSnapshot', 'request'].includes(operation);
   function admitted(identity: SpaceIdentity, sessionId?: string) {
     const scope = admissions.getStore(), session = scope?.session;
     return scope?.active && scope.reusable && session && sameAgentSubject(session.identity, identity)
@@ -64,14 +66,22 @@ export function createStandaloneAgentApplication(options: {
     },
   };
   const agent = createProductAgent({ storage, directory, readOnly: true,
-    withAuthority: dependencies.withAuthority,
+    models: options.models ?? ((identity, sessionId) => dependencies.forSession(identity, sessionId).models),
     async authorize(identity) { if (!admitted(identity)) await dependencies.source.describe(identity); },
-    async modelsForSession(session) { return options.models ?? dependencies.forSession(session.identity, session.sessionId).models; },
-    async tools(session) { return dependencies.forSession(session.identity, session.sessionId).tools(); },
-    async workspace(session) {
-      if (!session.workspace) throw new StorageError('forbidden');
+    async scene(session) {
       const ports = dependencies.forSession(session.identity, session.sessionId);
-      return { workspace: ports.workspace, learning: ports.learning, courses: ports.courses };
+      if (session.scenario === 'student-assistant') {
+        // The data owner supplies the Step's tool set; the kernel runs on the authenticated device host.
+        return { tools: input => ports.tools({ sessionId: input.sessionId, turnId: input.turnId, stepId: input.stepId,
+          toolCallId: operationId('agent-step-tools:' + input.stepId),
+          context: { system: '', facts: {}, sources: [] }, inputIds: [...input.inputIds] }) };
+      }
+      if (!session.workspace) throw new StorageError('forbidden');
+      const activity = activitySchema.parse(await ports.workspace());
+      return { workspace: { workspace: async () => ports.workspace(), learning: ports.learning, courses: ports.courses },
+        tools: input => ports.tools({ sessionId: input.sessionId, turnId: input.turnId, stepId: input.stepId,
+          toolCallId: operationId('agent-step-tools:' + input.stepId),
+          context: { system: '', facts: { workspace: JSON.parse(JSON.stringify(activity)) }, sources: [] }, inputIds: [...input.inputIds] }) };
     },
   });
   const service = createAgentSessionService(agent.local, { audience: 'service',
@@ -80,11 +90,9 @@ export function createStandaloneAgentApplication(options: {
       if (scope) scope.reusable = canReuseAdmission(operation);
       await authorizeSession(identity, sessionId);
     },
-    // The common authorize above admits these service-only operations. The local
-    // backend still checks the fixed directory owner and original core permit.
+    async authorizeService(identity, sessionId) { await authorizeSession(identity, sessionId); },
+    // The common authorize above admits initialization; the backend still checks the fixed scope.
     async authorizeInitialize() {},
-    async authorizeResolveWait() {},
-    async authorizeDispatchPermit() {},
   });
   const authorizeSource: CapabilityHandler = async (_value, source) => {
     if (!source.assertAuthorized || !z.uuid().safeParse(source.sourceInstallationId).success) throw new StorageError('forbidden');
@@ -106,14 +114,14 @@ export function createStandaloneAgentApplication(options: {
   const chunks = createChunkChannel(storage);
   const chunked = chunks.wrap(async value => {
     try {
-      if ((value as { version?: unknown })?.version !== 2) throw new StorageError('incompatible');
+      if ((value as { version?: unknown })?.version !== 3) throw new StorageError('incompatible');
       return await service(value);
     } catch (error) { return { error: error instanceof StorageError ? error.code : 'invalid' }; }
   }, { readOnly: isAgentSessionRead,
     successor: async (from, to) => !!from.sourceInstallationId && !!to.sourceInstallationId
       && isRecoverySuccessor(root, { ...from, sourceInstallationId: from.sourceInstallationId }, to.sourceInstallationId),
     async authorize(value, source) {
-      if ((value as { version?: unknown })?.version !== 2) throw new StorageError('incompatible');
+      if ((value as { version?: unknown })?.version !== 3) throw new StorageError('incompatible');
       const call = agentSessionCallSchema.safeParse(value);
       if (!call.success) throw new StorageError('invalid');
       await authorizeSource(value, source);

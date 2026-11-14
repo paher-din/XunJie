@@ -1,7 +1,7 @@
 export { createAgentRuntime, type AgentRuntime, type AgentRuntimeOptions } from './runtime.js';
 export { AgentError, agentErrorCode } from './errors.js';
 export { agentRuntimeMigrations, createAgentStore, type AgentStore, type AgentSessionSnapshot, type AgentSessionInput } from './store.js';
-export { createModelAdapter, type ModelAdapterOptions } from './model.js';
+export { createModelAdapter, resolveGateway, type ModelAdapterOptions, type ModelGatewaySource } from './model.js';
 export { runTurn, type LoopDependencies } from './loop.js';
 export { createToolRegistry, executeTools, toToolCall, type ExecuteToolsOptions } from './tools.js';
 export { buildContext, TASK_FACT_LIMITS, type TaskFactsPort, type TaskFact, type ContextPlan } from './context.js';

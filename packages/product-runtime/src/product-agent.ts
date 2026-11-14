@@ -1,10 +1,9 @@
 import type { OwnedStorage } from '@xunjie/storage';
-import type { AgentScenario, AgentTool } from '@xunjie/agent-runtime';
+import type { AgentScenario, AgentTool, ModelGatewaySource, ScenarioInput } from '@xunjie/agent-runtime';
 import type { AgentSession } from '@xunjie/contracts/agent-sessions';
 import type { AgentSessionPort } from '@xunjie/contracts/agent-service';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import type { PersonalProject } from '@xunjie/contracts/student-learning';
-import type { LearningModelPort } from '@xunjie/model-gateway/service';
 import { createStudentAssistant } from '@xunjie/agents/student-assistant/index';
 import type { LearningToolsHost } from '@xunjie/agents/student-assistant/tools/learning-tools';
 import { createWorkspaceAssistant, type WorkspaceToolOptions } from '@xunjie/agents/workspace-assistant/index';
@@ -16,6 +15,8 @@ import { createWorkspaceAgentTasks, type WorkspaceTaskOwner } from './workspace-
 export interface ProductAgentScene {
   student?: LearningToolsHost;
   workspace?: WorkspaceToolOptions;
+  /** A dependency host supplies the Step's tool set from the data owner. */
+  tools?(input: ScenarioInput): Promise<readonly AgentTool[]>;
   documents?: readonly AgentTool[];
   skills?: readonly AgentTool[];
   project?(identity: SpaceIdentity, activityId: string): Promise<PersonalProject | null>;
@@ -23,7 +24,7 @@ export interface ProductAgentScene {
 export interface ProductAgentOptions {
   storage: OwnedStorage;
   directory: AgentSessionDirectory;
-  models: LearningModelPort;
+  models: ModelGatewaySource;
   authorize(identity: SpaceIdentity): Promise<void>;
   scene(session: AgentSession): Promise<ProductAgentScene>;
   taskOwner?: WorkspaceTaskOwner;
@@ -42,12 +43,13 @@ export function createProductAgent(options: ProductAgentOptions) {
       pending = (async () => {
         const parts = await options.scene(session);
         if (session.scenario === 'student-assistant') {
-          if (!parts.student) throw new Error('missing-student-scene');
-          return createStudentAssistant({ learning: parts.student,
+          if (!parts.student && !parts.tools) throw new Error('missing-student-scene');
+          return createStudentAssistant({ ...(parts.student ? { learning: parts.student } : {}),
+            ...(parts.tools ? { tools: parts.tools } : {}),
             ...(parts.documents ? { documents: parts.documents } : {}), ...(parts.skills ? { skills: parts.skills } : {}) });
         }
         if (!parts.workspace) throw new Error('missing-workspace-scene');
-        return createWorkspaceAssistant({ ...parts.workspace,
+        return createWorkspaceAssistant({ ...parts.workspace, ...(parts.tools ? { tools: parts.tools } : {}),
           ...(parts.documents ? { documents: parts.documents } : {}), ...(parts.skills ? { skills: parts.skills } : {}),
           ...(parts.project ? { project: parts.project } : {}) });
       })();

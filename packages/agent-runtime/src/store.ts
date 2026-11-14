@@ -5,10 +5,10 @@ import { canonicalDigest, operationId } from '@xunjie/storage/identity';
 import {
   agentEventSchema, agentInputReceiptSchema, agentInputSchema, agentRuntimeSessionSchema, agentTurnSchema,
   agentStepSchema, agentAttemptSchema, agentToolCallSchema, agentQuestionSchema, agentNotificationSchema,
-  agentToolResultSchema, agentTurnBudgetSchema, defaultAgentTurnBudget,
+  agentToolResultSchema, agentTurnBudgetSchema, defaultAgentTurnBudget, agentDispatchPermitSchema,
   type AgentEvent, type AgentInput, type AgentInputReceipt, type AgentRuntimeSession, type AgentTurn,
   type AgentStep, type AgentAttempt, type AgentToolCall, type AgentQuestion, type AgentNotification,
-  type AgentToolResult, type AgentTurnBudget, type AgentQuestionResponse,
+  type AgentToolResult, type AgentTurnBudget, type AgentQuestionResponse, type AgentDispatchPermit,
 } from '@xunjie/contracts/agent-runtime';
 import type { Facts, HistoryEntry, TaskTerminalFact } from './ports.js';
 import { AgentError } from './errors.js';
@@ -551,6 +551,16 @@ export function createAgentStore(storage: OwnedStorage, options: StoreOptions) {
     const { rows: [row] } = await storage.read('SELECT * FROM agent_questions WHERE question_id=$1', [questionId]);
     return row ? questionFromRow(row) : null;
   }
+function answerText(presentation: Facts, answer: Facts): string {
+  if (answer.kind === 'text' && typeof answer.text === 'string') return answer.text;
+  if (answer.kind === 'choice' && typeof answer.optionId === 'string') {
+    const options = Array.isArray(presentation.options) ? presentation.options as { id?: unknown; label?: unknown }[] : [];
+    const option = options.find(item => item.id === answer.optionId);
+    return typeof option?.label === 'string' ? option.label : answer.optionId;
+  }
+  return '（跳过）';
+}
+
   async function answerQuestion(sessionId: string, value: AgentQuestionResponse, validate?: (presentation: Facts, answer: Facts) => Promise<void>) {
     const fingerprint = canonicalDigest({ sessionId, value });
     let validationFailure: { error: unknown } | undefined;
@@ -567,7 +577,17 @@ export function createAgentStore(storage: OwnedStorage, options: StoreOptions) {
       await tx.query("UPDATE agent_questions SET state=$2, version=version+1, answer=$3, answer_request_id=$4, updated_at=clock_timestamp() WHERE question_id=$1",
         [value.questionId, skipped ? 'skipped' : 'answered', answer, value.requestId]);
       await appendEvent(tx, sessionId, skipped ? 'question-skipped' : 'question-answered', { turnId: q.turnId, questionId: value.questionId, questionVersion: q.version + 1, answer, requestId: value.requestId });
-      return { requestId: value.requestId, questionId: value.questionId, questionVersion: q.version + 1, turnId: q.turnId, status: 'accepted' as const, reason: '' };
+      // The real answer enters the Turn as a SessionInput so a later Step has it in its model-visible input range.
+      const version = q.version + 1;
+      const input = agentInputSchema.parse({ requestId: value.requestId, sessionId,
+        text: answerText(q.presentation, answer),
+        context: { questionId: value.questionId, questionVersion: version, kind: typeof answer.kind === 'string' ? answer.kind : 'skip' } });
+      const inputId = operationId('agent-answer-input:' + value.questionId + ':' + version);
+      const received = await appendEvent(tx, sessionId, 'input-received', { turnId: q.turnId, inputId, input });
+      await tx.query(`INSERT INTO agent_inputs(input_id,request_id,session_id,turn_id,seq,body,input_digest,original_body)
+        VALUES($1,$2,$3,$4,$5,$6,$7,$6) ON CONFLICT(request_id) DO NOTHING`,
+      [inputId, value.requestId, sessionId, q.turnId, received.seq, input, canonicalDigest(input)]);
+      return { requestId: value.requestId, questionId: value.questionId, questionVersion: version, turnId: q.turnId, status: 'accepted' as const, reason: '' };
     }).catch(error => { throw validationFailure ? validationFailure.error : error; });
     return receipt.result as { requestId: string; questionId: string; questionVersion: number; turnId: string; status: 'accepted'; reason: string };
   }
@@ -653,6 +673,17 @@ export function createAgentStore(storage: OwnedStorage, options: StoreOptions) {
       return null;
     });
   }
+  /** Cross-machine adapters verify a live Step before executing the real call; no loop phase owns a permit. */
+  async function assertDispatch(value: AgentDispatchPermit): Promise<null> {
+    const permit = agentDispatchPermitSchema.parse(value);
+    const { rows: [row] } = await storage.read(`SELECT t.state AS turn_state, t.budget, s.state AS step_state
+      FROM agent_turns t JOIN agent_steps s USING(turn_id) WHERE t.session_id=$1 AND t.turn_id=$2 AND s.step_id=$3`,
+    [permit.sessionId, permit.runId, permit.stepId]);
+    const deadline = row ? (row.budget as AgentTurnBudget).deadline : null;
+    if (!row || row.turn_state !== 'active' || row.step_state !== 'executing'
+      || (deadline !== null && now() >= Date.parse(deadline))) throw new StorageError('stale-generation');
+    return null;
+  }
   /** Startup repair: only the lock holder closes a previous owner's active Turns to interrupted. */
   async function recoverInterrupted(): Promise<string[]> {
     const result = await storage.request({ requestId: 'agent-recover:' + randomUUID(), fingerprint: 'interrupt-old-owner' }, async tx => {
@@ -684,6 +715,6 @@ export function createAgentStore(storage: OwnedStorage, options: StoreOptions) {
     appendEvent: appendEventPublic, openStep, saveAttempt, finishAttempt, saveResponse, startToolCall, saveToolResult,
     completeStep, finishTurn, budgetOf, stepsOf, toolCallsOf, attemptsOf, sessionState, setSessionState, recordProgress,
     saveQuestion, question, answerQuestion, closeQuestion, registerNotification, notificationsOf,
-    stopTurn, pendingCancellations, acknowledgeCancellation, recoverInterrupted, ownerInstanceId };
+    stopTurn, pendingCancellations, acknowledgeCancellation, recoverInterrupted, assertDispatch, ownerInstanceId };
 }
 export type AgentStore = ReturnType<typeof createAgentStore>;

@@ -167,6 +167,6 @@ export function isAgentDependencyRead(call: AgentDependencyCall): boolean {
 export function requiresAgentDependencyDispatch(call: AgentDependencyCall): boolean {
   if (call.operation === 'materials.read') return ['pdf.read', 'pdf.find'].includes(call.args.method);
   if (call.operation === 'tools.execute') return true;
-  if (call.operation === 'model') return !isAgentDependencyRead(call) && call.args.method !== 'checks.cancel';
+  if (call.operation === 'model') return ['checks.receive', 'checks.dispatch'].includes(call.args.method);
   return call.operation === 'workspace.data' && ['pdf.read', 'pdf.find', 'artifacts.publish', 'executions.agent.dispatch', 'executions.agent.control'].includes(call.args.method);
 }
