@@ -108,7 +108,7 @@ L9 明确首条数字逻辑活动是样例，不能将其预测、仿真、时�
 
 | 编号 | 决定 | 依据与代价 |
 | --- | --- | --- |
-| P1 | 按 L23 长期采用自有持久 RunDriver，沿用[三协议直接 SDK 决议](https://github.com/paher-din/XunJie/issues/115)。逻辑 Run 持久承接多步生成、等待、取消、预算与恢复；活动、作品和证据独立。 | 运行阶段直接对应原生结果、命令与回执，减少框架特定恢复语义的适配；项目长期承担调度、领取、预算、并发和记录升级。Pi durable 整体托管有真实收益，未证明自研总成本更低。见[比较与边界](references/2026-10-27-agent-kernel-reuse-research.md)、[ADR 0002](adr/0002-own-teaching-state-and-effect-control.md)。 |
+| P1 | 按 L23 长期采用自有持久 RunDriver，沿用[三协议直接 SDK 决议](https://github.com/paher-din/XunJie/issues/115)。逻辑 Run 持久承接多步生成、等待、取消、预算与恢复；活动、作品和证据独立。 | 运行阶段直接对应原生结果、命令与回执，减少框架特定恢复语义的适配；项目长期承担调度、领取、预算、并发和记录升级。Pi durable 整体托管有真实收益，未证明自研总成本更低。见[比较与边界](references/2026-10-27-agent-kernel-reuse-research.md)、[ADR 0002](adr/0002-own-teaching-state-and-effect-control.md)。**2026-11-14 起执行内核选择由 [ADR 0004](adr/0004-direct-turn-step-loop.md) 替代**：改为直接 Turn/Step 主循环，删除 RunDriver 原位恢复与通用 Operation 引擎；三协议直接 SDK、教学状态归属与 PostgreSQL 存储仍成立。 |
 | P2 | 按[课程工具决议](https://github.com/paher-din/XunJie/issues/117)区分课程配置、可复用组件与活动实例；教师组件库跨课程复用，统一宿主承接状态、命令、观察和引用。 | 平台执行确定性准备，Agent 理解/生成/修正；教师选择任务同步新版，进行中活动保持原版；新系统/硬件/执行控制能力才需要平台适配。 |
 | P3 | 工作区事实、执行记录、学习证据、画像判断语义分开；使用一个工作区对象体系和一套持久化边界。 | 避免任务成功等于掌握，也避免 LiveWorkspace、ArtifactStore 和插件各维护一份交互状态。无需为这些概念分别部署数据库或服务。 |
 | P4 | 按[课程工具决议](https://github.com/paher-din/XunJie/issues/117)共用状态/选区/事件语义，不同运行载体经适配接入；局部复用 OpenIntelligentUI 的片段处理与渐进展示。 | 在现有 iframe 基础上补齐状态和引用，不引入完整上游应用或强制 Websandbox；MCP/Apps 适配外部能力，Skills 不扩大权限。临时页面更新保留输入，无法兼容时保留原页另开新版。 |
@@ -206,3 +206,4 @@ PostgreSQL 安装/恢复、Icarus/WASM 可复现构建、Flights 环境、三协
 
 - 2026-10-29：按 L47—L48 收录八个 Wayfinder 最终决议及来源、补充本地检索入口，形成工作包总览；按逐包完整验收更新旧实施交接安排。尚未编写各工作包规范、拆实施票或启动产品实现。
 - 2026-10-29 后续：负责人确认 WP01 的测试边界及三张完整实施票拆分，已发布[产品运行与数据底座规范](https://github.com/paher-din/XunJie/issues/142)及其原生子议题和阻塞关系；本地[规范](specs/wp01-product-runtime-and-data.md)与入口同步，发布稿已清理。票可跨 Agent 会话，相关工作成组处理；本次完成设计和实施交接，未开展 WP01 产品实现或验收。
+- 2026-11-14：按本轮“Agent 内核收拢与循环简化”计划，P1 的持久 RunDriver 原位恢复执行内核选择由 [ADR 0004](adr/0004-direct-turn-step-loop.md) 替代为直接 Turn/Step 主循环；建立根目录 [GLOSSARY.md](../../../GLOSSARY.md) 统一 Session/Turn/Step/Attempt/ToolCall/Question/通知术语。三协议直接 SDK、教学状态归属、PostgreSQL 存储与课程执行模块保留。设计收束与实现验收分开，产品接管与浏览器验收以工程交付为准。
