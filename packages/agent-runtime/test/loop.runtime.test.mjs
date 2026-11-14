@@ -274,3 +274,26 @@ test('串行时间线：A前台结束才提交B后台，B受理才开始C前台�
     assert.equal(snap.steps.length, 2, '工具批次后下一 Step 解释');
   } finally { await h.close(); }
 });
+
+test('通知：已入队通知的来源 Turn 随后被 Stop，接纳时复查并 suppressed，不进入后来 Turn', async () => {
+  const b = blockingTool();
+  const h = await harness([
+    { text: '阻塞', toolIntents: [{ callId: 'c1', name: 'block', arguments: {} }] },
+    { text: '结束', toolIntents: [] },
+    { text: '结束', toolIntents: [] },
+  ], [b.tool]);
+  try {
+    const r = await h.runtime.submit(h.identity, input(h.session.sessionId, '第一条'));
+    await waitFor(() => b.started.length === 1);
+    const note = await h.runtime.registerNotification(h.identity, h.session.sessionId, r.turnId,
+      { taskId: 'task-1', taskVersion: 'v1', terminalStatus: 'success', summary: '完成', resultRef: null });
+    assert.equal(note.turnId, null, '活跃会话先入队，不立即开 Turn');
+    await h.runtime.stop(h.identity, h.session.sessionId, r.turnId, randomUUID());
+    b.release();
+    await h.settle();
+    await h.runtime.continueSession(h.identity, h.session.sessionId, randomUUID());
+    await h.settle();
+    const snap = await h.runtime.sessionSnapshot(h.identity, h.session.sessionId);
+    assert.equal(snap.notifications[0].state, 'suppressed');
+  } finally { await h.close(); }
+});
