@@ -181,7 +181,7 @@ test('后台：显式 background 返回 accepted 回执，Step 不等任务终�
   } finally { await h.close(); }
 });
 
-test('普通工具擅传 background：强制 foreground，不静默转后台', async () => {
+test('普通工具擅传 background：参数错误结果，不静默转后台', async () => {
   const h = await harness([
     { text: '误用后台', toolIntents: [{ callId: 'c1', name: 'echo', arguments: { value: 'x', executionMode: 'background' } }] },
     { text: '结束', toolIntents: [] },
@@ -190,7 +190,9 @@ test('普通工具擅传 background：强制 foreground，不静默转后台', a
     await h.runtime.submit(h.identity, input(h.session.sessionId, 'hi'));
     await h.settle();
     const snap = await h.runtime.sessionSnapshot(h.identity, h.session.sessionId);
-    assert.equal(snap.toolCalls[0].executionMode, 'foreground');
+    assert.equal(snap.toolCalls[0].executionMode, 'background');
+    assert.equal(snap.toolCalls[0].result.kind, 'completed');
+    assert.equal(snap.toolCalls[0].result.outcome, 'error');
   } finally { await h.close(); }
 });
 
@@ -245,5 +247,30 @@ test('deferred：停止后未接纳消息保留，手动继续按序带入新 Tu
     assert.equal(continued.trigger, 'continue');
     assert.equal(snap.inputs.find(i => i.inputId === r2.inputId).state, 'adopted', '继续时带入 deferred');
     assert.equal(snap.inputs.find(i => i.inputId === r2.inputId).turnId, continued.turnId);
+  } finally { await h.close(); }
+});
+
+test('串行时间线：A前台结束才提交B后台，B受理才开始C前台，Step不等B终态', async () => {
+  const events = [];
+  const fg = name => ({ definition: { name, description: name, inputSchema: { type: 'object' } }, supportsBackground: false,
+    async execute() { events.push(name + ':start'); await Promise.resolve(); events.push(name + ':end'); return { kind: 'completed', outcome: 'success', summary: name }; } });
+  const bg = { definition: { name: 'B', description: '长任务', inputSchema: { type: 'object' } }, supportsBackground: true,
+    async execute() { events.push('B:start'); await Promise.resolve(); events.push('B:accepted'); return { kind: 'accepted', taskId: 'task-B', summary: '受理' }; } };
+  const h = await harness([
+    { text: '三项', toolIntents: [
+      { callId: 'a', name: 'A', arguments: {} },
+      { callId: 'b', name: 'B', arguments: { executionMode: 'background' } },
+      { callId: 'c', name: 'C', arguments: {} }] },
+    { text: '解释结果', toolIntents: [] },
+  ], [fg('A'), bg, fg('C')]);
+  try {
+    await h.runtime.submit(h.identity, input(h.session.sessionId, 'hi'));
+    await h.settle();
+    assert.deepEqual(events, ['A:start', 'A:end', 'B:start', 'B:accepted', 'C:start', 'C:end']);
+    const snap = await h.runtime.sessionSnapshot(h.identity, h.session.sessionId);
+    assert.equal(snap.turns[0].state, 'completed');
+    assert.equal(snap.toolCalls.length, 3);
+    assert.equal(snap.toolCalls[1].result.kind, 'accepted');
+    assert.equal(snap.steps.length, 2, '工具批次后下一 Step 解释');
   } finally { await h.close(); }
 });

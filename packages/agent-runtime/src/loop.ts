@@ -82,7 +82,7 @@ async function runStep(deps: LoopDependencies, turn: AgentTurn, step: AgentStep,
     const mode = (args.executionMode as string) === 'background' ? 'background' : 'foreground';
     const input = { ...args }; delete (input as Facts).executionMode;
     toolCalls.push({ toolCallId: operationId('agent-tool:' + response.attemptId + ':' + intent.callId),
-      nativeCallId: intent.callId, name: intent.name, input, executionMode: tool?.supportsBackground ? mode : 'foreground' });
+      nativeCallId: intent.callId, name: intent.name, input, executionMode: mode });
   }
   if (counts.toolCalls + toolCalls.length > budget.maxToolCalls) {
     await store.saveResponse(step.stepId, response.attemptId, { text: response.text, toolIntents: asJson(intents) as never, resultRef: response.responseRef }, toolCalls);
