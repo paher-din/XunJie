@@ -94,8 +94,8 @@ export function createAgentExecutions(storage: OwnedStorage, options: {
       WHERE activity_id=$1 AND command_id=$2 AND kind='submit'`, [activityId, requestId]);
     if (!row) return null;
     const action = executionActionSchema.parse(JSON.parse(String(row.body_text)));
-    if (associationSchema.parse(row.association).runId !== context.runId
-      || hash(action.scope) !== hash(actionScope(identity, activityId)) || action.execution.initiator.kind !== 'agent') fail('forbidden');
+    // Origin Turn is tracking only: cross-Turn query is allowed when identity/scope/ownership match.
+    if (hash(action.scope) !== hash(actionScope(identity, activityId)) || action.execution.initiator.kind !== 'agent') fail('forbidden');
     if (hash(action) !== row.input_digest) fail('corrupt');
     return { row, action };
   }

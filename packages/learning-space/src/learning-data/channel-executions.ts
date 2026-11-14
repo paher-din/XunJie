@@ -208,9 +208,9 @@ export function createChannelExecutions(storage: OwnedStorage, options: {
     const row = await find(activityId, requestId);
     await authorize(identity, activityId, row ?? undefined);
     if (!row) return null;
-    await dispatch(identity, activityId, row, guard);
-    // An unqueued intent has no channel fact yet. Ordinary reads preserve its queued
-    // execution; only a trusted caller with the original permit can deliver that intent.
+    // Read only observes already-dispatched facts; it never re-dispatches an unqueued intent.
+    // Delivering pending intents is an explicit write path (accept/control/stop), not a read side effect.
+    void guard;
     const { rows: intents } = await storage.read('SELECT command_id FROM channel_execution_intents WHERE request_id=$1 AND dispatched=true ORDER BY position', [requestId]);
     const facts: Awaited<ReturnType<typeof options.channel.query>>[] = [];
     for (const intent of intents) {
