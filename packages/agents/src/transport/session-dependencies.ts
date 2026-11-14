@@ -7,7 +7,6 @@ import { storageErrorCodes } from '@xunjie/contracts/storage';
 import { agentDependencyCallSchema, parseAgentDependencyResult, requiresAgentDependencyDispatch,
   agentWorkspaceDataMethodSchema, agentWorkspaceCourseMethodSchema, agentDependencyDataResultSchemas, agentDependencyModelMethodSchema,
   agentDependencyMaterialResultSchemas, agentDependencyMaterialSelectionSchema, isAgentDependencyRead,
-  agentDependencyToolOfferSchema, agentDependencyPreparedToolSchema,
   agentDependencyToolContextSchema,
   type AgentDependencyCall, type AgentDependencyResults } from '@xunjie/contracts/agent-dependencies';
 import { agentDispatchPermitSchema, type AgentDispatchPermit } from '@xunjie/contracts/agent-runtime';
@@ -30,21 +29,16 @@ import { materialScopeSchema, type MaterialScopeInput, type SessionMaterialPort 
 import { personalMaterialReadSchema, materialSearchInputSchema } from '@xunjie/contracts/personal-materials';
 import { pdfReadInputSchema, pdfFindInputSchema } from '@xunjie/contracts/pdf-materials';
 import { activitySchema } from '@xunjie/contracts/learning-data';
-import type { ConversationToolModule, ConversationToolContext, ConversationToolOutcome } from '../conversation/tools.js';
-import { requireConversationModelStep } from '../conversation/basis.ts';
+import type { AgentTool, ToolCall, ToolContext } from '@xunjie/agent-runtime';
+import { validateTeachingAnswer } from '../capabilities/user-questions/index.js';
 
 type Json = z.infer<ReturnType<typeof z.json>>;
-function toolContext(value: z.infer<typeof agentDependencyToolContextSchema>): ConversationToolContext {
-  return { ...value, snapshot: { ...value.snapshot, steps: value.snapshot.steps.map(step => ({ ...step,
-    result: step.result ? { state: step.result.state, value: step.result.value,
-      ...(step.result.retryAfterMs === undefined ? {} : { retryAfterMs: step.result.retryAfterMs }) } : null })) } };
-}
-function toolOutcome(value: AgentDependencyResults['tools.dispatch']): ConversationToolOutcome {
-  const { wait, continuation, nextCommand, ...outcome } = value;
-  return { ...outcome, ...(continuation === undefined ? {} : { continuation }),
-    ...(nextCommand === undefined ? {} : { nextCommand }),
-    ...(wait ? { wait: { kind: wait.kind, presentation: wait.presentation, deadline: wait.deadline,
-      ...(wait.interruptible === undefined ? {} : { interruptible: wait.interruptible }) } } : {}) };
+export type WireToolContext = z.infer<typeof agentDependencyToolContextSchema>;
+/** Remote data-owner tools never save questions; the session owner kernel handles student_ask locally. */
+function remoteToolContext(identity: SpaceIdentity, value: WireToolContext): ToolContext {
+  return { identity, sessionId: value.sessionId, turnId: value.turnId, stepId: value.stepId, toolCallId: value.toolCallId,
+    signal: new AbortController().signal, inputIds: value.inputIds,
+    ask: async () => { throw new StorageError('forbidden'); } };
 }
 export interface AgentMaterialReadPort {
   personal: Pick<SessionMaterialPort['personal'], 'list' | 'material' | 'original' | 'versionContent' | 'readRange'>;
@@ -55,9 +49,8 @@ export interface AgentDocumentMaterialsPort extends AgentMaterialReadPort {
   search: SessionMaterialPort['search'];
 }
 export interface AgentSessionDependencies {
-  /** The same client scope used by model/domain RPCs, including implicit-effect permits. */
   withAuthority<T>(permit: AgentDispatchPermit, work: () => Promise<T>): Promise<T>;
-  tools(): Promise<ConversationToolModule[]>;
+  tools(context: WireToolContext): Promise<AgentTool[]>;
   materials: AgentDocumentMaterialsPort;
   models: LearningModelPort;
   query: ReturnType<typeof createLearningQuery>;
@@ -82,24 +75,20 @@ export interface AgentDependencyClient {
 
 type TrustedExecutionSource = Parameters<ReturnType<typeof createLearningData>['executionRecords']['sync']>[3];
 export interface AgentDependencyServiceOptions {
-  /** Authenticated executor publication is independent of an Agent session or live dispatch permit. */
   executionRecordSource?(identity: SpaceIdentity, activityId: string, event: Readonly<ExecutionRecordEvent>,
     source: Readonly<ChunkConnectionSource>): Promise<TrustedExecutionSource>;
   tools?(identity: SpaceIdentity, session: AgentSession, source: Readonly<ChunkConnectionSource>,
-    call: Readonly<AgentDependencyCall>): readonly ConversationToolModule[] | Promise<readonly ConversationToolModule[]>;
+    call: Readonly<AgentDependencyCall>): readonly AgentTool[] | Promise<readonly AgentTool[]>;
   materials?: AgentDocumentMaterialsPort;
   models?: LearningModelPort;
-  /** Resolve paired/native routing from this fixed session and the current authenticated peer. */
   modelsForSession?(identity: SpaceIdentity, session: AgentSession, source: Readonly<ChunkConnectionSource>,
     call: Readonly<Extract<AgentDependencyCall, { operation: 'model' }>>): LearningModelPort | Promise<LearningModelPort>;
-  /** Host resolves actual data/course owners and current identity; a grant target is not a course owner. */
   source?(identity: SpaceIdentity): Promise<LearningQuerySource>;
   sessions: Pick<ReturnType<typeof createAgentSessions>, 'create' | 'read' | 'list' | 'update' | 'markReady'>;
   learning: ReturnType<typeof createLearningData>;
   courses: Parameters<typeof createWorkspaceDataService>[0]['courses'];
   authorize(identity: SpaceIdentity, source: Readonly<ChunkConnectionSource>): Promise<void>;
   resolveOwner?(identity: SpaceIdentity, scenario: CreateAgentSession['scenario'], workspace?: CreateAgentSession['workspace']): Promise<AgentSession['owner']>;
-  /** Authenticated host proof for a restored installation; environment and service must still match. */
   isOwnerSuccessor?(owner: AgentSession['owner'], source: Readonly<ChunkConnectionSource>): Promise<boolean>;
   assertDispatch(identity: SpaceIdentity, permit: AgentDispatchPermit): Promise<void>;
 }
@@ -196,8 +185,6 @@ export function createAgentDependencyChannel(storage: OwnedStorage, options: Age
       }
       await assertOwner(options, session, call.identity, source);
       if (session.deleted) throw new StorageError('forbidden');
-      // Retained bytes do not retain the original member's course permission. These are
-      // current owner reads only; no dispatch/reconcile/cancellation handler is replayed.
       if (session.workspace && !call.operation.startsWith('sessions.') && call.operation !== 'authorize') {
         const activity = await options.learning.open(call.identity, session.workspace.activityId);
         if (canonicalDigest(activity.target) !== canonicalDigest(session.workspace.target)) throw new StorageError('forbidden');
@@ -288,58 +275,30 @@ export function createAgentDependencyService(options: AgentDependencyServiceOpti
     if (requiresAgentDependencyDispatch(call)) await guard();
     if (call.operation.startsWith('tools.')) {
       if (session.deleted || !options.tools) throw new StorageError('forbidden');
-      const modules = await options.tools(call.identity, session, source, call);
-      if (new Set(modules.map(module => module.id)).size !== modules.length) throw new StorageError('identity-conflict');
-      if (call.operation === 'tools.describe') return modules.map(({ id, version }) => ({ id, version }));
+      const tools = await options.tools(call.identity, session, source, call);
+      const descriptorOf = (tool: AgentTool) => ({ id: tool.definition.name, version: 1 });
+      if (call.operation === 'tools.describe') return tools.map(descriptorOf);
       if (!('module' in call.args)) throw new StorageError('invalid');
-      const { module: descriptor } = call.args, context = toolContext(call.args.context);
-      if (call.operation !== 'tools.list' || context.basisStepId !== null) requireConversationModelStep(context);
-      const module = modules.find(module => module.id === descriptor.id && module.version === descriptor.version);
-      if (!module) throw new StorageError('incompatible');
-      if (context.snapshot.session.scenario !== session.scenario || context.snapshot.run.sessionId !== session.sessionId
-        || context.snapshot.inputs.some(input => input.input.sessionId !== session.sessionId)
-        || context.inputIds.some(id => !context.snapshot.inputs.some(input => input.inputId === id)))
-        throw new StorageError('forbidden');
+      const { module: descriptor } = call.args;
+      const tool = tools.find(item => item.definition.name === descriptor.id);
+      if (!tool) throw new StorageError('incompatible');
+      if (call.operation === 'tools.list')
+        return [{ definition: tool.definition, supportsBackground: tool.supportsBackground, scope: {} }];
+      if (call.operation === 'tools.validateAnswer') {
+        validateTeachingAnswer(call.args.presentation, call.args.answer); return null;
+      }
+      if (call.operation !== 'tools.execute' || !call.permit || call.permit.sessionId !== call.sessionId) throw new StorageError('forbidden');
+      const wire = call.args.context;
+      if (wire.sessionId !== session.sessionId) throw new StorageError('forbidden');
       if (session.scenario === 'workspace-assistant') {
-        const actual = await workspace(call.identity, session), fixed = activitySchema.parse(context.context.facts.workspace);
+        const actual = await workspace(call.identity, session), fixed = activitySchema.parse(wire.context.facts.workspace);
         if (actual.activityId !== fixed.activityId || !sameAgentSubject(fixed.identity, call.identity)
           || canonicalDigest(actual.target) !== canonicalDigest(fixed.target)
           || canonicalDigest(actual.course ?? null) !== canonicalDigest(fixed.course ?? null)) throw new StorageError('forbidden');
       }
-      if (call.operation === 'tools.list') return module.list(context);
-      if (call.operation === 'tools.validateResponse') {
-        if (!module.validateResponse) throw new StorageError('forbidden');
-        await module.validateResponse(context, call.args.wait, call.args.answer); return null;
-      }
-      if (call.operation === 'tools.prepare') {
-        const { offer, intent, commandId } = call.args;
-        if (intent.name !== offer.definition.name || !(await module.list(context)).some(current => canonicalDigest(current) === canonicalDigest(offer)))
-          throw new StorageError('incompatible');
-        const command = agentDependencyPreparedToolSchema.parse(await module.prepare(context, offer, intent, commandId));
-        if (command.commandId !== commandId || command.name !== intent.name || command.effect !== offer.effect) throw new StorageError('identity-conflict');
-        return { ...command, input: { version: 2, module: descriptor, offer, prepared: command } };
-      }
-      if (!('command' in call.args)) throw new StorageError('invalid');
-      const { command } = call.args;
-      const fixed = z.object({ version: z.literal(2), module: z.object({ id: z.string(), version: z.number().int().positive() }).strict(),
-        offer: agentDependencyToolOfferSchema, prepared: agentDependencyPreparedToolSchema }).strict().parse(command.input);
-      if (canonicalDigest(fixed.module) !== canonicalDigest(descriptor) || command.commandId !== fixed.prepared.commandId
-        || command.name !== fixed.prepared.name || command.effect !== fixed.prepared.effect) throw new StorageError('identity-conflict');
-      const routed = (outcome: ConversationToolOutcome | null): ConversationToolOutcome | null => {
-        if (!outcome?.nextCommand) return outcome;
-        const next = agentDependencyPreparedToolSchema.parse(outcome.nextCommand);
-        if (next.commandId === command.commandId || next.name !== fixed.prepared.name || next.effect !== fixed.prepared.effect)
-          throw new StorageError('identity-conflict');
-        // A continuation remains at this fixed data owner/module/offer. No new model preparation grants it authority.
-        return { ...outcome, nextCommand: agentDependencyPreparedToolSchema.parse({ ...next, input: { ...fixed, prepared: next } }) };
-      };
-      if (call.operation === 'tools.reconcile') return routed(await module.reconcile(context, fixed.prepared));
-      if (call.operation === 'tools.stop') return module.stop ? module.stop(context, fixed.prepared) : null;
-      if (call.operation !== 'tools.dispatch' || !call.permit || call.permit.runId !== context.snapshot.run.runId
-        || call.permit.operationId !== command.commandId || !context.snapshot.steps.some(step => step.stepId === call.permit!.stepId
-          && step.operation.kind === 'tool.call' && step.operation.operationId === command.commandId)) throw new StorageError('forbidden');
-      if (!(await module.list(context)).some(current => canonicalDigest(current) === canonicalDigest(fixed.offer))) throw new StorageError('incompatible');
-      return routed(await module.dispatch(context, fixed.prepared, call.permit, guard));
+      const toolCall: ToolCall = { toolCallId: call.args.call.toolCallId, nativeCallId: call.args.call.nativeCallId,
+        callIndex: call.args.call.callIndex, name: call.args.call.name, input: call.args.call.input, executionMode: call.args.call.executionMode };
+      return tool.execute(toolCall, remoteToolContext(call.identity, wire));
     }
     switch (call.operation) {
       case 'sessions.read': return session;
@@ -589,26 +548,21 @@ export function createAgentDependencyClient(send: (call: AgentDependencyCall) =>
     };
     return {
     withAuthority,
-    async tools() {
+    async tools(context: WireToolContext) {
       const installed = await invoke({ version: 2, operation: 'tools.describe', identity, sessionId, args: {} });
-      return installed.map<ConversationToolModule>(module => ({ ...module,
-        list: context => invoke({ version: 2, operation: 'tools.list', identity, sessionId, args: { module, context } }),
-        prepare: (context, offer, intent, commandId) => invoke({ version: 2, operation: 'tools.prepare', identity, sessionId,
-          args: { module, context, offer: { definition: offer.definition, effect: offer.effect, scope: offer.scope }, intent, commandId } }),
-        dispatch: async (context, command, permit, assertDispatch) => {
-          await assertDispatch();
-          return toolOutcome(await invoke({ version: 2, operation: 'tools.dispatch', identity, sessionId, permit, args: { module, context, command } }));
-        },
-        reconcile: async (context, command) => {
-          const outcome = await invoke({ version: 2, operation: 'tools.reconcile', identity, sessionId, args: { module, context, command } });
-          return outcome ? toolOutcome(outcome) : null;
-        },
-        stop: async (context, command) => {
-          const outcome = await invoke({ version: 2, operation: 'tools.stop', identity, sessionId, args: { module, context, command } });
-          return outcome ? toolOutcome(outcome) : null;
-        },
-        validateResponse: async (context, wait, answer) => { await invoke({ version: 2, operation: 'tools.validateResponse', identity, sessionId, args: { module, context, wait, answer } }); },
-      }));
+      const tools: AgentTool[] = [];
+      for (const module of installed) {
+        const offers = await invoke({ version: 2, operation: 'tools.list', identity, sessionId, args: { module, context } });
+        for (const offer of offers) {
+          tools.push({ definition: offer.definition, supportsBackground: offer.supportsBackground,
+            execute: (call, ctx) => invoke({ version: 2, operation: 'tools.execute', identity, sessionId,
+              args: { module, context: { sessionId: ctx.sessionId, turnId: ctx.turnId, stepId: ctx.stepId, toolCallId: ctx.toolCallId,
+                context: { system: '', facts: {}, sources: [] }, inputIds: [...ctx.inputIds] },
+                call: { toolCallId: call.toolCallId, nativeCallId: call.nativeCallId, callIndex: call.callIndex,
+                  name: call.name, input: call.input, executionMode: call.executionMode } } }) });
+        }
+      }
+      return tools;
     },
     materials,
     models: createLearningModelClient(request => {

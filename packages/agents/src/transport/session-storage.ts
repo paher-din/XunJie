@@ -11,7 +11,7 @@ export const agentServiceMigrations: readonly Migration[] = [...agentRuntimeMigr
 export const agentServiceSourceOwner = 'xunjie.agent-service';
 export function isAgentSessionRead(value: unknown) {
   const call = agentSessionCallSchema.safeParse(value);
-  return call.success && ['run', 'conversation', 'events', 'snapshot', 'request', 'assertDispatch'].includes(call.data.operation);
+  return call.success && ['turn', 'conversation', 'events', 'sessionSnapshot', 'request'].includes(call.data.operation);
 }
 const transportSpecs = [
   { table: 'agent_chunk_transfers', kind: 'agent_chunk_transfers', id: ['source_key', 'transfer_id'], version: ['state'] },

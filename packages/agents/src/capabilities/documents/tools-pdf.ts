@@ -5,7 +5,7 @@ import type { PdfReading, pdfSearchResultSchema } from '@xunjie/contracts/pdf-ma
 import type { QuestionReferenceInput } from '@xunjie/contracts/question-drafts';
 import type { TeachingToolOutcome, TeachingToolScope, TeachingPreparedTool } from '../tool-discovery/tool-types.js';
 import { retainPdfImages, type TeachingImageModels } from './tools-images.js';
-import { toolFeedbackBytes } from '../tool-discovery/tool-results.js';
+import { toolFeedbackBytes } from '../tool-support.js';
 
 const encodedFeedback = (value: unknown) => {
   const text = JSON.stringify(value);

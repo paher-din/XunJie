@@ -7,12 +7,14 @@ import { componentInstanceId, componentStateName, matchesComponentState } from '
 import { canonicalValue, decideExecutionPlacement, defaultExecutionLimits, executionActionSchema, anyExecutionActionSchema, executionControlSchema, isTerminalExecutionState,
   type AnyExecutionAction, type ExecutionDevice, type ExecutionQuery } from '@xunjie/contracts/execution';
 import type { ModelToolIntent } from '@xunjie/contracts/model-connections';
+import type { AgentToolResult } from '@xunjie/contracts/agent-runtime';
+import type { ToolCall, ToolContext } from '@xunjie/agent-runtime';
 import type { TeachingToolData } from './tool-data.js';
 import type { createCourses } from '@xunjie/learning-space/courses';
 import type { AgentExecutionContext, AgentExecutionOrigin } from '@xunjie/learning-space/learning-data/agent-executions';
 import { verifyPlannedExecution } from '@xunjie/learning-space/learning-data/plan';
 import type { TeachingToolHost, TeachingToolScope, TeachingToolCleanupScope, TeachingPreparedTool, TeachingToolOutcome } from '../../capabilities/tool-discovery/tool-types.js';
-import { teachingDefinitions, teachingContributions } from './tools-schema.js';
+import { teachingDefinitions } from './tools-schema.js';
 import { aluVerificationAction } from './alu-tools.js';
 import { imageRoute, retainWorkImage, type TeachingImageModels } from '../../capabilities/documents/tools-images.js';
 import { pdfReadingOutcome, pdfSearchOutcome, pdfTextInputSchema, pdfTextOutcome } from '../../capabilities/documents/tools-pdf.js';
@@ -20,6 +22,7 @@ import { pdfReadInputSchema, pdfFindInputSchema } from '@xunjie/contracts/pdf-ma
 import { materialSearchInputSchema, personalMaterialReadSchema } from '@xunjie/contracts/personal-materials';
 import { artifactPublishInput } from './tools-artifacts.js';
 import { teachingPublicArguments } from '../help-policy.js';
+import { json } from '../../capabilities/tool-support.js';
 
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(canonicalValue(value))).digest('hex');
 function fail(code: 'forbidden' | 'missing' | 'invalid' | 'identity-conflict' | 'corrupt' | 'unavailable'): never { throw new StorageError(code); }
@@ -46,7 +49,7 @@ export function createTeachingTools(options: {
       continuation: { state: string; detail: string }; unknown: string[] }> };
   /** Read one permitted skill attachment through the selected-skill guard. */
   skillRead?: (scope: TeachingToolScope, skillId: string, version: number, path: string) => Promise<{ content: string; digest: string }>;
-}): TeachingToolHost & { reconcileOriginal: TeachingToolHost['reconcile'] } {
+}): TeachingToolHost {
   const learning = options.learning;
   async function authorize(scope: TeachingToolCleanupScope) {
     actionInputSchema.parse(scope.input);
@@ -93,8 +96,7 @@ export function createTeachingTools(options: {
   }
   async function prepare(scope: TeachingToolScope, intent: ModelToolIntent, commandId: string, fixed?: AnyExecutionAction): Promise<TeachingPreparedTool> {
     await authorize(scope); z.uuid().parse(commandId);
-    const definition = teachingContributions(scope).find(item => item.definition.name === intent.name
-      && (intent.name !== 'course_operation' || item.source.componentKey === intent.arguments.componentKey))?.definition;
+    const definition = teachingDefinitions(scope).find(item => item.name === intent.name);
     if (!definition || !compileOutputSchema(definition.inputSchema)(intent.arguments)) fail('invalid');
     for (const key of ['objectId', 'contentId', 'referenceId', 'materialId', 'requestId'])
       if (Object.hasOwn(intent.arguments, key) && !z.uuid().safeParse(intent.arguments[key]).success) fail('invalid');
@@ -464,37 +466,6 @@ export function createTeachingTools(options: {
     const query = await originalQuery(scope, command, String(a.requestId), true);
     return await queryOutcome(scope, command, query) ?? outcome(command, 'not-dispatched', { requestId: a.requestId }, '原执行尚未确认');
   }
-  async function reconcile(scope: TeachingToolScope, command: TeachingPreparedTool) {
-    if (command.name === 'generate_teaching_artifact') {
-      await authorize(scope);
-      const artifact = await learning().artifacts.receipt(scope.identity, scope.activity.activityId, command.commandId);
-      return artifact ? outcome(command, 'completed', { artifact }, '活动教学内容') : null;
-    }
-    await check(scope, command);
-    if (command.effect === 'read') return dispatch(scope, command);
-    const requestId = String(command.basis.requestId ?? command.arguments.requestId ?? command.commandId);
-    const query = await learning().executions.agent.read(scope.identity, scope.activity.activityId, context(scope, command), requestId);
-    return await queryOutcome(scope, command, query) ?? cancellationOutcome(scope, command, requestId);
-  }
-  /** Kernel recovery may inspect retained receipts/associations, but must never prepare or repeat a read. */
-  async function reconcileOriginal(scope: TeachingToolScope, command: TeachingPreparedTool) {
-    if (command.version !== 1 || digest(command.basis.scope) !== digest(scopeBasis(scope))) fail('identity-conflict');
-    if (command.name === 'generate_teaching_artifact') return reconcile(scope, command);
-    if (command.effect === 'read') return null;
-    await authorize(scope);
-    const requestId = String(command.basis.requestId ?? command.arguments.requestId ?? command.commandId);
-    const ctx = context({ ...scope, assertDispatch: async () => fail('forbidden') }, command);
-    const query = await learning().executions.agent.read(scope.identity, scope.activity.activityId, ctx, requestId);
-    const retained = await queryOutcome(scope, command, query) ?? await cancellationOutcome(scope, command, requestId);
-    if (retained) return retained;
-    if (command.name === 'course_operation' && !command.basis.control) {
-      const original = await learning().executions.agent.original(scope.identity, scope.activity.activityId, ctx, requestId);
-      if (original && original.action.execution.plan.location === 'browser'
-        && digest(original.action) === digest(command.basis.action)) return outcome(command, 'accepted',
-          { requestId, delivery: 'waiting-browser', action: original.action }, '等待原浏览器执行');
-    }
-    return null;
-  }
   async function cancellationOutcome(scope: TeachingToolCleanupScope, command: TeachingPreparedTool, requestId: string, cleanup = false) {
     const inspect = cleanup ? learning().executions.agent.cleanupStatus : learning().executions.agent.status;
     const status = await inspect(scope.identity, scope.activity.activityId, context(scope, command), requestId);
@@ -538,8 +509,50 @@ export function createTeachingTools(options: {
       { query, cleanup: true, stopId: stopId(command.commandId), cleanupCompleted: completed, operationCompleted: state === 'completed',
         sessionStopped: !!query.session && completed, sessionOngoing: !!query.session && ['running', 'paused'].includes(query.state) }, '原执行清理', query);
   }
-  return { contributions: async scope => { await authorize(scope); return teachingContributions(scope); },
-    definitions: async scope => { await authorize(scope); return teachingDefinitions(scope); }, prepare, dispatch, reconcile, reconcileOriginal, stop };
+  /** Map a retained teaching outcome to the kernel's single terminal tool result. */
+  function outcomeToResult(outcome: TeachingToolOutcome): AgentToolResult {
+    const data = json(outcome.result), summary = outcome.feedback.text ?? '';
+    const taskId = outcome.execution?.requestId;
+    switch (outcome.state) {
+      case 'completed': return { kind: 'completed', outcome: outcome.feedback.outcome === 'error' ? 'error' : 'success', summary, data };
+      case 'failed': return { kind: 'completed', outcome: 'error', summary, data };
+      case 'accepted': return { kind: 'accepted', taskId: taskId ?? 'execution', summary, ...(taskId ? { resultRef: taskId } : {}) };
+      case 'unknown': return { kind: 'outcome_unknown', reason: summary || '效果尚未核实', ...(taskId ? { taskId } : {}) };
+      case 'not-dispatched': return { kind: 'completed', outcome: 'error', summary: summary || '工具未执行', data };
+    }
+  }
+  const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
+  /** Foreground long tasks wait for a confirmed terminal state; background returns the acceptance receipt. */
+  async function waitTerminal(scope: TeachingToolScope, command: TeachingPreparedTool, ctx: ToolContext): Promise<ExecutionQuery | null> {
+    const requestId = String(command.basis.requestId ?? command.arguments.requestId ?? command.commandId);
+    const deadline = Date.now() + 600_000;
+    let query: ExecutionQuery | null = null;
+    while (Date.now() < deadline && !ctx.signal.aborted) {
+      query = await learning().executions.agent.read(scope.identity, scope.activity.activityId, context(scope, command), requestId);
+      if (query && query.statusKnowledge === 'confirmed' && isTerminalExecutionState(query.state)) return query;
+      await delay(1000);
+    }
+    return query;
+  }
+  async function execute(scope: TeachingToolScope, call: ToolCall, ctx: ToolContext): Promise<AgentToolResult> {
+    await authorize(scope);
+    if (call.executionMode === 'background' && call.name !== 'course_operation')
+      return { kind: 'completed', outcome: 'error', summary: '该工具不支持 background 模式' };
+    const intent: ModelToolIntent = { callId: call.toolCallId, name: call.name, arguments: call.input };
+    const command = await prepare(scope, intent, call.toolCallId);
+    if (call.name === 'course_operation' && call.executionMode === 'background') {
+      const outcome = await dispatch(scope, command);
+      const taskId = String(command.basis.requestId ?? call.toolCallId);
+      return { kind: 'accepted', taskId, summary: outcome.feedback.text ?? '任务已受理', resultRef: taskId };
+    }
+    let outcome = await dispatch(scope, command);
+    if (call.name === 'course_operation' && outcome.state === 'accepted') {
+      const query = await waitTerminal(scope, command, ctx);
+      if (query) outcome = await queryOutcome(scope, command, query) ?? outcome;
+    }
+    return outcomeToResult(outcome);
+  }
+  return { definitions: scope => teachingDefinitions(scope), execute };
 }
 function stopId(commandId: string) {
   const hex = createHash('sha256').update('agent-stop:' + commandId).digest('hex');
