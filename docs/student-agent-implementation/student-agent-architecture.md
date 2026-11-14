@@ -1,6 +1,6 @@
 # 循阶学生端 Agent 架构
 
-更新：2026-11-14。本文区分当前源码职责与长期产品目标。当前 Agent 采用独立 session v2、通用内核、场景能力、模型 Gateway 和学习领域 owner；包入口见下表，部署与旧开发数据处理见[部署说明](../deployment.md)。运行/真实 UI/跨机验收由实际执行结果说明；不以本文或工程编译通过代替验收，重构计划最终状态由主负责人维护。长期产品目标和历史选型依据保留在后文。
+更新：2026-11-14。本文区分当前源码职责与长期产品目标。当前 Agent 采用单一 Turn/Step 直接主循环内核（Session/Turn/Step/Attempt/ToolCall/Question，见 [ADR 0004](adr/0004-direct-turn-step-loop.md) 与根目录 [GLOSSARY](../../GLOSSARY.md)）、场景能力、模型 Gateway 和学习领域 owner；包入口见下表，部署与旧开发数据处理见[部署说明](../deployment.md)。运行/真实 UI/跨机验收由实际执行结果说明；不以本文或工程编译通过代替验收，重构计划最终状态由主负责人维护。长期产品目标和历史选型依据保留在后文。
 
 决策入口：[学生端 Agent 与工作区重新设计：数字逻辑与部件设计先行](https://github.com/paher-din/XunJie/issues/112)。本文汇总领域与产品行为；[总体运行与部署设计](references/2026-10-27-overall-architecture-proposal.md)定义模块组合、持久运行、部署和演进契约；[Agent 能力与质量契约](references/2026-10-27-agent-capabilities-design.md)补充工具、Skills/MCP/Plugin、Prompt、上下文、Memory 与回合行为；[覆盖审计](references/2026-10-27-agent-design-coverage-audit.md)保留问题来源和覆盖状态。局部决议以对应议题为准，执行方向及教师易用性依据[本地优先执行决议](https://github.com/paher-din/XunJie/issues/114#issuecomment-6363162710)。
 
