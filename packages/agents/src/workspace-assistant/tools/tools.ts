@@ -518,7 +518,10 @@ export function createTeachingTools(options: {
       case 'completed': return { kind: 'completed', outcome: outcome.feedback.outcome === 'error' ? 'error' : 'success', summary, data, ...images };
       case 'failed': return { kind: 'completed', outcome: 'error', summary, data, ...images };
       case 'accepted': return { kind: 'accepted', taskId: taskId ?? 'execution', summary, ...(taskId ? { resultRef: taskId } : {}) };
-      case 'unknown': return { kind: 'outcome_unknown', reason: summary || '效果尚未核实', ...(taskId ? { taskId } : {}) };
+      case 'unknown': {
+        const reference = taskId ?? (typeof outcome.result.requestId === 'string' ? outcome.result.requestId : undefined);
+        return { kind: 'outcome_unknown', reason: summary || '效果尚未核实', ...(reference ? { taskId: reference } : {}) };
+      }
       case 'not-dispatched': return { kind: 'completed', outcome: 'error', summary: summary || '工具未执行', data };
     }
   }
@@ -546,12 +549,19 @@ export function createTeachingTools(options: {
       const taskId = String(command.basis.requestId ?? call.toolCallId);
       return { kind: 'accepted', taskId, summary: outcome.feedback.text ?? '任务已受理', resultRef: taskId };
     }
-    let outcome = await dispatch(scope, command);
-    if (call.name === 'course_operation' && outcome.state === 'accepted') {
+    let result = await dispatch(scope, command);
+    if (call.name === 'course_operation' && result.state === 'accepted') {
       const query = await waitTerminal(scope, command, ctx);
-      if (query) outcome = await queryOutcome(scope, command, query) ?? outcome;
+      if (query && query.statusKnowledge === 'confirmed' && isTerminalExecutionState(query.state)) result = await queryOutcome(scope, command, query) ?? result;
+      else if (call.executionMode === 'foreground') {
+        // Foreground expiry is never a background acceptance: request cancellation and report only what is known.
+        await stop(scope, command).catch(() => {});
+        const requestId = String(command.basis.requestId ?? command.arguments.requestId ?? command.commandId);
+        result = outcome(command, 'unknown', { requestId, foregroundTimedOut: true, ...(query ? { query } : {}) },
+          '前台等待超时，已请求取消；任务可能仍在执行', query);
+      }
     }
-    return outcomeToResult(outcome);
+    return outcomeToResult(result);
   }
   return { definitions: scope => teachingDefinitions(scope), execute };
 }
