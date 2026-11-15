@@ -1,6 +1,6 @@
 import { operationId } from '@xunjie/storage/identity';
 import type { AgentTurn, AgentStep, AgentToolCall, AgentNotification, AgentToolResult } from '@xunjie/contracts/agent-runtime';
-import type { ModelToolResult } from '@xunjie/contracts/model-connections';
+import type { ModelToolResult, ModelImageRef } from '@xunjie/contracts/model-connections';
 import type { AgentStore, AgentSessionInput } from './store.js';
 import type { ModelGatewaySource } from './model.js';
 import type { AgentScenario, AgentTool, ModelPort, ToolContext, AskInput, AskOutcome, Facts, ScenarioInput, Json } from './ports.js';
@@ -118,10 +118,10 @@ async function runStep(deps: LoopDependencies, turn: AgentTurn, step: AgentStep,
   await store.completeStep(step.stepId);
   return savedCalls.length > 0;
 }
-function feedbackOf(result: AgentToolResult | null): { outcome: 'success' | 'error' | 'not-executed'; text: string; images: [] } {
+function feedbackOf(result: AgentToolResult | null): { outcome: 'success' | 'error' | 'not-executed'; text: string; images: ModelImageRef[] } {
   if (!result) return { outcome: 'not-executed', text: '工具未执行', images: [] };
   switch (result.kind) {
-    case 'completed': return { outcome: result.outcome === 'success' ? 'success' : 'error', text: result.summary, images: [] };
+    case 'completed': return { outcome: result.outcome === 'success' ? 'success' : 'error', text: result.summary, images: result.images ?? [] };
     case 'accepted': return { outcome: 'success', text: result.summary, images: [] };
     case 'not_started': return { outcome: 'not-executed', text: result.reason, images: [] };
     case 'interrupted': return { outcome: 'not-executed', text: result.reason, images: [] };

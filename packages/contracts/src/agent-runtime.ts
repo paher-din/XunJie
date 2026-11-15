@@ -62,7 +62,8 @@ export type AgentAttempt = z.infer<typeof agentAttemptSchema>;
 /** The single terminal result of one ToolCall. accepted is a receipt, never a final task result. */
 export const agentToolResultSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('completed'), outcome: z.enum(['success', 'error']),
-    summary: z.string().max(8192), data: z.json().optional(), resultRef: z.string().max(300).optional() }).strict(),
+    summary: z.string().max(8192), data: z.json().optional(), resultRef: z.string().max(300).optional(),
+    images: z.array(z.object({ imageId: z.uuid(), version: z.literal(1) }).strict()).max(2).optional() }).strict(),
   z.object({ kind: z.literal('accepted'), taskId: z.string().min(1).max(200),
     summary: z.string().max(8192), resultRef: z.string().max(300).optional() }).strict(),
   z.object({ kind: z.literal('interrupted'), reason: z.string().max(500) }).strict(),

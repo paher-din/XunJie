@@ -10,11 +10,12 @@ export const json = (value: unknown): Facts => z.record(z.string(), z.json()).pa
 export const fits = (value: unknown) => Buffer.byteLength(JSON.stringify(value), 'utf8') <= toolFeedbackBytes;
 
 /** Bounded model feedback; the complete result is retained as data/resultRef for later reading. */
-export function completed(summary: string, data?: Facts, resultRef?: string): AgentToolResult {
+type CompletedResult = Extract<AgentToolResult, { kind: 'completed' }>;
+export function completed(summary: string, data?: Facts, resultRef?: string): CompletedResult {
   return { kind: 'completed', outcome: 'success', summary: summary.slice(0, toolFeedbackBytes),
     ...(data === undefined ? {} : { data }), ...(resultRef === undefined ? {} : { resultRef }) };
 }
-export function errored(summary: string, data?: Facts): AgentToolResult {
+export function errored(summary: string, data?: Facts): CompletedResult {
   return { kind: 'completed', outcome: 'error', summary: summary.slice(0, toolFeedbackBytes), ...(data === undefined ? {} : { data }) };
 }
 

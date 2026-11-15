@@ -513,9 +513,10 @@ export function createTeachingTools(options: {
   function outcomeToResult(outcome: TeachingToolOutcome): AgentToolResult {
     const data = json(outcome.result), summary = outcome.feedback.text ?? '';
     const taskId = outcome.execution?.requestId;
+    const images = outcome.feedback.images.length ? { images: outcome.feedback.images } : {};
     switch (outcome.state) {
-      case 'completed': return { kind: 'completed', outcome: outcome.feedback.outcome === 'error' ? 'error' : 'success', summary, data };
-      case 'failed': return { kind: 'completed', outcome: 'error', summary, data };
+      case 'completed': return { kind: 'completed', outcome: outcome.feedback.outcome === 'error' ? 'error' : 'success', summary, data, ...images };
+      case 'failed': return { kind: 'completed', outcome: 'error', summary, data, ...images };
       case 'accepted': return { kind: 'accepted', taskId: taskId ?? 'execution', summary, ...(taskId ? { resultRef: taskId } : {}) };
       case 'unknown': return { kind: 'outcome_unknown', reason: summary || '效果尚未核实', ...(taskId ? { taskId } : {}) };
       case 'not-dispatched': return { kind: 'completed', outcome: 'error', summary: summary || '工具未执行', data };

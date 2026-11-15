@@ -13,11 +13,12 @@ function mockGateway(responses) {
   const queue = [...responses];
   const segments = new Map();
   const attempts = new Map();
+  const settles = [];
   let sequence = 0;
   const segment = (segmentId, seq) => ({ sessionId: undefined, segmentId, formatVersion: 1, sequence: seq,
     connection, prefixDigest: '0'.repeat(64), resultRef: null, pending: false, closed: false, pendingTools: [] });
   return {
-    calls: { dispatched: [] },
+    calls: { dispatched: [] }, settles,
     selection: {
       read: async () => ({ selected: true, version: 1 }),
       snapshot: async () => ({ choice: { connection }, source: { kind: 'personal', ownerScope: 's', feeSource: 'f' } }),
@@ -27,7 +28,7 @@ function mockGateway(responses) {
     segments: {
       create: async (_identity, input) => { const s = segment(input.segmentId, sequence); segments.set(input.segmentId, s); return s; },
       read: async (_identity, segmentId) => segments.get(segmentId),
-      settle: async (_identity, segmentId, input) => { const s = segments.get(segmentId); s.sequence = input.expectedSequence + 1; s.pendingTools = []; return s; },
+      settle: async (_identity, segmentId, input) => { settles.push(input); const s = segments.get(segmentId); s.sequence = input.expectedSequence + 1; s.pendingTools = []; return s; },
       close: async (_identity, segmentId) => { const s = segments.get(segmentId); s.closed = true; return { ...s, boundary: { owner: { environmentId: 'e', serviceId: 's' }, segmentId, sequence: s.sequence, routeId: connection.routeId, resultRef: null } }; },
     },
     checks: {
@@ -87,6 +88,21 @@ test('一次响应含一个工具：1 Step 派发工具，结果后下一 Step �
     assert.equal(snapshot.toolCalls[0].result.kind, 'completed');
     assert.equal(snapshot.toolCalls[0].result.summary, 'echo:hi');
     assert.ok(snapshot.steps.every(s => s.state === 'completed'));
+  } finally { await h.close(); }
+});
+
+test('工具返回的图像引用随 settleTools 反馈给模型', async () => {
+  const image = { imageId: randomUUID(), version: 1 };
+  const see = { definition: { name: 'see', description: '读取页图', inputSchema: { type: 'object' } }, supportsBackground: false,
+    async execute() { return { kind: 'completed', outcome: 'success', summary: '已保留页图', data: { visualPages: [1] }, images: [image] }; } };
+  const h = await harness([
+    { text: '读取页图', toolIntents: [{ callId: 'c1', name: 'see', arguments: {} }] },
+    { text: '已看到页图', toolIntents: [] },
+  ], [see]);
+  try {
+    await h.runtime.submit(h.identity, input(h.session.sessionId, '请查看页图'));
+    await h.settle();
+    assert.deepEqual(h.gateway.settles.at(-1).results.at(-1).images, [image]);
   } finally { await h.close(); }
 });
 

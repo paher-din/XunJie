@@ -149,7 +149,7 @@ export function createDocumentTools(options: DocumentToolOptions): AgentTool[] {
       images.push({ page: page.page, reference: ref, sha256: image.sha256, width: page.image.width, height: page.image.height });
     }
     const result = { source: pdfSrc, reference: pdfReferenceOf(ctx, retained, source), visualPages: images.map(image => image.page), images };
-    return completed(JSON.stringify(result), json(result));
+    return { ...completed(JSON.stringify(result), json(result)), images: images.map(image => image.reference) };
   }
   async function readTool(ctx: ToolContext, call: ToolCall, name: Name): Promise<AgentToolResult> {
     const source = await sourceOf();
