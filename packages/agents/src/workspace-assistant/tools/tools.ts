@@ -401,7 +401,16 @@ export function createTeachingTools(options: {
       if (content.encoding === 'base64' || !/^(text\/|application\/(json|vnd\.xunjie\.component-state\+json))/.test(content.mediaType))
         return outcome(command, 'failed', { objectId: content.objectId, contentId: content.contentId,
           mediaType: content.mediaType, sourceState: 'unavailable', code: 'unsupported-media-type' }, content.name);
-      return outcome(command, 'completed', { file: content, ...(command.basis.provenance as Record<string, unknown>) }, content.name);
+      // Text works may legitimately be much larger than the result schema. Return a bounded range of the
+      // same immutable version and a real continuation handle instead of letting the whole Turn fail.
+      const total = content.value.length, offset = typeof a.offset === 'number' ? a.offset : 0;
+      const length = typeof a.length === 'number' ? a.length : 4000;
+      if (offset > total) return outcome(command, 'failed', { objectId: content.objectId, contentId: content.contentId,
+        sourceState: 'unavailable', code: 'invalid', total }, content.name);
+      const end = Math.min(total, offset + length);
+      const bounded = { ...content, value: content.value.slice(offset, end) };
+      return outcome(command, 'completed', { file: bounded, offset, length: end - offset, total,
+        nextOffset: end < total ? end : null, ...(command.basis.provenance as Record<string, unknown>) }, content.name);
     }
     if (command.name === 'read_reference') {
       const reference = scope.input.draft.references.find(item => item.referenceId === a.referenceId)!;
@@ -511,7 +520,10 @@ export function createTeachingTools(options: {
   }
   /** Map a retained teaching outcome to the kernel's single terminal tool result. */
   function outcomeToResult(outcome: TeachingToolOutcome): AgentToolResult {
-    const data = json(outcome.result), summary = outcome.feedback.text ?? '';
+    const data = json(outcome.result), rawSummary = outcome.feedback.text ?? '';
+    // The kernel contract bounds feedback; an oversized auxiliary result must not fail the whole batch.
+    const summary = rawSummary.length <= 8192 ? rawSummary
+      : rawSummary.slice(0, 8170) + '…（反馈已截断，完整结果保存在本次工具结果中）';
     const taskId = outcome.execution?.requestId;
     const images = outcome.feedback.images.length ? { images: outcome.feedback.images } : {};
     switch (outcome.state) {
@@ -520,23 +532,29 @@ export function createTeachingTools(options: {
       case 'accepted': return { kind: 'accepted', taskId: taskId ?? 'execution', summary, ...(taskId ? { resultRef: taskId } : {}) };
       case 'unknown': {
         const reference = taskId ?? (typeof outcome.result.requestId === 'string' ? outcome.result.requestId : undefined);
-        return { kind: 'outcome_unknown', reason: summary || '效果尚未核实', ...(reference ? { taskId: reference } : {}) };
+        return { kind: 'outcome_unknown', reason: (summary || '效果尚未核实').slice(0, 500), ...(reference ? { taskId: reference } : {}) };
       }
       case 'not-dispatched': return { kind: 'completed', outcome: 'error', summary: summary || '工具未执行', data };
     }
   }
   const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
   /** Foreground long tasks wait for a confirmed terminal state; background returns the acceptance receipt. */
-  async function waitTerminal(scope: TeachingToolScope, command: TeachingPreparedTool, ctx: ToolContext): Promise<ExecutionQuery | null> {
+  async function waitTerminal(scope: TeachingToolScope, command: TeachingPreparedTool, ctx: ToolContext): Promise<{
+    query: ExecutionQuery | null; operation: Awaited<ReturnType<typeof queryOutcome>> | null }> {
     const requestId = String(command.basis.requestId ?? command.arguments.requestId ?? command.commandId);
-    const deadline = Date.now() + 600_000;
+    // The Turn deadline is a hard upper bound; a per-operation 600s wait may not outlive it.
+    const deadline = Math.min(Date.now() + 600_000, ctx.deadline ? Date.parse(ctx.deadline) : Number.POSITIVE_INFINITY);
     let query: ExecutionQuery | null = null;
     while (Date.now() < deadline && !ctx.signal.aborted) {
       query = await learning().executions.agent.read(scope.identity, scope.activity.activityId, context(scope, command), requestId);
-      if (query && query.statusKnowledge === 'confirmed' && isTerminalExecutionState(query.state)) return query;
+      // A control receipt may complete the operation while the parent native session stays running;
+      // start_session is complete once the parent session is confirmed running.
+      const operation = await queryOutcome(scope, command, query);
+      if (query && query.statusKnowledge === 'confirmed' && isTerminalExecutionState(query.state)) return { query, operation };
+      if (operation && ['completed', 'failed', 'not-dispatched'].includes(operation.state)) return { query, operation };
       await delay(1000);
     }
-    return query;
+    return { query, operation: null };
   }
   async function execute(scope: TeachingToolScope, call: ToolCall, ctx: ToolContext): Promise<AgentToolResult> {
     await authorize(scope);
@@ -546,13 +564,15 @@ export function createTeachingTools(options: {
     const command = await prepare(scope, intent, call.toolCallId);
     if (call.name === 'course_operation' && call.executionMode === 'background') {
       const outcome = await dispatch(scope, command);
-      const taskId = String(command.basis.requestId ?? call.toolCallId);
+      const control = command.basis.control as { controlId?: string } | undefined;
+      const taskId = String(control?.controlId ?? command.basis.requestId ?? call.toolCallId);
       return { kind: 'accepted', taskId, summary: outcome.feedback.text ?? '任务已受理', resultRef: taskId };
     }
     let result = await dispatch(scope, command);
     if (call.name === 'course_operation' && result.state === 'accepted') {
-      const query = await waitTerminal(scope, command, ctx);
-      if (query && query.statusKnowledge === 'confirmed' && isTerminalExecutionState(query.state)) result = await queryOutcome(scope, command, query) ?? result;
+      const waited = await waitTerminal(scope, command, ctx), query = waited.query;
+      if (waited.operation && ['completed', 'failed', 'not-dispatched'].includes(waited.operation.state)) result = waited.operation;
+      else if (query && query.statusKnowledge === 'confirmed' && isTerminalExecutionState(query.state)) result = waited.operation ?? result;
       else if (call.executionMode === 'foreground') {
         // Foreground expiry is never a background acceptance: request cancellation and report only what is known.
         await stop(scope, command).catch(() => {});

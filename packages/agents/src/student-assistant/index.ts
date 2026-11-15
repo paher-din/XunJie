@@ -36,7 +36,12 @@ export function createStudentAssistant(options: StudentAssistantOptions): AgentS
     // Query provenance comes from the injected owner tools, never invented from input context.
     async context() { return { system, facts: {} as Facts, sources: [] }; },
     async tools(input) {
-      if (options.tools) return [...await options.tools(input)];
+      if (options.tools) {
+        // Remote owner tools never include the kernel-local question: merge by unique name, local first-class capability.
+        const remote = await options.tools(input);
+        const owned = [questions, ...(options.documents ?? []), ...(options.skills ?? [])];
+        return [...remote, ...owned.filter(tool => !remote.some(item => item.definition.name === tool.definition.name))];
+      }
       if (!learning) throw new Error('missing-student-scene');
       return [...learning, questions, ...(options.documents ?? []), ...(options.skills ?? [])];
     },

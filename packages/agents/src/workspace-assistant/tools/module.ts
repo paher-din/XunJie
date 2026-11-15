@@ -41,8 +41,10 @@ const workspaceInputSchema = z.object({ inputId: z.uuid(), action: z.unknown() }
 export async function resolveWorkspace(options: WorkspaceToolOptions, input: ScenarioInput) {
   const activity = await authorizedWorkspace(options, input.sessionId, input.identity);
   const stored = (input.sessionState.workspaceInputs ?? []) as unknown[];
-  const selected = z.array(workspaceInputSchema).parse(stored).filter(item => input.inputIds.includes(item.inputId));
-  if (!selected.length || input.inputIds.some(id => !selected.some(item => item.inputId === id))) throw new StorageError('invalid');
+  const selected = z.array(workspaceInputSchema).parse(stored);
+  // Inputs without an action (answers, steering, continue, notification) are legitimate model-visible inputs;
+  // the workspace basis stays the last validated action rather than being dropped or reconstructed per Step.
+  if (!selected.length) throw new StorageError('invalid');
   const actions = selected.map(item => {
     const parsed = actionInputSchema.safeParse(item.action);
     if (!parsed.success) throw new StorageError('invalid');
@@ -68,11 +70,14 @@ export async function resolveWorkspace(options: WorkspaceToolOptions, input: Sce
 function toolScope(ctx: ToolContext, workspace: { activity: LearningActivity; action: ActionInput }): TeachingToolScope {
   return { identity: ctx.identity, activity: workspace.activity, input: workspace.action,
     runId: ctx.turnId, stepId: ctx.stepId, snapshotId: ctx.stepId, attemptId: ctx.toolCallId,
+    ...(ctx.segmentId ? { segmentId: ctx.segmentId } : {}),
     assertDispatch: async () => { if (ctx.signal.aborted) throw new StorageError('forbidden'); } };
 }
 const workspaceTools = new Set(['read_work', 'read_reference', 'read_material',
   'read_student_facts', 'read_result', 'execution_query', 'execution_stop', 'course_operation',
   'read_teaching_artifact', 'generate_teaching_artifact']);
+/** Stable names of the fixed workspace tool family; hosts use it for Skill allowed-tools consistency. */
+export const workspaceToolNames: readonly string[] = [...workspaceTools];
 
 /** Fixed workspace tools consumed by the kernel serial loop, with teaching permission and help-policy guards. */
 export async function createWorkspaceTools(options: WorkspaceToolOptions, input: ScenarioInput): Promise<AgentTool[]> {
@@ -84,7 +89,7 @@ export async function createWorkspaceTools(options: WorkspaceToolOptions, input:
     ...(options.device ? { device: options.device } : {}),
     ...(options.environment ? { environment: options.environment } : {}) });
   const scope = toolScope({ identity: input.identity, sessionId: input.sessionId, turnId: input.turnId, stepId: input.stepId,
-    toolCallId: input.stepId, signal: new AbortController().signal, inputIds: input.inputIds, ask: async () => { throw new StorageError('forbidden'); } }, workspace);
+    toolCallId: input.stepId, signal: new AbortController().signal, inputIds: input.inputIds, originInputId: null, visibleAnswerInputIds: [], assertActive: async () => {}, ask: async () => { throw new StorageError('forbidden'); } }, workspace);
   const definitions = host.definitions(scope).filter(definition => workspaceTools.has(definition.name)
     && (definition.name !== 'read_student_facts' || options.studentFacts));
   return definitions.map(definition => ({

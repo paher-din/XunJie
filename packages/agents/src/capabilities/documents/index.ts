@@ -13,6 +13,7 @@ import type { LearningModelPort } from '@xunjie/model-gateway/service';
 import type { AgentToolResult } from '@xunjie/contracts/agent-runtime';
 import type { AgentTool, ToolCall, ToolContext } from '@xunjie/agent-runtime';
 import { completed, errored, json } from '../tool-support.js';
+import { imageRoute, type TeachingImageModels } from './tools-images.js';
 
 /** Full materials libraries for management consumers, including HTTP. */
 export type SessionMaterials = Pick<SessionMaterialPort, 'personal' | 'pdf' | 'search'>;
@@ -127,6 +128,11 @@ export function createDocumentTools(options: DocumentToolOptions): AgentTool[] {
   }
   async function imageOutcome(ctx: ToolContext, call: ToolCall, source: DocumentMaterialSource): Promise<AgentToolResult> {
     if (!options.models) throw new StorageError('forbidden');
+    // Images are only sent when the actual segment that produced this call has an image-capable route.
+    const route = await imageRoute({ identity: ctx.identity, ...(ctx.segmentId ? { segmentId: ctx.segmentId } : {}) } as never,
+      options.models as unknown as TeachingImageModels);
+    if (!route.available) return errored('当前固定模型路线未核验图像能力；仅提供 PDF 原生文字，未发送页图。', json({
+      reason: route.reason, limitation: 'image-capability-unverified', imagesSent: false }));
     const args = schemas.read_pdf_images.parse(call.input), retained = await reading(ctx, args);
     if (!retained) throw new StorageError('missing');
     const selected = args.pages ?? retained.pages.filter(page => page.state === 'ready' && page.image).map(page => page.page);
@@ -204,19 +210,26 @@ export function createDocumentTools(options: DocumentToolOptions): AgentTool[] {
     }
     if (name === 'search_materials') {
       const input = schemas.search_materials.parse(call.input);
-      const personalReferences = (input.personalReferences ?? []).map(ref => ({ source: { kind: 'personal-material' as const, ...placement(scope), ...ref } }));
+      // Omitted personal references mean the current authorized catalogue, exactly as the tool promises;
+      // an explicit empty array still means an intentionally empty personal scope.
+      const personalSelections = input.personalReferences ?? files.personal.map(material => {
+        const version = material.versions.find(item => item.version === material.currentVersion);
+        if (!version) throw new StorageError('corrupt');
+        return { materialId: material.materialId, version: version.version, sha256: version.sha256 };
+      });
+      const personalReferences = personalSelections.map(ref => ({ source: { kind: 'personal-material' as const, ...placement(scope), ...ref } }));
       const pdfReferences = (input.pdfReferences ?? []).map(ref => ({ source: { kind: 'pdf' as const, ...placement(scope),
         documentId: ref.documentId, documentSha256: ref.sha256, readingId: ref.readingId } }));
       const found = await materials.search(ctx.identity, scope, { query: input.query, scope: {
         courseMaterials: scope.kind === 'workspace', skillAttachments: false,
-        personalMaterialIds: [...new Set((input.personalReferences ?? []).map(ref => ref.materialId))],
+        personalMaterialIds: [...new Set(personalSelections.map(ref => ref.materialId))],
         pdfReferenceIds: [...new Set((input.pdfReferences ?? []).map(ref => ref.readingId))],
       } }, { personalReferences, pdfReferences });
       function searchReference(matchSource?: MaterialSourceRef) {
         if (!matchSource || !['personal-material', 'pdf'].includes(matchSource.kind)) return {};
         if (matchSource.scope ? !equal(matchSource.scope, scope) : scope.kind !== 'workspace') throw new StorageError('corrupt');
         if (matchSource.kind === 'personal-material') {
-          const fixed = input.personalReferences?.find(item => item.materialId === matchSource.id && String(item.version) === matchSource.version && item.sha256 === matchSource.sha256);
+          const fixed = personalSelections.find(item => item.materialId === matchSource.id && String(item.version) === matchSource.version && item.sha256 === matchSource.sha256);
           if (!fixed) throw new StorageError('corrupt');
           return { reference: reference(ctx, 'personal-material', fixed.materialId, String(fixed.version), fixed.sha256, source) };
         }

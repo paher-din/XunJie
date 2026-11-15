@@ -108,7 +108,9 @@ export const agentRuntimeMigrations: readonly Migration[] = [{ version: 1, name:
     tool_call_id uuid NOT NULL UNIQUE REFERENCES agent_tool_calls(tool_call_id), version integer NOT NULL DEFAULT 1,
     state text NOT NULL CHECK(state IN ('pending','answered','skipped','closed','expired')),
     presentation jsonb NOT NULL, answer jsonb, answer_request_id uuid, deadline timestamptz,
+    proposal_key text, content_digest text,
     created_at timestamptz NOT NULL DEFAULT clock_timestamp(), updated_at timestamptz NOT NULL DEFAULT clock_timestamp());
+  CREATE UNIQUE INDEX agent_questions_proposal ON agent_questions(session_id,proposal_key) WHERE proposal_key IS NOT NULL;
   CREATE TABLE agent_notifications(notification_id uuid PRIMARY KEY, session_id uuid NOT NULL REFERENCES agent_runtime_sessions(session_id),
     origin_turn_id uuid NOT NULL, task_id text NOT NULL, task_version text NOT NULL,
     terminal_status text NOT NULL CHECK(terminal_status IN ('success','failed','cancelled')),
@@ -175,8 +177,20 @@ export interface AgentSessionSnapshot {
 }
 export interface TurnUsage { inputTokens: number; outputTokens: number; inputReserved: number; outputReserved: number; }
 const emptyUsage: TurnUsage = { inputTokens: 0, outputTokens: 0, inputReserved: 0, outputReserved: 0 };
+const codePointLength = (value: string) => Array.from(value).length;
+/** The exact text a notification contributes to the model prompt, so its budget matches the prompt budget. */
+const factLineChars = (n: AgentNotification) => JSON.stringify({ taskId: n.taskId, taskVersion: n.taskVersion,
+  status: n.terminalStatus, summary: n.summary, ...(n.resultRef ? { resultRef: n.resultRef } : {}) });
+/** One Attempt's single contribution: provider-final when settled, otherwise its full reservation. */
+function usageContribution(usage: AgentAttempt['usage'], reserved: { inputTokens: number; outputTokens: number }) {
+  const exact = usage.state === 'final';
+  return { inputTokens: exact ? usage.inputTokens ?? reserved.inputTokens : Math.max(reserved.inputTokens, usage.inputTokens ?? 0),
+    outputTokens: exact ? usage.outputTokens ?? reserved.outputTokens : Math.max(reserved.outputTokens, usage.outputTokens ?? 0) };
+}
 
-export interface StoreOptions { budget?: { maxSteps?: number | undefined; maxToolCalls?: number | undefined; maxInputTokens?: number | undefined; maxOutputTokens?: number | undefined; maxCallMs?: number | undefined; hardDeadlineMs?: number | undefined } | undefined; now?: (() => number) | undefined; ownerInstanceId: string; }
+export interface StoreOptions { budget?: { maxSteps?: number | undefined; maxToolCalls?: number | undefined; maxInputTokens?: number | undefined; maxOutputTokens?: number | undefined; maxCallMs?: number | undefined; hardDeadlineMs?: number | undefined } | undefined; now?: (() => number) | undefined; ownerInstanceId: string;
+  /** The host's live lock fence; a closed/released host can never commit a late fact. */
+  assertOwner?: (() => boolean) | undefined; }
 
 export function createAgentStore(storage: OwnedStorage, options: StoreOptions) {
   const now = options.now ?? Date.now;
@@ -220,9 +234,33 @@ export function createAgentStore(storage: OwnedStorage, options: StoreOptions) {
     const { rows: [row] } = await tx.query("SELECT * FROM agent_turns WHERE session_id=$1 AND state='active' LIMIT 1", [sessionId]);
     return row ? turnFromRow(row) : null;
   }
+  /**
+   * The one idle rule: a pending notification whose origin completed normally may open a task notification
+   * Turn when the Session is idle. Called by registration and by every explicit idle boundary (Stop etc.).
+   */
+  async function maybeOpenPendingTurn(tx: OwnedTransaction, sessionId: string): Promise<string | null> {
+    const { rows: [sessionRow] } = await tx.query('SELECT automatic_wake_blocked FROM agent_runtime_sessions WHERE session_id=$1', [sessionId]);
+    if (!sessionRow || sessionRow.automatic_wake_blocked) return null;
+    if (await activeTurn(tx, sessionId)) return null;
+    const { rows: [n] } = await tx.query("SELECT notification_id, origin_turn_id FROM agent_notifications WHERE session_id=$1 AND state='pending' ORDER BY created_at,notification_id LIMIT 1", [sessionId]);
+    if (!n) return null;
+    const { rows: [origin] } = await tx.query('SELECT state FROM agent_turns WHERE turn_id=$1', [n.origin_turn_id]);
+    if (String(origin?.state) !== 'completed') return null;
+    const turnId = await insertTurn(tx, sessionId, String(n.notification_id), 'task-notification', String(n.notification_id));
+    await appendEvent(tx, sessionId, 'turn-started', { turnId, trigger: 'task-notification', notificationId: n.notification_id });
+    return turnId;
+  }
+  async function openPendingTurn(sessionId: string): Promise<string | null> {
+    return transition(sessionId, tx => maybeOpenPendingTurn(tx, sessionId));
+  }
   /** Adopt deferred user messages into a freshly opened user/continue Turn, in original order. */
   async function adoptDeferred(tx: OwnedTransaction, sessionId: string, turnId: string) {
+    const { rows } = await tx.query("SELECT input_id, version, turn_id FROM agent_inputs WHERE session_id=$1 AND state='deferred' ORDER BY seq", [sessionId]);
     await tx.query("UPDATE agent_inputs SET turn_id=$2, state='pending' WHERE session_id=$1 AND state='deferred'", [sessionId, turnId]);
+    // Content origin stays the original event; this records the legitimate consumption move for
+    // facts/closure readers without rewriting the input-received event or bumping the version.
+    for (const row of rows) await appendEvent(tx, sessionId, 'input-adopted', {
+      turnId, previousTurnId: row.turn_id, inputId: row.input_id, version: Number(row.version) });
   }
   async function submitInput(value: AgentInput): Promise<AgentInputReceipt> {
     const input = agentInputSchema.parse(value), inputDigest = canonicalDigest(input);
@@ -244,14 +282,24 @@ export function createAgentStore(storage: OwnedStorage, options: StoreOptions) {
         VALUES($1,$2,$3,$4,$5,$6,$7,$6)`, [inputId, input.requestId, input.sessionId, turnId, received.seq, input, inputDigest]);
       return { requestId: input.requestId, sessionId: input.sessionId, inputId, turnId, inputDigest };
     });
-    return agentInputReceiptSchema.parse(accepted.result);
+    const receipt = agentInputReceiptSchema.parse(accepted.result);
+    const { rows: [row] } = await storage.read('SELECT state, turn_id FROM agent_inputs WHERE input_id=$1', [receipt.inputId]);
+    return agentInputReceiptSchema.parse({ ...receipt, state: row ? String(row.state) : 'pending',
+      currentTurnId: row?.turn_id ? String(row.turn_id) : null });
   }
   async function request(sessionId: string, requestId: string) {
-    const { rows: [row] } = await storage.read('SELECT original_body,input_digest FROM agent_inputs WHERE session_id=$1 AND request_id=$2', [sessionId, requestId]);
+    const { rows: [row] } = await storage.read('SELECT input_id, turn_id, original_body, input_digest, state FROM agent_inputs WHERE session_id=$1 AND request_id=$2', [sessionId, requestId]);
     if (!row) return null;
-    const saved = await storage.receipt('agent-input:' + requestId, String(row.input_digest));
-    if (!saved) throw new StorageError('corrupt');
-    return { receipt: agentInputReceiptSchema.parse(saved.result), input: agentInputSchema.parse(row.original_body) };
+    const saved = await storage.receipt('agent-input:' + requestId);
+    if (saved) return { receipt: agentInputReceiptSchema.parse({ ...(saved.result as Record<string, unknown>),
+      state: String(row.state), currentTurnId: row.turn_id ? String(row.turn_id) : null }), input: agentInputSchema.parse(row.original_body) };
+    // A real answer is persisted as a SessionInput under the answer's own immutable receipt. Return the
+    // same input receipt shape for it instead of failing a legitimate row as corrupt.
+    const answer = await storage.receipt('agent-answer:' + requestId);
+    if (!answer) throw new StorageError('corrupt');
+    const input = agentInputSchema.parse(row.original_body);
+    return { receipt: agentInputReceiptSchema.parse({ requestId: input.requestId, sessionId: input.sessionId,
+      inputId: String(row.input_id), turnId: String(row.turn_id), inputDigest: String(row.input_digest) }), input };
   }
   async function continueSession(sessionId: string, requestId: string): Promise<AgentTurn> {
     const body = { sessionId, requestId }, fingerprint = canonicalDigest(body);
@@ -336,7 +384,47 @@ export function createAgentStore(storage: OwnedStorage, options: StoreOptions) {
     return row;
   }
   function assertActive(row: Row) {
+    if (options.assertOwner && !options.assertOwner()) throw new StorageError('stale-generation');
     if (row.state !== 'active' || row.owner_instance_id !== ownerInstanceId) throw new StorageError('stale-generation');
+  }
+  /** A stopped/lost Turn cannot accept new execution facts; only its successor may repair it. */
+  async function ownedTurn(tx: OwnedTransaction, turnId: string): Promise<Row> {
+    const row = await turnRow(tx, turnId);
+    assertActive(row);
+    return row;
+  }
+  /** The same result construction the real question tool uses, so recovery never invents a second shape. */
+  function answeredResult(row: Row): AgentToolResult {
+    const answerState = row.question_state === 'skipped' ? 'skipped' : 'answered';
+    const payload = { questionId: row.question_id, answerState, version: Number(row.version), answer: row.answer ?? null };
+    return { kind: 'completed', outcome: 'success', summary: JSON.stringify({ questionId: row.question_id, answerState, answer: row.answer ?? null }).slice(0, 8192),
+      data: payload as Facts };
+  }
+  function closeCallResult(callState: unknown, reason: string): AgentToolResult {
+    return callState === 'pending' ? { kind: 'not_started', reason } : { kind: 'outcome_unknown', reason };
+  }
+  /**
+   * Close every open child record of a Turn that can no longer execute. A persisted real answer becomes
+   * its final tool result; an unanswered question is closed, never turned into a fake answer or unknown effect.
+   */
+  async function closeTurnCalls(tx: OwnedTransaction, sessionId: string, turnId: string, reason: string, stepState: 'interrupted' | 'failed') {
+    const { rows: calls } = await tx.query(`SELECT c.tool_call_id, c.state, q.question_id, q.state AS question_state, q.answer, q.version
+      FROM agent_tool_calls c JOIN agent_steps s USING(step_id) LEFT JOIN agent_questions q USING(tool_call_id)
+      WHERE s.turn_id=$1 AND c.state<>'closed' ORDER BY c.call_index`, [turnId]);
+    for (const call of calls) {
+      let result: AgentToolResult;
+      if (call.question_id && ['answered', 'skipped'].includes(String(call.question_state)))
+        result = answeredResult(call);
+      else if (call.question_id) {
+        await tx.query("UPDATE agent_questions SET state='closed', version=version+1, updated_at=clock_timestamp() WHERE question_id=$1 AND state='pending'", [call.question_id]);
+        result = { kind: 'interrupted', reason: 'question-closed' };
+      } else result = closeCallResult(call.state, reason);
+      await tx.query("UPDATE agent_tool_calls SET state='closed', result=$2, updated_at=clock_timestamp() WHERE tool_call_id=$1 AND state<>'closed'", [call.tool_call_id, result]);
+    }
+    await tx.query("UPDATE agent_questions SET state='closed', version=version+1, updated_at=clock_timestamp() WHERE turn_id=$1 AND state='pending'", [turnId]);
+    await tx.query("UPDATE agent_attempts SET state='interrupted', updated_at=clock_timestamp() WHERE state='pending' AND step_id IN (SELECT step_id FROM agent_steps WHERE turn_id=$1)", [turnId]);
+    await tx.query("UPDATE agent_steps SET state=$2, completed_at=clock_timestamp(), updated_at=clock_timestamp() WHERE turn_id=$1 AND state IN ('generating','executing')", [turnId, stepState]);
+    await tx.query("UPDATE agent_inputs SET state='deferred' WHERE turn_id=$1 AND state='pending'", [turnId]);
   }
   async function usageOf(tx: OwnedTransaction, turnId: string): Promise<TurnUsage> {
     const { rows: [row] } = await tx.query('SELECT usage FROM agent_turns WHERE turn_id=$1', [turnId]);
@@ -360,17 +448,37 @@ export function createAgentStore(storage: OwnedStorage, options: StoreOptions) {
       const { rows: pendingNotifications } = await tx.query("SELECT * FROM agent_notifications WHERE session_id=$1 AND state='pending' ORDER BY created_at,notification_id", [sessionId]);
       // Recheck origin Turn at adoption: a source that became stopped/interrupted/failed is suppressed.
       const notifications: AgentNotification[] = [];
+      const latestByTask = new Map<string, number>();
       let notificationChars = 0;
       for (const n of pendingNotifications) {
-        const { rows: [origin] } = await tx.query('SELECT state FROM agent_turns WHERE turn_id=$1', [n.origin_turn_id]);
-        if (origin && ['stopped', 'interrupted', 'failed'].includes(String(origin.state))) {
+        const { rows: [origin] } = await tx.query('SELECT session_id, state FROM agent_turns WHERE turn_id=$1', [n.origin_turn_id]);
+        // Whitelist at adoption too: a legacy/missing/foreign/terminal origin can never enter a model context.
+        if (!origin || String(origin.session_id) !== sessionId || !['active', 'completed'].includes(String(origin.state))) {
           await tx.query("UPDATE agent_notifications SET state='suppressed' WHERE notification_id=$1", [n.notification_id]);
           continue;
         }
-        // Overflow stays pending for a later Step; the increment区 budget is fixed.
         const candidate = notificationFromRow(n);
-        if (notifications.length >= 8 || notificationChars + candidate.summary.length > 8192) continue;
-        notificationChars += candidate.summary.length;
+        const lineChars = codePointLength(factLineChars(candidate));
+        const prior = latestByTask.get(candidate.taskId);
+        // A newer terminal version supersedes the older one within the same selection; never show stale state.
+        if (prior !== undefined) {
+          const kept = notifications[prior]!;
+          const newer = String(candidate.taskVersion) > String(kept.taskVersion);
+          if (newer) {
+            notifications.splice(prior, 1);
+            notificationChars -= codePointLength(factLineChars(kept));
+            latestByTask.clear();
+            notifications.forEach((item, index) => latestByTask.set(item.taskId, index));
+            await tx.query("UPDATE agent_notifications SET state='suppressed' WHERE notification_id=$1", [kept.notificationId]);
+          } else {
+            await tx.query("UPDATE agent_notifications SET state='suppressed' WHERE notification_id=$1", [candidate.notificationId]);
+            continue;
+          }
+        }
+        // All selected notifications are unconditionally visible in the prompt; only overflow stays pending.
+        if (notifications.length >= 8 || notificationChars + lineChars > 8192) continue;
+        latestByTask.set(candidate.taskId, notifications.length);
+        notificationChars += lineChars;
         notifications.push(candidate);
       }
       if (!force && !pendingInputs.length && !notifications.length) return { kind: 'none' as const };
@@ -383,6 +491,18 @@ export function createAgentStore(storage: OwnedStorage, options: StoreOptions) {
       await tx.query(`INSERT INTO agent_steps(step_id,turn_id,step_no,state,snapshot) VALUES($1,$2,$3,'generating',$4)`,
         [stepId, turnId, counts.steps + 1, snapshot]);
       for (const input of inputs) await tx.query("UPDATE agent_inputs SET state='adopted', adopted_step_id=$2 WHERE input_id=$1 AND state='pending'", [input.inputId, stepId]);
+      // Persist which real answers this Session's model has actually been shown, across Steps and Turns.
+      const answerInputs = inputs.filter(input => input.input.context && typeof input.input.context === 'object'
+        && 'questionId' in (input.input.context as object));
+      if (answerInputs.length) {
+        const { rows: [sessionRow] } = await tx.query('SELECT state FROM agent_runtime_sessions WHERE session_id=$1 FOR UPDATE', [sessionId]);
+        const current = (sessionRow?.state ?? {}) as Facts;
+        const inbox = Array.isArray(current.answerInbox) ? current.answerInbox as Facts[] : [];
+        const additions = answerInputs.map(input => ({ questionId: (input.input.context as Facts).questionId,
+          inputId: input.inputId, version: (input.input.context as { questionVersion?: number }).questionVersion ?? 1 }));
+        const merged = [...inbox.filter(item => !additions.some(next => next.questionId === item.questionId)), ...additions];
+        await tx.query('UPDATE agent_runtime_sessions SET state=$2 WHERE session_id=$1', [sessionId, { ...current, answerInbox: merged }]);
+      }
       for (const n of notifications) await tx.query("UPDATE agent_notifications SET state='adopted', consumed_by_step_id=$2 WHERE notification_id=$1 AND state='pending'", [n.notificationId, stepId]);
       await appendEvent(tx, sessionId, 'step-started', { turnId, stepId, stepNo: counts.steps + 1, inputIds: snapshot.inputIds, notificationIds: snapshot.notificationIds });
       const { rows: [stepRow] } = await tx.query('SELECT * FROM agent_steps WHERE step_id=$1', [stepId]);
@@ -392,8 +512,23 @@ export function createAgentStore(storage: OwnedStorage, options: StoreOptions) {
   async function saveAttempt(stepId: string, attempt: { attemptId: string; attemptNo: number; requestRef: string | null; reserved: { inputTokens: number; outputTokens: number } }) {
     const sessionId = (await storage.read('SELECT t.session_id FROM agent_steps s JOIN agent_turns t USING(turn_id) WHERE s.step_id=$1', [stepId])).rows[0]?.session_id as string;
     return transition(sessionId, async tx => {
-      await tx.query(`INSERT INTO agent_attempts(attempt_id,step_id,attempt_no,state,request_ref,reserved) VALUES($1,$2,$3,'pending',$4,$5)
-        ON CONFLICT(attempt_id) DO NOTHING`, [attempt.attemptId, stepId, attempt.attemptNo, attempt.requestRef, attempt.reserved]);
+      const { rows: [step] } = await tx.query('SELECT turn_id FROM agent_steps WHERE step_id=$1', [stepId]);
+      if (!step) throw new StorageError('missing');
+      await ownedTurn(tx, String(step.turn_id));
+      const { rows: [inserted] } = await tx.query(`INSERT INTO agent_attempts(attempt_id,step_id,attempt_no,state,request_ref,reserved,usage) VALUES($1,$2,$3,'pending',$4,$5,$6)
+        ON CONFLICT(attempt_id) DO NOTHING RETURNING attempt_id`,
+        [attempt.attemptId, stepId, attempt.attemptNo, attempt.requestRef, attempt.reserved,
+          { state: 'unknown', inputTokens: attempt.reserved.inputTokens, outputTokens: attempt.reserved.outputTokens }]);
+      if (!inserted) return;
+      // The reservation enters the ledger atomically with the Attempt; no later deduction of an unbooked reserve.
+      const turnId = String(step.turn_id);
+      const usage = await usageOf(tx, turnId);
+      const budget = await budgetRow(tx, turnId);
+      const next: TurnUsage = { inputTokens: usage.inputTokens + attempt.reserved.inputTokens,
+        outputTokens: usage.outputTokens + attempt.reserved.outputTokens, inputReserved: 0, outputReserved: 0 };
+      if (next.inputTokens > budget.maxInputTokens) throw new AgentError('input-budget-exhausted');
+      if (next.outputTokens > budget.maxOutputTokens) throw new AgentError('output-budget-exhausted');
+      await tx.query('UPDATE agent_turns SET usage=$2, updated_at=clock_timestamp() WHERE turn_id=$1', [turnId, next]);
     });
   }
   async function finishAttempt(stepId: string, attemptId: string, value: { state: AgentAttempt['state']; usage: AgentAttempt['usage']; responseRef: string | null; error: string | null }) {
@@ -401,21 +536,19 @@ export function createAgentStore(storage: OwnedStorage, options: StoreOptions) {
     return transition(sessionId, async tx => {
       const { rows: [a] } = await tx.query('SELECT * FROM agent_attempts WHERE attempt_id=$1 FOR UPDATE', [attemptId]);
       if (!a) throw new StorageError('missing');
+      const { rows: [step] } = await tx.query('SELECT turn_id FROM agent_steps WHERE step_id=$1', [stepId]);
+      await ownedTurn(tx, String(step!.turn_id));
       await tx.query('UPDATE agent_attempts SET state=$2, usage=$3, response_ref=$4, error=$5, updated_at=clock_timestamp() WHERE attempt_id=$1',
         [attemptId, value.state, value.usage, value.responseRef, value.error]);
-      // Bill actual usage or the reservation for unsettled attempts.
-      const { rows: [step] } = await tx.query('SELECT turn_id FROM agent_steps WHERE step_id=$1', [stepId]);
+      // Replace this Attempt's recorded contribution exactly once; duplicate settlements contribute zero.
       const turnId = String(step!.turn_id);
       const usage = await usageOf(tx, turnId);
-      const exact = value.usage.state === 'final';
       const reserved = a.reserved as { inputTokens: number; outputTokens: number };
-      const inputAdd = exact && value.usage.inputTokens !== undefined ? value.usage.inputTokens : Math.max(reserved.inputTokens, value.usage.inputTokens ?? 0);
-      const outputAdd = exact && value.usage.outputTokens !== undefined ? value.usage.outputTokens : Math.max(reserved.outputTokens, value.usage.outputTokens ?? 0);
-      // Replace this attempt's prior reservation contribution with its settled contribution.
-      const priorInput = Number(a.usage && (a.usage as { state?: string }).state === 'final' ? (a.usage as { inputTokens?: number }).inputTokens ?? 0 : reserved.inputTokens);
-      const priorOutput = Number(a.usage && (a.usage as { state?: string }).state === 'final' ? (a.usage as { outputTokens?: number }).outputTokens ?? 0 : reserved.outputTokens);
-      const next: TurnUsage = { inputTokens: usage.inputTokens - priorInput + inputAdd, outputTokens: usage.outputTokens - priorOutput + outputAdd,
-        inputReserved: 0, outputReserved: 0 };
+      const prior = usageContribution(a.usage as AgentAttempt['usage'], reserved);
+      const current = usageContribution(value.usage, reserved);
+      const next: TurnUsage = { inputTokens: usage.inputTokens - prior.inputTokens + current.inputTokens,
+        outputTokens: usage.outputTokens - prior.outputTokens + current.outputTokens, inputReserved: 0, outputReserved: 0 };
+      if (next.inputTokens < 0 || next.outputTokens < 0) throw new StorageError('corrupt');
       await tx.query('UPDATE agent_turns SET usage=$2, updated_at=clock_timestamp() WHERE turn_id=$1', [turnId, next]);
     });
   }
@@ -425,6 +558,9 @@ export function createAgentStore(storage: OwnedStorage, options: StoreOptions) {
     return transition(sessionId, async tx => {
       const { rows: [step] } = await tx.query('SELECT * FROM agent_steps WHERE step_id=$1 FOR UPDATE', [stepId]);
       if (!step) throw new StorageError('missing');
+      await ownedTurn(tx, String(step.turn_id));
+      // A response may only fill a Step that is still generating; a closed Step is never reopened.
+      if (String(step.state) !== 'generating') throw new StorageError('conflict');
       await tx.query("UPDATE agent_steps SET state='executing', updated_at=clock_timestamp() WHERE step_id=$1", [stepId]);
       for (let index = 0; index < toolCalls.length; index++) {
         const call = toolCalls[index]!;
@@ -437,34 +573,54 @@ export function createAgentStore(storage: OwnedStorage, options: StoreOptions) {
     });
   }
   async function startToolCall(toolCallId: string): Promise<boolean> {
-    const { rows: [row] } = await storage.read(`SELECT t.session_id, t.state AS turn_state, t.owner_instance_id, c.state FROM agent_tool_calls c
+    const { rows: [row] } = await storage.read(`SELECT t.session_id, t.turn_id, t.state AS turn_state, t.owner_instance_id, c.state FROM agent_tool_calls c
       JOIN agent_steps s USING(step_id) JOIN agent_turns t USING(turn_id) WHERE c.tool_call_id=$1`, [toolCallId]);
     if (!row) throw new StorageError('missing');
     if (row.turn_state !== 'active' || row.owner_instance_id !== ownerInstanceId) return false;
     return transition(String(row.session_id), async tx => {
+      await ownedTurn(tx, String(row.turn_id));
       const { rows: [updated] } = await tx.query("UPDATE agent_tool_calls SET state='started', updated_at=clock_timestamp() WHERE tool_call_id=$1 AND state='pending' RETURNING tool_call_id", [toolCallId]);
       return !!updated;
     });
   }
-  async function saveToolResult(toolCallId: string, result: AgentToolResult, taskId: string | null) {
+  async function saveToolResult(toolCallId: string, result: AgentToolResult, taskId: string | null): Promise<boolean> {
     const parsed = agentToolResultSchema.parse(result);
-    const { rows: [row] } = await storage.read(`SELECT t.session_id, c.step_id, s.turn_id FROM agent_tool_calls c
+    const { rows: [row] } = await storage.read(`SELECT t.session_id, t.turn_id, t.state AS turn_state, t.owner_instance_id, c.step_id FROM agent_tool_calls c
       JOIN agent_steps s USING(step_id) JOIN agent_turns t USING(turn_id) WHERE c.tool_call_id=$1`, [toolCallId]);
     if (!row) throw new StorageError('missing');
     return transition(String(row.session_id), async tx => {
+      const turn = await turnRow(tx, String(row.turn_id));
+      // A background task accepted after Stop is a real fact that must be registered for cancellation.
+      const lateAcceptance = parsed.kind === 'accepted' && String(turn.state) === 'stopped' && String(turn.owner_instance_id) === ownerInstanceId;
+      if (lateAcceptance && options.assertOwner && !options.assertOwner()) throw new StorageError('stale-generation');
+      if (!lateAcceptance) assertActive(turn);
       const { rows: [saved] } = await tx.query('SELECT state,result FROM agent_tool_calls WHERE tool_call_id=$1 FOR UPDATE', [toolCallId]);
       if (saved!.state === 'closed') {
-        if (canonicalDigest(saved!.result) !== canonicalDigest(parsed)) throw new StorageError('identity-conflict');
-        return;
+        if (canonicalDigest(saved!.result) === canonicalDigest(parsed)) return false;
+        // A late real acceptance replaces the placeholder Stop wrote; any other rewrite is a conflict.
+        if (!lateAcceptance) throw new StorageError('identity-conflict');
       }
       await tx.query("UPDATE agent_tool_calls SET state='closed', result=$2, task_id=$3, updated_at=clock_timestamp() WHERE tool_call_id=$1", [toolCallId, parsed, taskId]);
       await appendEvent(tx, String(row.session_id), 'tool-result', { turnId: row.turn_id, stepId: row.step_id, toolCallId, result: parsed });
+      if (lateAcceptance) {
+        // Re-arm the durable intent so the runner (or a successor after restart) cancels the real task.
+        const requestId = operationId('agent-cancel-turn:' + row.turn_id);
+        await tx.query(`UPDATE agent_controls SET body=jsonb_set(body,'{state}','"pending"')
+          WHERE request_id=$1 AND operation='cancel-turn' AND body->>'state'<>'pending'`, [requestId]);
+        return true;
+      }
+      return false;
     });
   }
   async function completeStep(stepId: string): Promise<void> {
     const { rows: [row] } = await storage.read(`SELECT t.session_id, s.turn_id FROM agent_steps s JOIN agent_turns t USING(turn_id) WHERE s.step_id=$1`, [stepId]);
     if (!row) throw new StorageError('missing');
     return transition(String(row.session_id), async tx => {
+      await ownedTurn(tx, String(row.turn_id));
+      const { rows: [step] } = await tx.query('SELECT state FROM agent_steps WHERE step_id=$1 FOR UPDATE', [stepId]);
+      if (!step) throw new StorageError('missing');
+      if (String(step.state) === 'completed') return;
+      if (!['generating', 'executing'].includes(String(step.state))) throw new StorageError('conflict');
       const { rows: [open] } = await tx.query("SELECT tool_call_id FROM agent_tool_calls WHERE step_id=$1 AND state<>'closed' LIMIT 1", [stepId]);
       if (open) throw new StorageError('conflict');
       await tx.query("UPDATE agent_steps SET state='completed', completed_at=clock_timestamp(), updated_at=clock_timestamp() WHERE step_id=$1", [stepId]);
@@ -479,6 +635,8 @@ export function createAgentStore(storage: OwnedStorage, options: StoreOptions) {
     return transition(sessionId, async tx => {
       const current = await turnRow(tx, turnId);
       if (current.state !== 'active') return false;
+      // A host that lost ownership never closes the Turn; its successor repairs the open facts.
+      if (String(current.owner_instance_id) !== ownerInstanceId) return false;
       if (state === 'completed') {
         const { rows: [pending] } = await tx.query("SELECT input_id FROM agent_inputs WHERE turn_id=$1 AND state='pending' LIMIT 1", [turnId]);
         const { rows: [notif] } = await tx.query("SELECT notification_id FROM agent_notifications WHERE session_id=$1 AND state='pending' LIMIT 1", [sessionId]);
@@ -487,11 +645,16 @@ export function createAgentStore(storage: OwnedStorage, options: StoreOptions) {
       await tx.query('UPDATE agent_turns SET state=$2, reason=$3, completed_at=clock_timestamp(), updated_at=clock_timestamp() WHERE turn_id=$1', [turnId, state, reason]);
       if (state === 'failed' && reason === 'budget_exhausted')
         await tx.query("UPDATE agent_runtime_sessions SET automatic_wake_blocked='budget_exhausted' WHERE session_id=$1", [sessionId]);
-      // User messages targeted at a failed Turn but not adopted become deferred.
-      if (state === 'failed') await tx.query("UPDATE agent_inputs SET state='deferred' WHERE turn_id=$1 AND state='pending'", [turnId]);
+      // A failed Turn closes its own Step/Attempt/ToolCall/Question facts in the same commit.
+      if (state === 'failed') await closeTurnCalls(tx, sessionId, turnId, reason, 'failed');
       await appendEvent(tx, sessionId, 'turn-' + state, { turnId, reason });
       return true;
     });
+  }
+  async function budgetRow(tx: OwnedTransaction, turnId: string): Promise<AgentTurnBudget> {
+    const { rows: [row] } = await tx.query('SELECT budget FROM agent_turns WHERE turn_id=$1', [turnId]);
+    if (!row) throw new StorageError('missing');
+    return agentTurnBudgetSchema.parse(row.budget);
   }
   async function budgetOf(turnId: string): Promise<{ budget: AgentTurnBudget; usage: TurnUsage; counts: { steps: number; toolCalls: number } }> {
     const { rows: [row] } = await storage.read('SELECT budget, usage FROM agent_turns WHERE turn_id=$1', [turnId]);
@@ -502,9 +665,47 @@ export function createAgentStore(storage: OwnedStorage, options: StoreOptions) {
     return { budget: agentTurnBudgetSchema.parse(row.budget), usage: { ...emptyUsage, ...(row.usage as TurnUsage) },
       counts: { steps: Number(counts!.steps), toolCalls: Number(counts!.tool_calls) } };
   }
+  /** Compaction attempts are recorded with attempt_no >= 100 on the current Step, so this count survives restart. */
+  async function compactionCount(turnId: string): Promise<number> {
+    const { rows: [row] } = await storage.read(`SELECT count(*) AS n FROM agent_attempts a JOIN agent_steps s USING(step_id)
+      WHERE s.turn_id=$1 AND a.attempt_no>=100`, [turnId]);
+    return Number(row!.n);
+  }
   async function stepsOf(turnId: string): Promise<AgentStep[]> {
     const { rows } = await storage.read('SELECT * FROM agent_steps WHERE turn_id=$1 ORDER BY step_no', [turnId]);
     return rows.map(stepFromRow);
+  }
+  /** Adopted real inputs whose text the model has never seen in history (e.g. a failed first generate). */
+  async function visibleInputs(sessionId: string, exclude: readonly string[]): Promise<{ id: string; version: number; text: string }[]> {
+    const { rows } = await storage.read(`SELECT input_id, version, body FROM agent_inputs
+      WHERE session_id=$1 AND state='adopted' ORDER BY seq`, [sessionId]);
+    return rows.filter(row => !exclude.includes(String(row.input_id)))
+      .map(row => ({ id: String(row.input_id), version: Number(row.version), text: String((row.body as { text?: string }).text ?? '') }));
+  }
+  /** The stable real user request of this Turn: the latest non-answer input, never a system answer. */
+  async function turnOriginInput(turnId: string): Promise<string | null> {
+    const { rows } = await storage.read(`SELECT input_id, body FROM agent_inputs
+      WHERE turn_id=$1 AND state='adopted' ORDER BY seq`, [turnId]);
+    let origin: string | null = null;
+    for (const row of rows) if (!row.body || typeof row.body !== 'object' || !('questionId' in ((row.body as { context?: object }).context ?? {}))) origin = String(row.input_id);
+    return origin;
+  }
+  /** Every adopted input of this Session that carries a trusted workspace action, in original order. */
+  async function workspaceInputs(sessionId: string): Promise<{ inputId: string; action: Facts }[]> {
+    const { rows } = await storage.read(`SELECT input_id, version, body FROM agent_inputs
+      WHERE session_id=$1 AND state='adopted' AND body->'context'->'action' IS NOT NULL ORDER BY seq`, [sessionId]);
+    return rows.map(row => ({ inputId: String(row.input_id), action: (row.body as { context: { action: Facts } }).context.action }));
+  }
+  /** Real persisted results for a recovered native batch, keyed by the original native call id. */
+  async function toolResultsByNative(sessionId: string, nativeCallIds: readonly string[]): Promise<Map<string, AgentToolResult | null>> {
+    const found = new Map<string, AgentToolResult | null>();
+    for (const nativeCallId of nativeCallIds) {
+      const { rows: [row] } = await storage.read(`SELECT c.result FROM agent_tool_calls c
+        JOIN agent_steps s USING(step_id) JOIN agent_turns t USING(turn_id)
+        WHERE t.session_id=$1 AND c.native_call_id=$2 ORDER BY c.updated_at DESC LIMIT 1`, [sessionId, nativeCallId]);
+      if (row) found.set(nativeCallId, row.result ? agentToolResultSchema.parse(row.result) : null);
+    }
+    return found;
   }
   async function toolCallsOf(stepId: string): Promise<AgentToolCall[]> {
     const { rows } = await storage.read('SELECT * FROM agent_tool_calls WHERE step_id=$1 ORDER BY call_index', [stepId]);
@@ -519,20 +720,23 @@ export function createAgentStore(storage: OwnedStorage, options: StoreOptions) {
     if (!row) throw new StorageError('missing');
     return facts(row.state);
   }
-  async function setSessionState(sessionId: string, state: Facts): Promise<void> {
+  async function setSessionState(sessionId: string, state: Facts, turnId?: string): Promise<void> {
     return transition(sessionId, async tx => {
+      if (turnId) await ownedTurn(tx, turnId);
       await tx.query('UPDATE agent_runtime_sessions SET state=$2 WHERE session_id=$1', [sessionId, state]);
     });
   }
   async function recordProgress(sessionId: string, attemptId: string, progress: { revision: number; text: string; tools?: readonly unknown[] | undefined }) {
     return transition(sessionId, async tx => {
+      const { rows: [step] } = await tx.query('SELECT s.step_id, s.turn_id FROM agent_attempts a JOIN agent_steps s USING(step_id) WHERE a.attempt_id=$1', [attemptId]);
+      if (!step) throw new StorageError('missing');
+      await ownedTurn(tx, String(step.turn_id));
       const { rows: [same] } = await tx.query('SELECT body FROM agent_progress WHERE attempt_id=$1 AND revision=$2', [attemptId, progress.revision]);
       if (same) return false;
       const { rows: [last] } = await tx.query('SELECT max(revision) AS revision FROM agent_progress WHERE attempt_id=$1', [attemptId]);
       if (Number(last!.revision ?? 0) >= progress.revision) return false;
       const eventId = operationId('agent-progress:' + attemptId + ':' + progress.revision);
-      const { rows: [step] } = await tx.query('SELECT s.step_id, s.turn_id FROM agent_attempts a JOIN agent_steps s USING(step_id) WHERE a.attempt_id=$1', [attemptId]);
-      await appendEvent(tx, sessionId, 'model-progress', { turnId: step?.turn_id, stepId: step?.step_id, attemptId, ...progress }, eventId);
+      await appendEvent(tx, sessionId, 'model-progress', { turnId: step.turn_id, stepId: step.step_id, attemptId, ...progress }, eventId);
       await tx.query('INSERT INTO agent_progress(attempt_id,revision,body,event_id) VALUES($1,$2,$3,$4)', [attemptId, progress.revision, progress, eventId]);
       return true;
     });
@@ -541,9 +745,12 @@ export function createAgentStore(storage: OwnedStorage, options: StoreOptions) {
   // ---- questions ----
   async function saveQuestion(value: { questionId: string; sessionId: string; turnId: string; stepId: string; toolCallId: string; presentation: Facts; deadline: string | null }) {
     return transition(value.sessionId, async tx => {
-      await tx.query(`INSERT INTO agent_questions(question_id,session_id,turn_id,step_id,tool_call_id,version,state,presentation,deadline)
-        VALUES($1,$2,$3,$4,$5,1,'pending',$6,$7) ON CONFLICT(question_id) DO NOTHING`,
-        [value.questionId, value.sessionId, value.turnId, value.stepId, value.toolCallId, value.presentation, value.deadline]);
+      await ownedTurn(tx, value.turnId);
+      const proposalKey = typeof value.presentation.proposalKey === 'string' ? value.presentation.proposalKey : null;
+      const contentDigest = value.presentation.personalProjectContent ? canonicalDigest(value.presentation.personalProjectContent) : null;
+      await tx.query(`INSERT INTO agent_questions(question_id,session_id,turn_id,step_id,tool_call_id,version,state,presentation,deadline,proposal_key,content_digest)
+        VALUES($1,$2,$3,$4,$5,1,'pending',$6,$7,$8,$9) ON CONFLICT(question_id) DO NOTHING`,
+        [value.questionId, value.sessionId, value.turnId, value.stepId, value.toolCallId, value.presentation, value.deadline, proposalKey, contentDigest]);
       await appendEvent(tx, value.sessionId, 'question-opened', { turnId: value.turnId, stepId: value.stepId, toolCallId: value.toolCallId, questionId: value.questionId, presentation: value.presentation, deadline: value.deadline });
     });
   }
@@ -569,6 +776,7 @@ function answerText(presentation: Facts, answer: Facts): string {
       const { rows: [row] } = await tx.query('SELECT * FROM agent_questions WHERE question_id=$1 AND session_id=$2 FOR UPDATE', [value.questionId, sessionId]);
       if (!row) throw new StorageError('missing');
       const q = questionFromRow(row);
+      await ownedTurn(tx, q.turnId);
       if (q.state !== 'pending' || q.version !== value.expectedVersion) throw new StorageError('conflict');
       if (q.deadline && Date.parse(q.deadline) <= now()) throw new StorageError('conflict');
       if (validate) { try { await validate(q.presentation, value.answer as Facts); } catch (error) { validationFailure = { error }; throw error; } }
@@ -610,10 +818,18 @@ function answerText(presentation: Facts, answer: Facts): string {
       await tx.query(`INSERT INTO agent_notifications(notification_id,session_id,origin_turn_id,task_id,task_version,terminal_status,summary,result_ref,state)
         VALUES($1,$2,$3,$4,$5,$6,$7,$8,'pending') ON CONFLICT(task_id,task_version) DO NOTHING`,
         [notificationId, sessionId, originTurnId, fact.taskId, fact.taskVersion, fact.terminalStatus, fact.summary, fact.resultRef]);
+      // Only the newest pending terminal fact per task may wait; an older pending version is superseded.
+      await tx.query("UPDATE agent_notifications SET state='suppressed' WHERE session_id=$1 AND task_id=$2 AND state='pending' AND notification_id<>$3",
+        [sessionId, fact.taskId, notificationId]);
       const { rows: [existing] } = await tx.query('SELECT state FROM agent_notifications WHERE notification_id=$1', [notificationId]);
       if (existing!.state !== 'pending') return { notificationId, turnId: null };
-      const { rows: [origin] } = await tx.query('SELECT state FROM agent_turns WHERE turn_id=$1', [originTurnId]);
-      const originState = origin ? String(origin.state) : 'missing';
+      const { rows: [origin] } = await tx.query('SELECT session_id, state FROM agent_turns WHERE turn_id=$1', [originTurnId]);
+      const originState = origin && String(origin.session_id) === sessionId ? String(origin.state) : 'missing';
+      // Whitelist the origin: only a same-Session active/completed Turn can ever feed a model context.
+      if (!['active', 'completed'].includes(originState)) {
+        await tx.query("UPDATE agent_notifications SET state='suppressed' WHERE notification_id=$1 AND state='pending'", [notificationId]);
+        return { notificationId, turnId: null };
+      }
       const active = await activeTurn(tx, sessionId);
       // Only a normally completed origin may auto-open a new Turn when idle; stopped/interrupted/failed never wake.
       if (!active && originState === 'completed' && !locked.automatic_wake_blocked) {
@@ -623,7 +839,11 @@ function answerText(presentation: Facts, answer: Facts): string {
       }
       return { notificationId, turnId: null };
     });
-    return result.result as { notificationId: string; turnId: string | null };
+    const outcome = result.result as { notificationId: string; turnId: string | null };
+    if (outcome.turnId) return outcome;
+    // A retried delivery still evaluates the current idle state instead of replaying a stale null.
+    const turnId = await transition(sessionId, tx => maybeOpenPendingTurn(tx, sessionId));
+    return { notificationId: outcome.notificationId, turnId };
   }
   async function notificationsOf(sessionId: string): Promise<AgentNotification[]> {
     const { rows } = await storage.read('SELECT * FROM agent_notifications WHERE session_id=$1 ORDER BY created_at,notification_id', [sessionId]);
@@ -631,33 +851,30 @@ function answerText(presentation: Facts, answer: Facts): string {
   }
 
   // ---- stop / interruption ----
-  async function stopTurn(sessionId: string, turnId: string, requestId: string): Promise<AgentTurn> {
+  async function stopTurn(sessionId: string, turnId: string, requestId: string): Promise<{ turn: AgentTurn; stopped: boolean }> {
     const body = { sessionId, turnId, requestId }, fingerprint = canonicalDigest(body);
-    await storage.request({ requestId: 'agent-stop:' + requestId, fingerprint }, async tx => {
+    const outcome = await storage.request({ requestId: 'agent-stop:' + requestId, fingerprint }, async tx => {
       await tx.query('SELECT session_id FROM agent_runtime_sessions WHERE session_id=$1 FOR UPDATE', [sessionId]);
       const row = await turnRow(tx, turnId);
       if (String(row.session_id) !== sessionId) throw new StorageError('missing');
-      if (row.state === 'active') {
+      const stopped = row.state === 'active';
+      if (stopped) {
         // stopped and the durable cancellation intent commit together.
         await tx.query("UPDATE agent_turns SET state='stopped', reason='student-stop', completed_at=clock_timestamp(), updated_at=clock_timestamp() WHERE turn_id=$1", [turnId]);
         await tx.query(`INSERT INTO agent_controls(request_id,session_id,turn_id,operation,input_digest,body)
           VALUES($1,$2,$3,'cancel-turn',$4,$5) ON CONFLICT(request_id) DO NOTHING`,
           [operationId('agent-cancel-turn:' + turnId), sessionId, turnId, fingerprint, { turnId, sessionId, state: 'pending', delivered: [] }]);
-        // Close unanswered questions and not-started calls; started calls are closed by the loop/repair.
-        const { rows: questions } = await tx.query("UPDATE agent_questions SET state='closed', version=version+1, updated_at=clock_timestamp() WHERE turn_id=$1 AND state='pending' RETURNING question_id", [turnId]);
-        for (const q of questions) await appendEvent(tx, sessionId, 'question-closed', { turnId, questionId: q.question_id });
-        const { rows: calls } = await tx.query("SELECT tool_call_id FROM agent_tool_calls c JOIN agent_steps s USING(step_id) WHERE s.turn_id=$1 AND c.state='pending'", [turnId]);
-        for (const call of calls) {
-          await tx.query("UPDATE agent_tool_calls SET state='closed', result=$2, updated_at=clock_timestamp() WHERE tool_call_id=$1", [call.tool_call_id, { kind: 'not_started', reason: 'turn-stopped' }]);
-        }
-        await tx.query("UPDATE agent_inputs SET state='deferred' WHERE turn_id=$1 AND state='pending'", [turnId]);
+        // Stop quiesces the Turn's own open facts; an in-flight tool becomes a real unknown, never a late success.
+        await closeTurnCalls(tx, sessionId, turnId, 'turn-stopped', 'interrupted');
         await appendEvent(tx, sessionId, 'turn-stopped', { turnId, requestId });
+        // An already-pending notification from a normally completed origin wakes now that the Session is idle.
+        await maybeOpenPendingTurn(tx, sessionId);
       }
       await tx.query("INSERT INTO agent_controls(request_id,session_id,turn_id,operation,input_digest,body) VALUES($1,$2,$3,'stop',$4,$5) ON CONFLICT(request_id) DO NOTHING",
         [requestId, sessionId, turnId, fingerprint, body]);
-      return null;
+      return stopped;
     });
-    return turn(sessionId, turnId);
+    return { turn: await turn(sessionId, turnId), stopped: outcome.result === true };
   }
   async function pendingCancellations(): Promise<{ turnId: string; sessionId: string; delivered: string[] }[]> {
     const { rows } = await storage.read("SELECT body FROM agent_controls WHERE operation='cancel-turn' AND body->>'state'='pending' ORDER BY turn_id");
@@ -692,30 +909,32 @@ function answerText(presentation: Facts, answer: Facts): string {
         : await tx.query("UPDATE agent_turns SET state='interrupted', reason='host-restart', completed_at=clock_timestamp(), updated_at=clock_timestamp() WHERE state='active' AND owner_instance_id<>$1 RETURNING turn_id, session_id", [ownerInstanceId]);
       for (const row of rows) {
         const turnId = String(row.turn_id), sessionId = String(row.session_id);
-        // Model not finished: interrupt pending attempts; never dispatch partial-stream tools.
-        await tx.query("UPDATE agent_attempts SET state='interrupted', updated_at=clock_timestamp() WHERE state='pending' AND step_id IN (SELECT step_id FROM agent_steps WHERE turn_id=$1)", [turnId]);
-        const { rows: calls } = await tx.query("SELECT c.tool_call_id, c.state FROM agent_tool_calls c JOIN agent_steps s USING(step_id) WHERE s.turn_id=$1 AND c.state<>'closed'", [turnId]);
-        for (const call of calls) {
-          const result = call.state === 'pending' ? { kind: 'not_started', reason: 'host-restart' } : { kind: 'outcome_unknown', reason: 'host-restart' };
-          await tx.query("UPDATE agent_tool_calls SET state='closed', result=$2, updated_at=clock_timestamp() WHERE tool_call_id=$1", [call.tool_call_id, result]);
-        }
-        // A saved answer whose tool result was not written: close from the real answer.
-        const { rows: questions } = await tx.query("SELECT question_id, tool_call_id, state, answer FROM agent_questions WHERE turn_id=$1 AND state='pending'", [turnId]);
-        for (const q of questions) {
-          await tx.query("UPDATE agent_questions SET state='closed', version=version+1, updated_at=clock_timestamp() WHERE question_id=$1", [q.question_id]);
-          await tx.query("UPDATE agent_tool_calls SET state='closed', result=$2, updated_at=clock_timestamp() WHERE tool_call_id=$1 AND state<>'closed'", [q.tool_call_id, { kind: 'interrupted', reason: 'host-restart' }]);
-        }
-        await tx.query("UPDATE agent_steps SET state='interrupted', completed_at=clock_timestamp(), updated_at=clock_timestamp() WHERE turn_id=$1 AND state IN ('generating','executing')", [turnId]);
-        await tx.query("UPDATE agent_inputs SET state='deferred' WHERE turn_id=$1 AND state='pending'", [turnId]);
+        // Question-aware close: a persistent real answer becomes the tool's final result exactly once;
+        // an unanswered question is closed; only truly unknown started calls become outcome_unknown.
+        await closeTurnCalls(tx, sessionId, turnId, 'host-restart', 'interrupted');
         await appendEvent(tx, sessionId, 'turn-interrupted', { turnId, reason: 'host-restart' });
+        await maybeOpenPendingTurn(tx, sessionId);
+      }
+      // A crash between a terminal Turn commit and its child cleanup leaves open children under terminal
+      // Turns. Repair those facts without replaying any model or tool call.
+      const { rows: orphaned } = await tx.query(`SELECT t.turn_id, t.session_id FROM agent_turns t
+        WHERE t.state IN ('completed','failed','stopped','interrupted') AND (
+          EXISTS(SELECT 1 FROM agent_steps s WHERE s.turn_id=t.turn_id AND s.state IN ('generating','executing'))
+          OR EXISTS(SELECT 1 FROM agent_tool_calls c JOIN agent_steps s USING(step_id) WHERE s.turn_id=t.turn_id AND c.state<>'closed')
+          OR EXISTS(SELECT 1 FROM agent_attempts a JOIN agent_steps s USING(step_id) WHERE s.turn_id=t.turn_id AND a.state='pending')
+          OR EXISTS(SELECT 1 FROM agent_questions q WHERE q.turn_id=t.turn_id AND q.state='pending'))`);
+      for (const row of orphaned) {
+        const turnId = String(row.turn_id), sessionId = String(row.session_id);
+        await closeTurnCalls(tx, sessionId, turnId, 'host-restart', 'interrupted');
+        await appendEvent(tx, sessionId, 'turn-children-repaired', { turnId, reason: 'host-restart' });
       }
       return rows.map(row => String(row.turn_id));
     });
     return result.result as string[];
   }
-  return { storage, session, initialize, submitInput, request, continueSession, inputControl, turn, activeTurnOf, events, sessionSnapshot,
+  return { storage, session, initialize, submitInput, request, continueSession, inputControl, turn, activeTurnOf, openPendingTurn, events, sessionSnapshot,
     appendEvent: appendEventPublic, openStep, saveAttempt, finishAttempt, saveResponse, startToolCall, saveToolResult,
-    completeStep, finishTurn, budgetOf, stepsOf, toolCallsOf, attemptsOf, sessionState, setSessionState, recordProgress,
+    completeStep, finishTurn, budgetOf, stepsOf, compactionCount, workspaceInputs, visibleInputs, turnOriginInput, toolCallsOf, toolResultsByNative, attemptsOf, sessionState, setSessionState, recordProgress,
     saveQuestion, question, answerQuestion, closeQuestion, registerNotification, notificationsOf,
     stopTurn, pendingCancellations, acknowledgeCancellation, recoverInterrupted, assertDispatch, ownerInstanceId };
 }

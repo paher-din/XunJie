@@ -15,7 +15,12 @@ export interface LoopDependencies {
   taskFacts?: TaskFactsPort | undefined;
   isActive(turnId: string): Promise<boolean>;
   signalFor(turnId: string): AbortSignal;
+  /** A Turn's frozen deadline aborts the model/tool signal; expiry is recorded for the failure reason. */
+  armTurn(turnId: string, deadline: string | null): void;
+  disarmTurn(turnId: string): void;
+  deadlineReached(turnId: string): boolean;
   ask(turnId: string, stepId: string, toolCallId: string, input: AskInput): Promise<AskOutcome>;
+  onLateAcceptance?(turnId: string): void;
   onProgress(sessionId: string, turnId: string, stepId: string, attemptId: string, progress: { revision: number; text: string; tools?: readonly Json[] | undefined }): Promise<void>;
 }
 const MAX_TOOLS_PER_RESPONSE = 8;
@@ -23,6 +28,13 @@ const asJson = (value: unknown): Json => JSON.parse(JSON.stringify(value)) as Js
 
 /** The single readable main loop: runTurn → runStep → generate → executeTools. */
 export async function runTurn(deps: LoopDependencies, turnId: string): Promise<void> {
+  const { store } = deps;
+  deps.armTurn(turnId, (await store.budgetOf(turnId)).budget.deadline);
+  try {
+    await runTurnLoop(deps, turnId);
+  } finally { deps.disarmTurn(turnId); }
+}
+async function runTurnLoop(deps: LoopDependencies, turnId: string): Promise<void> {
   const { store } = deps;
   let force = true;
   while (await deps.isActive(turnId)) {
@@ -39,9 +51,13 @@ export async function runTurn(deps: LoopDependencies, turnId: string): Promise<v
     let hadTools: boolean;
     try { hadTools = await runStep(deps, turn, opened.step, opened.inputs, opened.notifications); }
     catch (error) {
-      if (error instanceof AgentError && error.code === 'cancelled') return; // Stop already closed the Turn.
+      // A Turn deadline is a real failure; a student Stop already closed the Turn.
+      if (deps.deadlineReached(turnId)) { await store.finishTurn(turnId, 'failed', 'deadline-exceeded'); return; }
+      if (error instanceof AgentError && error.code === 'cancelled') return;
       const reason = error instanceof AgentError ? error.code : 'internal-error';
-      await store.finishTurn(turnId, 'failed', reason === 'budget-exhausted' ? 'budget_exhausted' : reason);
+      // Every hard budget reason is one structured category so automatic wake is blocked in the same commit.
+      const normalized = /^(budget-exhausted|(input|output|step|tool)-budget-exhausted)$/.test(reason) ? 'budget_exhausted' : reason;
+      await store.finishTurn(turnId, 'failed', normalized);
       return;
     }
     if (hadTools) { force = true; continue; }
@@ -60,12 +76,16 @@ async function runStep(deps: LoopDependencies, turn: AgentTurn, step: AgentStep,
   const signal = deps.signalFor(turn.turnId);
   const session = await store.session(sessionId);
   const persisted = await store.sessionState(sessionId);
+  // Workspace actions are a durable Session basis: later Steps, answers, steering and notification Turns
+  // reuse the last validated action while new action-bearing inputs update it.
+  const workspaceInputs = await store.workspaceInputs(sessionId);
+  const originInputId = await store.turnOriginInput(turn.turnId);
+  const visibleAnswerInputIds = (Array.isArray(persisted.answerInbox) ? persisted.answerInbox as Facts[] : [])
+    .map(item => item.inputId).filter((id): id is string => typeof id === 'string');
   const scenarioInput: ScenarioInput = { identity: session.identity, sessionId, turnId: turn.turnId, stepId: step.stepId,
-    inputIds: inputs.map(i => i.inputId), sessionState: { ...persisted, workspaceInputs: asJson(inputs
-      .filter(item => item.input.context && typeof item.input.context === 'object' && 'action' in item.input.context)
-      .map(item => ({ inputId: item.inputId, action: item.input.context.action as Json }))) } };
+    inputIds: inputs.map(i => i.inputId), sessionState: { ...persisted, workspaceInputs: asJson(workspaceInputs) } };
   const { budget, usage, counts } = await store.budgetOf(turn.turnId);
-  const plan = await buildContext({ store, gateway: deps.gateway, scenario, taskFacts: deps.taskFacts, budget, spent: usage }, scenarioInput, { inputs, notifications });
+  const plan = await buildContext({ store, gateway: deps.gateway, scenario, taskFacts: deps.taskFacts, budget, spent: usage, signal }, scenarioInput, { inputs, notifications });
   const registry = createToolRegistry(plan.tools);
   const response = await model.generate({
     identity: session.identity, sessionId, turnId: turn.turnId, stepId: step.stepId,
@@ -99,13 +119,15 @@ async function runStep(deps: LoopDependencies, turn: AgentTurn, step: AgentStep,
     ...inputs.map(i => ({ id: i.inputId, version: i.version, role: 'user' as const, text: i.input.text })),
     { id: response.attemptId, version: 1, role: 'assistant' as const, text: response.text, ...(response.responseRef ? { resultRef: response.responseRef } : {}) },
   ]);
-  await store.setSessionState(sessionId, { ...state, history: asJson(history) as Facts });
+  await store.setSessionState(sessionId, { ...state, history: asJson(history) as Facts }, turn.turnId);
 
   const savedCalls = await store.toolCallsOf(step.stepId);
   if (savedCalls.length) {
-    await executeTools({ calls: savedCalls, registry, store, signal,
+    await executeTools({ calls: savedCalls, registry, store, signal, budget,
       isActive: () => deps.isActive(turn.turnId),
-      contextFor: call => toolContext(deps, session.identity, turn, step, call, plan.inputIds) });
+      ...(deps.onLateAcceptance ? { onLateAcceptance: () => deps.onLateAcceptance!(turn.turnId) } : {}),
+      contextFor: call => toolContext(deps, session.identity, turn, step, call, response.segmentId, plan.inputIds, originInputId, visibleAnswerInputIds) })
+      .then(outcome => { if (outcome === 'stopped') throw new AgentError('cancelled'); });
     const results = await store.toolCallsOf(step.stepId);
     const feedback: ModelToolResult[] = results.map(call => ({ callId: call.nativeCallId, ...feedbackOf(call.result) }));
     const settled = await model.settleTools(session.identity, response.segmentId, response.segmentSequence, feedback);
@@ -113,7 +135,7 @@ async function runStep(deps: LoopDependencies, turn: AgentTurn, step: AgentStep,
     const toolHistory = results.map(call => ({ id: call.toolCallId, version: 1, role: 'user' as const,
       text: JSON.stringify({ tool: call.name, kind: call.result?.kind, summary: call.result && 'summary' in call.result ? call.result.summary : '' }) }));
     await store.setSessionState(sessionId, { ...after, segment: { segmentId: settled.segmentId, sequence: settled.sequence, closed: false },
-      history: asJson(appendHistory(conversationHistory(after), toolHistory)) as Facts });
+      history: asJson(appendHistory(conversationHistory(after), toolHistory)) as Facts }, turn.turnId);
   }
   await store.completeStep(step.stepId);
   return savedCalls.length > 0;
@@ -128,9 +150,15 @@ function feedbackOf(result: AgentToolResult | null): { outcome: 'success' | 'err
     case 'outcome_unknown': return { outcome: 'error', text: result.reason, images: [] };
   }
 }
-function toolContext(deps: LoopDependencies, identity: ScenarioInput['identity'], turn: AgentTurn, step: AgentStep, call: AgentToolCall, inputIds: string[]): ToolContext {
-  return { identity, sessionId: turn.sessionId, turnId: turn.turnId, stepId: step.stepId, toolCallId: call.toolCallId,
-    signal: deps.signalFor(turn.turnId), inputIds,
-    ask: input => deps.ask(turn.turnId, step.stepId, call.toolCallId, input) };
+function toolContext(deps: LoopDependencies, identity: ScenarioInput['identity'], turn: AgentTurn, step: AgentStep, call: AgentToolCall,
+  segmentId: string, inputIds: string[], originInputId: string | null, visibleAnswerInputIds: readonly string[]): ToolContext {
+  const deadline = (step.snapshot.budgetBasis as { deadline?: string } | undefined)?.deadline;
+  return { identity, sessionId: turn.sessionId, turnId: turn.turnId, stepId: step.stepId, toolCallId: call.toolCallId, segmentId,
+    ...(deadline ? { deadline: String(deadline) } : {}),
+    signal: deps.signalFor(turn.turnId),
+    async assertActive() {
+      if (deps.signalFor(turn.turnId).aborted || !await deps.isActive(turn.turnId)) throw new AgentError('cancelled');
+    },
+    inputIds, originInputId, visibleAnswerInputIds, ask: input => deps.ask(turn.turnId, step.stepId, call.toolCallId, input) };
 }
 export type { AgentTool };

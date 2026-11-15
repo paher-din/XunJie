@@ -45,6 +45,8 @@ export function SessionConversation({ controller, readOnly = false, onOpenWorksp
         {message.role === 'user' ? <>
           {input ? <SessionUserMessage input={input} at={message.createdAt} controller={controller} readOnly={readOnly} />
             : <UserMessage text={message.text} at={message.createdAt} busy={busy || readOnly} />}
+          {input?.state === 'pending' && <p className="session-input-state" role="status">排队中，将在当前步骤结束后处理。</p>}
+          {input?.state === 'deferred' && <p className="session-input-state" role="status">尚未处理，继续时处理。</p>}
           {input?.state === 'pending' && !readOnly && <div className="session-input-actions">
             <button type="button" disabled={busy} onClick={() => void controller.inputControl(input.inputId, input.version, 'remove').catch(() => {})}>移除待处理消息</button>
           </div>}
@@ -59,7 +61,7 @@ export function SessionConversation({ controller, readOnly = false, onOpenWorksp
     {pending.map(question => <SessionQuestion key={question.questionId} question={question} controller={controller} readOnly={readOnly} />)}
     {turn && turn.state !== 'completed' && <div className="teaching-run-status">
       <span role="status">{turn.state === 'active' ? pending.length ? '等待回应或原操作结果。' : 'Agent 正在回答…'
-        : '回答尚未完成，原问题和内容已保留。'}</span>
+        : turnStatusLabel(turn)}</span>
       {!readOnly && <div className="teaching-run-actions">
         {turn.state === 'active' ? <Button variant="outline" disabled={busy} onClick={() => void controller.control(turn.turnId, 'stop').catch(() => {})}>停止回答</Button>
           : <Button disabled={busy} onClick={() => void controller.control(turn.turnId, 'continue').catch(() => {})}>继续回答</Button>}
@@ -67,6 +69,20 @@ export function SessionConversation({ controller, readOnly = false, onOpenWorksp
     </div>}
     {error && <p role="alert" className="learning-error">{error} <button type="button" onClick={() => void controller.replay()}>核对并重试</button></p>}
   </section>
+}
+function turnStatusLabel(turn: AgentConversation['turns'][number]) {
+  if (turn.state === 'stopped') return '你已停止这次回答，原问题和内容已保留。'
+  if (turn.state === 'interrupted') return '宿主中断了这次回答，原问题和内容已保留；可以继续回答。'
+  if (turn.state === 'failed') {
+    const known: Record<string, string> = {
+      budget_exhausted: '本次回答已达到预算上限，原问题和内容已保留；可以继续回答。',
+      'deadline-exceeded': '本次回答超过时限，原问题和内容已保留；可以继续回答。',
+      'model-unavailable': '模型服务暂时不可用，原问题和内容已保留；可以稍后继续。',
+      'protocol-error': '模型返回格式异常，原问题和内容已保留；可以继续回答。',
+    }
+    return known[turn.reason] ?? '这次回答未能完成，原问题和内容已保留；可以继续回答。'
+  }
+  return '回答尚未完成，原问题和内容已保留。'
 }
 function DraftProtectionFeedback({ error, retry }: { error: string; retry: () => Promise<void> }) {
   return error ? <p role="alert" className="learning-error">{error} <button type="button" onClick={() => void retry().catch(() => {})}>重试保留输入</button></p> : null

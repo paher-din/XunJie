@@ -188,15 +188,15 @@ LiveWorkspace 是同一个工作区对象体系：绑定的学习数据服务持
 
 综合功能、操作体验、异步协作和本机试用结果，负责人已确认各开发者按需运行本机 Phoenix + SQLite（[L33](student-agent-decisions.md#来源与状态)），以同仓可选 OTel/OpenInference 集成和 TypeScript 评估工具追踪完整 Agent。团队共享含报告与结构化材料的 ZIP 调试包、固定案例和实验结果，沿现有文件链路按稳定编号交接，不部署常驻共享观测数据库。集成代码和合成案例可同仓公开；平台数据、真实运行内容和秘密配置留在仓库外，默认关闭观测，开启后默认只到本机，详见[本机运行与开发协作](references/2026-10-27-agent-evaluation-integration.md)。该设施不要求学生安装，平台或共享服务不可用不影响 RunStore 与学习事实。规则回归、模型辅助评分、人工复核及真实教学效果分别报告；两平台核心 UI 与小型合成记录跨独立实例传递已通过，见[本机试用](references/2026-10-27-observability-local-trial.md)；产品接入、真实模型、附件及更大负载仍需验证。完整能力边界见[研究报告](references/2026-10-27-agent-observability-evaluation-research.md)。
 
-## Session v2、场景与工具执行
+## Turn/Step v3、场景与工具执行
 
-`createStudentAssistant` 与 `createWorkspaceAssistant` 在共同 conversation pipeline 上装配行为；`createProductAgent` 与 session-runtime 由可信宿主提供真实 owner、模型、工具和生命周期。LearningActivity 是学习领域对象，Agent session 是独立持久对话；普通提问不为满足引擎条件伪造 activity。
+`createStudentAssistant` 与 `createWorkspaceAssistant` 在 agent-runtime 的 Turn/Step 直循环上装配行为；`createProductAgent` 与 session-runtime 由可信宿主提供真实 owner、模型、工具和生命周期。LearningActivity 是学习领域对象，Agent session 是独立持久对话；普通提问不为满足引擎条件伪造 activity。
 
-目录保存身份、scenario、固定 Agent owner 和标题/归档等元数据；core 保存原输入、Run、step、operation、permit、wait、state/sessionState 与事件。workspace 输入保留 `context.action` 中固定的作品/引用，并由学习数据 factory 校验。资料与 Skills 保留 session/workspace scope，个人项目有真实计划和独立 workspace session。
+目录保存身份、scenario、固定 Agent owner 和标题/归档等元数据；core 保存原输入、Turn、Step、ToolCall、Question/Answer、模型段与事件。workspace 输入保留 `context.action` 中固定的作品/引用，并由学习数据 factory 校验。资料与 Skills 保留 session/workspace scope，个人项目有真实计划和独立 workspace session。
 
-`agent.sessions.v2` 与 `agent.dependencies.v2` 均显式 version 2。可信 HTTP 在 forwarding 前处理 `/api/learning/agent-sessions`，核验 `x-xj-agent-contract: 2`、当前主体、expected subject 与 namespace。原 `requestId` 回执、input CAS 控制、stop/continue 与 wait response 各自关联原对象。initialize 由认证 host 允许，resolveWait 仅用于可信服务的实际结果。
+`agent.sessions.v3` 与 `agent.dependencies.v2` 分别显式 version 3 和 2；依赖 wire 的 v2 不变。可信 HTTP 在 forwarding 前处理 `/api/learning/agent-sessions`，核验 `x-xj-agent-contract: 3`、当前主体、expected subject 与 namespace。原 `requestId` 回执、input CAS 控制、stop/continue 与真实回答各自关联原对象。initialize 由认证 host 允许；当前回答走会话回答路由并校验来源闭包，不存在独立的可信服务 resolveWait 入口。
 
-Run 保留原输入与 effect 身份；waiting 释放处理者，匹配的可信结果或明确用户回应才能按原预算/permit 推进。新 steering 可中断明确允许的用户等待，不构造回应；旧晚结果不复活已停止运行。未知外部效果先通过原 operation 核对，不以换 owner、换工具名或新 requestId 重放。`conversation` 为 UI 的稳定增量投影，`snapshot` 为独立调试读取，二者不透传 SDK 原生对象。
+Turn 保留原输入与 effect 身份；恢复时同一 Turn 重新绑定宿主锁，只有当前 owner 和未停止的 Step 才能派发。新 steering 在下一步骤被接纳，Stop 不构造回应；旧晚结果只按原 ToolCall 身份归档，不复活已停止 Turn。未知外部效果先通过原 operation 核对，不以换 owner、换工具名或新 requestId 重放。`conversation` 为 UI 的稳定增量投影，`snapshot` 为独立调试读取，二者不透传 SDK 原生对象。
 
 以下主动引导、画像和课程协作内容为产品目标，按实际业务能力逐项接入上述内核与 owner，不再引入另一套 RunDriver。
 

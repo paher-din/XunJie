@@ -117,6 +117,9 @@ export type AgentEvent = z.infer<typeof agentEventSchema>;
 export const agentInputReceiptSchema = z.object({
   requestId: z.uuid(), sessionId: z.uuid(), inputId: z.uuid(), turnId: z.uuid(),
   inputDigest: z.string().regex(/^[a-f0-9]{64}$/),
+  /** Dynamic projection of the immutable receipt: current queue state, never part of its fingerprint. */
+  state: z.enum(['pending', 'deferred', 'adopted', 'removed']).optional(),
+  currentTurnId: z.uuid().nullable().optional(),
 }).strict();
 export type AgentInputReceipt = z.infer<typeof agentInputReceiptSchema>;
 

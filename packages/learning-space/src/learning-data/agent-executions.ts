@@ -422,7 +422,10 @@ export async function validateAgentExecutionCommands(storage: OwnedStorage) {
     if (row.kind === 'control') {
       const { rows: [parent] } = await storage.read(`SELECT association,activity_id FROM agent_execution_commands
         WHERE command_id=$1 AND kind='submit'`, [row.request_id]);
-      if (!parent || parent.activity_id !== row.activity_id || associationSchema.parse(parent.association).runId !== a.runId) fail('corrupt');
+      // A control belongs to its parent command; it is issued by a possibly newer Turn, so comparing the
+      // parent's origin runId to the control's run would reject every valid cross-Turn control.
+      if (!parent || parent.activity_id !== row.activity_id
+        || associationSchema.parse(parent.association).commandId !== row.request_id) fail('corrupt');
       continue;
     }
     const action = parsed as ExecutionAction;

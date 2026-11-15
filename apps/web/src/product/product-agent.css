@@ -46,6 +46,7 @@
 .session-conversation .chat-message { content-visibility: auto; contain-intrinsic-size: auto 120px; }
 .session-conversation [data-state='streaming'] { content-visibility: visible; }
 .session-input-actions { display: flex; justify-content: flex-end; gap: 12px; color: var(--muted); font-size: 12px; }
+.session-input-state { margin: 4px 0 0; color: var(--muted); font-size: 12px; text-align: right; }
 .session-input-actions button:hover { color: var(--ink); }
 .session-tool { margin: 12px 0; color: var(--muted); font-size: 13px; }
 .session-tool summary { cursor: pointer; }

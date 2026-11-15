@@ -38,7 +38,9 @@ export function teachingDefinitions(scope: TeachingToolScope): ModelTool[] {
           description: 'Use the original query.session.appliedSeq (0 before the first input), never query.confirmedSeq.' } }));
     }
   }
-  const definitions = [tool('read_work', 'Read only an approved immutable work version. Never the current workspace head.', objectSchema({ objectId: uuid, contentId: uuid })),
+  const definitions = [tool('read_work', 'Read only an approved immutable work version. Never the current workspace head. Large text returns a bounded range with offset/nextOffset so the same immutable version can be read in full.', {
+    type: 'object', properties: { objectId: uuid, contentId: uuid, offset: { type: 'integer', minimum: 0 },
+      length: { type: 'integer', minimum: 1, maximum: 8192 } }, required: ['objectId', 'contentId'], additionalProperties: false }),
     tool('read_reference', 'Read one approved reference, preserving its original range and source.', objectSchema({ referenceId: uuid })),
     tool('read_material', 'Read a student-open text material from this fixed course release.', objectSchema({ materialId: uuid })),
     tool('read_result', 'Read the real result of an approved or original Agent execution. Read-only; never re-dispatches.', objectSchema({ requestId: uuid })),
@@ -72,8 +74,17 @@ export function teachingDefinitions(scope: TeachingToolScope): ModelTool[] {
         region: { anyOf: [{ type: 'null' }, objectSchema({ x: { type: 'number', minimum: 0, maximum: 1 },
           y: { type: 'number', minimum: 0, maximum: 1 }, width: { type: 'number', exclusiveMinimum: 0, maximum: 1 },
           height: { type: 'number', exclusiveMinimum: 0, maximum: 1 } })] } })));
-  if (operations.length) definitions.push(tool('course_operation', 'Run one declared component operation. start_session initializes a native session; later inputs require its requestId and expectedSeq equal to query.session.appliedSeq, never query.confirmedSeq. executionMode defaults to foreground (waits for the terminal result); background returns an accepted taskId receipt and the terminal result arrives later as a notification.',
-    { type: 'object', anyOf: operations, properties: { executionMode: { type: 'string', enum: ['foreground', 'background'] } } }));
+  if (operations.length) {
+    const executionMode = { type: 'string', enum: ['foreground', 'background'],
+      description: 'Optional. foreground waits for the terminal result; background returns an accepted taskId and notifies later.' };
+    // Each anyOf branch is a closed object: the shared root property alone cannot pass branch validation.
+    for (const operation of operations) {
+      const properties = operation.properties as Record<string, unknown> | undefined;
+      if (operation.type === 'object' && properties) properties.executionMode = executionMode;
+    }
+    definitions.push(tool('course_operation', 'Run one declared component operation. start_session initializes a native session; later inputs require its requestId and expectedSeq equal to query.session.appliedSeq, never query.confirmedSeq. executionMode defaults to foreground (waits for the terminal result); background returns an accepted taskId receipt and the terminal result arrives later as a notification.',
+      { type: 'object', anyOf: operations, properties: { executionMode } }));
+  }
   definitions.push(...artifactToolDefinitions);
   return definitions;
 }

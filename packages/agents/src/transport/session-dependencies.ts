@@ -37,8 +37,8 @@ export type WireToolContext = z.infer<typeof agentDependencyToolContextSchema>;
 /** Remote data-owner tools never save questions; the session owner kernel handles student_ask locally. */
 function remoteToolContext(identity: SpaceIdentity, value: WireToolContext): ToolContext {
   return { identity, sessionId: value.sessionId, turnId: value.turnId, stepId: value.stepId, toolCallId: value.toolCallId,
-    signal: new AbortController().signal, inputIds: value.inputIds,
-    ask: async () => { throw new StorageError('forbidden'); } };
+    signal: new AbortController().signal, inputIds: value.inputIds, originInputId: null, visibleAnswerInputIds: [],
+    assertActive: async () => {}, ask: async () => { throw new StorageError('forbidden'); } };
 }
 export interface AgentMaterialReadPort {
   personal: Pick<SessionMaterialPort['personal'], 'list' | 'material' | 'original' | 'versionContent' | 'readRange'>;
@@ -91,6 +91,12 @@ export interface AgentDependencyServiceOptions {
   resolveOwner?(identity: SpaceIdentity, scenario: CreateAgentSession['scenario'], workspace?: CreateAgentSession['workspace']): Promise<AgentSession['owner']>;
   isOwnerSuccessor?(owner: AgentSession['owner'], source: Readonly<ChunkConnectionSource>): Promise<boolean>;
   assertDispatch(identity: SpaceIdentity, permit: AgentDispatchPermit): Promise<void>;
+  /** Real authenticated task-owner operations; never read from a different business ledger. */
+  tasks?: {
+    read(identity: SpaceIdentity, sessionId: string, taskId: string): Promise<z.infer<typeof import('@xunjie/contracts/agent-dependencies').agentTaskRecordSchema> | null>;
+    list(identity: SpaceIdentity, sessionId: string, turnId: string): Promise<z.infer<typeof import('@xunjie/contracts/agent-dependencies').agentTaskRecordSchema>[]>;
+    cancel(identity: SpaceIdentity, sessionId: string, taskId: string): Promise<void>;
+  };
 }
 async function executionSource(options: AgentDependencyServiceOptions,
   call: Extract<AgentDependencyCall, { operation: 'execution.record' }>, source: Readonly<ChunkConnectionSource>) {
@@ -393,6 +399,17 @@ export function createAgentDependencyService(options: AgentDependencyServiceOpti
         if (call.operation === 'query.search') return query.searchLearning(call.args);
         return query.readLearning(call.args);
       }
+      case 'tasks': {
+        if (!options.tasks) throw new StorageError('unavailable');
+        if (call.args.method === 'cancel') { await options.tasks.cancel(call.identity, call.sessionId, call.args.taskId); return null; }
+        if (call.args.method === 'list') {
+          const records = await options.tasks.list(call.identity, call.sessionId, call.args.turnId);
+          if (!records.every(record => record.sessionId === call.sessionId && sameAgentSubject(record.identity, call.identity)))
+            throw new StorageError('identity-conflict');
+          return records;
+        }
+        return options.tasks.read(call.identity, call.sessionId, call.args.taskId);
+      }
       case 'workspace.activity': return workspace(call.identity, session);
       case 'workspace.course': {
         const activity = await workspace(call.identity, session), course = activity.course;
@@ -558,7 +575,8 @@ export function createAgentDependencyClient(send: (call: AgentDependencyCall) =>
             execute: (call, ctx) => invoke({ version: 2, operation: 'tools.execute', identity, sessionId,
               permit: { sessionId: ctx.sessionId, runId: ctx.turnId, stepId: ctx.stepId, operationId: ctx.toolCallId, generation: 1 },
               args: { module, context: { sessionId: ctx.sessionId, turnId: ctx.turnId, stepId: ctx.stepId, toolCallId: ctx.toolCallId,
-                context: { system: '', facts: {}, sources: [] }, inputIds: [...ctx.inputIds] },
+                // Forward the verified Step context unchanged; the owner re-checks its fixed workspace facts.
+                context: context.context, inputIds: [...ctx.inputIds], ...(context.sessionState ? { sessionState: context.sessionState } : {}) },
                 call: { toolCallId: call.toolCallId, nativeCallId: call.nativeCallId, callIndex: call.callIndex,
                   name: call.name, input: call.input, executionMode: call.executionMode } } }) });
         }

@@ -7,6 +7,7 @@ import { createChunkChannel } from '@xunjie/storage/chunk-channel';
 import { agentSessionCallSchema, agentSessionsCapability, sameAgentSubject } from '@xunjie/contracts/agent-service';
 import { activitySchema } from '@xunjie/contracts/learning-data';
 import type { AgentSession } from '@xunjie/contracts/agent-sessions';
+import type { AgentRuntimeSession } from '@xunjie/contracts/agent-runtime';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import { agentDependenciesCapability } from '@xunjie/contracts/agent-dependencies';
 import { agentExecutionAssociationSchema } from '@xunjie/contracts/execution';
@@ -20,6 +21,7 @@ import type { InstalledConfiguration } from './runtime.js';
 import { createStorageRecoveryOwner } from './storage-recovery.js';
 import { createAgentConnection } from './agent-connections.js';
 import { createProductAgent } from './product-agent.js';
+import type { WorkspaceTaskOwner, WorkspaceTaskRecord } from './workspace-agent-tasks.js';
 import { collectAgentRuntimeBoundary, collectAgentRuntimeReceiverBoundary } from '@xunjie/agent-runtime/maintenance';
 import { readJson } from './io.js';
 import type { CapabilityHandler } from './connections.js';
@@ -65,7 +67,29 @@ export function createStandaloneAgentApplication(options: {
       return session ? structuredClone(session) : dependencies.sessions.read(identity, sessionId);
     },
   };
-  const agent = createProductAgent({ storage, directory, readOnly: true,
+  // The independent host owns no execution ledger. Task facts, terminal notifications and
+  // cancellation always go to the authenticated school owner through the same dependency channel.
+  const taskOwner: WorkspaceTaskOwner = {
+    async read(taskId, requester) {
+      if (!requester) return null;
+      return await dependencies.invoke({ version: 2, operation: 'tasks', identity: requester.identity,
+        sessionId: requester.sessionId, args: { method: 'read', taskId } }) as unknown as WorkspaceTaskRecord | null;
+    },
+    async listByOriginTurn(sessionId, turnId) {
+      const { rows: [row] } = await storage.read('SELECT body FROM agent_runtime_sessions WHERE session_id=$1', [sessionId]);
+      if (!row) return [];
+      const identity = (row.body as AgentRuntimeSession).identity;
+      return await dependencies.invoke({ version: 2, operation: 'tasks', identity, sessionId, args: { method: 'list', turnId } }) as unknown as WorkspaceTaskRecord[];
+    },
+    async cancel(taskId, requester) {
+      if (!requester) return;
+      const { rows: [row] } = await storage.read('SELECT body FROM agent_runtime_sessions WHERE session_id=$1', [requester.sessionId]);
+      if (!row) return;
+      await dependencies.invoke({ version: 2, operation: 'tasks', identity: (row.body as AgentRuntimeSession).identity,
+        sessionId: requester.sessionId, args: { method: 'cancel', taskId } });
+    },
+  };
+  const agent = createProductAgent({ storage, directory, readOnly: true, taskOwner, taskPollMs: 2_000,
     models: options.models ?? ((identity, sessionId) => dependencies.forSession(identity, sessionId).models),
     async authorize(identity) { if (!admitted(identity)) await dependencies.source.describe(identity); },
     async scene(session) {
@@ -74,14 +98,14 @@ export function createStandaloneAgentApplication(options: {
         // The data owner supplies the Step's tool set; the kernel runs on the authenticated device host.
         return { tools: input => ports.tools({ sessionId: input.sessionId, turnId: input.turnId, stepId: input.stepId,
           toolCallId: operationId('agent-step-tools:' + input.stepId),
-          context: { system: '', facts: {}, sources: [] }, inputIds: [...input.inputIds] }) };
+          context: { system: '', facts: {}, sources: [] }, inputIds: [...input.inputIds], sessionState: input.sessionState }) };
       }
       if (!session.workspace) throw new StorageError('forbidden');
       const activity = activitySchema.parse(await ports.workspace());
       return { workspace: { workspace: async () => ports.workspace(), learning: ports.learning, courses: ports.courses },
         tools: input => ports.tools({ sessionId: input.sessionId, turnId: input.turnId, stepId: input.stepId,
           toolCallId: operationId('agent-step-tools:' + input.stepId),
-          context: { system: '', facts: { workspace: JSON.parse(JSON.stringify(activity)) }, sources: [] }, inputIds: [...input.inputIds] }) };
+          context: { system: '', facts: { workspace: JSON.parse(JSON.stringify(activity)) }, sources: [] }, inputIds: [...input.inputIds], sessionState: input.sessionState }) };
     },
   });
   const service = createAgentSessionService(agent.local, { audience: 'service',

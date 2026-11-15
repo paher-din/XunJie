@@ -39,11 +39,11 @@ export interface WorkspaceTaskRecord {
  */
 export interface WorkspaceTaskOwner {
   /** Read-only current/terminal fact for a task; null when the owner holds no such task. */
-  read(taskId: string): Promise<WorkspaceTaskRecord | null>;
+  read(taskId: string, requester?: { sessionId: string; identity: SpaceIdentity }): Promise<WorkspaceTaskRecord | null>;
   /** Tasks whose origin Turn == turnId for this Session, from durable association records. */
   listByOriginTurn(sessionId: string, turnId: string): Promise<WorkspaceTaskRecord[]>;
   /** Idempotent cancel via the owner's existing stop path; a repeated call is a no-op. */
-  cancel(taskId: string): Promise<void>;
+  cancel(taskId: string, requester?: { sessionId: string }): Promise<void>;
 }
 
 export interface WorkspaceAgentTasksOptions {
@@ -62,6 +62,7 @@ const terminalStatus = (state: ExecutionState): TaskTerminalFact['terminalStatus
 const isConfirmedTerminal = (record: WorkspaceTaskRecord) =>
   record.statusKnowledge === 'confirmed' && isTerminalExecutionState(record.state);
 const taskVersion = (record: WorkspaceTaskRecord) => String(record.confirmedSeq);
+const canonicalSubject = (identity: SpaceIdentity) => JSON.stringify([identity.kind, identity.environmentId, identity.spaceId, identity.principalId]);
 
 /** Structured UI references and trusted tool-query taskIds; never arbitrary text similarity. */
 const explicitReferenceSchema = z.object({
@@ -115,7 +116,7 @@ export function createWorkspaceAgentTasks(options: WorkspaceAgentTasksOptions) {
   async function scanOnce(): Promise<void> {
     for (const registration of await registeredBackground()) {
       if (closed) return;
-      const record = await owner.read(registration.taskId);
+      const record = await owner.read(registration.taskId, { sessionId: registration.sessionId, identity: registration.identity });
       if (!record || !isConfirmedTerminal(record)) continue;
       // The owner record must name the same Session/origin Turn the kernel registered.
       if (record.sessionId !== registration.sessionId || record.originTurnId !== registration.originTurnId)
@@ -148,7 +149,7 @@ export function createWorkspaceAgentTasks(options: WorkspaceAgentTasksOptions) {
       const records = await owner.listByOriginTurn(sessionId, turnId);
       return records.filter(record => !isConfirmedTerminal(record)).map(record => ({ taskId: record.taskId }));
     },
-    async cancel(_sessionId, taskId) { await owner.cancel(taskId); },
+    async cancel(sessionId, taskId) { await owner.cancel(taskId, { sessionId }); },
   };
 
   // ---- TaskFactsPort: deterministic selection by real association, never the whole ledger ----
@@ -161,7 +162,7 @@ export function createWorkspaceAgentTasks(options: WorkspaceAgentTasksOptions) {
     return row ? String(row.trigger) : null;
   }
   /** Unresolved effects of interrupted/stopped/failed Turns: unknown outcomes and unconfirmed tasks. */
-  async function unresolvedEffects(sessionId: string): Promise<string[]> {
+  async function unresolvedEffects(sessionId: string, identity: SpaceIdentity): Promise<string[]> {
     const { rows } = await storage.read(`SELECT c.task_id, c.result
       FROM agent_tool_calls c
       JOIN agent_steps s USING(step_id)
@@ -180,7 +181,7 @@ export function createWorkspaceAgentTasks(options: WorkspaceAgentTasksOptions) {
     if (Array.isArray(carried)) for (const item of carried) if (typeof item === 'string') candidates.add(item);
     const unresolved: string[] = [];
     for (const taskId of candidates) {
-      const record = await owner.read(taskId);
+      const record = await owner.read(taskId, { sessionId, identity });
       if (!record || !isConfirmedTerminal(record)) unresolved.push(taskId);
     }
     return unresolved;
@@ -199,10 +200,11 @@ export function createWorkspaceAgentTasks(options: WorkspaceAgentTasksOptions) {
       for (const notification of consumedNotifications) claim(notification.taskId, 1);
       // 3. A manual continue resolves the prior interrupted/stopped/failed Turn's possible effects.
       if (await turnTrigger(input.sessionId, input.turnId) === 'continue')
-        for (const taskId of await unresolvedEffects(input.sessionId)) claim(taskId, 0);
+        for (const taskId of await unresolvedEffects(input.sessionId, input.identity)) claim(taskId, 0);
       const facts: TaskFact[] = [];
       for (const [taskId, priority] of [...priorities.entries()].sort((a, b) => a[1] - b[1] || a[0].localeCompare(b[0]))) {
-        const record = await owner.read(taskId);
+        // A taskId is only a candidate reference. The owner returns nothing unless this exact Session/identity may read it.
+        const record = await owner.read(taskId, { sessionId: input.sessionId, identity: input.identity });
         if (!record) continue;
         facts.push({ taskId, taskVersion: taskVersion(record), name: record.name, status: record.state,
           summary: record.summary, resultRef: record.resultRef, priority });
@@ -229,6 +231,7 @@ export function createLearningSpaceTaskOwner(options: {
   /** The owner's agent execution facade (read/stop); never the dispatch path. */
   executions: {
     read(identity: SpaceIdentity, activityId: string, requestId: string): Promise<{ state: ExecutionState; statusKnowledge: 'confirmed' | 'unknown'; confirmedSeq: number; reason: { detail: string } | null; output: { contentId: string } | null; executionRef: string } | null>;
+    controlReceipt(identity: SpaceIdentity, activityId: string, requestId: string, controlId: string): Promise<{ status: 'dispatching' | 'applied' | 'unknown' | 'rejected'; seq: number; executionRef: string } | null>;
     agent: { stop(identity: SpaceIdentity, activityId: string, context: { runId: string; stepId: string; commandId: string; snapshotId: string; assertDispatch(): Promise<void> }, requestId: string, value: { stopId: string; reason: string }): Promise<unknown> };
   };
   sessionIdOfTurn(turnId: string): Promise<string>;
@@ -238,9 +241,9 @@ export function createLearningSpaceTaskOwner(options: {
   const { storage, executions } = options;
   const associationSchema = z.object({ runId: z.uuid(), stepId: z.uuid(), commandId: z.uuid(), snapshotId: z.uuid() });
   async function origin(commandId: string) {
-    const { rows: [row] } = await storage.read(`SELECT c.command_id, c.request_id, c.activity_id, c.association, c.body_text, o.identity
+    const { rows: [row] } = await storage.read(`SELECT c.command_id, c.request_id, c.activity_id, c.association, c.body_text, c.kind, o.identity
       FROM agent_execution_commands c JOIN agent_execution_origins o ON o.command_id=c.command_id
-      WHERE c.command_id=$1 AND c.kind='submit'`, [commandId]);
+      WHERE c.command_id=$1 AND c.kind IN ('submit','control')`, [commandId]);
     if (!row) return null;
     const association = associationSchema.parse(row.association);
     const identity = spaceIdentitySchema.parse(row.identity);
@@ -248,13 +251,32 @@ export function createLearningSpaceTaskOwner(options: {
     const name = options.taskName?.(body) ?? body.execution?.operation?.operationId ?? '课程任务';
     return { row, association, identity, name };
   }
-  async function fact(commandId: string): Promise<WorkspaceTaskRecord | null> {
+  async function fact(commandId: string, requester?: { sessionId: string; identity: SpaceIdentity }): Promise<WorkspaceTaskRecord | null> {
     const found = await origin(commandId);
     if (!found) return null;
     const { row, association, identity, name } = found;
     const activityId = String(row.activity_id), requestId = String(row.request_id);
+    const sessionId = requester?.sessionId ?? await options.sessionIdOfTurn(association.runId);
+    // User-visible reads are authorized by the caller's real identity and Session, never the target record's identity.
+    if (requester && (sessionId !== requester.sessionId
+      || canonicalSubject(identity) !== canonicalSubject(requester.identity))) return null;
+    if (String(row.kind) === 'control') {
+      // A control operation has its own taskId (controlId) and receipt; it completes when that
+      // receipt is applied/rejected, even while the parent native session keeps running.
+      const receipt = await executions.controlReceipt(identity, activityId, requestId, commandId);
+      if (!receipt) return { taskId: commandId, activityId, identity, sessionId,
+        originTurnId: association.runId, state: 'running', statusKnowledge: 'unknown', confirmedSeq: 0,
+        name, summary: '控制操作已受理，执行节点尚未确认回执。', resultRef: null };
+      const confirmed = receipt.status === 'applied' || receipt.status === 'rejected';
+      const state: ExecutionState = receipt.status === 'applied' ? 'succeeded'
+        : receipt.status === 'rejected' ? 'failed' : 'running';
+      const summary = receipt.status === 'applied' ? '控制操作已生效。' : receipt.status === 'rejected' ? '控制操作被拒绝。'
+        : '控制操作执行中。';
+      return { taskId: commandId, activityId, identity, sessionId, originTurnId: association.runId,
+        state, statusKnowledge: confirmed ? 'confirmed' : 'unknown', confirmedSeq: receipt.seq, name,
+        summary, resultRef: `execution:${receipt.executionRef}` };
+    }
     const query = await executions.read(identity, activityId, requestId);
-    const sessionId = await options.sessionIdOfTurn(association.runId);
     if (!query) {
       // Accepted but no execution yet: a queued, unconfirmed task the owner still tracks.
       return { taskId: requestId, activityId, identity, sessionId, originTurnId: association.runId,
@@ -268,10 +290,10 @@ export function createLearningSpaceTaskOwner(options: {
       summary: summary.slice(0, 2000), resultRef: query.output ? `execution:${query.executionRef}` : null };
   }
   return {
-    read: taskId => fact(taskId),
+    read: (taskId, requester) => fact(taskId, requester),
     async listByOriginTurn(sessionId, turnId) {
       const { rows } = await storage.read(`SELECT command_id FROM agent_execution_commands
-        WHERE kind='submit' AND association->>'runId'=$1 ORDER BY created_at, command_id`, [turnId]);
+        WHERE kind IN ('submit','control') AND association->>'runId'=$1 ORDER BY created_at, command_id`, [turnId]);
       const records: WorkspaceTaskRecord[] = [];
       for (const row of rows) {
         const record = await fact(String(row.command_id));
@@ -283,6 +305,12 @@ export function createLearningSpaceTaskOwner(options: {
       const found = await origin(taskId);
       if (!found) return;
       const { row, association, identity } = found;
+      if (String(row.kind) === 'control') {
+        // A control is a single operation, not the parent session: Stop must not cancel the
+        // parent's independent lifecycle. An unconfirmed dispatching control is already fenced
+        // by the execution owner's idempotent receipt and is not re-dispatched here.
+        return;
+      }
       const stopId = operationId('workspace-task-cancel:' + taskId);
       await executions.agent.stop(identity, String(row.activity_id),
         { ...association, assertDispatch: async () => { throw new StorageError('forbidden'); } },

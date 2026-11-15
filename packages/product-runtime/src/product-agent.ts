@@ -28,6 +28,8 @@ export interface ProductAgentOptions {
   authorize(identity: SpaceIdentity): Promise<void>;
   scene(session: AgentSession): Promise<ProductAgentScene>;
   taskOwner?: WorkspaceTaskOwner;
+  /** The host's own observation cadence for terminal task facts; foreground only uses observe. */
+  taskPollMs?: number;
   remote?(session: AgentSession): Promise<AgentSessionPort>;
   deleted?(session: AgentSession): Promise<void>;
   readOnly?: boolean;
@@ -91,6 +93,7 @@ export function createProductAgent(options: ProductAgentOptions) {
         cancel: (s, t) => tasks!.taskCancellation.cancel(s, t) },
     } : {}) });
   if (options.taskOwner) tasks = createWorkspaceAgentTasks({ storage: options.storage, owner: options.taskOwner,
+    ...(options.taskPollMs ? { pollMs: options.taskPollMs } : {}),
     registerNotification: (identity, sessionId, originTurnId, fact) =>
       host.runtime.registerNotification(identity, sessionId, originTurnId, fact) });
   return { ...host,

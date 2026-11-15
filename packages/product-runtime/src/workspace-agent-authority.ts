@@ -34,6 +34,13 @@ export function createWorkspaceAgentAuthority(options: WorkspaceAgentAuthorityOp
     await port.assertDispatch(identity, { sessionId: session.sessionId, runId: association.runId,
       stepId: association.stepId, operationId: association.commandId, generation: 1 });
   }
+  /** A browser job accepted before its original Step closed may start later; the durable task is the fence. */
+  async function assertTaskDispatch(identity: SpaceIdentity, activityId: string, association: AgentExecutionAssociation) {
+    const { call, turn } = await command(identity, activityId, association);
+    if (turn.state !== 'active' && turn.state !== 'completed') throw new StorageError('forbidden');
+    if (call.executionMode !== 'background' || call.state !== 'closed'
+      || !call.result || call.result.kind !== 'accepted') throw new StorageError('forbidden');
+  }
   const assertArtifactAdoption: NonNullable<Parameters<typeof createLearningData>[6]> = async (identity, activityId, origin, candidate) => {
     const { call, turn } = await command(identity, activityId, origin);
     if (['stopped', 'failed', 'interrupted'].includes(turn.state) || call.state !== 'closed'
@@ -45,5 +52,5 @@ export function createWorkspaceAgentAuthority(options: WorkspaceAgentAuthorityOp
       || published.data.revisionId !== candidate.revisionId || published.data.candidateId !== candidate.candidateId)
       throw new StorageError('forbidden');
   };
-  return { assertDispatch, assertArtifactAdoption };
+  return { assertDispatch, assertTaskDispatch, assertArtifactAdoption };
 }

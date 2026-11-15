@@ -7,7 +7,10 @@ import { agentSessionCallSchema } from '@xunjie/contracts/agent-service';
 
 /** The application composes transport storage; the generic kernel remains unaware of RPC. */
 export const agentServiceMigrations: readonly Migration[] = [...agentRuntimeMigrations,
-  { version: agentRuntimeMigrations.length + 1, name: 'agent-session-transport-v2', sql: chunkChannelMigrationSql }];
+  // The published service layout applied transport as version 9; the v3 runtime now owns 9. The same
+  // immutable tail is displaced to 10 through the checksum-guarded formerVersion mechanism, so an
+  // installed service 1..9 upgrades instead of failing with an incompatible storage plan.
+  { version: agentRuntimeMigrations.length + 1, name: 'agent-session-transport-v2', formerVersion: 9, sql: chunkChannelMigrationSql }];
 export const agentServiceSourceOwner = 'xunjie.agent-service';
 export function isAgentSessionRead(value: unknown) {
   const call = agentSessionCallSchema.safeParse(value);

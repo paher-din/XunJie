@@ -11,7 +11,7 @@ import { scopedPersonalMaterialSchema, scopedPersonalMaterialVersionContentSchem
 import { scopedPdfDocumentSchema, scopedPdfReadingSchema, scopedPdfSearchResultSchema, scopedPdfReferenceSourceSchema, PDF_LIMITS } from './pdf-materials.js';
 import { materialScopeSchema } from './session-materials.js';
 import { teachingArtifactSchema, teachingArtifactRevisionSchema, teachingArtifactReceiptSchema } from './teaching-artifacts.js';
-import { executionQuerySchema, executionArtifactSchema, executionControlReceiptSchema, agentBrowserCommandSchema } from './execution.js';
+import { executionQuerySchema, executionArtifactSchema, executionControlReceiptSchema, agentBrowserCommandSchema, executionStateSchema } from './execution.js';
 import { agentSessionSchema, createAgentSessionSchema, updateAgentSessionSchema, markAgentSessionReadySchema } from './agent-sessions.js';
 import { sameAgentSubject } from './agent-service.js';
 import { executionRecordEventSchema, executionRecordPageSchema, executionRecordSchema } from './execution-records.js';
@@ -65,9 +65,23 @@ export const agentDependencyMaterialSelectionSchema = z.object({
 }).strict();
 export const agentDependencyMaterialMethodSchema = z.enum(Object.keys(agentDependencyMaterialResultSchemas) as [keyof typeof agentDependencyMaterialResultSchemas, ...(keyof typeof agentDependencyMaterialResultSchemas)[]]);
 const facts = z.record(z.string(), json);
+/** A task fact the owner can authorize and read; no arbitrary text or target identity is trusted. */
+export const agentTaskRecordSchema = z.object({
+  taskId: z.string().min(1).max(200), activityId: z.uuid(), identity: spaceIdentitySchema,
+  sessionId: z.uuid(), originTurnId: z.uuid(), state: executionStateSchema,
+  statusKnowledge: z.enum(['confirmed', 'unknown']), confirmedSeq: z.number().int().nonnegative(),
+  name: z.string().max(500), summary: z.string().max(2000), resultRef: z.string().max(1000).nullable(),
+}).strict();
+export const agentTaskMethodSchema = z.discriminatedUnion('method', [
+  z.object({ method: z.literal('read'), taskId: z.string().min(1).max(200) }).strict(),
+  z.object({ method: z.literal('list'), turnId: z.uuid() }).strict(),
+  z.object({ method: z.literal('cancel'), taskId: z.string().min(1).max(200) }).strict(),
+]);
 export const agentDependencyToolContextSchema = z.object({
   sessionId: z.uuid(), turnId: z.uuid(), stepId: z.uuid(), toolCallId: z.uuid(),
-  context: z.object({ system: z.string(), facts, sources: z.array(facts) }).strict(), inputIds: z.array(z.uuid()) }).strict();
+  context: z.object({ system: z.string(), facts, sources: z.array(facts) }).strict(), inputIds: z.array(z.uuid()),
+  /** The verified kernel session snapshot: workspace actions/answers this Step actually saw. */
+  sessionState: facts.optional() }).strict();
 export const agentDependencyToolOfferSchema = z.object({ definition: modelToolSchema, supportsBackground: z.boolean(), scope: facts }).strict();
 export const agentDependencyToolCallSchema = z.object({ toolCallId: z.uuid(), nativeCallId: z.string().min(1).max(200),
   callIndex: z.number().int().nonnegative(), name: z.string().min(1).max(200), input: facts, executionMode: agentExecutionModeSchema }).strict();
@@ -115,6 +129,7 @@ export const agentDependencyCallSchema = z.discriminatedUnion('operation', [
   session.extend({ operation: z.literal('sessions.update'), args: updateAgentSessionSchema }),
   session.extend({ operation: z.literal('sessions.markReady'), args: markAgentSessionReadySchema }),
   session.extend({ operation: z.literal('authorize'), args: empty }),
+  session.extend({ operation: z.literal('tasks'), args: agentTaskMethodSchema }),
   session.extend({ operation: z.literal('workspace.activity'), args: empty }),
   session.extend({ operation: z.literal('workspace.data'), args: z.object({ method: agentWorkspaceDataMethodSchema, args: z.array(json).max(8) }).strict() }),
   session.extend({ operation: z.literal('workspace.course'), args: z.object({ method: agentWorkspaceCourseMethodSchema, args: z.array(json).max(4) }).strict() }),
@@ -134,7 +149,7 @@ export const agentDependencyResultSchemas = {
   'source.read': json,
   'sessions.create': agentSessionSchema, 'sessions.read': agentSessionSchema, 'sessions.list': z.array(agentSessionSchema),
   'sessions.update': agentSessionSchema, 'sessions.markReady': agentSessionSchema,
-  authorize: z.object({ authorized: z.literal(true) }).strict(), 'workspace.activity': activitySchema,
+  authorize: z.object({ authorized: z.literal(true) }).strict(), tasks: json, 'workspace.activity': activitySchema,
   'workspace.data': json, 'workspace.course': json, model: json, 'materials.read': json,
   'tools.describe': moduleDescriptor.array(), 'tools.list': agentDependencyToolOfferSchema.array(),
   'tools.execute': agentDependencyToolOutcomeSchema, 'tools.validateAnswer': z.null(),
@@ -145,6 +160,11 @@ export function parseAgentDependencyResult<C extends AgentDependencyCall>(call: 
   if (call.operation === 'source.describe' && !sameAgentSubject(agentSourceDescriptionSchema.parse(result).identity, call.identity))
     throw new Error('Source identity changed.');
   if (call.operation === 'workspace.data') agentDependencyDataResultSchemas[call.args.method].parse(result);
+  if (call.operation === 'tasks') {
+    if (call.args.method === 'read') agentTaskRecordSchema.nullable().parse(result);
+    else if (call.args.method === 'list') agentTaskRecordSchema.array().parse(result);
+    else z.null().parse(result);
+  }
   if (call.operation === 'source.read') agentSourceReadResultSchemas[call.args.method].parse(result);
   if (call.operation === 'materials.read') agentDependencyMaterialResultSchemas[call.args.method].parse(result);
   if (call.operation.startsWith('sessions.')) {
@@ -162,6 +182,7 @@ export function isAgentDependencyRead(call: AgentDependencyCall): boolean {
     'segments.read', 'checks.read', 'checks.requestPayload', 'checks.progress', 'checks.summary', 'images.read'].includes(call.args.method);
   if (call.operation === 'workspace.data') return !['pdf.read', 'pdf.find', 'artifacts.publish', 'executions.agent.dispatch', 'executions.agent.control', 'executions.agent.cleanup'].includes(call.args.method);
   if (call.operation === 'workspace.course') return true;
+  if (call.operation === 'tasks') return call.args.method !== 'cancel';
   return ['source.describe', 'source.read', 'query.list', 'query.search', 'query.read', 'materials.read', 'sessions.read', 'sessions.list', 'authorize', 'workspace.activity'].includes(call.operation);
 }
 export function requiresAgentDependencyDispatch(call: AgentDependencyCall): boolean {

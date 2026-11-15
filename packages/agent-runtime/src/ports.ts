@@ -22,9 +22,19 @@ export type AskOutcome =
 export interface ToolContext {
   identity: SpaceIdentity;
   sessionId: string; turnId: string; stepId: string; toolCallId: string;
+  /** Actual model segment that produced this ToolCall; host-owned, never model input. */
+  segmentId?: string;
   signal: AbortSignal;
+  /** The Turn's hard deadline, host-owned; tools may wait only within it. */
+  deadline?: string;
+  /** Narrow execution fence: still the live Turn owner and not stopped; call before each independent write. */
+  assertActive(): Promise<void>;
   /** The input range the model actually saw for this Step. */
   inputIds: readonly string[];
+  /** The stable real user request of this Turn, even in a later Step with no newly adopted input. */
+  originInputId: string | null;
+  /** Real answers already shown to this Session's model, inherited across Steps and Turns. */
+  visibleAnswerInputIds: readonly string[];
   ask(input: AskInput): Promise<AskOutcome>;
 }
 export interface AgentTool {

@@ -55,8 +55,9 @@ export function createSkillTools(host: SkillToolsHost): AgentTool[] {
     ...definitions.map(definition => definition.name), ...await host.toolNames?.(ctx) ?? [],
   ])];
   async function current(ctx: ToolContext) {
-    const state = await host.skills.resolveSession(ctx.identity, ctx.sessionId, await toolNames(ctx));
-    return { state, scope: { identity: ctx.identity, sessionId: ctx.sessionId, owner, selectionDigest: state.selectionDigest } };
+    const names = await toolNames(ctx);
+    const state = await host.skills.resolveSession(ctx.identity, ctx.sessionId, names);
+    return { state, names, scope: { identity: ctx.identity, sessionId: ctx.sessionId, owner, selectionDigest: state.selectionDigest } };
   }
   async function discover(ctx: ToolContext, call: ToolCall): Promise<AgentToolResult> {
     const { state, scope } = await current(ctx);
@@ -73,14 +74,15 @@ export function createSkillTools(host: SkillToolsHost): AgentTool[] {
     return completed(JSON.stringify(result), json(result));
   }
   async function load(ctx: ToolContext, call: ToolCall, name: Name): Promise<AgentToolResult> {
-    const { state, scope } = await current(ctx);
+    const { state, names, scope } = await current(ctx);
     const args = reading.parse(call.input);
     if (name === 'skill_load' && args.path && args.path !== 'SKILL.md' || name === 'skill_read' && !args.path) throw new StorageError('invalid');
     const candidates = state.catalog.filter(item => item.skillId === args.skillId && item.version === args.version && item.selected && !item.unavailable);
     if (candidates.length !== 1) throw new StorageError('forbidden');
     const input = sessionSkillLoadSchema.parse({ ...args, path: args.path ?? 'SKILL.md', runId: ctx.turnId, stepId: ctx.stepId,
       commandId: ctx.toolCallId, moduleId: 'skills', moduleVersion: 1, selectionDigest: scope.selectionDigest, packageDigest: candidates[0]!.digest });
-    return loadedResult(await host.skills.loadSession(ctx.identity, ctx.sessionId, input));
+    // The owner must verify the load against the exact tool set used to resolve this selection.
+    return loadedResult(await host.skills.loadSession(ctx.identity, ctx.sessionId, input, { toolNames: names }));
   }
   return definitions.map(({ name, schema, description }) => ({
     definition: { name, description, inputSchema: z.toJSONSchema(schema, { io: 'input',

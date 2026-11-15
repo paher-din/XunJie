@@ -87,7 +87,12 @@ async function sourceFacts(source: StudentFactsSource, identity: SpaceIdentity):
         || Array.isArray(original.body.input) || original.body.input.requestId !== input.input.requestId) throw new StorageError('corrupt');
       const event = input.version === 1 ? original : events.find(event => event.kind === 'input-edited'
         && event.body.inputId === input.inputId && event.body.version === input.version);
-      if (!event || event.body.turnId !== input.turnId) throw new StorageError('corrupt');
+      // A deferred message legitimately moves into a later Turn; the owner records that move so the
+      // original creation/edit event keeps its origin while consumption stays attributable.
+      const adopted = events.find(candidate => candidate.kind === 'input-adopted'
+        && candidate.body.inputId === input.inputId && candidate.body.version === input.version
+        && candidate.body.turnId === input.turnId);
+      if (!event || event.body.turnId !== input.turnId && !adopted) throw new StorageError('corrupt');
       const topics = new Set<string>();
       for (const candidate of extractStudentFacts(input.input.text)) {
         if (topics.has(candidate.topic)) continue;
@@ -95,7 +100,7 @@ async function sourceFacts(source: StudentFactsSource, identity: SpaceIdentity):
         const fact = studentFactSchema.parse({ factId: operationId(`student-fact:${owner.environmentId}:${owner.serviceId}:${session.sessionId}:${event.eventId}:${candidate.topic}`),
           kind: 'preference', topic: candidate.topic, statement: candidate.statement,
           source: { activityId: activity.activityId, eventId: event.eventId, seq: event.seq, inputId: input.inputId, createdAt: event.createdAt,
-            sessionId: session.sessionId, runId: input.turnId, owner, learningTarget: activity.target, inputDigest: canonicalDigest(input.input) },
+            sessionId: session.sessionId, runId: String(event.body.turnId), owner, learningTarget: activity.target, inputDigest: canonicalDigest(input.input) },
           contentVersion: input.version, scope: scopeOf(candidate.statement, activity), reviewStatus: 'unreviewed', supersedes: null, retractedBy: null });
         facts.push({ fact, activity, correction: candidate.correction });
       }

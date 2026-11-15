@@ -89,8 +89,11 @@ export function createExecutionRouting(options: {
     const value = decoded(schema, await options.call(identity, activityId, wire(request)));
     if (request.method === 'agent.original') {
       const original = value as z.infer<typeof agentBrowserCommandSchema> | null;
+      // The original command may be queried from a later Turn of the same session/activity; its own
+      // retained run/step association is what decides ownership, not the caller's current Turn.
       if (original && (!schoolAction(original.action) || original.action.requestId !== request.requestId
-        || !sameScope(original.action, identity, activityId) || original.association.runId !== request.context.runId))
+        || !sameScope(original.action, identity, activityId)
+        || original.association.commandId !== request.requestId))
         fail('identity-conflict');
     }
     if (request.method !== 'agent.original' && request.method !== 'agent.status' && request.method !== 'agent.cleanupStatus'

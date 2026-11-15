@@ -4,6 +4,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { createFileBackend, openStorage, provisionStorage } from '@xunjie/storage';
+import { chunkChannelMigrationSql } from '@xunjie/storage/chunk-channel';
 import { canonicalDigest, operationId as deriveId } from '@xunjie/storage/identity';
 import { nativeFixture } from '../packages/storage/test/native-fixture.mjs';
 import { agentRuntimeMigrations, validateAgentRuntime } from '@xunjie/agent-runtime';
@@ -17,6 +18,9 @@ import { fixedPdf } from '../apps/server/tests/fixtures/pdf-material.mjs';
 import { parseSwitchArguments, switchAgentRuntimeData } from './switch-agent-runtime-data.mjs';
 
 const digest = value => canonicalDigest(value);
+/** The published service layout an installed owner really has: runtime 1..8 plus transport as 9. */
+const publishedAgentMigrations = [...agentRuntimeMigrations.slice(0, 8),
+  { version: 9, name: 'agent-session-transport-v2', sql: chunkChannelMigrationSql }];
 
 test('the switch requires an explicit root and never combines apply with dry-run', () => {
   assert.equal(parseSwitchArguments(['--root', '/environment']).apply, false);
@@ -39,7 +43,7 @@ async function fixture(t, { legacyAgent = false } = {}) {
     const storage = await openStorage({ binding, backend, migrations }); handles.push(storage);
     owners[kind] = { binding, backend, storage }; return storage;
   }
-  const agent = await open('agent', legacyAgent ? agentRuntimeMigrations.slice(0, 8) : agentServiceMigrations);
+  const agent = await open('agent', legacyAgent ? publishedAgentMigrations : agentServiceMigrations);
   const learning = await open('learning', learningMigrations), model = await open('model', modelMigrations);
   const identity = { environmentId, spaceId: randomUUID(), principalId: randomUUID(), kind: 'personal', name: '切换学生' };
   const data = createLearningData(learning, { resolveBinding: async () => ({ ...owners.learning.binding.owner, version: 1 }) });
@@ -65,6 +69,18 @@ async function fixture(t, { legacyAgent = false } = {}) {
   const adoptedPdf = await materials.adopt(identity, project.activityId, { requestId: randomUUID(), kind: 'pdf', documentId: randomUUID(),
     source: { scope, documentId: sourcePdf.documentId, sha256: sourcePdf.sha256 } });
   const workspaceReading = await materials.pdf.read(identity, project.activityId, { requestId: randomUUID(), documentId: adoptedPdf.documentId, pages: [2], region: null });
+
+  // The published transport is part of the installed layout, so its tables really carry data.
+  if (legacyAgent) {
+    const transferId = randomUUID();
+    await agent.request({ requestId: randomUUID(), fingerprint: 'published-transport' }, async tx => {
+      await tx.query(`INSERT INTO agent_chunk_transfers(source_key,transfer_id,input_bytes,input_sha,state,reserved_bytes)
+        VALUES('published',$1,4,$2,'completed',4)`, [transferId, digest('chunk')]);
+      await tx.query(`INSERT INTO agent_chunk_parts(source_key,transfer_id,direction,part_index,byte_length,sha256)
+        VALUES('published',$1,'input',0,4,$2)`, [transferId, digest('part')]);
+      return null;
+    });
+  }
 
   // Runtime history under the original Session identities, including a pending wake and a pending cancellation.
   const turnId = deriveId('agent-turn:' + inputId), stepId = deriveId('agent-step:' + turnId + ':1'), attemptId = randomUUID();
@@ -234,6 +250,41 @@ test('the scoped switch preserves business identity and clears only runtime hist
   await validateAgentRuntime(agent2); await validatePersonalProjects(learning2); await validateAgentSessions(learning2);
 });
 
+test('an installed service 1..9 agent owner upgrades instead of failing as incompatible', { timeout: 120000 }, async t => {
+  const pg = await nativeFixture(), handles = [];
+  t.after(async () => { try { for (const handle of handles.reverse()) await handle.close(); } finally { await pg.close(); } });
+  const environmentId = randomUUID(), owner = { environmentId, serviceId: randomUUID() }, password = randomUUID();
+  const backend = createFileBackend({ id: 'teaching-agent', root: join(pg.root, 'learning-resources', 'teaching-agent') });
+  const binding = await provisionStorage({ admin: pg.admin, owner, password, migrations: publishedAgentMigrations });
+  const installed = await openStorage({ binding, backend, migrations: publishedAgentMigrations }); handles.push(installed);
+  const transferId = randomUUID();
+  await installed.request({ requestId: randomUUID(), fingerprint: 'published-transport' }, async tx => {
+    await tx.query(`INSERT INTO agent_chunk_transfers(source_key,transfer_id,input_bytes,input_sha,state,reserved_bytes)
+      VALUES('published',$1,4,$2,'completed',4)`, [transferId, digest('chunk')]);
+    await tx.query(`INSERT INTO agent_chunk_parts(source_key,transfer_id,direction,part_index,byte_length,sha256)
+      VALUES('published',$1,'input',0,4,$2)`, [transferId, digest('part')]);
+    return null;
+  });
+  const before = (await installed.read('SELECT version,name,applied_at FROM _storage_migrations ORDER BY version')).rows;
+  assert.deepEqual(before.map(row => row.version), [1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  assert.equal(before[8].name, 'agent-session-transport-v2');
+
+  // An installed owner is upgraded only while quiesced, exactly like the product maintenance path.
+  await installed.participant().closeWrites(); await installed.participant().closeDispatch();
+  await installed.close(); handles.length = 0;
+  const upgradedBinding = await provisionStorage({ admin: pg.admin, owner, password, migrations: agentServiceMigrations });
+  const upgraded = await openStorage({ binding: upgradedBinding, backend, migrations: agentServiceMigrations }); handles.push(upgraded);
+  const journal = (await upgraded.read('SELECT version,name,applied_at FROM _storage_migrations ORDER BY version')).rows;
+  assert.deepEqual(journal.map(row => row.version), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  assert.equal(journal[8].name, 'agent-turn-loop');
+  assert.equal(journal[9].name, 'agent-session-transport-v2');
+  // The published tail keeps its original application time; only its version is displaced.
+  assert.equal(new Date(journal[9].applied_at).toISOString(), new Date(before[8].applied_at).toISOString());
+  await validateAgentRuntime(upgraded);
+  assert.equal(Number((await upgraded.read("SELECT count(*) AS total FROM agent_chunk_transfers WHERE source_key='published'")).rows[0].total), 1);
+  assert.equal(Number((await upgraded.read("SELECT count(*) AS total FROM agent_chunk_parts WHERE source_key='published'")).rows[0].total), 1);
+});
+
 test('the switch refuses an agent owner that still has the old Operation/Wait layout', { timeout: 120000 }, async t => {
   const f = await fixture(t, { legacyAgent: true });
   await f.closeOwners();
@@ -243,8 +294,9 @@ test('the switch refuses an agent owner that still has the old Operation/Wait la
   assert.ok(report.blocking.some(item => item.code === 'legacy-agent-table' && item.detail === 'agent_runs'));
   assert.ok(report.schema.legacyTables.includes('agent_waits'));
   assert.equal(report.cleared.turns, 0);
-  const agent = await openStorage({ ...f.owners.agent, migrations: agentRuntimeMigrations.slice(0, 8) }); f.handles.push(agent);
+  const agent = await openStorage({ ...f.owners.agent, migrations: publishedAgentMigrations }); f.handles.push(agent);
   const learning = await openStorage({ ...f.owners.learning, migrations: learningMigrations }); f.handles.push(learning);
   assert.equal(Number((await agent.read('SELECT count(*) AS total FROM agent_runs')).rows[0].total), 0);
+  assert.equal(Number((await agent.read("SELECT count(*) AS total FROM agent_chunk_transfers WHERE source_key='published'")).rows[0].total), 1);
   assert.equal(Number((await learning.read('SELECT count(*) AS total FROM agent_session_directory')).rows[0].total), 2);
 });

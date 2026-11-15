@@ -44,6 +44,7 @@ async function inspect(storage: OwnedStorage): Promise<OwnerSourceClosure> {
   const turns = index('agent_turns', 'turn_id'), inputs = index('agent_inputs', 'input_id');
   const steps = index('agent_steps', 'step_id'), events = index('agent_events', 'event_id');
   const toolCalls = index('agent_tool_calls', 'tool_call_id');
+  const questions = index('agent_questions', 'question_id');
   const terminal = (state: unknown) => ['completed', 'failed', 'stopped', 'interrupted'].includes(String(state));
   const activeBySession = new Map<string, number>();
   for (const turn of turns.values()) {
@@ -66,18 +67,41 @@ async function inspect(storage: OwnedStorage): Promise<OwnerSourceClosure> {
   for (const input of inputs.values()) {
     valid(turns.get(String(input.turn_id))?.session_id === input.session_id);
     const current = parsed(agentInputSchema, input.body), original = parsed(agentInputSchema, input.original_body);
-    valid(input.input_id === operationId('agent-input:' + original.requestId) && input.request_id === original.requestId);
-    valid(current.requestId === original.requestId && current.sessionId === input.session_id && original.sessionId === input.session_id);
-    valid(canonicalDigest(original) === input.input_digest);
-    valid(integer(input.version, 1) && integer(input.seq, 1));
-    valid(['pending', 'adopted', 'removed', 'deferred'].includes(String(input.state)));
-    if (input.state === 'adopted') valid(steps.get(String(input.adopted_step_id))?.turn_id === input.turn_id);
-    else valid(input.adopted_step_id === null);
-    const receipt = await storage.receipt('agent-input:' + original.requestId);
-    valid(receipt);
-    const fixed = parsed(agentInputReceiptSchema, receipt.result);
-    valid(fixed.inputId === input.input_id && fixed.requestId === input.request_id && fixed.sessionId === input.session_id
-      && fixed.inputDigest === input.input_digest && turns.get(fixed.turnId)?.session_id === input.session_id);
+    const questionId = original.context && typeof original.context.questionId === 'string' ? original.context.questionId : null;
+    if (questionId === null) {
+      valid(input.input_id === operationId('agent-input:' + original.requestId) && input.request_id === original.requestId);
+      valid(current.requestId === original.requestId && current.sessionId === input.session_id && original.sessionId === input.session_id);
+      valid(canonicalDigest(original) === input.input_digest);
+      valid(integer(input.version, 1) && integer(input.seq, 1));
+      valid(['pending', 'adopted', 'removed', 'deferred'].includes(String(input.state)));
+      if (input.state === 'adopted') valid(steps.get(String(input.adopted_step_id))?.turn_id === input.turn_id);
+      else valid(input.adopted_step_id === null);
+      const receipt = await storage.receipt('agent-input:' + original.requestId);
+      valid(receipt);
+      const fixed = parsed(agentInputReceiptSchema, receipt.result);
+      valid(fixed.inputId === input.input_id && fixed.requestId === input.request_id && fixed.sessionId === input.session_id
+        && fixed.inputDigest === input.input_digest && turns.get(fixed.turnId)?.session_id === input.session_id);
+    } else {
+      // A real answer is persisted as a SessionInput under its own immutable answer receipt; it has no
+      // agent-input receipt and its id derives from the question version, not the request id.
+      const question = questions.get(questionId);
+      valid(question && question.session_id === input.session_id);
+      const version = Number(original.context?.questionVersion);
+      valid(Number.isSafeInteger(version) && version >= 1 && version === Number(question.version));
+      valid(['answered', 'skipped'].includes(String(question.state)));
+      valid(question.answer_request_id === original.requestId);
+      valid(input.input_id === operationId('agent-answer-input:' + questionId + ':' + version) && input.request_id === original.requestId);
+      valid(current.requestId === original.requestId && current.sessionId === input.session_id && original.sessionId === input.session_id);
+      valid(canonicalDigest(original) === input.input_digest);
+      valid(integer(input.version, 1) && integer(input.seq, 1));
+      valid(['pending', 'adopted', 'removed', 'deferred'].includes(String(input.state)));
+      if (input.state === 'adopted') valid(steps.get(String(input.adopted_step_id))?.turn_id === input.turn_id);
+      else valid(input.adopted_step_id === null);
+      const receipt = await storage.receipt('agent-answer:' + original.requestId);
+      valid(receipt);
+      const fixed = record(receipt.result);
+      valid(fixed.questionId === questionId && Number(fixed.questionVersion) === version && fixed.requestId === input.request_id);
+    }
   }
   for (const step of steps.values()) {
     valid(turns.has(String(step.turn_id)));

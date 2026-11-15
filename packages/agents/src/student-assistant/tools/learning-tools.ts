@@ -37,6 +37,8 @@ const createInputSchema = personalProjectContentSchema.extend({ proposalKey: z.s
 const schemas = { list_learning_tasks: learningPageSchema, search_learning: learningSearchSchema,
   read_learning: learningReadSchema, create_personal_project: createInputSchema };
 type ToolName = keyof typeof schemas;
+/** Stable names actually assembled by this host, for Skill allowed-tools resolution. */
+export const learningToolNames: readonly string[] = Object.keys(schemas);
 const descriptions: Record<ToolName, string> = {
   list_learning_tasks: '分页列出宿主当前获准的个人和学校学习任务。缺失截止时间如实标明。',
   search_learning: '在当前获准 owner 中搜索学习任务、作品、实验记录和对话；对话仅作来源资料。',
@@ -65,12 +67,17 @@ export function createLearningTools(host: LearningToolsHost): AgentTool[] {
     if (receipt.requestId !== requestId || receipt.activityId !== project.activityId
       || !same(receipt.references, project.content.materialRefs)) throw new StorageError('identity-conflict');
   }
-  function workspaceSummary(project: PersonalProject) {
+  function workspaceSummary(project: PersonalProject, materialsState: 'adopted' | 'pending' = 'adopted') {
     const workspace = { projectId: project.projectId, activityId: project.activityId, sessionId: project.workspaceSessionId,
       title: project.content.title, goal: project.content.goal, target: project.target, identity: project.identity };
+    if (materialsState === 'pending') {
+      // Never claim an adopted copy before the material write actually returned a real receipt.
+      return { workspace, materials: { status: 'pending', retainedInWorkspace: 0,
+        fixedSourceReferences: project.content.materialRefs.length, note: '资料尚未采纳到工作区，待后续补全。' } };
+    }
     const retainedLocal = project.content.materialRefs.filter(reference => ['personal-material', 'pdf'].includes(reference.kind)
       && same(reference.owner, project.target) && same(subject(reference.identity), subject(project.identity))).length;
-    const materials = { retainedInWorkspace: retainedLocal, fixedSourceReferences: project.content.materialRefs.length - retainedLocal,
+    const materials = { status: 'adopted', retainedInWorkspace: retainedLocal, fixedSourceReferences: project.content.materialRefs.length - retainedLocal,
       note: '本机附件已在工作区独立保留，删除原会话不会破坏这些资料；其余固定来源在读取时重新授权。' };
     return { workspace, materials };
   }
@@ -99,8 +106,19 @@ export function createLearningTools(host: LearningToolsHost): AgentTool[] {
 
   async function createTool(call: ToolCall, ctx: ToolContext): Promise<AgentToolResult> {
     const { proposalKey, ...content } = createInputSchema.parse(call.input);
+    // Each independent write re-checks the live Turn; a Stop may land after any confirmation read.
+    const stopped = async () => { try { await ctx.assertActive(); return false; } catch { return true; } };
+    const partial = (project: PersonalProject, pending: 'workspace' | 'materials') => completed(
+      JSON.stringify({ ...workspaceSummary(project, pending === 'materials' ? 'adopted' : 'pending'), pending, operationId: project.operationId }),
+      json({ operationId: project.operationId, projectId: project.projectId, pending }));
+    const failedStage = (project: PersonalProject, pending: 'workspace' | 'materials', error: unknown) => {
+      const code = error instanceof StorageError ? error.code : 'unavailable';
+      return completed(JSON.stringify({ ...workspaceSummary(project, 'pending'), pending, operationId: project.operationId,
+        state: code === 'unavailable' || code === 'upload-unknown' ? 'unknown' : 'error', error: code }),
+      json({ operationId: project.operationId, projectId: project.projectId, pending, state: code === 'unavailable' ? 'unknown' : 'error', error: code }));
+    };
     const decision = await verifyProjectCreation(
-      { sessionId: ctx.sessionId, turnId: ctx.turnId, inputIds: ctx.inputIds }, identity, content, proposalKey, host.questions);
+      { sessionId: ctx.sessionId, turnId: ctx.turnId, inputIds: ctx.inputIds, visibleAnswerInputIds: ctx.visibleAnswerInputIds }, identity, content, proposalKey, host.questions);
     if (decision.kind !== 'allow') {
       const reason = decision.kind === 'answer_requires_model_judgment'
         ? '自由文本回答需要主模型在后续 Step 看到真实答案后再判断是否同意；不要猜测同意。'
@@ -110,26 +128,33 @@ export function createLearningTools(host: LearningToolsHost): AgentTool[] {
     // One idempotent business creation per proposal; retrying the same proposal returns the original project.
     const request = personalProjectCreateSchema.parse({ operationId: operationId(`personal-project:${ctx.sessionId}:${proposalKey}`),
       sourceSessionId: ctx.sessionId, inputId: decision.sourceInputId, responseId: decision.questionId, proposalKey, content });
+    if (await stopped()) return { kind: 'interrupted', reason: 'turn-stopped' };
     const existing = await host.projects.receipt(identity, request.operationId);
+    if (!existing && await stopped()) return { kind: 'interrupted', reason: 'turn-stopped' };
     const project = personalProjectSchema.parse(existing ?? await host.projects.create(identity, request));
     checkProject(project, request);
-    const session = await host.workspaceSessions.receipt(identity, project.workspaceSessionId)
-      ?? await host.workspaceSessions.ensure(identity, { requestId: operationId(`personal-project-session:${request.operationId}`),
+    // The project is already real; after Stop only retain that fact and never start the next stage.
+    if (await stopped()) return partial(project, 'workspace');
+    // A receipt that is not ready may only be completed by this explicit write call, never by a read path.
+    const workspaceRequestId = operationId(`personal-project-session:${request.operationId}`);
+    let session: WorkspaceSessionReceipt | null;
+    try {
+      session = await host.workspaceSessions.receipt(identity, project.workspaceSessionId);
+      if (session) checkSession(session, project);
+      if (!session || !session.ready) session = await host.workspaceSessions.ensure(identity, { requestId: workspaceRequestId,
         sessionId: project.workspaceSessionId, activityId: project.activityId, target, title: project.content.title });
-    if (!session || !session.ready) {
-      // Partial success: the project is retained; workspace/materials completion is retried by a new Turn.
-      return completed(JSON.stringify({ ...workspaceSummary(project), pending: 'workspace', operationId: request.operationId }),
-        json({ operationId: request.operationId, projectId: project.projectId, pending: 'workspace' }));
-    }
+    } catch (error) { return failedStage(project, 'workspace', error); }
+    if (!session || !session.ready) return partial(project, 'workspace');
     checkSession(session, project);
+    if (await stopped()) return partial(project, 'materials');
     const requestId = operationId(`personal-project-materials:${request.operationId}`);
-    const materials = await host.materials.receipt(identity, requestId)
-      ?? await host.materials.adopt(identity, { requestId, activityId: project.activityId,
-        sourceSessionId: project.sourceSessionId, references: project.content.materialRefs });
-    if (!materials) {
-      return completed(JSON.stringify({ ...workspaceSummary(project), pending: 'materials', operationId: request.operationId }),
-        json({ operationId: request.operationId, projectId: project.projectId, pending: 'materials' }));
-    }
+    let materials: ProjectMaterialsReceipt | null;
+    try {
+      materials = await host.materials.receipt(identity, requestId)
+        ?? await host.materials.adopt(identity, { requestId, activityId: project.activityId,
+          sourceSessionId: project.sourceSessionId, references: project.content.materialRefs });
+    } catch (error) { return failedStage(project, 'materials', error); }
+    if (!materials) return partial(project, 'materials');
     checkMaterials(materials, project, requestId);
     const summary = workspaceSummary(project);
     return projectResult(json({ operationId: project.operationId, ...summary }), JSON.stringify(summary));

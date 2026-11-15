@@ -108,16 +108,16 @@ npm run test:external:tools -- --list
 
 以上均为现有测试标志，不另增启用变量。源码中的探针、合成案例及 skip 不构成新产品安装矩阵或教学效果验收。
 
-## Agent session v2 专项入口
+## Agent Turn/Step v3 专项入口
 
-旧活动级 Agent 的人工 probe、专属跨机控制器及 WP08 旧备份 probe 已退休；当前回归直接使用公开 session v2 / 安装产品测试，不保留旧 wrapper。旧教学引擎备份与 session v2 不兼容，不把历史恢复样本当作新 schema 升级测试。旧证据仍保留原版本、失败和通过状态。
+旧活动级 Agent 的人工 probe、专属跨机控制器及 WP08 旧备份 probe 已退休；当前回归直接使用公开 session v3 / 安装产品测试与 Turn/Step 内核用例，不保留旧 wrapper。旧教学引擎备份与 v3 不兼容，不把历史恢复样本当作新 schema 升级测试。旧证据仍保留原版本、失败和通过状态。
 
 | 范围 | 当前测试入口 |
 | --- | --- |
-| 独立部署、学校连接与丢回执 | [agent-connection-v2](../../packages/product-runtime/test/agent-connection-v2.runtime.test.mjs)、standalone-agent、school-session-v2 |
+| 独立部署、学校连接与丢回执 | [agent-connection-v2](../../packages/product-runtime/test/agent-connection-v2.runtime.test.mjs)、standalone-agent、school-session-v2（文件名保留历史版本，覆盖 v3 wire） |
 | 原输入、steering、等待、停止与回应 | input-control、agent-student-ask |
 | 原生输入拒绝、固定控制回执与等待恢复 | [teaching-tools-host](../../apps/server/tests/teaching-tools-host.runtime.test.mjs)、workspace-control-wait、workspace-agent-waits |
-| 三协议原生续接、装配、压缩与工具发现 | conversation-native、tool-discovery |
+| 内核循环、终止、迟到受理与恢复 | [loop.runtime.test.mjs](../../packages/agent-runtime/test/loop.runtime.test.mjs)；装配与工具发现用例随对应产品场景运行 |
 | 备份、完整 service sources 与独立 owner 恢复 | [recovery-agent-sessions](../../packages/product-runtime/test/recovery-agent-sessions.runtime.test.mjs)、independent-recovery、recovery |
 | PDF 原页/图像、continuation 与固定原件恢复 | [pdf-agent](../../apps/server/tests/pdf-agent.runtime.test.mjs)、[pdf-recovery](../../apps/server/tests/pdf-recovery.runtime.test.mjs)、workspace-assistant |
 | Skills 与跨 owner 依赖 | skills、session-dependencies |
@@ -127,7 +127,7 @@ npm run test:external:tools -- --list
 
 仍保留 [ALU 产物/执行界面 probe](../../scripts/probe-wp09-alu.mjs) 与 [PDF 界面 probe](../../scripts/probe-pdf-ui.mjs)：它们消费领域接口，未依赖旧 Agent runtime。使用前仍需按真实产品包与桌面环境核验，不能用旧报告代替新运行。
 
-原 probe 中的真实供应商三协议/扫描 PDF、真实双机 HTTPS 与跨安装接管、系统中文输入法的物理候选操作不由上述 native 回归证明。[session v2 浏览器用例](../../apps/web/e2e/sessionV2.spec.ts)与input control 用例也不能代替系统输入法或跨机实测。是否补充当前专项测试由主验收范围决定；工程、真实 host/UI、供应商和跨机结果分别记录。
+原 probe 中的真实供应商三协议/扫描 PDF、真实双机 HTTPS 与跨安装接管、系统中文输入法的物理候选操作不由上述 native 回归证明。[浏览器专项用例](../../apps/web/e2e/sessionV2.spec.ts)（文件名保留历史版本）与input control 用例也不能代替系统输入法或跨机实测。是否补充当前专项测试由主验收范围决定；工程、真实 host/UI、供应商和跨机结果分别记录。
 
 ## 后续写集与责任
 

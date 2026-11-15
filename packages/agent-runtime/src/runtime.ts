@@ -27,7 +27,8 @@ const subject = ({ environmentId, spaceId, principalId, kind }: AgentRuntimeSess
 /** Session owner, merged wakes, host lock and the public entry. The only loop lives in loop.ts. */
 export function createAgentRuntime(storage: OwnedStorage, options: AgentRuntimeOptions) {
   const ownerInstanceId = options.ownerInstanceId ?? randomUUID();
-  const store = createAgentStore(storage, { budget: options.budget, now: options.now, ownerInstanceId });
+  const store = createAgentStore(storage, { budget: options.budget, now: options.now, ownerInstanceId,
+    assertOwner: () => lock !== null && !lockLost });
   const model = createModelAdapter(options.gateway, store);
   const now = options.now ?? Date.now;
   const cancellationTimers: AgentCancellationTimers = options.cancellationTimers ?? {
@@ -38,18 +39,28 @@ export function createAgentRuntime(storage: OwnedStorage, options: AgentRuntimeO
   let closed = false, writesClosed = !!options.readOnly, dispatchClosed = !!options.readOnly;
   let lock: HostLock | null = null;
   let lockLost = false;
-  const dispatchOpen = () => !closed && !writesClosed && !dispatchClosed && !lockLost;
+  // A participating host dispatches only while it really holds the exclusive host lock (K01/K02).
+  const dispatchOpen = () => !closed && !writesClosed && !dispatchClosed && !lockLost && lock !== null;
   const pumps = new Map<string, Promise<void>>();
   const queued = new Set<string>();
   const failures: unknown[] = [];
   const turnControllers = new Map<string, AbortController>();
   const waiters = new Map<string, { resolve: (outcome: AskOutcome) => void; timer?: unknown; onAbort?: () => void }>();
+  const turnDeadlines = new Map<string, { timer: unknown; expired: boolean }>();
+
+  async function acquireLock(): Promise<boolean> {
+    if (lock) return true;
+    lock = await storage.tryHostLock('agent-host:' + storage.owner.environmentId + '/' + storage.owner.serviceId);
+    if (!lock) { lockLost = true; return false; }
+    lockLost = false;
+    void lock.lost.then(() => { lockLost = true; for (const controller of turnControllers.values()) controller.abort(); });
+    return true;
+  }
 
   const ready = (async () => {
-    if (options.readOnly) return;
-    lock = await storage.tryHostLock('agent-host:' + storage.owner.environmentId + '/' + storage.owner.serviceId);
-    if (!lock) { lockLost = true; return; } // another host owns this store; do not run or repair
-    void lock.lost.then(() => { lockLost = true; for (const controller of turnControllers.values()) controller.abort(); });
+    // Every host that may execute Agent work must own the store before repairing or accepting Turns.
+    // Opening the runtime readOnly only pauses admission until resume(); it never skips the lock.
+    if (!await acquireLock()) return;
     await store.recoverInterrupted();
     await cancellations.resumePending();
   })();
@@ -60,6 +71,26 @@ export function createAgentRuntime(storage: OwnedStorage, options: AgentRuntimeO
     if (!controller) { controller = new AbortController(); turnControllers.set(turnId, controller); }
     return controller.signal;
   }
+  /** A Turn's frozen deadline aborts the same signal model/tool calls observe. */
+  function armTurn(turnId: string, deadline: string | null) {
+    disarmTurn(turnId);
+    if (!deadline) return;
+    const delayMs = Math.max(0, Date.parse(deadline) - now());
+    const entry = { timer: undefined as unknown, expired: false };
+    entry.timer = cancellationTimers.setTimeout(() => {
+      if (turnDeadlines.get(turnId) !== entry) return;
+      entry.expired = true;
+      turnControllers.get(turnId)?.abort();
+    }, delayMs);
+    turnDeadlines.set(turnId, entry);
+    if (delayMs === 0) { entry.expired = true; turnControllers.get(turnId)?.abort(); }
+  }
+  function disarmTurn(turnId: string) {
+    const entry = turnDeadlines.get(turnId);
+    if (entry) cancellationTimers.clearTimeout(entry.timer);
+    turnDeadlines.delete(turnId);
+  }
+  function deadlineReached(turnId: string): boolean { return turnDeadlines.get(turnId)?.expired === true; }
   async function isActive(turnId: string): Promise<boolean> {
     if (!dispatchOpen()) return false;
     const sessionId = await sessionOfTurn(turnId);
@@ -73,8 +104,12 @@ export function createAgentRuntime(storage: OwnedStorage, options: AgentRuntimeO
   }
   const deps: LoopDependencies = {
     store, model, gateway: options.gateway, scenario: options.scenario, taskFacts: options.taskFacts,
-    isActive, signalFor,
+    isActive, signalFor, armTurn, disarmTurn, deadlineReached,
     ask: (turnId, stepId, toolCallId, input) => ask(turnId, stepId, toolCallId, input),
+    onLateAcceptance: turnId => { void (async () => {
+      const sessionId = await sessionOfTurn(turnId);
+      await cancellations.deliverTurn(sessionId, turnId);
+    })().catch(error => { failures.push(error); }); },
     onProgress: async (sessionId, turnId, stepId, attemptId, progress) => { await store.recordProgress(sessionId, attemptId, progress); },
   };
   function wake(sessionId: string) {
@@ -85,7 +120,12 @@ export function createAgentRuntime(storage: OwnedStorage, options: AgentRuntimeO
       do {
         queued.delete(sessionId);
         if (!dispatchOpen()) return;
-        const active = await store.activeTurnOf(sessionId);
+        let active = await store.activeTurnOf(sessionId);
+        // An idle Session may still have a legitimately pending completed-origin notification.
+        if (!active) {
+          await store.openPendingTurn(sessionId).catch(error => { failures.push(error); });
+          active = await store.activeTurnOf(sessionId);
+        }
         if (active) await runTurn(deps, active.turnId).catch(error => { failures.push(error); });
         turnControllers.delete(active?.turnId ?? '');
       } while (queued.has(sessionId) && dispatchOpen());
@@ -156,12 +196,12 @@ export function createAgentRuntime(storage: OwnedStorage, options: AgentRuntimeO
     },
     async stop(identity: AgentRuntimeSession['identity'], sessionId: string, turnId: string, requestId: string): Promise<AgentTurn> {
       await authorized(identity, sessionId); writable();
-      const turn = await store.stopTurn(sessionId, turnId, requestId);
+      const stopped = await store.stopTurn(sessionId, turnId, requestId);
       turnControllers.get(turnId)?.abort();
-      // Deliver cancellation outside the stop transaction; the durable intent survives restart.
-      void cancellations.deliverTurn(sessionId, turnId).catch(error => { failures.push(error); });
-      wake(sessionId);
-      return turn;
+      // Only a real durable cancel intent drives delivery; a late Stop on an old completed Turn never widens it.
+      if (stopped.stopped) void cancellations.deliverTurn(sessionId, turnId).catch(error => { failures.push(error); });
+      if (stopped.stopped) wake(sessionId);
+      return stopped.turn;
     },
     async continueSession(identity: AgentRuntimeSession['identity'], sessionId: string, requestId: string): Promise<AgentTurn> {
       await authorized(identity, sessionId); writable();
@@ -220,36 +260,17 @@ export function createAgentRuntime(storage: OwnedStorage, options: AgentRuntimeO
     async resume() {
       if (closed) throw new StorageError('maintenance');
       await this.drain();
+      // Take over (and repair) before opening admission; a host that cannot take the lock stays closed.
+      if (!lock && !await acquireLock()) return;
+      if (!lockLost) { await store.recoverInterrupted(); await cancellations.resumePending(); }
       writesClosed = false; dispatchClosed = false;
-      if (options.readOnly) {
-        // Read-only successors close Turns left active by the dead host, then serve
-        // reads without holding the host lock or admitting new dispatch. Storage
-        // writes may still reopen after this lifecycle call, so retry in the
-        // background instead of blocking host startup.
-        void (async () => {
-          for (let attempt = 0; attempt < 120; attempt++) {
-            let repair: Awaited<ReturnType<typeof storage.tryHostLock>> = null;
-            try { repair = await storage.tryHostLock('agent-host:' + storage.owner.environmentId + '/' + storage.owner.serviceId); }
-            catch { /* database is still opening */ }
-            if (repair) {
-              try { await store.recoverInterrupted(true); await repair.release(); return; }
-              catch { await repair.release(); }
-            }
-            await new Promise(resolve => setTimeout(resolve, 500));
-          }
-        })();
-        return;
-      }
-      if (!lock) {
-        lock = await storage.tryHostLock('agent-host:' + storage.owner.environmentId + '/' + storage.owner.serviceId);
-        if (lock) { lockLost = false; void lock.lost.then(() => { lockLost = true; for (const c of turnControllers.values()) c.abort(); }); await store.recoverInterrupted(); await cancellations.resumePending(); }
-      }
     },
     close(): Promise<void> {
       this.closeWrites();
+      for (const turnId of turnDeadlines.keys()) disarmTurn(turnId);
       return (async () => {
         try { await this.drain(); cancellations.close(); await lock?.release(); }
-        finally { closed = true; }
+        finally { closed = true; lock = null; }
       })();
     },
   };

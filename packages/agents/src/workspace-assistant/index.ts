@@ -10,7 +10,7 @@ import { createConversationCompaction, type CompactionOptions } from '../capabil
 import { buildContext, fixedInputText } from './context.js';
 import { createWorkspaceTools, resolveWorkspace, workspaceFacts, type WorkspaceToolOptions } from './tools/module.js';
 
-export { createWorkspaceTools, resolveWorkspace, authorizedWorkspace, workspaceFacts } from './tools/module.js';
+export { createWorkspaceTools, resolveWorkspace, authorizedWorkspace, workspaceFacts, workspaceToolNames } from './tools/module.js';
 export type { WorkspaceToolOptions } from './tools/module.js';
 export interface WorkspaceAssistantOptions extends WorkspaceToolOptions {
   project?(identity: SpaceIdentity, activityId: string): Promise<PersonalProject | null>;

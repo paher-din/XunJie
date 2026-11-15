@@ -1,6 +1,7 @@
 import { StorageError } from '@xunjie/storage';
 import { operationId } from '@xunjie/storage/identity';
 import { teachingStudentAskInputSchema, teachingStudentAnswerSchema } from '@xunjie/contracts/student-questions';
+import { personalProjectContentSchema } from '@xunjie/contracts/student-learning';
 import type { AgentToolResult } from '@xunjie/contracts/agent-runtime';
 import type { AgentTool, Facts, ToolCall, ToolContext } from '@xunjie/agent-runtime';
 import { completed, json } from '../tool-support.js';
@@ -21,10 +22,18 @@ const definition = { name: 'student_ask',
 export function createUserQuestions(): AgentTool {
   return { definition, supportsBackground: false,
     async execute(call: ToolCall, ctx: ToolContext): Promise<AgentToolResult> {
-      const question = teachingStudentAskInputSchema.parse(call.input);
+      let question = teachingStudentAskInputSchema.parse(call.input);
+      if (question.purpose === 'create_personal_project') {
+        // The tool, not the model, fixes the consent presentation; a reversed or custom label can never authorize.
+        const content = personalProjectContentSchema.parse(question.personalProjectContent);
+        question = { ...question, question: `确认创建个人项目「${content.title}」？`,
+          options: [{ id: 'confirm', label: '同意创建' }, { id: 'decline', label: '暂不创建' }],
+          allowText: true, skippable: true, personalProjectContent: content };
+      }
       // The kernel derives the same questionId from the toolCallId; pre-place it for the presentation.
       const questionId = operationId('agent-question:' + ctx.toolCallId);
-      const sourceInputId = ctx.inputIds.at(-1);
+      // A later Step has no newly adopted input; the stable originating user request remains the real source.
+      const sourceInputId = ctx.originInputId ?? ctx.inputIds.at(-1);
       const presentation = json({ ...question, questionId, ...(sourceInputId ? { sourceInputId } : {}) });
       // 24h question ceiling. Anchoring to the exact Turn creation time needs a ToolContext field (see report).
       const deadline = new Date(Date.now() + 86_400_000).toISOString();

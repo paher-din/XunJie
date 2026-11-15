@@ -68,8 +68,8 @@ import { createAgentDependencyChannel, createAgentDependencyClient, type AgentSe
 import { workFileSchema } from '@xunjie/contracts/learning-data';
 import type { AgentSession } from '@xunjie/contracts/agent-sessions';
 import { agentDependenciesCapability, isAgentDependencyRead, type AgentDependencyCall } from '@xunjie/contracts/agent-dependencies';
-import type { WorkspaceToolOptions } from '@xunjie/agents/workspace-assistant/index';
-import { createLearningTools, type LearningToolsHost } from '@xunjie/agents/student-assistant/tools/learning-tools';
+import { createWorkspaceTools, workspaceToolNames, type WorkspaceToolOptions } from '@xunjie/agents/workspace-assistant/index';
+import { createLearningTools, learningToolNames, type LearningToolsHost } from '@xunjie/agents/student-assistant/tools/learning-tools';
 import { createUserQuestions } from '@xunjie/agents/capabilities/user-questions/index';
 import { createDocumentTools } from '@xunjie/agents/capabilities/documents/index';
 import { createStudentFacts } from '@xunjie/agents/capabilities/student-facts/index';
@@ -578,13 +578,19 @@ export async function createProductLearningApplication(context: {
           const presentation = question.presentation as Record<string, unknown>;
           if (presentation.purpose !== 'create_personal_project' || presentation.proposalKey !== proposalKey) return [];
           const answer = question.answer as { kind?: unknown; optionId?: unknown; text?: unknown } | null;
+          const options = Array.isArray(presentation.options) ? (presentation.options as { id?: unknown; label?: unknown }[])
+            .filter(option => typeof option.id === 'string' && typeof option.label === 'string')
+            .map(option => ({ id: option.id as string, label: option.label as string })) : [];
           return [{ questionId: question.questionId, version: question.version, state: question.state,
             purpose: 'create_personal_project' as const, proposalKey,
             personalProjectContent: personalProjectContentSchema.parse(presentation.personalProjectContent),
+            question: typeof presentation.question === 'string' ? presentation.question : '',
+            options, allowText: presentation.allowText === true, skippable: presentation.skippable === true,
+            createdAt: question.createdAt,
             answer: answer && answer.kind === 'choice' && typeof answer.optionId === 'string' ? { kind: 'choice' as const, optionId: answer.optionId }
               : answer && answer.kind === 'text' && typeof answer.text === 'string' ? { kind: 'text' as const, text: answer.text }
               : answer && answer.kind === 'skip' ? { kind: 'skip' as const } : null,
-            sourceInputId: z.uuid().parse(presentation.sourceInputId),
+            sourceInputId: typeof presentation.sourceInputId === 'string' ? z.uuid().parse(presentation.sourceInputId) : null,
             answerInputId: answer ? operationId('agent-answer-input:' + question.questionId + ':' + question.version) : null }];
         });
       },
@@ -634,7 +640,7 @@ export async function createProductLearningApplication(context: {
               if (!source.sourceInstallationId) throw new StorageError('forbidden');
               return { sourceEnvironmentId: source.sourceEnvironmentId, sourceServiceId: source.sourceServiceId,
                 sourceInstallationId: source.sourceInstallationId, grantId: source.grantId };
-            })() : undefined, environment: () => executionEnvironment(identity) };
+            })() : undefined, environment: () => executionEnvironment(identity), ...(models ? { models } : {}) };
     }
     if (agent && !data) {
       const dependencies = createAgentDependencyClient(call => connectedSchool().agentDependency(call.identity, call));
@@ -666,13 +672,17 @@ export async function createProductLearningApplication(context: {
             scope: session.scenario === 'student-assistant' ? { kind: 'session', sessionId: session.sessionId }
               : { kind: 'workspace', activityId: z.uuid().parse(session.workspace?.activityId) },
             source: { sourceId: 'local-personal', owner: { ...data!.storage.owner, version: 1 } } });
-          const skills = sessionSkills ? createSkillTools({ owner: { ...data!.storage.owner, version: 1 }, skills: sessionSkills }) : undefined;
+          const skills = sessionSkills ? createSkillTools({ owner: { ...data!.storage.owner, version: 1 }, skills: sessionSkills,
+            // Only names actually assembled for this scene, never a wildcard of all potential tools.
+            toolNames: async () => session.scenario === 'student-assistant'
+              ? [...learningToolNames, ...documents.map(tool => tool.definition.name), 'student_ask']
+              : [...workspaceToolNames, ...documents.map(tool => tool.definition.name), 'student_ask'] }) : undefined;
           if (session.scenario === 'student-assistant') {
             return { student: await studentToolsHost(), documents, ...(skills ? { skills } : {}) };
           }
           return { workspace: await workspaceOptions(session), documents, ...(skills ? { skills } : {}) };
         },
-        taskOwner: createLearningSpaceTaskOwner({ storage: data!.storage,
+        taskOwner: createLearningSpaceTaskOwner({ storage: executionModule?.storage ?? data!.storage,
           executions: independentExecution?.executions ?? learning!.executions,
           async sessionIdOfTurn(turnId) {
             const { rows: [row] } = await agent.storage.read('SELECT session_id FROM agent_turns WHERE turn_id=$1', [turnId]);
@@ -715,8 +725,23 @@ export async function createProductLearningApplication(context: {
         return sessionSkills;
       } } : {}),
     } : undefined;
+    const taskOwnerForDependency = data && learning && agent ? (() => {
+      const owner = createLearningSpaceTaskOwner({ storage: executionModule?.storage ?? data.storage,
+        executions: independentExecution?.executions ?? learning.executions,
+        async sessionIdOfTurn(turnId) {
+          const { rows: [row] } = await agent.storage.read('SELECT session_id FROM agent_turns WHERE turn_id=$1', [turnId]);
+          if (!row) throw new StorageError('missing');
+          return String(row.session_id);
+        } });
+      return {
+        read: (identity: SpaceIdentity, sessionId: string, taskId: string) => owner.read(taskId, { sessionId, identity }),
+        list: (identity: SpaceIdentity, sessionId: string, turnId: string) => owner.listByOriginTurn(sessionId, turnId),
+        cancel: async (_identity: SpaceIdentity, sessionId: string, taskId: string) => { await owner.cancel(taskId, { sessionId }); },
+      };
+    })() : undefined;
     const dependencyChannel = data && learning && localDirectory && sessionMaterials ? createAgentDependencyChannel(data.storage, {
       sessions: localDirectory, learning: { ...learning, executions: independentExecution?.executions ?? learning.executions }, courses,
+      ...(taskOwnerForDependency ? { tasks: taskOwnerForDependency } : {}),
       materials: sessionMaterials,
       executionRecordSource: createSchoolExecutionRecordSource({ root, spaces, bindings: agentBindings }),
       async authorize(identity, source) {
@@ -732,11 +757,16 @@ export async function createProductLearningApplication(context: {
       },
       async source(identity) { return localQuerySource(identity, 'owner:' + data.storage.owner.serviceId); },
       modelsForSession: modelsForPeer,
-      async tools(_identity, session, _source, _call) {
-        // Remote kernel sessions keep their own Step tools; the dependency owner only serves data reads.
-        // Cross-machine tool execution returns no modules instead of borrowing another identity's tools.
-        void session;
-        return [];
+      async tools(identity, session, source, call) {
+        // The data owner serves the tools it can actually execute; the kernel-local question is merged on the host.
+        if (session.scenario === 'student-assistant') return createLearningTools(await studentToolsHost());
+        if (!session.workspace) throw new StorageError('forbidden');
+        const wire = 'context' in call.args ? call.args.context : undefined;
+        if (!wire) throw new StorageError('invalid');
+        return createWorkspaceTools(await workspaceOptions(session, source), {
+          identity, sessionId: session.sessionId, turnId: wire.turnId, stepId: wire.stepId,
+          inputIds: wire.inputIds, sessionState: wire.sessionState ?? {},
+        });
       },
     }, { successor: async (original, current) => !!original.sourceInstallationId && !!current.sourceInstallationId
       && isRecoverySuccessor(root, { ...original, sourceInstallationId: original.sourceInstallationId }, current.sourceInstallationId) }) : undefined;
@@ -943,6 +973,8 @@ export async function createProductLearningApplication(context: {
       } } : {}),
       async poll(isOpen: () => boolean) {
         if (independentExecution && isOpen()) await independentExecution.poll(isOpen);
+        // The host poll drives the only task observer; there is no unattended bridge timer.
+        if (sessionAgent && isOpen()) await sessionAgent.observe();
         if (learning && isOpen()) await learning.executions.agent.reconcileAuthorization(async (identity, activityId, origin) => {
           const activity = await learning!.open(identity, activityId);
           if (activity.status !== 'open') throw new StorageError('forbidden');
@@ -977,7 +1009,8 @@ export async function createProductLearningApplication(context: {
         },
         ...(sessionSkills ? { skills: async () => sessionSkills } : {}),
         ...(personalProjects ? { projects: personalProjects } : {}),
-        assertAgentCommand: assertWorkspaceCommand,
+        // Browser claim/accept use the durable accepted-task fence, not the original generating Step.
+        assertAgentCommand: workspaceAuthority.assertTaskDispatch,
         localStudyAllowed: async identity => {
           await spaces.authorize(identity);
           if (environment.profile !== 'school' || !enabled.has('space-course') || !enabled.has('learning-data')
