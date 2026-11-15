@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { spaceIdentitySchema, type SpaceIdentity } from './spaces.js';
 import { agentInputSchema, agentRuntimeSessionSchema, agentTurnSchema, agentEventSchema, agentInputReceiptSchema,
   agentQuestionSchema, agentQuestionResponseSchema, agentQuestionReceiptSchema, agentToolCallSchema, agentStepSchema,
-  agentNotificationSchema, agentTurnBudgetSchema, agentDispatchPermitSchema,
+  agentNotificationSchema, agentTurnBudgetSchema, agentDispatchPermitSchema, agentAttemptSchema,
   type AgentInput, type AgentRuntimeSession, type AgentTurn, type AgentEvent, type AgentInputReceipt,
   type AgentQuestionResponse, type AgentQuestionReceipt, type AgentDispatchPermit } from './agent-runtime.js';
 
@@ -28,7 +28,8 @@ export const agentInputControlReceiptSchema = z.object({ requestId: z.uuid(), in
 export type AgentInputControlReceipt = z.infer<typeof agentInputControlReceiptSchema>;
 export const agentSessionSnapshotSchema = z.object({ session: agentRuntimeSessionSchema, automaticWakeBlocked: z.string().nullable(),
   turns: z.array(agentTurnSchema), inputs: z.array(agentSessionInputSchema), steps: z.array(agentStepSchema),
-  toolCalls: z.array(agentToolCallSchema), questions: z.array(agentQuestionSchema), notifications: z.array(agentNotificationSchema) }).strict();
+  attempts: z.array(agentAttemptSchema), toolCalls: z.array(agentToolCallSchema), questions: z.array(agentQuestionSchema),
+  notifications: z.array(agentNotificationSchema) }).strict();
 export type AgentSessionSnapshot = z.infer<typeof agentSessionSnapshotSchema>;
 export interface AgentSessionReadPort {
   sessionSnapshot(identity: SpaceIdentity, sessionId: string): Promise<AgentSessionSnapshot>;

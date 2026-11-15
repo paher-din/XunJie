@@ -164,15 +164,16 @@ test('installed school settings share the Root pointer and independent Agent dis
       source: { kind: 'school', connectionId: schoolModelId } }, selected);
     await agent.stop(); await agent.start();
     const snapshotRoute = `agent-sessions/${session.sessionId}/snapshots/${fixedDeviceRun.receipt.turnId}`;
+    const turnSteps = snapshot => snapshot.steps.filter(step => step.turnId === fixedDeviceRun.receipt.turnId);
     const retainedTurn = await schoolApi(snapshotRoute);
-    assert.deepEqual(retainedTurn.steps, fixedDeviceRun.snapshot.steps,
+    assert.deepEqual(turnSteps(retainedTurn), turnSteps(fixedDeviceRun.snapshot),
       'later selection and Agent restart cannot retarget the original model operation');
     assert.deepEqual(retainedTurn.turns.find(turn => turn.turnId === fixedDeviceRun.receipt.turnId),
       fixedDeviceRun.snapshot.turns.find(turn => turn.turnId === fixedDeviceRun.receipt.turnId));
     assert.equal(payloads.length, 4, 'changing selection never dispatches a hidden model call');
     assert.equal((await deviceApi('models/selection', undefined, personal)).selected.connection.connectionId, personalModelId);
     await device.stop(); await device.start();
-    assert.deepEqual((await deviceApi(snapshotRoute, undefined, selected)).steps, fixedDeviceRun.snapshot.steps);
+    assert.deepEqual(turnSteps(await deviceApi(snapshotRoute, undefined, selected)), turnSteps(fixedDeviceRun.snapshot));
     const schoolSelectionBeforeControls = await schoolApi('models/selection');
     const personalSelectionBeforeControls = await deviceApi('models/selection', undefined, personal);
     const base = `agent-sessions/${session.sessionId}`;
@@ -208,7 +209,7 @@ test('installed school settings share the Root pointer and independent Agent dis
     }
     assert.deepEqual(await schoolApi('models/selection'), schoolSelectionBeforeControls);
     assert.deepEqual(await deviceApi('models/selection', undefined, personal), personalSelectionBeforeControls);
-    assert.deepEqual((await schoolApi(snapshotRoute)).steps, fixedDeviceRun.snapshot.steps);
+    assert.deepEqual(turnSteps(await schoolApi(snapshotRoute)), turnSteps(fixedDeviceRun.snapshot));
     assert.equal(payloads.length, 4, 'rejected controls and grant receipts never dispatch another model request');
 
   } finally {

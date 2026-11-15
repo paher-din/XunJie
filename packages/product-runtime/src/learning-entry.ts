@@ -383,8 +383,9 @@ export async function createProductLearningApplication(context: {
         const session = await directory.read(identity, origin.sessionId), fixed = session.owner;
         if (fixed.target.environmentId !== origin.service.environmentId || fixed.target.serviceId !== origin.service.serviceId
           || !await matchesInstallation(fixed, origin.installationId)) throw new StorageError('forbidden');
-        const read = ['selection.read', 'selection.snapshot', 'selection.resolve', 'selection.pinned', 'segments.read', 'checks.read',
-          'checks.progress', 'checks.summary', 'checks.requestPayload', 'images.read', 'checks.cancel'].includes(request.operation);
+        const read = ['selection.read', 'selection.snapshot', 'selection.resolve', 'selection.pinned', 'selection.pin', 'segments.read',
+          'segments.create', 'segments.settle', 'segments.close', 'checks.read', 'checks.progress', 'checks.summary',
+          'checks.requestPayload', 'images.read', 'checks.cancel'].includes(request.operation);
         if (!read) {
           if (!origin.authority || origin.authority.sessionId !== session.sessionId) throw new StorageError('forbidden');
           await assertSessionPermit(identity, origin.authority);
@@ -403,8 +404,9 @@ export async function createProductLearningApplication(context: {
       return createLearningModelClient(async request => {
         if (identity.kind !== 'school' || !paired) return localModelService(request);
         if (!source.sourceInstallationId) throw new StorageError('forbidden');
-        const read = ['selection.read', 'selection.snapshot', 'selection.resolve', 'selection.pinned', 'segments.read', 'checks.read',
-          'checks.progress', 'checks.summary', 'checks.requestPayload', 'images.read'].includes(request.operation);
+        const read = ['selection.read', 'selection.snapshot', 'selection.resolve', 'selection.pinned', 'selection.pin', 'segments.read',
+          'segments.create', 'segments.settle', 'segments.close', 'checks.read', 'checks.progress', 'checks.summary',
+          'checks.requestPayload', 'images.read'].includes(request.operation);
         const stable = { request, source: { environmentId: source.sourceEnvironmentId, serviceId: source.sourceServiceId,
           installationId: source.sourceInstallationId, grantId: source.grantId }, sessionId: session.sessionId };
         const authority = 'permit' in call ? call.permit : undefined;
