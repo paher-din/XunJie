@@ -5,7 +5,7 @@
 - 审查基线：`c65d93f5`（base `71a38e8f`）
 - 审查包：`XunJie_PR226_repro_pack.zip`
 - 结论：审查包列出的 37 项（28 P1、9 P2）均已按审查要求完成源码修复；原先用于展示缺陷的见证脚本已改写为断言正确行为的正式回归。桌面 Chrome 产品 UI 已完成真实手测；真实两机/独立 owner 也已用隔离部署完成数据面验收，剩余未闭合的边界在文末单列，不用源码测试冒充。
-- 说明：本轮工作只修改本地仓库，未推送、未评论 PR、未改动审查包或生产数据。源码主体修复在 `c7cf0d17`，验收补丁在 `6e7cf7bd`，设备接入 `incompatible`→409 修复在 `c77a212b`；本文档更新单独提交。
+- 说明：本轮代码已推送到 `origin/feat/agent-runtime-v3-completion`（`f98abcf1`），PR #226 随分支更新；未在 PR 发表评论，未改动审查包或生产数据。源码主体修复在 `c7cf0d17`，验收补丁在 `6e7cf7bd`，设备接入 `incompatible`→409 修复在 `c77a212b`；本文档更新单独提交。
 
 ## 一、修复内容（逐 ID）
 
@@ -113,4 +113,4 @@ cd apps/web && npx vitest run src/product/useAgentSession.test.tsx # 9/9 pass
 - **F-CAP-2 未连真实学校 data-owner 的 tools 路径**：student/workspace 真实场景装配与 Skill 加载已测，且已建立真实学校 data-owner 的 workspace session；但通过 dependencyChannel 从学校 owner 取得 tools/descriptors 并在两机执行尚未单独断言。
 - **F-CAP-4/5 边界未逐一跑**：历史显式版本、撤权、未读取 PDF 不被当已搜索；工具产生后用户改变 selection、跨 session/owner segment、text-only work 等组合未逐一覆盖。
 - **T2 未做完整独立 Agent 部署**：依赖协议 `tools.execute` 已在真实 `read_pdf` 调用上验证，且已建立本机 device 到学校 data-owner 的 workspace session；但没有用 `createStandaloneAgentApplication` 独立 agent profile 跑通全部业务工具，wrongidentity/wrongworkspace/wrongpermit 未分别端到端。
-- 本轮未推送、未评论 PR；审查报告不授权合并或发布。
+- 分支已推送至 `origin/feat/agent-runtime-v3-completion`（`f98abcf1`），PR #226 已随分支更新；本轮未在 PR 发表评论，也不代表审查报告授权合并或发布。
