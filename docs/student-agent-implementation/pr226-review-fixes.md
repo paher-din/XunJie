@@ -5,7 +5,7 @@
 - 审查基线：`c65d93f5`（base `71a38e8f`）
 - 审查包：`XunJie_PR226_repro_pack.zip`
 - 结论：审查包列出的 37 项（28 P1、9 P2）均已按审查要求完成源码修复；原先用于展示缺陷的见证脚本已改写为断言正确行为的正式回归。真实部署、桌面 Chrome 等审查验收边界在文末单列，不用源码测试冒充。
-- 说明：本轮工作只修改本地仓库，未推送、未评论 PR、未改动审查包或生产数据。
+- 说明：本轮工作只修改本地仓库，未推送、未评论 PR、未改动审查包或生产数据。当前本地 HEAD 为 `6e7cf7bd`（本轮验收补丁），源码主体修复在 `c7cf0d17`。
 
 ## 一、修复内容（逐 ID）
 
@@ -80,7 +80,7 @@ node --test packages/product-runtime/test/workspace-agent-tasks.runtime.test.mjs
 cd apps/web && npx vitest run src/product/useAgentSession.test.tsx # 9/9 pass
 ```
 
-回归脚本位于 `scripts/pr226-regressions/`，均使用正式产品 factory/真实 PG/真实 Gateway 边界或实际函数，不再把“缺陷仍存在”当作通过。关键输出包括：K01 锁竞争、K02 失锁拒写、T1 Step2 实际模型调用=2、T4 read/list/cancel 依赖调用、T6 ownerQueries=0、T7 cancelCalls=0 且 taskIds 独立/control 自身 receipt、F-CAP-1 大结果 Turn completed、F-CAP-5 PNG success/PDF uploads=0。
+回归脚本位于 `scripts/pr226-regressions/`，均使用正式产品 factory/真实 PG/真实 Gateway 边界或实际函数，不再把“缺陷仍存在”当作通过。关键输出包括：K01 锁竞争、K02 失锁拒写、T1 Step2 实际模型调用=2、T4 read/list/cancel 依赖调用、T6 ownerQueries=0、T7 cancelCalls=0、taskIds 独立、control 自身 receipt/独立取消且 parentStops=0、F-CAP-1 大结果 Turn completed、F-CAP-5 PNG success/PDF image-enabled 上传=1/imageInput:false uploads=0。
 
 ## 三、未执行或未完全覆盖（不冒充通过）
 
