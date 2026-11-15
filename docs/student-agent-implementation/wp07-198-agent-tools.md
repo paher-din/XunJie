@@ -38,7 +38,8 @@
 
 ## 验证证据
 
-真实模型验收使用受限的 `deepseek-flash` 历史脚本 `probe-teaching-tools.mjs`（已退役）：Chat Completions、Responses、Messages 各完成一次实际 `read_work` 与后续解释，共 6 次生成，均 HTTP 200，无重试。证据含协议、SDK 版本、真实工具结果、用量与回答摘要：[real-model.json](evidence/wp07-198/real-model.json)。探针的生成次数、输出和超时边界仅属于验收，不是产品配置。
+真实模型验收使用受限的 `deepseek-flash` 历史脚本 `probe-teaching-tools.mjs`（已退役）：Chat Completions、Responses、Messages 各完成一次实际 `read_work` 与后续解释，共 6 次生成，均 HTTP 200，无重试。证据含协议、SDK 版本、真实工具结果、用量与回答摘要：[real-model.json](evidence/wp07-198/real-model.json)。
+2026-11-15 agent-runtime v3 补充：真实外部模型端到端由 `scripts/probe-real-agent-session.mjs` 完成——独立本机安装、真实 DeepSeek 网关、完整 v3 会话循环（学生提问 Turn + Segment 续接 Turn），凭据经环境变量注入且不写入报告。证据见 [real-agent-session.json](evidence/wp07-198/real-agent-session.json)。探针的生成次数、输出和超时边界仅属于验收，不是产品配置。
 
 Chrome 用例 [teachingTools.spec.ts](../../apps/web/e2e/teachingTools.spec.ts) 使用生产 HTTP、真实 PostgreSQL、固定作品与 WP03 样例。模型 transport 只控制工具选择和时序；作品读取、WASM 聚合与原生连续状态均由真实实现产生。覆盖固定版本、结果定位、刷新、丢失接受回包、原浏览器失联、等待、停止与新问题草稿保留。
 
