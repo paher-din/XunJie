@@ -3,7 +3,7 @@ import { readFile, realpath } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import pg from 'pg';
-import { agentRuntimeMigrations } from '@xunjie/agent-runtime';
+import { agentServiceMigrations } from '@xunjie/agents/transport/session-storage';
 import { personalProjectOperationId } from '@xunjie/learning-space/learning-data/personal-projects';
 
 const quote = value => '"' + value.replaceAll('"', '""') + '"';
@@ -141,7 +141,7 @@ export async function switchAgentRuntimeData({ root, admin, owners, apply = fals
     await useOwner('agent'); phase = 'agent.verify-schema';
     const journal = (await client.query(`SELECT version,name,checksum FROM ${schemas.agent}._storage_migrations ORDER BY version`)).rows;
     for (const [index, recorded] of journal.entries()) {
-      const migration = agentRuntimeMigrations[recorded.version - 1];
+      const migration = agentServiceMigrations[recorded.version - 1];
       if (recorded.version !== index + 1 || !migration || migration.name !== recorded.name || checksum(migration) !== recorded.checksum) {
         block('agent-migration-conflict', recorded.version);
       }

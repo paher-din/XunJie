@@ -134,7 +134,7 @@ async function fixture(t, { legacyAgent = false } = {}) {
   // The business execution result keeps referencing one response: it must survive the history switch.
   await learning.request({ requestId: randomUUID(), fingerprint: 'fixture-business-result' }, async tx => {
     await tx.query(`INSERT INTO execution_records(request_id,activity_id,source_owner,installation_id,target,action_text,input_digest,
-      execution_ref,reception,initial_query,query,course_digest,result) VALUES($1,$2,$3,$4,'browser','{}',$5,$6,'{}','{}','{}',$7,$8)`,
+      execution_ref,reception,initial_query,query,course_digest,result,created_at) VALUES($1,$2,$3,$4,'browser','{}',$5,$6,'{}','{}','{}',$7,$8,clock_timestamp())`,
       [randomUUID(), project.activityId, owners.learning.binding.owner, randomUUID(), digest({}), randomUUID(), digest({}),
         { modelAttemptId: keptAttempt, modelSegmentId: keptSegment }]);
     return null;
@@ -149,24 +149,26 @@ async function fixture(t, { legacyAgent = false } = {}) {
   await writeFile(join(root, 'credentials', 'database-admin'), pg.admin.password);
   for (const owner of Object.values(owners)) await writeFile(join(root, 'credentials', 'storage-' + owner.binding.owner.serviceId), JSON.stringify(owner.binding));
   const options = { root, admin: pg.admin, owners: { agent: owners.agent, learning: owners.learning, model: owners.model } };
-  return { pg, root, owners, handles, identity, data, sessions, materials, projects, home, workspace, project, scope, operationId,
+  async function closeOwners() { for (const handle of handles.splice(0).reverse()) await handle.close(); }
+  return { pg, root, owners, handles, closeOwners, identity, data, sessions, materials, projects, home, workspace, project, scope, operationId,
     sourceText, adoptedText, adoptedPdf, workspaceReading, options, keptSegment, droppedSegment, keptAttempt, droppedAttempt, turnId };
 }
 
 test('the scoped switch preserves business identity and clears only runtime history', { timeout: 180000 }, async t => {
   const f = await fixture(t);
+  await f.closeOwners();
   const dry = await switchAgentRuntimeData({ ...f.options, apply: false });
   assert.equal(dry.mode, 'dry-run'); assert.deepEqual(dry.blocking, []); assert.equal(dry.changed, true);
   assert.equal(dry.cleared.turns, 1); assert.equal(dry.cleared.notifications, 1); assert.equal(dry.cleared.pendingNotifications, 1);
   assert.equal(dry.cleared.pendingCancellations, 1); assert.equal(dry.cleared.gatewaySegments, 1); assert.equal(dry.cleared.gatewayAttempts, 1);
   assert.equal(dry.preserved.directorySessions, 2); assert.equal(dry.preserved.projects, 1); assert.equal(dry.verified.projects, 1);
   assert.equal(dry.preserved.gatewaySegments, 1); assert.equal(dry.preserved.gatewayAttempts, 1); assert.equal(dry.repaired.brokenChains, 1);
-  assert.equal(Number((await f.owners.agent.storage.read('SELECT count(*) AS total FROM agent_turns')).rows[0].total), 1);
 
   const applied = await switchAgentRuntimeData({ ...f.options, apply: true });
   assert.equal(applied.mode, 'applied'); assert.deepEqual(applied.blocking, []);
-  for (const key of ['turns', 'inputs', 'steps', 'attempts', 'toolCalls', 'questions', 'notifications', 'events', 'controls', 'progress'])
+  for (const key of ['turns', 'inputs', 'steps', 'attempts', 'toolCalls', 'questions', 'notifications', 'controls', 'progress'])
     assert.equal(applied.cleared[key], 1, key);
+  assert.equal(applied.cleared.events, 2, 'events');
   assert.equal(applied.cleared.agentReceipts, 1); assert.equal(applied.cleared.gatewayReceipts, 2);
   assert.equal(applied.preserved.sessions, 2); assert.equal(applied.repaired.runtimeSessions, 0);
 
@@ -179,7 +181,7 @@ test('the scoped switch preserves business identity and clears only runtime hist
   const runtimeSessions = (await agent.read('SELECT session_id,body,state,next_seq,automatic_wake_blocked FROM agent_runtime_sessions')).rows;
   assert.equal(runtimeSessions.length, 2);
   for (const row of runtimeSessions) {
-    assert.equal(row.state, '{}'); assert.equal(Number(row.next_seq), 1); assert.equal(row.automatic_wake_blocked, null);
+    assert.deepEqual(row.state, {}); assert.equal(Number(row.next_seq), 1); assert.equal(row.automatic_wake_blocked, null);
     assert.equal(row.body.sessionId, row.session_id);
   }
   for (const table of ['agent_turns', 'agent_inputs', 'agent_steps', 'agent_attempts', 'agent_tool_calls', 'agent_questions',
@@ -197,7 +199,7 @@ test('the scoped switch preserves business identity and clears only runtime hist
   assert.deepEqual(stored, f.project);
   assert.equal(stored.workspaceSessionId, personalProjectOperationId(f.operationId, 'session'));
   assert.equal(stored.sourceSessionId, f.home.sessionId); assert.equal(stored.inputId, f.project.inputId); assert.equal(stored.responseId, f.project.responseId);
-  assert.equal((await learning.read('SELECT count(*) AS total FROM agent_session_directory WHERE session_id=$1', [stored.workspaceSessionId])).rows[0].total, 1);
+  assert.equal(Number((await learning.read('SELECT count(*) AS total FROM agent_session_directory WHERE session_id=$1', [stored.workspaceSessionId])).rows[0].total), 1);
 
   // Attachments and business execution results stay readable under the original identity.
   const nextData = createLearningData(learning, { resolveBinding: async () => ({ ...f.owners.learning.binding.owner, version: 1 }) });
@@ -222,21 +224,27 @@ test('the scoped switch preserves business identity and clears only runtime hist
   assert.equal(Number((await model.read("SELECT count(*) AS total FROM _storage_requests WHERE request_id LIKE 'model-selection:%'")).rows[0].total), 1);
 
   // Idempotent: a second pass finds nothing left to clear and preserves the same business facts.
+  await f.closeOwners();
   const again = await switchAgentRuntimeData({ ...f.options, apply: true });
   assert.deepEqual(again.blocking, []); assert.equal(again.changed, false);
   for (const value of Object.values(again.cleared)) assert.equal(value, 0);
   assert.equal(again.preserved.projects, 1); assert.equal(again.preserved.directorySessions, 2);
-  await validateAgentRuntime(agent); await validatePersonalProjects(learning); await validateAgentSessions(learning);
+  const agent2 = await openStorage({ ...f.owners.agent, migrations: agentServiceMigrations }); f.handles.push(agent2);
+  const learning2 = await openStorage({ ...f.owners.learning, migrations: learningMigrations }); f.handles.push(learning2);
+  await validateAgentRuntime(agent2); await validatePersonalProjects(learning2); await validateAgentSessions(learning2);
 });
 
 test('the switch refuses an agent owner that still has the old Operation/Wait layout', { timeout: 120000 }, async t => {
   const f = await fixture(t, { legacyAgent: true });
+  await f.closeOwners();
   const report = await switchAgentRuntimeData({ ...f.options, apply: true });
   assert.equal(report.mode, 'applied');
   assert.ok(report.blocking.some(item => item.code === 'runtime-migration-required'));
   assert.ok(report.blocking.some(item => item.code === 'legacy-agent-table' && item.detail === 'agent_runs'));
   assert.ok(report.schema.legacyTables.includes('agent_waits'));
   assert.equal(report.cleared.turns, 0);
-  assert.equal(Number((await f.owners.agent.storage.read('SELECT count(*) AS total FROM agent_runs')).rows[0].total), 0);
-  assert.equal(Number((await f.owners.learning.storage.read('SELECT count(*) AS total FROM agent_session_directory')).rows[0].total), 2);
+  const agent = await openStorage({ ...f.owners.agent, migrations: agentRuntimeMigrations.slice(0, 8) }); f.handles.push(agent);
+  const learning = await openStorage({ ...f.owners.learning, migrations: learningMigrations }); f.handles.push(learning);
+  assert.equal(Number((await agent.read('SELECT count(*) AS total FROM agent_runs')).rows[0].total), 0);
+  assert.equal(Number((await learning.read('SELECT count(*) AS total FROM agent_session_directory')).rows[0].total), 2);
 });
