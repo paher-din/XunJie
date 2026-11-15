@@ -522,8 +522,17 @@ export function createTeachingTools(options: {
   function outcomeToResult(outcome: TeachingToolOutcome): AgentToolResult {
     const data = json(outcome.result), rawSummary = outcome.feedback.text ?? '';
     // The kernel contract bounds feedback; an oversized auxiliary result must not fail the whole batch.
-    const summary = rawSummary.length <= 8192 ? rawSummary
-      : rawSummary.slice(0, 8170) + '…（反馈已截断，完整结果保存在本次工具结果中）';
+    // When truncating, keep the structured handle (offset/length/total/nextOffset) model-visible and
+    // only shorten the embedded document body; the complete result remains in `data`.
+    const clipped = '…（反馈已截断，完整结果保存在本次工具结果中）';
+    let summary = rawSummary;
+    if (rawSummary.length > 8192) {
+      const modelData = JSON.parse(JSON.stringify(data)) as Record<string, unknown>;
+      const file = modelData.file && typeof modelData.file === 'object' ? modelData.file as Record<string, unknown> : null;
+      if (file && typeof file.value === 'string' && file.value.length > 2000) file.value = file.value.slice(0, 2000) + clipped;
+      const candidate = JSON.stringify({ state: outcome.state, ...modelData });
+      summary = candidate.length <= 8192 ? candidate : candidate.slice(0, 8192 - clipped.length) + clipped;
+    }
     const taskId = outcome.execution?.requestId;
     const images = outcome.feedback.images.length ? { images: outcome.feedback.images } : {};
     switch (outcome.state) {

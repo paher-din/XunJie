@@ -212,11 +212,22 @@ export function createDocumentTools(options: DocumentToolOptions): AgentTool[] {
       const input = schemas.search_materials.parse(call.input);
       // Omitted personal references mean the current authorized catalogue, exactly as the tool promises;
       // an explicit empty array still means an intentionally empty personal scope.
-      const personalSelections = input.personalReferences ?? files.personal.map(material => {
-        const version = material.versions.find(item => item.version === material.currentVersion);
-        if (!version) throw new StorageError('corrupt');
-        return { materialId: material.materialId, version: version.version, sha256: version.sha256 };
-      });
+      const personalSelections = input.personalReferences === undefined
+        ? files.personal.map(material => {
+          const version = material.versions.find(item => item.version === material.currentVersion);
+          if (!version) throw new StorageError('corrupt');
+          return { materialId: material.materialId, version: version.version, sha256: version.sha256 };
+        })
+        // An explicit reference is a capability claim, not a search filter: verify that the
+        // exact fixed version is still readable and authorized before the owner sees it.
+        : await Promise.all(input.personalReferences.map(async reference => {
+          const fixed = await materials.personal.original(ctx.identity, scope, reference.materialId, reference.version);
+          if (!hasScope(fixed.material, scope) || fixed.material.materialId !== reference.materialId
+            || fixed.material.removedAt || fixed.version.materialId !== reference.materialId
+            || fixed.version.version !== reference.version || fixed.version.sha256 !== reference.sha256)
+            throw new StorageError('forbidden');
+          return { materialId: reference.materialId, version: reference.version, sha256: reference.sha256 };
+        }));
       const personalReferences = personalSelections.map(ref => ({ source: { kind: 'personal-material' as const, ...placement(scope), ...ref } }));
       const pdfReferences = (input.pdfReferences ?? []).map(ref => ({ source: { kind: 'pdf' as const, ...placement(scope),
         documentId: ref.documentId, documentSha256: ref.sha256, readingId: ref.readingId } }));

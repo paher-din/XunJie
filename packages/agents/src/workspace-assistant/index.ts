@@ -64,7 +64,13 @@ export function createWorkspaceAssistant(options: WorkspaceAssistantOptions): Ag
         ])] };
     },
     async tools(input) {
-      if (options.tools) return [...await options.tools(input)];
+      if (options.tools) {
+        // Remote owner tools never include kernel-local questions or capabilities; merge by name,
+        // preserving the owner's order and never letting a remote duplicate shadow local ownership.
+        const remote = await options.tools(input);
+        const owned = [questions, ...(options.documents ?? []), ...(options.skills ?? [])];
+        return [...remote, ...owned.filter(tool => !remote.some(item => item.definition.name === tool.definition.name))];
+      }
       return [...await createWorkspaceTools(options, input), questions, ...(options.documents ?? []), ...(options.skills ?? [])];
     },
     async validateAnswer(presentation, answer) { validateTeachingAnswer(presentation, answer); },

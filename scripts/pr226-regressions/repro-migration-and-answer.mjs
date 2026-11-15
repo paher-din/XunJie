@@ -51,13 +51,31 @@ try {
   await store.answerQuestion(session.sessionId,{requestId:answerRequestId,questionId,expectedVersion:1,answer:{kind:'text',text:'请继续'}});
   await validateAgentRuntime(storage);
   await validateAgentServiceStorage(storage);
-  console.log(JSON.stringify({case:'answer_preserves_source_closure',runtimeValid:true,serviceValid:true,actualInputId:(await storage.read('SELECT input_id FROM agent_inputs WHERE request_id=$1',[answerRequestId])).rows[0].input_id,inputReceipt:!!(await storage.receipt('agent-input:'+answerRequestId)),answerReceipt:!!(await storage.receipt('agent-answer:'+answerRequestId))}));
+  const answerView=await store.request(session.sessionId,answerRequestId);
+  assert.equal(answerView.receipt.state,'pending');
+  assert.equal(answerView.receipt.currentTurnId,answerView.receipt.turnId);
+  console.log(JSON.stringify({case:'answer_preserves_source_closure',runtimeValid:true,serviceValid:true,actualInputId:(await storage.read('SELECT input_id FROM agent_inputs WHERE request_id=$1',[answerRequestId])).rows[0].input_id,inputReceipt:!!(await storage.receipt('agent-input:'+answerRequestId)),answerReceipt:!!(await storage.receipt('agent-answer:'+answerRequestId)),answerState:answerView.receipt.state}));
 
   const pendingReq=randomUUID();
   const pending=await store.submitInput({requestId:pendingReq,sessionId:session.sessionId,text:'稍后也检查这个输入',context:{}});
+  assert.ok('state' in pending,'first submit exposes its current input state');
   await store.stopTurn(session.sessionId,receipt.turnId,randomUUID());
   const original=await store.request(session.sessionId,pendingReq);
-  console.log(JSON.stringify({case:'deferred_retry_has_no_state',storedState:(await storage.read('SELECT state FROM agent_inputs WHERE request_id=$1',[pendingReq])).rows[0].state,returnedKeys:Object.keys(original.receipt),returnedHasState:'state' in original||'state' in original.receipt}));
+  const storedState=(await storage.read('SELECT state, turn_id FROM agent_inputs WHERE request_id=$1',[pendingReq])).rows[0];
+  assert.equal(original.receipt.state,'deferred');
+  assert.equal(original.receipt.currentTurnId,String(storedState.turn_id));
+  const turnsBefore=(await store.sessionSnapshot(session.sessionId)).turns.length;
+  await storage.request({requestId:'test-block:'+pendingReq,fingerprint:pendingReq},async tx=>{
+    await tx.query("UPDATE agent_runtime_sessions SET automatic_wake_blocked='budget_exhausted' WHERE session_id=$1",[session.sessionId]); return null; });
+  const repeated=await store.submitInput({requestId:pendingReq,sessionId:session.sessionId,text:'稍后也检查这个输入',context:{}});
+  assert.equal(repeated.state,'deferred');
+  assert.equal((await storage.read('SELECT automatic_wake_blocked FROM agent_runtime_sessions WHERE session_id=$1',[session.sessionId])).rows[0].automatic_wake_blocked,'budget_exhausted','a repeated request does not clear the budget block');
+  assert.equal((await store.sessionSnapshot(session.sessionId)).turns.length,turnsBefore,'a repeated request does not create a new Turn');
+  await store.continueSession(session.sessionId,randomUUID());
+  const afterContinue=await store.request(session.sessionId,pendingReq);
+  assert.equal(afterContinue.receipt.state,'pending');
+  console.log(JSON.stringify({case:'deferred_receipt_projects_current_state',firstSubmitState:pending.state,storedState:storedState.state,
+    currentTurnId:original.receipt.currentTurnId,repeatedState:repeated.state,afterContinueState:afterContinue.receipt.state,newTurnCreated:false}));
 } finally {
   for (const h of handles.reverse()) await h.close();
   await pg.close();

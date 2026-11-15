@@ -299,7 +299,8 @@ export function createAgentStore(storage: OwnedStorage, options: StoreOptions) {
     if (!answer) throw new StorageError('corrupt');
     const input = agentInputSchema.parse(row.original_body);
     return { receipt: agentInputReceiptSchema.parse({ requestId: input.requestId, sessionId: input.sessionId,
-      inputId: String(row.input_id), turnId: String(row.turn_id), inputDigest: String(row.input_digest) }), input };
+      inputId: String(row.input_id), turnId: String(row.turn_id), inputDigest: String(row.input_digest),
+      state: String(row.state), currentTurnId: row.turn_id ? String(row.turn_id) : null }), input };
   }
   async function continueSession(sessionId: string, requestId: string): Promise<AgentTurn> {
     const body = { sessionId, requestId }, fingerprint = canonicalDigest(body);
@@ -825,11 +826,9 @@ function answerText(presentation: Facts, answer: Facts): string {
       if (existing!.state !== 'pending') return { notificationId, turnId: null };
       const { rows: [origin] } = await tx.query('SELECT session_id, state FROM agent_turns WHERE turn_id=$1', [originTurnId]);
       const originState = origin && String(origin.session_id) === sessionId ? String(origin.state) : 'missing';
-      // Whitelist the origin: only a same-Session active/completed Turn can ever feed a model context.
-      if (!['active', 'completed'].includes(originState)) {
-        await tx.query("UPDATE agent_notifications SET state='suppressed' WHERE notification_id=$1 AND state='pending'", [notificationId]);
-        return { notificationId, turnId: null };
-      }
+      // Only a same-Session active/completed Turn can feed a model context or auto-wake. A stopped
+      // origin still leaves the fact pending for its durable record; adoption rechecks and suppresses it.
+      if (!['active', 'completed'].includes(originState)) return { notificationId, turnId: null };
       const active = await activeTurn(tx, sessionId);
       // Only a normally completed origin may auto-open a new Turn when idle; stopped/interrupted/failed never wake.
       if (!active && originState === 'completed' && !locked.automatic_wake_blocked) {

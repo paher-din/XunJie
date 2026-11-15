@@ -46,6 +46,7 @@ export function projectResult(result: Facts, summary: string, outcome: 'success'
     const excerpt = preview(bytes, 2048);
     text = JSON.stringify({ preview: excerpt.text, original, byteRange: { offset: excerpt.start, end: excerpt.end }, truncated: true });
   }
-  return { kind: 'completed', outcome, summary: text.slice(0, toolFeedbackBytes), data: result,
-    resultRef: `result:${original.sha256}` };
+  // No generic result reader is installed in the v3 scene; do not advertise a fake `result:` handle.
+  // The complete value stays in `data`, and large document tools expose their own byte/UTF-16 ranges.
+  return { kind: 'completed', outcome, summary: text.slice(0, toolFeedbackBytes), data: result };
 }

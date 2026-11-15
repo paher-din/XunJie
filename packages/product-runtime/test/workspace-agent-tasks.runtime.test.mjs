@@ -132,7 +132,7 @@ test('通知桥：空闲+来源completed 自动开新 Turn，notificationId 稳�
     const receipt = await h.runtime.submit(h.identity, h.input('启动实验'));
     await h.runtime.drain();
     await h.registerTask(taskId, receipt.turnId, { state: 'succeeded', confirmedSeq: 3 });
-    await h.bridge.scan();
+    await h.bridge.observe();
     const expectedId = operationId('agent-notification:' + taskId + ':3');
     let snap = await h.snapshot();
     const notification = snap.notifications.find(n => n.taskId === taskId);
@@ -143,7 +143,7 @@ test('通知桥：空闲+来源completed 自动开新 Turn，notificationId 稳�
     assert.ok(wakeTurn, '空闲且来源 completed → 自动新 Turn');
     await h.runtime.drain();
     // Replay: same terminal version must not create a second notification or Turn.
-    await h.bridge.scan();
+    await h.bridge.observe();
     snap = await h.snapshot();
     assert.equal(snap.notifications.filter(n => n.taskId === taskId).length, 1, '重放不重复登记');
     assert.equal(snap.turns.filter(t => t.trigger === 'task-notification').length, 1, '重放不重复唤醒');
@@ -156,6 +156,29 @@ test('通知桥：空闲+来源completed 自动开新 Turn，notificationId 稳�
   } finally { await h.close(); }
 });
 
+test('通知桥：同一 Turn 的两个后台任务各自一个稳定通知', async () => {
+  const a = randomUUID(), b = randomUUID();
+  const h = await harness([{ text: '启动两个', toolIntents: [
+    { callId: 'c1', name: 'course_operation', arguments: { executionMode: 'background' } },
+    { callId: 'c2', name: 'course_operation', arguments: { executionMode: 'background' } }] }, { text: '受理已知', toolIntents: [] }],
+    { toolFactory: () => backgroundTools([a, b]) });
+  try {
+    const receipt = await h.runtime.submit(h.identity, h.input('启动两个实验'));
+    await h.runtime.drain();
+    await h.registerTask(a, receipt.turnId, { state: 'succeeded', confirmedSeq: 2 });
+    await h.registerTask(b, receipt.turnId, { state: 'succeeded', confirmedSeq: 3 });
+    await h.bridge.observe();
+    const snap = await h.snapshot();
+    for (const [taskId, version] of [[a, 2], [b, 3]]) {
+      const notifications = snap.notifications.filter(n => n.taskId === taskId);
+      assert.equal(notifications.length, 1, 'one notification per taskId/version');
+      assert.equal(notifications[0].notificationId, operationId('agent-notification:' + taskId + ':' + version));
+    }
+    await h.bridge.observe();
+    assert.equal((await h.snapshot()).notifications.length, 2, 'replay does not duplicate either notification');
+  } finally { await h.close(); }
+});
+
 test('通知桥：运行中进度不触发模型，仅确认终态投递', async () => {
   const taskId = randomUUID();
   const h = await harness([{ text: '启动', toolIntents: [{ callId: 'c1', name: 'course_operation', arguments: { executionMode: 'background' } }] }, { text: '受理已知', toolIntents: [] }],
@@ -164,17 +187,17 @@ test('通知桥：运行中进度不触发模型，仅确认终态投递', async
     const receipt = await h.runtime.submit(h.identity, h.input('启动实验'));
     await h.runtime.drain();
     await h.registerTask(taskId, receipt.turnId, { state: 'running', confirmedSeq: 2 });
-    await h.bridge.scan();
+    await h.bridge.observe();
     let snap = await h.snapshot();
     assert.equal(snap.notifications.length, 0, '运行中不登记通知');
     assert.equal(snap.turns.filter(t => t.trigger === 'task-notification').length, 0, '运行中不唤醒');
     // Unconfirmed terminal (unknown knowledge) is not delivered either.
     await h.taskStorage.request({ requestId: 'unk:' + taskId, fingerprint: 'unk' }, async tx => { await tx.query("UPDATE execution_commands SET state='succeeded', status_knowledge='unknown', confirmed_seq=3 WHERE request_id=$1", [taskId]); return null; });
-    await h.bridge.scan();
+    await h.bridge.observe();
     snap = await h.snapshot();
     assert.equal(snap.notifications.length, 0, '未确认终态不投递');
     await h.setTaskState(taskId, 'succeeded', 4);
-    await h.bridge.scan();
+    await h.bridge.observe();
     snap = await h.snapshot();
     assert.equal(snap.notifications.length, 1, '确认终态才投递');
   } finally { await h.close(); }
@@ -192,7 +215,7 @@ test('通知桥：来源 Turn 被 Stop → 不自动唤醒，接纳时 suppresse
     await h.runtime.stop(h.identity, h.session.sessionId, receipt.turnId, randomUUID());
     b.release();
     await h.runtime.drain();
-    await h.bridge.scan();
+    await h.bridge.observe();
     let snap = await h.snapshot();
     assert.equal(snap.turns.filter(t => t.trigger === 'task-notification').length, 0, '来源 stopped 不自动唤醒');
     const notification = snap.notifications.find(n => n.taskId === taskId);
@@ -225,7 +248,7 @@ test('通知桥：busy 时入队下个 Step 接纳，不打断当前 Turn', asyn
     await h.registerTask(taskId, first.turnId, { state: 'succeeded', confirmedSeq: 1 });
     const second = await h.runtime.submit(h.identity, h.input('做别的事'));
     await waitFor(() => b.started.length === 1);
-    await h.bridge.scan();
+    await h.bridge.observe();
     let snap = await h.snapshot();
     assert.equal(snap.turns.filter(t => t.trigger === 'task-notification').length, 0, 'busy 不另开 Turn');
     assert.equal(snap.notifications.find(n => n.taskId === taskId).state, 'pending', 'busy 时排队');
@@ -240,24 +263,25 @@ test('通知桥：busy 时入队下个 Step 接纳，不打断当前 Turn', asyn
 
 test('取消：仅取消当前 Turn 发起的非终态任务，先前 Turn 任务保留', async () => {
   const oldA = randomUUID(), oldB = randomUUID(), current = randomUUID();
+  const b = blockingBackgroundTools([oldA, oldB, current]);
   const h = await harness([
     { text: '旧任务', toolIntents: [{ callId: 'a', name: 'course_operation', arguments: { executionMode: 'background' } }, { callId: 'b', name: 'course_operation', arguments: { executionMode: 'background' } }] },
     { text: '受理已知', toolIntents: [] },
-    { text: '新任务', toolIntents: [{ callId: 'c', name: 'course_operation', arguments: { executionMode: 'background' } }] },
-    { text: '受理已知', toolIntents: [] },
-  ], { toolFactory: () => backgroundTools([oldA, oldB, current]) });
+    { text: '新任务', toolIntents: [{ callId: 'c', name: 'course_operation', arguments: { executionMode: 'background' } }, { callId: 'd', name: 'block', arguments: {} }] },
+  ], { toolFactory: () => b.tools });
   try {
     const turn1 = await h.runtime.submit(h.identity, h.input('启动两个旧任务'));
     await h.runtime.drain();
     await h.registerTask(oldA, turn1.turnId, { state: 'running' });
     await h.registerTask(oldB, turn1.turnId, { state: 'running' });
     const turn2 = await h.runtime.submit(h.identity, h.input('启动新任务'));
-    await h.runtime.drain();
+    await waitFor(() => b.started.length === 1);
     await h.registerTask(current, turn2.turnId, { state: 'running' });
-    // Enumerate at the public port: only the current Turn's non-terminal task.
+    // Enumerate at the public port: only the current, still-active Turn's non-terminal task.
     const listed = await h.bridge.taskCancellation.listNonTerminal(h.session.sessionId, turn2.turnId);
     assert.deepEqual(listed.map(t => t.taskId), [current], '仅当前 Turn 任务');
     await h.runtime.stop(h.identity, h.session.sessionId, turn2.turnId, randomUUID());
+    b.release();
     await h.runtime.drain();
     await h.bridge.drain();
     const state = async id => (await h.taskStorage.read('SELECT state FROM execution_commands WHERE request_id=$1', [id])).rows[0].state;

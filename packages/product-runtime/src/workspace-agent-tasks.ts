@@ -241,7 +241,7 @@ export function createLearningSpaceTaskOwner(options: {
   const { storage, executions } = options;
   const associationSchema = z.object({ runId: z.uuid(), stepId: z.uuid(), commandId: z.uuid(), snapshotId: z.uuid() });
   async function origin(commandId: string) {
-    const { rows: [row] } = await storage.read(`SELECT c.command_id, c.request_id, c.activity_id, c.association, c.body_text, c.kind, o.identity
+    const { rows: [row] } = await storage.read(`SELECT c.command_id, c.request_id, c.activity_id, c.association, c.body_text, c.kind, c.cancelled, o.identity
       FROM agent_execution_commands c JOIN agent_execution_origins o ON o.command_id=c.command_id
       WHERE c.command_id=$1 AND c.kind IN ('submit','control')`, [commandId]);
     if (!row) return null;
@@ -263,6 +263,8 @@ export function createLearningSpaceTaskOwner(options: {
     if (String(row.kind) === 'control') {
       // A control operation has its own taskId (controlId) and receipt; it completes when that
       // receipt is applied/rejected, even while the parent native session keeps running.
+      if (row.cancelled) return { taskId: commandId, activityId, identity, sessionId, originTurnId: association.runId,
+        state: 'cancelled', statusKnowledge: 'confirmed', confirmedSeq: 0, name, summary: '该控制操作已随当前 Turn 停止取消。', resultRef: null };
       const receipt = await executions.controlReceipt(identity, activityId, requestId, commandId);
       if (!receipt) return { taskId: commandId, activityId, identity, sessionId,
         originTurnId: association.runId, state: 'running', statusKnowledge: 'unknown', confirmedSeq: 0,
@@ -306,9 +308,14 @@ export function createLearningSpaceTaskOwner(options: {
       if (!found) return;
       const { row, association, identity } = found;
       if (String(row.kind) === 'control') {
-        // A control is a single operation, not the parent session: Stop must not cancel the
-        // parent's independent lifecycle. An unconfirmed dispatching control is already fenced
-        // by the execution owner's idempotent receipt and is not re-dispatched here.
+        // A control is a single operation, not the parent session: Stop cancels this operation
+        // in the execution ledger and must not cancel the parent's independent lifecycle.
+        await storage.request({ requestId: 'workspace-task-control-cancel:' + taskId, fingerprint: taskId }, async tx => {
+          await tx.query("UPDATE agent_execution_commands SET cancelled=true, stop_body=COALESCE(stop_body,$2::jsonb) WHERE command_id=$1 AND kind='control'",
+            [taskId, JSON.stringify({ stopId: operationId('workspace-task-control-cancel:' + taskId),
+              reason: '当前 Turn 已停止，仅取消该 Turn 发起的控制操作。' })]);
+          return null;
+        });
         return;
       }
       const stopId = operationId('workspace-task-cancel:' + taskId);

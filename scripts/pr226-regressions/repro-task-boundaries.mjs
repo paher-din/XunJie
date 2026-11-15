@@ -106,7 +106,28 @@ try {
  const listed=await controlOwner.listByOriginTurn(sessionId,turnId);
  assert.equal(listed.length,1);
  assert.equal(listed[0].taskId,controlId);
- console.log(JSON.stringify({repro:'T7 control task owner',taskId:record.taskId,parentRequestId,state:record.state,originTurnId:record.originTurnId}));
+ let controlCancelled=false,parentStops=0;
+ const cancelOwner=createLearningSpaceTaskOwner({
+  storage:{
+   read:async(sql,args)=>{
+    if(sql.includes('WHERE c.command_id')) return {rows:args[0]===controlId?[{command_id:controlId,request_id:parentRequestId,activity_id:activityId,association,
+      body_text:JSON.stringify({execution:{operation:{operationId:'advance'}}}),kind:'control',cancelled:controlCancelled,identity}]:[] };
+    if(sql.includes("WHERE kind IN ('submit','control')")) return {rows:[{command_id:controlId}]};
+    return {rows:[]};
+   },
+   request:async(_options,run)=>{await run({query:async(sql)=>{if(sql.startsWith('UPDATE agent_execution_commands')) controlCancelled=true;}});},
+  },
+  executions:{read:async()=>({state:'running',statusKnowledge:'confirmed',confirmedSeq:3,reason:null,output:null,executionRef}),controlReceipt:async()=>({status:'applied',seq:3,executionRef}),
+   agent:{stop:async()=>{parentStops++;throw Error('must not stop the parent session');}}},
+  sessionIdOfTurn:async()=>sessionId
+ });
+ await cancelOwner.cancel(controlId);
+ const cancelledRecord=await cancelOwner.read(controlId,{sessionId,identity});
+ assert.equal(controlCancelled,true,'control operation is cancelled in its own command row');
+ assert.equal(cancelledRecord.state,'cancelled');
+ assert.equal(parentStops,0,'parent session remains untouched by control cancellation');
+ console.log(JSON.stringify({repro:'T7 control task owner',taskId:record.taskId,parentRequestId,state:record.state,originTurnId:record.originTurnId,
+  cancelledState:cancelledRecord.state,parentStops}));
 }
 
 
@@ -137,5 +158,24 @@ try {
  const cancelCall={...readCall,args:{method:'cancel',taskId}};
  await service(cancelCall,source);
  assert.deepEqual(calls.map(c=>c[0]),['read','list','cancel']);
- console.log(JSON.stringify({repro:'T4 remote task owner dependency',calls:calls.map(c=>c[0]),sessionId,taskId}));
+ const seen=[];
+ const readPdf={definition:{name:'read_pdf',description:'PDF reader',inputSchema:{type:'object',properties:{documentId:{type:'string'}}}},
+  supportsBackground:false, execute:async(call,ctx)=>{seen.push({call,ctx});return {kind:'completed',outcome:'success',summary:'真实工具已执行'};}};
+ const toolService=createAgentDependencyService({
+  sessions:{read:async()=>session},learning:{open:async()=>({})},courses:{},isOwnerSuccessor:async()=>true,
+  authorize:async()=>{},assertDispatch:async()=>{},tools:async()=>[readPdf]
+ });
+ const toolCall={version:2,operation:'tools.execute',identity,sessionId,
+  permit:{sessionId,runId:turnId,stepId:randomUUID(),operationId:randomUUID(),generation:1},
+  args:{module:{id:'read_pdf',version:1},context:{sessionId,turnId,stepId:randomUUID(),toolCallId:randomUUID(),
+   context:{system:'test',facts:{},sources:[]},inputIds:[randomUUID()],sessionState:{workspaceInputs:[]}},
+   call:{toolCallId:randomUUID(),nativeCallId:'pdf-1',callIndex:0,name:'read_pdf',input:{documentId:randomUUID()},executionMode:'foreground'}}};
+ const toolResult=await toolService(toolCall,source);
+ assert.equal(toolResult.kind,'completed');
+ assert.equal(toolResult.summary,'真实工具已执行');
+ assert.equal(seen.length,1);
+ assert.equal(seen[0].ctx.sessionId,sessionId);
+ assert.equal(seen[0].call.input.documentId,toolCall.args.call.input.documentId);
+ console.log(JSON.stringify({repro:'T2 remote tool execution',calls:calls.map(c=>c[0]),sessionId,taskId,executed:seen.length,tool:saw(seen[0])}));
+ function saw(entry){return entry?'read_pdf':'none';}
 }

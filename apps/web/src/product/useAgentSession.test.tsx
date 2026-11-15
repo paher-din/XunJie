@@ -93,7 +93,7 @@ it('pending input edits survive a lost acknowledgement; remove and question resp
   await clickText('移除待处理消息'); expect(host.textContent).not.toContain('修改后的原问题')
   Object.assign(turn, { state: 'stopped', reason: 'student-stop', completedAt: now })
   await act(async () => { await controller.refresh(); await settle() })
-  expect(host.textContent).toContain('回答尚未完成')
+  expect(host.textContent).toContain('你已停止这次回答')
   await clickText('继续回答'); expect(turn.state).toBe('active')
   expect(host.textContent).toContain('停止回答')
   await clickText('继续练习'); expect(host.textContent).not.toContain('继续练习吗？')
@@ -103,6 +103,23 @@ it('pending input edits survive a lost acknowledgement; remove and question resp
   expect(calls.filter(call => call.route.includes('/waits/')).map(call => call.route))
     .toEqual([`${sessionId}/waits/${questionId}/responses`])
 })
+it('shows deferred input state and a failed Turn reason from persisted conversation state', async () => {
+  const sessionId = id(), projection = empty(sessionId, '暂时没有回答') as AgentConversation, turn = projection.turns[0]!, now = new Date().toISOString()
+  const inputId = id()
+  projection.inputs = [{ inputId, turnId: turn.turnId, version: 1, state: 'deferred' as any, text: '请在继续时处理', createdAt: now }]
+  projection.messages = [{ messageId: 'input:' + inputId, inputId, turnId: turn.turnId, role: 'user', text: '请在继续时处理', state: 'settled', createdAt: now }]
+  Object.assign(turn, { state: 'failed', reason: 'budget_exhausted', completedAt: now })
+  vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(projection))))
+  function View() { const current = useAgentSession(client, sessionId, true); controller = current; return <SessionConversation controller={current} /> }
+  await act(async () => { root.render(<View />); await settle() })
+  expect(host.textContent).toContain('尚未处理，继续时处理。')
+  expect(host.textContent).toContain('本次回答已达到预算上限')
+  expect(host.textContent).not.toContain('回答尚未完成')
+  await act(async () => root.unmount()); root = createRoot(host)
+  await act(async () => { root.render(<View />); await settle() })
+  expect(host.textContent).toContain('尚未处理，继续时处理。')
+})
+
 it('retrying an unconfirmed follow-up queries the original request instead of creating a second question', async () => {
   const sessionId = id(), original = new Map<string, any>(), writes: any[] = []
   vi.stubGlobal('fetch', vi.fn(async (url: string, options: RequestInit = {}) => {
