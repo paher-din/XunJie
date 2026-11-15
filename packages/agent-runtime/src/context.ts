@@ -66,24 +66,25 @@ export async function buildContext(options: BuildContextOptions, input: Scenario
   // Compaction: a planning trigger only; the summary attempt is billed but adds no main Step.
   const gateway = resolveGateway(options.gateway, input.identity, input.sessionId);
   const selection = await gateway.selection.read(input.identity);
-  if (selection.selected && scenario.compaction) {
+  const compaction = scenario.compactionFor ? await scenario.compactionFor(input) : scenario.compaction;
+  if (selection.selected && compaction) {
     const choice = await gateway.selection.snapshot(input.identity, selection.version);
     const state = await store.sessionState(input.sessionId);
     const adoptedDigest = (state.compactionAdoption as { sourceDigest?: string } | undefined)?.sourceDigest;
-    if (scenario.compaction.needed(history, choice.choice.connection, text) && adoptedDigest !== canonicalDigest(history)) {
-      const source = scenario.compaction.select(history, [{ id: 'context', content: { ...prepared, facts: exposedFacts } as Facts }]);
+    if (compaction.needed(history, choice.choice.connection, text) && adoptedDigest !== canonicalDigest(history)) {
+      const source = compaction.select(history, [{ id: 'context', content: { ...prepared, facts: exposedFacts } as Facts }]);
       if (source) {
-        const summary = await runCompaction(options, input, source);
+        const summary = await runCompaction(options, input, source, compaction);
         if (summary) history = summary;
       }
     }
   }
   return { system: prepared.system, tools, history, text, images: [], inputIds: adopted.inputs.map(i => i.inputId), notificationIds: consumed.map(n => n.notificationId) };
 }
-async function runCompaction(options: BuildContextOptions, input: ScenarioInput, source: CompactionSource): Promise<HistoryEntry[] | null> {
-  const { store, scenario } = options;
+async function runCompaction(options: BuildContextOptions, input: ScenarioInput, source: CompactionSource,
+  compaction: NonNullable<AgentScenario['compaction']>): Promise<HistoryEntry[] | null> {
+  const { store } = options;
   const gateway = resolveGateway(options.gateway, input.identity, input.sessionId);
-  const compaction = scenario.compaction!;
   const selection = await gateway.selection.read(input.identity);
   if (!selection.selected) return null;
   const choice = await gateway.selection.snapshot(input.identity, selection.version);
@@ -93,6 +94,7 @@ async function runCompaction(options: BuildContextOptions, input: ScenarioInput,
   const segmentId = operationId('agent-compaction-segment:' + requestId);
   const pinId = operationId('agent-compaction-pin:' + requestId);
   const attemptId = operationId('agent-compaction-attempt:' + requestId);
+  const permit = { sessionId: input.sessionId, runId: input.turnId, stepId: input.stepId, operationId: attemptId, generation: 1 };
   const maxOutputTokens = Math.min(model.maxOutputTokens ?? 2048, source.policy.maxSummaryTokens, options.budget.maxOutputTokens - options.spent.outputTokens);
   if (maxOutputTokens < 1) return null;
   try {
@@ -101,8 +103,8 @@ async function runCompaction(options: BuildContextOptions, input: ScenarioInput,
       source: { selected: true, selectionVersion: selection.version, pinId }, purpose: 'learning', prefix: { system: prompt.system, tools: [] }, portable: [] }));
     let fact = await gateway.checks.receive(input.identity, modelLearningInputSchema.parse({ attemptId, purpose: 'learning', segmentId,
       expectedSequence: segment.sequence, input: { text: prompt.text, images: [], toolResults: [], observations: [] },
-      limits: { maxOutputTokens, timeoutMs: Math.min(options.budget.maxCallMs, 60000) } }));
-    if (fact.state === 'accepted') fact = await gateway.checks.dispatch(input.identity, attemptId);
+      limits: { maxOutputTokens, timeoutMs: Math.min(options.budget.maxCallMs, 60000) }, authority: { formatVersion: 1, permit } }));
+    if (fact.state === 'accepted') fact = await gateway.checks.dispatch(input.identity, attemptId, { formatVersion: 1, permit });
     const deadline = Date.now() + Math.min(options.budget.maxCallMs, 60000);
     while (!fact.physicalRequestEnded && fact.state !== 'unknown' && Date.now() < deadline) {
       await new Promise(resolve => setTimeout(resolve, 50));
@@ -115,6 +117,9 @@ async function runCompaction(options: BuildContextOptions, input: ScenarioInput,
     await store.setSessionState(input.sessionId, { ...state, history: JSON.parse(JSON.stringify(history)) as Facts,
       segment: { segmentId, sequence: fact.segment?.sequence ?? segment.sequence, closed: false }, prefixDigest: 'compaction:' + attemptId,
       compactionAdoption: { attemptId, resultRef: fact.resultRef, sourceDigest: source.sourceDigest } });
+    await store.appendEvent(input.sessionId, 'context-compacted', { turnId: input.turnId, stepId: input.stepId, attemptId,
+      resultRef: fact.resultRef, sourceDigest: source.sourceDigest,
+      retainedIds: (source.sourceVersions as { retainedIds?: string[] }).retainedIds ?? [] });
     return history;
   } catch { return null; }
 }

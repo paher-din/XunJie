@@ -5,7 +5,7 @@
 ## 来源与状态
 
 - **U1—U4**：原聊天 [Agent架构方案讨论](https://chatgpt.com/c/6ad37a2e-eb94-83ee-b07d-246209b8285e) 的四条用户消息，按时间排序；[用户原话](references/2026-10-18-user-discussion.md) 完整保留文字。选中的 GPT 文本是反馈对象，不表示用户认可。
-- **I0**：[最初 idea](<../基于个性化学生画像的引导式项目制教学测验 Agent 系统.md>)，保留整体教育愿景，不把其中所有功能自动纳入本轮。
+- **I0**：最初 idea，保留整体教育愿景，不把其中所有功能自动纳入本轮。
 - **A0**：[架构附件](references/XunJie_Student_Agent_Architecture_2026-10-18.md)，作为技术讨论底稿，未逐项获得用户确认。
 - **L1**：本轮要求：结合实际继续确定架构和设计，落到仓库；特别重视原聊天中的用户想法；保存最初 idea；附件落地顺序仅作参考。
 - **L2**：本轮第一轮答复：确认 Q1、Q3；补充课程组件由开发者与教师借助 Agent 共同创造；希望必要部分上云、编译运行尽量本地，提供按模块组合的部署方式，具体继续研究。
@@ -206,4 +206,4 @@ PostgreSQL 安装/恢复、Icarus/WASM 可复现构建、Flights 环境、三协
 
 - 2026-10-29：按 L47—L48 收录八个 Wayfinder 最终决议及来源、补充本地检索入口，形成工作包总览；按逐包完整验收更新旧实施交接安排。尚未编写各工作包规范、拆实施票或启动产品实现。
 - 2026-10-29 后续：负责人确认 WP01 的测试边界及三张完整实施票拆分，已发布[产品运行与数据底座规范](https://github.com/paher-din/XunJie/issues/142)及其原生子议题和阻塞关系；本地[规范](specs/wp01-product-runtime-and-data.md)与入口同步，发布稿已清理。票可跨 Agent 会话，相关工作成组处理；本次完成设计和实施交接，未开展 WP01 产品实现或验收。
-- 2026-11-14：按本轮“Agent 内核收拢与循环简化”计划，P1 的持久 RunDriver 原位恢复执行内核选择由 [ADR 0004](adr/0004-direct-turn-step-loop.md) 替代为直接 Turn/Step 主循环；建立根目录 [GLOSSARY.md](../../../GLOSSARY.md) 统一 Session/Turn/Step/Attempt/ToolCall/Question/通知术语。三协议直接 SDK、教学状态归属、PostgreSQL 存储与课程执行模块保留。设计收束与实现验收分开，产品接管与浏览器验收以工程交付为准。
+- 2026-11-14：按本轮“Agent 内核收拢与循环简化”计划，P1 的持久 RunDriver 原位恢复执行内核选择由 [ADR 0004](adr/0004-direct-turn-step-loop.md) 替代为直接 Turn/Step 主循环；建立根目录 GLOSSARY.md 统一 Session/Turn/Step/Attempt/ToolCall/Question/通知术语。三协议直接 SDK、教学状态归属、PostgreSQL 存储与课程执行模块保留。设计收束与实现验收分开，产品接管与浏览器验收以工程交付为准。

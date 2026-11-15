@@ -672,7 +672,7 @@ export async function createProductLearningApplication(context: {
           }
           return { workspace: await workspaceOptions(session), documents, ...(skills ? { skills } : {}) };
         },
-        taskOwner: createLearningSpaceTaskOwner({ storage: agent.storage,
+        taskOwner: createLearningSpaceTaskOwner({ storage: data!.storage,
           executions: independentExecution?.executions ?? learning!.executions,
           async sessionIdOfTurn(turnId) {
             const { rows: [row] } = await agent.storage.read('SELECT session_id FROM agent_turns WHERE turn_id=$1', [turnId]);

@@ -8,7 +8,7 @@
 
 > 建立可组合的场景、工具、上下文和执行策略接口。Plugin 后续负责贡献的分发与更新，接入这些接口；运行内核不承担插件安装与生命周期管理。
 
-这与仓库已有的 [Plugin 设计](/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/references/2026-10-27-agent-capabilities-design.md:88)保持一致，也保留未来接入教师 Agent、MCP 和个人扩展的位置。
+这与仓库已有的 Plugin 设计保持一致，也保留未来接入教师 Agent、MCP 和个人扩展的位置。
 
 本轮完成运行时拆分、两个学生场景、主页学习查询与自主学习创建闭环。教师创作、通用作品编辑、DDL 数据模型和学习画像算法继续留待后续。
 

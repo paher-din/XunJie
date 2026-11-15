@@ -109,10 +109,10 @@ for (const profile of ['model', 'local']) test(`a separate Agent uses an activel
     const session = await schoolApi('agent-sessions/workspace', { activityId: activity.activityId, target: activity.target });
     const input = question(activity, session, '请用当前获准个人模型解释原活动');
     const receipt = await schoolApi(`agent-sessions/${session.sessionId}/inputs`, input);
-    const conversation = await completed(schoolApi, session.sessionId, receipt.runId);
-    const snapshot = await schoolApi(`agent-sessions/${session.sessionId}/snapshots/${receipt.runId}`);
-    const step = snapshot.steps.find(step => step.operation.kind === 'model.call');
-    assert.equal(step.result.value.attempt.connection.connectionId, modelConnectionId);
+    const conversation = await completed(schoolApi, session.sessionId, receipt.turnId);
+    const snapshot = await schoolApi(`agent-sessions/${session.sessionId}/snapshots/${receipt.turnId}`);
+    assert.equal(payloads[0].model, 'paired-learning-fixture');
+    assert.equal(snapshot.attempts.filter(attempt => attempt.state === 'completed').length, 1);
     assert.equal(conversation.messages.filter(item => item.role === 'assistant').at(-1).text, '来自获准设备模型的回答');
     assert.equal(payloads.length, 1);
     await device.stop(); await device.start();
@@ -123,9 +123,9 @@ for (const profile of ['model', 'local']) test(`a separate Agent uses an activel
       requiredCapabilities: ['agent.dependencies.v2'], optionalCapabilities: [], credentialRef: 'paired-dependencies' },
       credential: async () => dependencyGrant.token, allowInsecureLoopback: true, timeoutMs: 15000 });
     const originalDependencies = createAgentDependencyClient(createChunkClient(call => originalQuery.request('agent.dependencies.v2', call)));
-    const originalAttempt = await originalDependencies.forSession(identity, session.sessionId).models.checks.read(identity, step.operation.operationId);
+    const originalAttempt = await originalDependencies.forSession(identity, session.sessionId).models.checks.read(identity, snapshot.attempts[0].attemptId);
     assert.equal(originalAttempt.state, 'completed');
-    assert.equal(originalAttempt.attemptId, step.operation.operationId);
+    assert.equal(originalAttempt.attemptId, snapshot.attempts[0].attemptId);
     assert.equal(payloads.length, 1, 'reopening the original result never creates a model call');
     assert.equal((await schoolApi('activities/'+activity.activityId)).target.serviceId, dataService.serviceId);
     assert.deepEqual(await schoolApi(`agent-sessions/${session.sessionId}/requests/${input.requestId}`), { receipt, input });

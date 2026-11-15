@@ -342,7 +342,9 @@ export function openProductRuntime(options: { root: string; resources?: RuntimeR
             const saved = await status();
             throw new Error(saved.reason ?? 'Runtime exited during startup; inspect logs/runtime.log.');
           }
-          const running = await control('status');
+          // The daemon writes instance.json before its maintenance participants finish
+          // opening; a refused connection here is a startup race, not a dead runtime.
+          const running = await control('status').catch(() => null);
           if (running && running.state !== 'starting') return running;
           await delay(100);
         }

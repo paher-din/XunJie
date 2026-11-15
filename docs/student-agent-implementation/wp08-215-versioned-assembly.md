@@ -1,6 +1,6 @@
 # WP08 #215：学习对话的版本化能力装配
 
-本文保留旧版本的验收历史；旧 Agent 探针已退休，文中脚本名仅标识原证据来源。当前 session v2 工程入口为 [conversation-native.runtime.test.mjs](../../packages/agents/test/conversation-native.runtime.test.mjs)、[tool-discovery.runtime.test.mjs](../../packages/agents/test/tool-discovery.runtime.test.mjs)。这些测试不继承本页的历史通过结论，真实供应商、桌面与跨机结果须另行验收。
+本文保留旧版本的验收历史；旧 Agent 探针已退休，文中脚本名仅标识原证据来源。当前 session v2 工程入口为 conversation-native.runtime.test.mjs、tool-discovery.runtime.test.mjs。这些测试不继承本页的历史通过结论，真实供应商、桌面与跨机结果须另行验收。
 
 本票对应[现有学习对话接入版本化能力装配](https://github.com/paher-din/XunJie/issues/215)，规范及已确认的主测试边界见母票 [Agent 能力、上下文与扩展](https://github.com/paher-din/XunJie/issues/214)。基线为包含 WP04/WP07 最终修复的 `c484c492`，继续原 `wp08` 分支。
 

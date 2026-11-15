@@ -13,7 +13,7 @@
 
 普通 session 不要求活动。workspace session 由目录绑定真实 `activityId + target`；输入中的 `context.action` 保留固定 ActionInput、作品原字节与引用。宿主校验主体、活动、原 owner 及 dispatch permit。创建个人项目的权限来自明确用户输入或匹配的真实回应，模型工具参数与呈现行为不构成授权。
 
-[conversation 细节](src/conversation/README.md)与[学生事实投影](src/capabilities/student-facts/README.md)保留各自接口约束。资料 reading 属于资料 owner，图片及 native model segment 属于模型 owner，Agent 不接管它们的存储。
+conversation 细节与[学生事实投影](src/capabilities/student-facts/README.md)保留各自接口约束。资料 reading 属于资料 owner，图片及 native model segment 属于模型 owner，Agent 不接管它们的存储。
 
 ## 公开传输
 

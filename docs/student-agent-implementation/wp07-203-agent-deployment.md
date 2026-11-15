@@ -1,6 +1,6 @@
 # WP07 #203：Agent 独立部署与跨机验收
 
-本文保留旧版本的验收历史；旧 Agent 探针已退休，文中脚本名仅标识原证据来源。当前 session v2 工程入口为 [agent-connection-v2.runtime.test.mjs](../../packages/product-runtime/test/agent-connection-v2.runtime.test.mjs)、[standalone-agent.runtime.test.mjs](../../packages/product-runtime/test/standalone-agent.runtime.test.mjs)、[agent-browser-v3.runtime.test.mjs](../../apps/server/tests/agent-browser-v3.runtime.test.mjs)。这些测试不继承本页的历史通过结论，真实供应商、桌面与跨机结果须另行验收。
+本文保留旧版本的验收历史；旧 Agent 探针已退休，文中脚本名仅标识原证据来源。当前 session v2 工程入口为 [agent-connection-v2.runtime.test.mjs](../../packages/product-runtime/test/agent-connection-v2.runtime.test.mjs)、standalone-agent.runtime.test.mjs、[agent-browser-v3.runtime.test.mjs](../../apps/server/tests/agent-browser-v3.runtime.test.mjs)。这些测试不继承本页的历史通过结论，真实供应商、桌面与跨机结果须另行验收。
 
 [需求 #203](https://github.com/paher-din/XunJie/issues/203)的实现、工程验证和本票部署验收已完成。`final-r4` 两平台完整产品包对应推送前整合 #199 之前的 #203 源码；六个真实模型主循环及 Windows 独立 Agent 生命周期检查全部通过，一次性环境已清理。后续源码整合的验证边界见下文。
 

@@ -20,7 +20,7 @@ test('real session v2 compaction preserves complete visible history, draft and c
       const source = JSON.parse(typeof content === 'string' ? content : content.map((part: any) => part.text ?? '').join(''))
       summaries++; await summaryGate
       reply(response, { text: JSON.stringify({ version: 1, sourceDigest: source.sourceDigest, retainedDigest: source.retainedDigest,
-        retainedIds: source.retained.map((item: any) => item.id), facts: [{ text: '原观测是 37，原因仍未知。', sources: [source.messages[0].eventId] }],
+        retainedIds: source.sourceVersions.retainedIds, facts: [{ text: '原观测是 37，原因仍未知。', sources: [source.messages[0].id] }],
         inferences: [], contradictions: [], unknowns: [], unfinished: [] }) })
       return
     }

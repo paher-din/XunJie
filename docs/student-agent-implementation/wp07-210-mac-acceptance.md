@@ -1,6 +1,6 @@
 # #210：WP07 运行中引导、排队与暂停续接的 macOS 验收
 
-本文保留旧版本的验收历史；旧 Agent 探针已退休，文中脚本名仅标识原证据来源。当前 session v2 工程入口为 [capabilities.runtime.test.mjs](../../packages/agent-runtime/test/capabilities.runtime.test.mjs)、[agent-student-ask.runtime.test.mjs](../../packages/product-runtime/test/agent-student-ask.runtime.test.mjs)。这些测试不继承本页的历史通过结论，真实供应商、桌面与跨机结果须另行验收。
+本文保留旧版本的验收历史；旧 Agent 探针已退休，文中脚本名仅标识原证据来源。当前 session v2 工程入口为 capabilities.runtime.test.mjs、agent-student-ask.runtime.test.mjs。这些测试不继承本页的历史通过结论，真实供应商、桌面与跨机结果须另行验收。
 
 对应 [#210](https://github.com/paher-din/XunJie/issues/210)，来源需求 [#200](https://github.com/paher-din/XunJie/issues/200)。本记录在已有 Apple Silicon / macOS 环境完成；不新建 PR、不合并既有 PR，继续同一 `wp07` 分支。
 

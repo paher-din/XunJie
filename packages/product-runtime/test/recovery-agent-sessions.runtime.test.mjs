@@ -34,11 +34,11 @@ test('a disabled Agent owner backs up and restores a home session and full servi
   const identity = { environmentId: owner.environmentId, spaceId: randomUUID(), principalId: randomUUID(), kind: 'personal', name: '学生' };
   const runtime = createAgentRuntime(storage, { authorize: async () => {} }); runtimes.push(runtime);
   const sessionId = randomUUID();
-  await runtime.initialize({ sessionId, identity, scenario: 'student-assistant', restartPolicy: 'explicit', createdAt: new Date().toISOString() });
+  await runtime.initialize({ sessionId, identity, scenario: 'student-assistant', createdAt: new Date().toISOString() });
   const caller = { grantId: randomUUID(), sourceEnvironmentId: randomUUID(), sourceServiceId: randomUUID(), sourceInstallationId: randomUUID() };
-  const channel = createChunkChannel(storage).wrap(call => runtime.accept(identity, call.args.input));
+  const channel = createChunkChannel(storage).wrap(call => runtime.submit(identity, call.args.input));
   const send = createChunkClient(value => channel(value, caller));
-  const input = { requestId: randomUUID(), sessionId, text: '原始主页输入'.repeat(30000), mode: 'steering', context: {} };
+  const input = { requestId: randomUUID(), sessionId, text: '原始主页输入'.repeat(30000), context: {} };
   const receipt = await send({ version: 2, operation: 'accept', identity, sessionId, args: { input } },
     { transferId: randomUUID(), durable: true, acknowledge: false });
   // The service is disabled: recovery must use its durable owner APIs, with no live model/data dependency.
@@ -86,7 +86,7 @@ test('a disabled Agent owner backs up and restores a home session and full servi
   assert.equal(boundary.unresolved[0].sessionId, sessionId);
   assert.equal(boundary.unresolved[0].activityId, undefined);
   assert.equal(JSON.parse(await readFile(join(targetRoot, 'recovery-state.json'), 'utf8')).phase, 'isolated');
-  await assert.rejects(recovered.accept(identity, { ...input, requestId: randomUUID() }), { code: 'maintenance' });
+  await assert.rejects(recovered.submit(identity, { ...input, requestId: randomUUID() }), { code: 'maintenance' });
 
   await manager.resume(); omitTransport = true;
   const incomplete = await manager.backup({ directory: backups, key, leaveClosed: true });

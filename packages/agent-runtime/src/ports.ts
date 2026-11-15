@@ -60,6 +60,8 @@ export interface AgentScenario {
     needed(history: readonly HistoryEntry[], connection: ModelConnection, inputText: string): boolean;
     select(history: readonly HistoryEntry[], blocks: { id: string; content: Facts }[]): CompactionSource | null;
   };
+  /** A per-session scene dispatcher resolves the concrete scene's compaction without hiding it. */
+  compactionFor?(input: ScenarioInput): Promise<AgentScenario['compaction']>;
 }
 
 /** The selected valid response of one logical generate (after any Attempts). */

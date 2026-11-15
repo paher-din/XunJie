@@ -84,7 +84,6 @@ export async function installedIndependent(t, reply, beforeStop = async () => {}
   }
   return { root, school, agent, api, bind, model, requests, requestTimes, admin,
     get schoolState() { return schoolState; }, get agentState() { return agentState; },
-    async restartAgent() { await agent.stop(); agentState = await agent.start(); },
     async restartSchool() { await school.stop(); schoolState = await school.start(); },
     async recoverAgent() { agentState = await agent.start(); },
   };

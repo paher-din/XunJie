@@ -77,6 +77,7 @@ export function createProductAgent(options: ProductAgentOptions) {
       // Student and workspace scenes validate teaching answers identically; any built scene suffices.
       for (const pending of scenes.values()) { const scene = await pending.catch(() => null); if (scene?.validateAnswer) return scene.validateAnswer(presentation, answer); }
     },
+    async compactionFor(input) { return (await sceneFor(input.identity, input.sessionId)).compaction; },
   };
   let tasks: ReturnType<typeof createWorkspaceAgentTasks> | undefined;
   const host = createSessionRuntimeHost({ storage: options.storage, directory: options.directory,

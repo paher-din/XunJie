@@ -1,6 +1,6 @@
 # WP09 真实模型 ALU 页连续验收
 
-本文保留旧版本的验收历史；旧 Agent 探针已退休，文中脚本名仅标识原证据来源。当前 session v2 工程入口为 [teaching-artifact-generation.runtime.test.mjs](../../../../apps/server/tests/teaching-artifact-generation.runtime.test.mjs)、[teaching-artifact-stop-adopt.runtime.test.mjs](../../../../apps/server/tests/teaching-artifact-stop-adopt.runtime.test.mjs)、[workspace-assistant.runtime.test.mjs](../../../../packages/agents/test/workspace-assistant.runtime.test.mjs)。这些测试不继承本页的历史通过结论，真实供应商、桌面与跨机结果须另行验收。
+本文保留旧版本的验收历史；旧 Agent 探针已退休，文中脚本名仅标识原证据来源。当前 session v2 工程入口为 [teaching-artifact-generation.runtime.test.mjs](../../../../apps/server/tests/teaching-artifact-generation.runtime.test.mjs)、teaching-artifact-stop-adopt.runtime.test.mjs、workspace-assistant.runtime.test.mjs。这些测试不继承本页的历史通过结论，真实供应商、桌面与跨机结果须另行验收。
 
 2026-11-08，原 DeepSeek Chat 真实生成的 ALU candidate 经 r2 正式 Chrome 检查并采用，通过正常 Monaco 输入工程 fixture，再点击原页「运行单次实验」，得到真实 Icarus `F=0000、Cout=1`。r3 在同一 private root、同一 revision 和同一 execution 上完成重启读取、刷新恢复及窄桌面导航检查，未重发模型 Run 或执行请求。
 
