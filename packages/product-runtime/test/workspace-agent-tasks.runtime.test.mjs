@@ -42,7 +42,7 @@ const taskMigration = [{ version: 1, name: 'task-owner-fixture', sql: `
 
 const waitFor = async (fn, timeout = 5000) => { const end = Date.now() + timeout; while (Date.now() < end) { const v = await fn(); if (v) return v; await new Promise(r => setTimeout(r, 15)); } throw new Error('waitFor timeout'); };
 
-async function harness(responses, { toolFactory, cancelFails = false } = {}) {
+async function harness(responses, { toolFactory, cancelFails = false, pollMs } = {}) {
   const postgres = await nativeFixture();
   const agentOwner = { environmentId: randomUUID(), serviceId: randomUUID() };
   const taskOwner = { environmentId: agentOwner.environmentId, serviceId: randomUUID() };
@@ -78,7 +78,7 @@ async function harness(responses, { toolFactory, cancelFails = false } = {}) {
   const runtime = createAgentRuntime(storage, { authorize: async () => {}, scenario, gateway,
     taskFacts: { relevant: (...args) => bridge.taskFacts.relevant(...args) },
     taskCancellation: { listNonTerminal: (...args) => bridge.taskCancellation.listNonTerminal(...args), cancel: (...args) => bridge.taskCancellation.cancel(...args) } });
-  bridge = createWorkspaceAgentTasks({ storage, owner, registerNotification: (i, s, t, f) => runtime.registerNotification(i, s, t, f) });
+  bridge = createWorkspaceAgentTasks({ storage, owner, ...(pollMs ? { pollMs } : {}), registerNotification: (i, s, t, f) => runtime.registerNotification(i, s, t, f) });
 
   const session = { sessionId: randomUUID(), identity, scenario: 'test', createdAt: new Date().toISOString() };
   await runtime.initialize(session);
@@ -176,6 +176,24 @@ test('通知桥：同一 Turn 的两个后台任务各自一个稳定通知', as
     }
     await h.bridge.observe();
     assert.equal((await h.snapshot()).notifications.length, 2, 'replay does not duplicate either notification');
+  } finally { await h.close(); }
+});
+
+test('通知桥：poll cadence 自动发现终态并开一个通知 Turn（无需手工 scan）', async () => {
+  const taskId = randomUUID();
+  const h = await harness([{ text: '启动', toolIntents: [{ callId: 'c1', name: 'course_operation', arguments: { executionMode: 'background' } }] }, { text: '受理已知', toolIntents: [] }, { text: '通知已处理', toolIntents: [] }],
+    { toolFactory: () => backgroundTools([taskId]), pollMs: 20 });
+  try {
+    const receipt = await h.runtime.submit(h.identity, h.input('启动实验'));
+    await h.runtime.drain();
+    await h.bridge.observe();
+    await h.registerTask(taskId, receipt.turnId, { state: 'succeeded', confirmedSeq: 1 });
+    const snapshot = await waitFor(async () => {
+      const value = await h.snapshot();
+      return value.notifications.some(n => n.taskId === taskId) && value.turns.some(t => t.trigger === 'task-notification') ? value : null;
+    });
+    assert.equal(snapshot.notifications.find(n => n.taskId === taskId).notificationId, operationId('agent-notification:' + taskId + ':1'));
+    assert.equal(snapshot.turns.filter(t => t.trigger === 'task-notification').length, 1);
   } finally { await h.close(); }
 });
 
