@@ -685,14 +685,16 @@ function answerText(presentation: Facts, answer: Facts): string {
     return null;
   }
   /** Startup repair: only the lock holder closes a previous owner's active Turns to interrupted. */
-  async function recoverInterrupted(): Promise<string[]> {
-    const result = await storage.request({ requestId: 'agent-recover:' + randomUUID(), fingerprint: 'interrupt-old-owner' }, async tx => {
-      const { rows } = await tx.query("UPDATE agent_turns SET state='interrupted', reason='host-restart', completed_at=clock_timestamp(), updated_at=clock_timestamp() WHERE state='active' AND owner_instance_id<>$1 RETURNING turn_id, session_id", [ownerInstanceId]);
+  async function recoverInterrupted(allActive = false): Promise<string[]> {
+    const result = await storage.request({ requestId: 'agent-recover:' + randomUUID(), fingerprint: 'interrupt-old-owner:' + randomUUID() }, async tx => {
+      const { rows } = allActive
+        ? await tx.query("UPDATE agent_turns SET state='interrupted', reason='host-restart', completed_at=clock_timestamp(), updated_at=clock_timestamp() WHERE state='active' RETURNING turn_id, session_id")
+        : await tx.query("UPDATE agent_turns SET state='interrupted', reason='host-restart', completed_at=clock_timestamp(), updated_at=clock_timestamp() WHERE state='active' AND owner_instance_id<>$1 RETURNING turn_id, session_id", [ownerInstanceId]);
       for (const row of rows) {
         const turnId = String(row.turn_id), sessionId = String(row.session_id);
         // Model not finished: interrupt pending attempts; never dispatch partial-stream tools.
         await tx.query("UPDATE agent_attempts SET state='interrupted', updated_at=clock_timestamp() WHERE state='pending' AND step_id IN (SELECT step_id FROM agent_steps WHERE turn_id=$1)", [turnId]);
-        const { rows: calls } = await tx.query("SELECT tool_call_id, state FROM agent_tool_calls c JOIN agent_steps s USING(step_id) WHERE s.turn_id=$1 AND c.state<>'closed'", [turnId]);
+        const { rows: calls } = await tx.query("SELECT c.tool_call_id, c.state FROM agent_tool_calls c JOIN agent_steps s USING(step_id) WHERE s.turn_id=$1 AND c.state<>'closed'", [turnId]);
         for (const call of calls) {
           const result = call.state === 'pending' ? { kind: 'not_started', reason: 'host-restart' } : { kind: 'outcome_unknown', reason: 'host-restart' };
           await tx.query("UPDATE agent_tool_calls SET state='closed', result=$2, updated_at=clock_timestamp() WHERE tool_call_id=$1", [call.tool_call_id, result]);

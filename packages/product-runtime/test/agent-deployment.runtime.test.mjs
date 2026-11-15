@@ -41,17 +41,20 @@ test('independently installed v2 Agent preserves original sessions and operation
   const next = await f.api(`agent-sessions/${session.sessionId}/inputs`, nextInput);
   await started;
   const before = await f.api(`agent-sessions/${session.sessionId}/snapshots/${next.turnId}`);
-  const originalAttempt = before.attempts[0].attemptId;
+  const turnAttempts = snapshot => snapshot.attempts.filter(attempt => snapshot.steps.some(step => step.stepId === attempt.stepId && step.turnId === next.turnId));
+  const originalAttempt = turnAttempts(before)[0].attemptId;
   const owner = JSON.parse(await readFile(join(f.root, 'agent', 'instance.json'), 'utf8'));
   process.kill(owner.pid, 'SIGKILL'); release();
   await f.recoverAgent();
+  await new Promise(resolve => setTimeout(resolve, 2000));
   await until(async () => {
     const value = await f.api(`agent-sessions/${session.sessionId}/runs/${next.turnId}`);
     return ['completed', 'interrupted', 'stopped', 'failed'].includes(value.state) ? value : null;
   }, 'The successor did not reconcile the original operation.');
   const after = await f.api(`agent-sessions/${session.sessionId}/snapshots/${next.turnId}`);
-  assert.equal(after.attempts.length, 1);
-  assert.equal(after.attempts[0].attemptId, originalAttempt);
+  const afterAttempts = turnAttempts(after);
+  assert.equal(afterAttempts.length, 1, 'successor must not create a replacement attempt');
+  assert.equal(afterAttempts[0].attemptId, originalAttempt);
   assert.equal(f.requests.length, initialCalls + 1, 'restart must never send a replacement model request');
   assert.deepEqual(await f.api(`agent-sessions/${session.sessionId}/requests/${nextInput.requestId}`), { receipt: next, input: nextInput });
   conversation = await f.api(`agent-sessions/${session.sessionId}/conversation`);

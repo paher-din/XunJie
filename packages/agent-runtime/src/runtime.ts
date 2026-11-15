@@ -221,7 +221,26 @@ export function createAgentRuntime(storage: OwnedStorage, options: AgentRuntimeO
       if (closed) throw new StorageError('maintenance');
       await this.drain();
       writesClosed = false; dispatchClosed = false;
-      if (!lock && !options.readOnly) {
+      if (options.readOnly) {
+        // Read-only successors close Turns left active by the dead host, then serve
+        // reads without holding the host lock or admitting new dispatch. Storage
+        // writes may still reopen after this lifecycle call, so retry in the
+        // background instead of blocking host startup.
+        void (async () => {
+          for (let attempt = 0; attempt < 120; attempt++) {
+            let repair: Awaited<ReturnType<typeof storage.tryHostLock>> = null;
+            try { repair = await storage.tryHostLock('agent-host:' + storage.owner.environmentId + '/' + storage.owner.serviceId); }
+            catch { /* database is still opening */ }
+            if (repair) {
+              try { await store.recoverInterrupted(true); await repair.release(); return; }
+              catch { await repair.release(); }
+            }
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+        })();
+        return;
+      }
+      if (!lock) {
         lock = await storage.tryHostLock('agent-host:' + storage.owner.environmentId + '/' + storage.owner.serviceId);
         if (lock) { lockLost = false; void lock.lost.then(() => { lockLost = true; for (const c of turnControllers.values()) c.abort(); }); await store.recoverInterrupted(); await cancellations.resumePending(); }
       }
