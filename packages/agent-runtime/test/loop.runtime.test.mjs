@@ -9,7 +9,7 @@ import { createAgentRuntime, agentRuntimeMigrations } from '../dist/index.js';
 const connection = { routeId: randomUUID(), version: 1, maxOutputTokens: 4096, contextWindow: 1_000_000,
   protocol: 'openai-chat', parameterMode: 'plain', capabilities: {}, hasCredential: true, adapterState: 'ready' };
 /** A scripted Gateway: each dispatch returns the next queued response. */
-function mockGateway(responses) {
+function mockGateway(responses, faults = {}) {
   const queue = [...responses];
   const segments = new Map();
   const attempts = new Map();
@@ -33,7 +33,11 @@ function mockGateway(responses) {
     },
     checks: {
       receive: async (_identity, input) => { const a = { attemptId: input.attemptId, state: 'accepted', physicalRequestEnded: false, dispatched: false, cancelRequested: false, text: '', usage: { state: 'unknown' }, requestRef: randomUUID(), resultRef: null, reason: '', upstreamStopped: 'unknown', createdAt: new Date().toISOString(), purpose: 'learning', connection, limits: input.limits }; attempts.set(input.attemptId, a); return a; },
-      dispatch: async (_identity, attemptId) => { const a = attempts.get(attemptId); const r = queue.shift() ?? { text: '完成', toolIntents: [] };
+      dispatch: async (_identity, attemptId) => { const a = attempts.get(attemptId);
+        if (faults.dispatchFailures) { faults.dispatchFailures--; throw new Error('temporarily unavailable'); }
+        const r = queue.shift() ?? { text: '完成', toolIntents: [] };
+        if (r.unknown) { Object.assign(a, { state: 'unknown', physicalRequestEnded: false, dispatched: true, text: '', toolIntents: [],
+          usage: { state: 'unknown' }, resultRef: null }); return a; }
         Object.assign(a, { state: 'completed', physicalRequestEnded: true, dispatched: true, text: r.text, toolIntents: r.toolIntents ?? [], usage: { state: 'final', inputTokens: 10, outputTokens: 5 }, resultRef: randomUUID(), segment: { segmentId: r.segmentId ?? [...segments.keys()][0], sequence: 0 } });
         return a; },
       read: async (_identity, attemptId) => attempts.get(attemptId),
@@ -54,13 +58,13 @@ function scenario(tools) {
     async context() { return { system: '测试助手', facts: {}, sources: [] }; },
     async tools() { return tools; } };
 }
-async function harness(responses, tools = [echoTool()]) {
+async function harness(responses, tools = [echoTool()], faults = {}) {
   const postgres = await nativeFixture();
   const owner = { environmentId: randomUUID(), serviceId: randomUUID() };
   const binding = await provisionStorage({ admin: postgres.admin, owner, password: randomUUID(), migrations: agentRuntimeMigrations });
   const backend = createFileBackend({ id: 'agent', root: join(postgres.root, 'res') });
   const storage = await openStorage({ binding, migrations: agentRuntimeMigrations, backend });
-  const gateway = mockGateway(responses);
+  const gateway = mockGateway(responses, faults);
   const runtime = createAgentRuntime(storage, { authorize: async () => {}, scenario: scenario(tools), gateway });
   const identity = { kind: 'personal', name: '学生', environmentId: owner.environmentId, spaceId: randomUUID(), principalId: randomUUID() };
   const session = { sessionId: randomUUID(), identity, scenario: 'test', createdAt: new Date().toISOString() };
@@ -103,6 +107,58 @@ test('工具返回的图像引用随 settleTools 反馈给模型', async () => {
     await h.runtime.submit(h.identity, input(h.session.sessionId, '请查看页图'));
     await h.settle();
     assert.deepEqual(h.gateway.settles.at(-1).results.at(-1).images, [image]);
+  } finally { await h.close(); }
+});
+
+test('主模型暂时失败再成功：同一 Step 多 Attempt，工具只执行成功响应一次', async () => {
+  const h = await harness([
+    { text: '调用工具', toolIntents: [{ callId: 'c1', name: 'echo', arguments: { value: 'retry' } }] },
+    { text: '工具已完成', toolIntents: [] },
+  ], [echoTool()], { dispatchFailures: 1 });
+  try {
+    const receipt = await h.runtime.submit(h.identity, input(h.session.sessionId, '请回显'));
+    await h.settle();
+    const snap = await h.runtime.sessionSnapshot(h.identity, h.session.sessionId);
+    assert.equal(snap.steps.length, 2);
+    const attempts = snap.attempts.filter(a => a.stepId === snap.steps[0].stepId).sort((a, b) => a.attemptNo - b.attemptNo);
+    assert.deepEqual(attempts.map(a => a.state), ['failed', 'completed']);
+    assert.equal(snap.toolCalls.length, 1, '只有成功响应派发工具');
+    assert.equal(snap.toolCalls[0].result.summary, 'echo:retry');
+    assert.equal(snap.turns.find(t => t.turnId === receipt.turnId).state, 'completed');
+  } finally { await h.close(); }
+});
+
+test('完整响应前断流：不派发工具、不伪造完成，Attempt 失败可查', async () => {
+  const h = await harness([{ unknown: true }], [echoTool()]);
+  try {
+    const receipt = await h.runtime.submit(h.identity, input(h.session.sessionId, '开始生成'));
+    await h.settle();
+    const snap = await h.runtime.sessionSnapshot(h.identity, h.session.sessionId);
+    assert.equal(snap.turns.find(t => t.turnId === receipt.turnId).state, 'failed');
+    assert.equal(snap.steps.length, 1);
+    assert.equal(snap.toolCalls.length, 0, '未形成完整有效响应，零派发');
+    assert.equal(snap.attempts.length, 1);
+    assert.equal(snap.attempts[0].state, 'failed');
+    assert.equal(snap.attempts[0].error, 'result-unknown');
+  } finally { await h.close(); }
+});
+
+test('两个后台调用：受理过程串行，两个稳定 taskId', async () => {
+  const started = [];
+  const job = { definition: { name: 'course_operation', description: '长任务', inputSchema: { type: 'object' } }, supportsBackground: true,
+    async execute(call) { started.push(call.executionMode); return { kind: 'accepted', taskId: 'task-' + call.callIndex, summary: '已受理' }; } };
+  const h = await harness([
+    { text: '两个后台任务', toolIntents: [{ callId: 'c1', name: 'course_operation', arguments: { executionMode: 'background' } },
+      { callId: 'c2', name: 'course_operation', arguments: { executionMode: 'background' } }] },
+    { text: '受理已知', toolIntents: [] },
+  ], [job]);
+  try {
+    await h.runtime.submit(h.identity, input(h.session.sessionId, '两个实验'));
+    await h.settle();
+    const snap = await h.runtime.sessionSnapshot(h.identity, h.session.sessionId);
+    assert.deepEqual(snap.toolCalls.map(c => c.result.taskId), ['task-0', 'task-1']);
+    assert.deepEqual(started, ['background', 'background']);
+    assert.equal(snap.steps.length, 2, '两个受理回执同属一个 Step');
   } finally { await h.close(); }
 });
 
