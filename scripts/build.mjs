@@ -14,11 +14,11 @@ const workspaces = {
 };
 const dependencies = {
   contracts: [], storage: ['contracts'],
-  'agent-runtime': ['contracts', 'storage'], 'model-gateway': ['contracts', 'storage'],
+  'agent-runtime': ['contracts', 'storage', 'model-gateway'], 'model-gateway': ['contracts', 'storage'],
   'learning-space': ['contracts', 'storage'],
   agents: ['agent-runtime', 'model-gateway', 'learning-space', 'contracts', 'storage'],
   server: ['contracts', 'storage', 'agents', 'agent-runtime', 'model-gateway', 'learning-space'],
-  'product-runtime': ['contracts', 'storage', 'agents', 'agent-runtime', 'model-gateway', 'learning-space'], ui: [], web: ['contracts', 'ui'], 'local-runtime': ['product-runtime'],
+  'product-runtime': ['contracts', 'storage', 'agents', 'agent-runtime', 'model-gateway', 'learning-space'], ui: ['contracts'], web: ['contracts', 'ui'], 'local-runtime': ['product-runtime'],
 };
 const excluded = name => /(?:^|\/)(?:node_modules|dist|dist-runtime|\.git|\.cache|\.verification|\.playwright|test-results|playwright-report|evidence)(?:\/|$)/.test(name)
   || /\.tsbuildinfo$/.test(name);
@@ -141,7 +141,8 @@ export async function createBuildTasks({ root = repository, env = process.env } 
     },
   };
   tasks['web:node'] = {
-    deps: ['contracts', 'ui'], outputs: [], fingerprint: fingerprint('web', ['.']),
+    // E2E specs type-check against emitted product-runtime types.
+    deps: ['contracts', 'ui', 'product-runtime'], outputs: [], fingerprint: fingerprint('web', ['.']),
     async run({ run }) {
       await run(process.execPath, [(await tool('web')).path, '--noEmit', '-p', 'tsconfig.node.json'], { cwd: join(root, workspaces.web) });
     },
