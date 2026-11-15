@@ -43,7 +43,7 @@ async function fixture() {
   const input = { inputId, turnId, version: 1, state: 'pending' as 'pending' | 'removed', text: original, createdAt: now }
   const turn = { turnId, sessionId, requestId, trigger: 'user' as const, originNotificationId: null, state: 'active' as const, reason: '',
     ownerInstanceId: 'test', createdAt: now, updatedAt: now, completedAt: null }
-  const question = { questionId, sessionId, turnId, stepId: id(), toolCallId: id(), version: 1, state: 'pending' as const,
+  const question = { questionId, sessionId, turnId, stepId: id(), toolCallId: id(), version: 1, state: 'pending' as 'pending' | 'answered',
     presentation: { question: '观察到了什么？', source: '原实验', options: [], allowText: true, skippable: false },
     answer: null, answerRequestId: null, deadline: null, createdAt: now, updatedAt: now }
   const projection = { sessionId, lastSeq: 1, messages: [{ messageId: 'input:' + inputId, inputId, turnId, role: 'user', text: original, state: 'settled', createdAt: now }],

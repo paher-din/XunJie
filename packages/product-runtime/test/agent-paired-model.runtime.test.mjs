@@ -59,9 +59,9 @@ for (const profile of ['model', 'local']) test(`a separate Agent uses an activel
     const activity = await schoolApi('activities', { requestId: randomUUID(), goal: '学校作品与本机模型', question: '', references: [] });
     assert.equal(activity.target.serviceId, dataService.serviceId);
     const acceptGrant = await agent.authorize({ sourceEnvironmentId: dataService.environmentId, sourceServiceId: dataService.serviceId,
-      sourceInstallationId: schoolState.environment.installationId, capabilities: ['agent.sessions.v2'] }, agentService.serviceId);
+      sourceInstallationId: schoolState.environment.installationId, capabilities: ['agent.sessions.v3'] }, agentService.serviceId);
     await school.connect({ connectionId: agentConnectionId, sourceEnvironmentId: dataService.environmentId, sourceServiceId: dataService.serviceId,
-      target: agentService, requiredCapabilities: ['agent.sessions.v2'], optionalCapabilities: [], credentialRef: 'paired-agent' }, acceptGrant.token);
+      target: agentService, requiredCapabilities: ['agent.sessions.v3'], optionalCapabilities: [], credentialRef: 'paired-agent' }, acceptGrant.token);
     await schoolApi('manage/agent-binding', { requestId: randomUUID(), identity, connectionId: agentConnectionId,
       target: agentService, installationId: agentState.environment.installationId }, admin);
     const dependencyGrant = await school.authorize({ sourceEnvironmentId: agentService.environmentId, sourceServiceId: agentService.serviceId,

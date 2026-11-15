@@ -59,8 +59,11 @@ async function runStep(deps: LoopDependencies, turn: AgentTurn, step: AgentStep,
   const sessionId = turn.sessionId;
   const signal = deps.signalFor(turn.turnId);
   const session = await store.session(sessionId);
+  const persisted = await store.sessionState(sessionId);
   const scenarioInput: ScenarioInput = { identity: session.identity, sessionId, turnId: turn.turnId, stepId: step.stepId,
-    inputIds: inputs.map(i => i.inputId), sessionState: await store.sessionState(sessionId) };
+    inputIds: inputs.map(i => i.inputId), sessionState: { ...persisted, workspaceInputs: asJson(inputs
+      .filter(item => item.input.context && typeof item.input.context === 'object' && 'action' in item.input.context)
+      .map(item => ({ inputId: item.inputId, action: item.input.context.action as Json }))) } };
   const { budget, usage, counts } = await store.budgetOf(turn.turnId);
   const plan = await buildContext({ store, gateway: deps.gateway, scenario, taskFacts: deps.taskFacts, budget, spent: usage }, scenarioInput, { inputs, notifications });
   const registry = createToolRegistry(plan.tools);

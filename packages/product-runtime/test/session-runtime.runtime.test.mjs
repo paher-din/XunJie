@@ -28,7 +28,7 @@ test('the product host selects the saved scene and wakes the direct runner witho
   const target = { ...data.owner, version: 1 };
   const learning = createLearningData(data, { resolveBinding: async () => target });
   const owner = { version: 1, connectionId: agent.owner.serviceId, installationId: randomUUID(), target: {
-    ...agent.owner, unit: 'teaching-agent', protocolVersion: 1, endpoint: 'http://127.0.0.1:3444', capabilities: ['agent.sessions.v2'] } };
+    ...agent.owner, unit: 'teaching-agent', protocolVersion: 1, endpoint: 'http://127.0.0.1:3444', capabilities: ['agent.sessions.v3'] } };
   const directory = createAgentSessions(data, { authorize: async () => {}, openActivity: learning.open, resolveOwner: async () => owner });
   const scenes = [], dispatches = [], workspaceRequests = new Map();
   host = createSessionRuntimeHost({ storage: agent, directory, authorize: async () => {},

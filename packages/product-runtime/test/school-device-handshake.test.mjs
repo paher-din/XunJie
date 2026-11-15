@@ -7,7 +7,7 @@ const identity = { environmentId: randomUUID(), spaceId: randomUUID(), principal
 const environmentId = randomUUID();
 const module = (unit, capabilities = []) => ({ environmentId, serviceId: randomUUID(), unit,
   endpoint: 'http://127.0.0.1:1', protocolVersion: 1, capabilities });
-const modules = [module('space-course'), module('teaching-agent', ['agent.sessions.v2']), module('model-connection'), module('tool-execution')];
+const modules = [module('space-course'), module('teaching-agent', ['agent.sessions.v3']), module('model-connection'), module('tool-execution')];
 const input = { version: 2, connectionId: randomUUID(), installationId: randomUUID(), deviceModules: modules };
 
 test('legacy or mixed device handshakes fail before any authorization, grant, journal or binding effect', async () => {

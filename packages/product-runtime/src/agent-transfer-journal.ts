@@ -4,8 +4,8 @@ import { join } from 'node:path';
 import { z } from 'zod';
 import { StorageError } from '@xunjie/storage';
 import { runtimeConnectionSchema, fixedRuntimeConnectionDescriptor, type RuntimeConnection } from '@xunjie/contracts/product-runtime';
-import { agentSessionCallSchema, type AgentSessionCall } from '@xunjie/contracts/agent-service';
-import { agentDependencyCallSchema, isAgentDependencyRead, type AgentDependencyCall } from '@xunjie/contracts/agent-dependencies';
+import { agentSessionCallSchema, agentSessionsCapability, type AgentSessionCall } from '@xunjie/contracts/agent-service';
+import { agentDependenciesCapability, agentDependencyCallSchema, isAgentDependencyRead, type AgentDependencyCall } from '@xunjie/contracts/agent-dependencies';
 import { acquireLock, atomicJson, exists, readJson } from './io.js';
 
 const source = z.object({ grantId: z.uuid(), sourceEnvironmentId: z.uuid(), sourceServiceId: z.uuid(), sourceInstallationId: z.uuid() }).strict();
@@ -25,9 +25,10 @@ function canonical(value: unknown): string {
 /** Only dispatch generations vary; the original operation and request bytes remain fixed. */
 const object = (value: unknown): Record<string, unknown> => value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
 function modern(value: unknown, capability: string): AgentSessionCall | AgentDependencyCall {
-  if (!['agent.sessions.v2', 'agent.dependencies.v2'].includes(capability)) throw new StorageError('incompatible');
-  if (object(value).version !== 2) throw new StorageError('incompatible');
-  const parsed = capability === 'agent.sessions.v2' ? agentSessionCallSchema.safeParse(value) : agentDependencyCallSchema.safeParse(value);
+  const version = capability === agentSessionsCapability ? 3 : capability === agentDependenciesCapability ? 2 : undefined;
+  if (version === undefined) throw new StorageError('incompatible');
+  if (object(value).version !== version) throw new StorageError('incompatible');
+  const parsed = capability === agentSessionsCapability ? agentSessionCallSchema.safeParse(value) : agentDependencyCallSchema.safeParse(value);
   if (!parsed.success) throw new StorageError('invalid');
   return parsed.data;
 }
@@ -51,8 +52,8 @@ function fixed(value: unknown, capability: string): unknown {
 function semantics(payload: unknown, capability: string) {
   const call = modern(payload, capability);
   const args = object(call.args), normalized = object(fixed(payload, capability));
-  const dynamic = capability === 'agent.dependencies.v2' ? isAgentDependencyRead(call as AgentDependencyCall)
-    : ['run', 'events', 'snapshot', 'request', 'conversation', 'assertDispatch'].includes(call.operation);
+  const dynamic = capability === agentDependenciesCapability ? isAgentDependencyRead(call as AgentDependencyCall)
+    : ['turn', 'events', 'conversation', 'sessionSnapshot', 'request'].includes(call.operation);
   const method = typeof args.method === 'string' ? args.method : undefined;
   let request: unknown = args.requestId;
   if (call.operation === 'initialize') request = object(args.session).sessionId;

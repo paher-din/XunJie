@@ -16,7 +16,7 @@ test('formal sessions recover original inputs and open an independent real works
   const create = (sessionId: string, requestId: string, title: string | null, workspace?: AgentSession['workspace']) => {
     const value: AgentSession = { sessionId, requestId, identity: actor, owner, scenario: workspace ? 'workspace-assistant' : 'student-assistant', ...(workspace ? { workspace } : {}), title,
       pinned: false, archived: false, deleted: false, state: 'ready', createdAt: now, updatedAt: now, readyAt: now }
-    sessions.set(sessionId, value); conversations.set(sessionId, { sessionId, lastSeq: 0, messages: [], runs: [], inputs: [], waits: [], tools: [], workspaces: [] }); return value
+    sessions.set(sessionId, value); conversations.set(sessionId, { sessionId, lastSeq: 0, messages: [], turns: [], inputs: [], questions: [], tools: [], workspaces: [] }); return value
   }
   await page.route('**/api/learning/**', async route => {
     const request = route.request(), path = new URL(request.url()).pathname.replace('/api/learning/', ''), body = request.postDataJSON()
@@ -36,7 +36,7 @@ test('formal sessions recover original inputs and open an independent real works
     if (/^(pdf|materials|artifacts)\//.test(path)) return respond([])
     if (path.startsWith('executions/')) return respond(path.endsWith('/history') ? { entries: [], nextCursor: null } : [])
     if (!path.startsWith('agent-sessions')) return respond({ error: 'missing' }, 404)
-    expect(request.headers()['x-xj-agent-contract']).toBe('2')
+    expect(request.headers()['x-xj-agent-contract']).toBe('3')
     expect(request.headers()['x-xj-expected-subject']).toBe([actor.environmentId, actor.spaceId, actor.principalId].join('.'))
     if (path === 'agent-sessions') return respond(body ? create(body.sessionId, body.requestId, body.title) : { items: [...sessions.values()] })
     if (path === 'agent-sessions/update') { const { requestId: _request, ...patch } = body, value = { ...sessions.get(body.sessionId)!, ...patch }; sessions.set(value.sessionId, value); return respond(value) }
@@ -47,12 +47,12 @@ test('formal sessions recover original inputs and open an independent real works
     if (suffix === 'conversation') return respond(conversations.get(sessionId!))
     if (suffix === 'requests') return respond(requests.get(requestId!) ?? null)
     if (suffix === 'inputs') {
-      const runId = id(), inputId = id(), conversation = conversations.get(sessionId!)!
-      conversation.runs.push({ runId, inputId, sessionId: sessionId!, requestId: body.requestId, state: 'completed', reason: '', generation: 1, stopRequested: false, needsContinue: false, previousRunId: null, createdAt: now, updatedAt: now, completedAt: now }); conversation.lastSeq++
-      conversation.messages.push({ messageId: 'input:' + inputId, runId, inputId, role: 'user', text: body.text, state: 'settled', createdAt: now }, { messageId: 'assistant:' + runId, runId, role: 'assistant', text: body.context.action ? '已结合你的作品继续讨论。' : '递归通过更小的同类问题求解。', state: 'settled', createdAt: now })
-      conversation.inputs.push({ inputId, runId, version: 1, mode: body.mode, state: 'adopted', text: body.text, createdAt: now })
-      if (!body.context.action) { created = true; conversation.workspaces.push({ operationId: id(), runId, workspace: { ...activity, title: '递归练习' } }) }
-      const receipt = { sessionId: sessionId!, inputId, runId, requestId: body.requestId, inputDigest: 'a'.repeat(64) }
+      const turnId = id(), inputId = id(), conversation = conversations.get(sessionId!)!
+      conversation.turns.push({ turnId, sessionId: sessionId!, requestId: body.requestId, trigger: 'user', originNotificationId: null, state: 'completed', reason: '', ownerInstanceId: 'test', createdAt: now, updatedAt: now, completedAt: now }); conversation.lastSeq++
+      conversation.messages.push({ messageId: 'input:' + inputId, turnId, inputId, role: 'user', text: body.text, state: 'settled', createdAt: now }, { messageId: 'assistant:' + turnId, turnId, role: 'assistant', text: body.context.action ? '已结合你的作品继续讨论。' : '递归通过更小的同类问题求解。', state: 'settled', createdAt: now })
+      conversation.inputs.push({ inputId, turnId, version: 1, state: 'adopted', text: body.text, createdAt: now })
+      if (!body.context.action) { created = true; conversation.workspaces.push({ toolCallId: id(), turnId, workspace: { ...activity, title: '递归练习' } }) }
+      const receipt = { sessionId: sessionId!, inputId, turnId, requestId: body.requestId, inputDigest: 'a'.repeat(64) }
       requests.set(body.requestId, { input: body, receipt })
       if (loseReply) { loseReply = false; return route.abort('failed') }
       return respond(receipt)

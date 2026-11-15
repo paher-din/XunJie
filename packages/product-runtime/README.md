@@ -12,12 +12,12 @@
 
 `createProductAgent` 共用两种场景装配和 defer-recovery 生命周期；`session-runtime` 组合实际目录、原 Agent owner、模型/工具依赖与 direct runner。普通 `student-assistant` session 不先创建 activity；`workspace-assistant` session 绑定真实 activity/target，固定输入保留 `context.action`，由实际领域 owner 校验作品和引用。
 
-`learning-http/sessions-http` 在学校 forwarding 前处理 `/api/learning/agent-sessions`，要求 `x-xj-agent-contract: 2`，可信身份来自本机或经核对的连接，核验 expected subject 与 namespace。根 GET 返回 `{items}`，create 返回真实 session；目录保存标题/置顶/归档/删除，不作为内核 RunStore。
+`learning-http/sessions-http` 在学校 forwarding 前处理 `/api/learning/agent-sessions`，要求 `x-xj-agent-contract: 3`，可信身份来自本机或经核对的连接，核验 expected subject 与 namespace。根 GET 返回 `{items}`，create 返回真实 session；目录保存标题/置顶/归档/删除，不作为内核 Turn 存储。
 
 - `/:sessionId/conversation?after=` 返回产品投影；原消息、Run、输入、等待、工具反馈和成功工作区结果按稳定身份合并。snapshot 保持独立调试接口。
 - `/:sessionId/inputs`、`requests/:requestId`、`inputs/:inputId/control` 负责接收、原回执及 CAS edit/remove/move；停止/继续和用户回应沿原 run/wait 身份操作。
 - `/:sessionId/materials/*`、`pdf/*`、`skills`、`skills/select` 使用明确 session scope；全局 `/skills` 是独立个人库。资料与 Skills 由所属 learning-data owner 保存，sessionId 不替代 activityId。
-- `agent.sessions.v2` / `agent.dependencies.v2` 为显式 version 2 RPC；独立 Agent 的 dependency factory 从当前可信 source/call 取得权限。initialize 只向已授权宿主开放，resolveWait 仅用于可信服务结果，不接受浏览器自报执行成功。
+- `agent.sessions.v3` / `agent.dependencies.v2` 为显式 versioned RPC；独立 Agent 的 dependency factory 从当前可信 source/call 取得权限。initialize 与 assertDispatch 只向已授权宿主开放，answerQuestion 仅用于真实用户回应，不接受浏览器自报执行成功。
 
 旧 `/agent/:activityId/*` 与旧教学协议明确拒绝 incompatible，不将旧请求改派成新会话。模块和服务标识沿用 `teaching-agent`、`model-connection`；源码包拆分不改变部署拓扑。旧开发数据须按[显式重置](../../docs/deployment.md#旧开发-agent-数据的显式重置)处理。当前源码接线、工程回归与真实 UI/供应商/跨机验收分别记录；本 README 不给出本轮已验收声明。
 
@@ -66,7 +66,7 @@ import {
 
 默认 daemon 在有数据库的产品组合中注册 runtime、空间/课程、学习数据、模型连接和教学 Agent owner，提供[真实学习入口](src/learning-http/index.ts)；没有数据库的客户端组合仍可显式连接学校，但不具备默认本机学习副本。`model` 组合持有身份/课程和模型服务，`agent` 组合仅持有 runtime 与独立教学 Agent。生产依赖不得导入验收 owner 或测试宿主。
 
-显式独立 Agent 通过 `agent.dependencyConnectionId` 固定依赖连接，向学习数据 owner 调用 `agent.dependencies.v2`；可信宿主通过 `agent.sessions.v2` 调用固定的 Agent owner。每个 serviceId 只发布自身实际装配的能力。维护者使用 `authorize(input,targetServiceId)` 签发对应授权，并配置成员 Agent 与独立模型绑定，学生使用同一正式对话和工作区界面。连接、路由、任务及分片资源随各自所属 owner 参加维护、备份和隔离恢复。
+显式独立 Agent 通过 `agent.dependencyConnectionId` 固定依赖连接，向学习数据 owner 调用 `agent.dependencies.v2`；可信宿主通过 `agent.sessions.v3` 调用固定的 Agent owner。每个 serviceId 只发布自身实际装配的能力。维护者使用 `authorize(input,targetServiceId)` 签发对应授权，并配置成员 Agent 与独立模型绑定，学生使用同一正式对话和工作区界面。连接、路由、任务及分片资源随各自所属 owner 参加维护、备份和隔离恢复。
 
 `createProductLearningApplication` 装配生产业务和 HTTP，`createLearningRecoveryTargets` 按备份实际描述提供空间/课程、学习数据、模型连接及教学 Agent owner 的独立恢复目标，使用与验收限制见 [#149 交接](../../docs/student-agent-implementation/wp02-identity-activity.md) 与[模型连接](../model-gateway/README.md)。实际 owner 集合由 environment.services、部署启用集合和 requiredServiceIds 核对，源码包的数量不是 owner 数量。
 

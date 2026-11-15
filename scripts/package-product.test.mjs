@@ -76,7 +76,7 @@ test('product source bundling rejects a reachable retired Agent run driver', asy
 });
 
 
-test('the current product source graph ships core v8 and chunk v9 migrations without a legacy runner', async t => {
+test('the current product source graph ships the v3 turn loop and chunk transport migrations without a legacy runner', async t => {
   const app = await mkdtemp(join(tmpdir(), 'xunjie-product-agent-migrations-'));
   t.after(() => rm(app, { recursive: true, force: true }));
   await packaging.bundleApplication(app, { entryPoints: {
@@ -89,10 +89,13 @@ test('the current product source graph ships core v8 and chunk v9 migrations wit
     pathToFileURL(join(app, 'migrations.js')).href], { encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
   const migrations = JSON.parse(result.stdout);
-  assert.deepEqual(migrations.map(item => item.version), [1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  assert.deepEqual(migrations.map(item => item.version), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
   assert.equal(migrations[7].name, 'interruptible-agent-waits');
   assert.match(migrations[7].sql, /agent_waits ADD COLUMN interruptible/);
-  assert.equal(migrations[8].name, 'agent-session-transport-v2');
-  assert.match(migrations[8].sql, /CREATE TABLE agent_chunk_transfers/);
-  assert.match(migrations[8].sql, /CREATE TABLE agent_chunk_parts/);
+  assert.equal(migrations[8].name, 'agent-turn-loop');
+  assert.match(migrations[8].sql, /CREATE TABLE agent_turns/);
+  assert.match(migrations[8].sql, /CREATE TABLE agent_tool_calls/);
+  assert.equal(migrations[9].name, 'agent-session-transport-v2');
+  assert.match(migrations[9].sql, /CREATE TABLE agent_chunk_transfers/);
+  assert.match(migrations[9].sql, /CREATE TABLE agent_chunk_parts/);
 });

@@ -133,7 +133,7 @@ test('school record authority keeps the original executor and requires proved in
   await f.spaces.approveConnection(login.token, connectionId); await f.spaces.exchangeConnection(connectionId, verifier);
   const bindings = createMemberAgentBindings(f.space, f.spaces.authorize);
   const module = (unit, serviceId) => ({ environmentId: f.device.environmentId, serviceId, unit,
-    endpoint: 'http://127.0.0.1:1', protocolVersion: 1, capabilities: unit === 'teaching-agent' ? ['agent.sessions.v2'] : [] });
+    endpoint: 'http://127.0.0.1:1', protocolVersion: 1, capabilities: unit === 'teaching-agent' ? ['agent.sessions.v3'] : [] });
   const binding = { requestId: randomUUID(), identity: f.identity, connectionId,
     target: module('teaching-agent', randomUUID()), installationId: f.installationId, delivery: 'client',
     executionGrantId: f.source.grantId, deviceModules: [module('tool-execution', f.device.serviceId)] };

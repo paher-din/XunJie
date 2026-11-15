@@ -208,7 +208,7 @@ export function createLearningEntry(options: {
       if (readOnly && typeof remote === 'string' && remote.startsWith('school:')) throw new StorageError('forbidden');
       if (environment.profile === 'school' && (route.startsWith('client/') || typeof remote === 'string' && remote.startsWith('school:'))) throw new StorageError('forbidden');
       if (/^agent-sessions(?:\/|$)/.test(route) || route === 'agent-sources') {
-        if (request.headers['x-xj-agent-contract'] !== '2') throw new StorageError('incompatible');
+        if (request.headers['x-xj-agent-contract'] !== '3') throw new StorageError('incompatible');
         let identity: SpaceIdentity;
         if (typeof remote === 'string' && remote.startsWith('school:')) {
           const connectionId = z.uuid().parse(remote.slice(7));
@@ -229,7 +229,7 @@ export function createLearningEntry(options: {
         const host = await options.agentSessions(identity);
         result = await routeAgentSessions(host, identity, route, method ?? 'GET',
           method === 'POST' ? await readLearningBody(request, /\/pdf(?:\/|$)/.test(route) ? 29*1024*1024 : 16_000_000) : undefined,
-          new URL(request.url!, endpoint).search, '2');
+          new URL(request.url!, endpoint).search, '3');
         sendLearning(response, 200, result);
         return true;
       }

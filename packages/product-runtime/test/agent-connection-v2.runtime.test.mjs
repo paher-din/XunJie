@@ -94,16 +94,16 @@ test('school mapping retains historical owners through user HTTP while dependenc
       response.writeHead(200, { 'content-type': 'application/json' }); response.end(JSON.stringify({ identity, target: actualTarget })); return true;
     }
     if (request.url === '/api/learning/agent-sources') {
-      assert.equal(request.headers['x-xj-agent-contract'], '2');
+      assert.equal(request.headers['x-xj-agent-contract'], '3');
       response.writeHead(200, { 'content-type': 'application/json' });
       response.end(JSON.stringify({ identity, learningTarget: actualTarget, courseTarget })); return true;
     }
     if (!request.url.startsWith('/api/learning/agent-sessions')) return false;
-    assert.equal(request.headers['x-xj-agent-contract'], '2');
+    assert.equal(request.headers['x-xj-agent-contract'], '3');
     const chunks = []; for await (const chunk of request) chunks.push(chunk);
     const body = chunks.length ? JSON.parse(Buffer.concat(chunks).toString()) : undefined;
     const url = new URL(request.url, 'http://localhost');
-    const value = await routeAgentSessions(http, identity, url.pathname.slice('/api/learning/'.length), request.method, body, url.search, '2');
+    const value = await routeAgentSessions(http, identity, url.pathname.slice('/api/learning/'.length), request.method, body, url.search, '3');
     response.writeHead(200, { 'content-type': 'application/json' }); response.end(JSON.stringify(value)); return true;
   });
   actualTarget = { ...f.storage.owner, version: 1 };
@@ -111,7 +111,7 @@ test('school mapping retains historical owners through user HTTP while dependenc
   const learning = createLearningData(f.storage, { resolveBinding: async () => actualTarget });
   const agentOwner = { version: 1, connectionId: f.connection.connectionId, installationId: f.origin.sourceInstallationId,
     target: { environmentId: f.origin.sourceEnvironmentId, serviceId: f.origin.sourceServiceId, unit: 'teaching-agent',
-      protocolVersion: 1, endpoint: 'http://127.0.0.1:1', capabilities: ['agent.sessions.v2'] } };
+      protocolVersion: 1, endpoint: 'http://127.0.0.1:1', capabilities: ['agent.sessions.v3'] } };
   let chosenOwner = agentOwner;
   const directory = createAgentSessions(f.storage, { authorize: async () => {}, openActivity: learning.open, resolveOwner: async () => chosenOwner });
   const agentBinding = await provisionStorage({ admin: f.pg.admin, owner: { environmentId: randomUUID(), serviceId: randomUUID() }, password: randomUUID(), migrations: agentRuntimeMigrations });
@@ -148,7 +148,7 @@ test('school mapping retains historical owners through user HTTP while dependenc
   chosenOwner = { ...agentOwner, connectionId: randomUUID(), target: { ...agentOwner.target, ...agentStorage.owner } };
   const historicalId = randomUUID();
   await directory.create(identity, { sessionId: historicalId, requestId: randomUUID(), scenario: 'student-assistant', title: 'Original server owner' });
-  await runtime.initialize({ sessionId: historicalId, identity, scenario: 'student-assistant', restartPolicy: 'explicit', createdAt: new Date().toISOString() });
+  await runtime.initialize({ sessionId: historicalId, identity, scenario: 'student-assistant', createdAt: new Date().toISOString() });
   await directory.markReady(identity, { sessionId: historicalId, requestId: randomUUID() });
   const historicalOwner = chosenOwner;
   chosenOwner = agentOwner;
@@ -156,12 +156,12 @@ test('school mapping retains historical owners through user HTTP while dependenc
   assert.equal((await remote.list(identity)).some(item => item.sessionId === historicalId), true);
   assert.equal((await remote.read(identity, historicalId)).owner.connectionId, historicalOwner.connectionId);
   const proxy = await school.sessionAgent(identity, historicalId);
-  const input = { sessionId: historicalId, requestId: randomUUID(), mode: 'steering', text: 'Original server only', context: {} };
-  const accepted = await proxy.accept(identity, input);
+  const input = { sessionId: historicalId, requestId: randomUUID(), text: 'Original server only', context: {} };
+  const accepted = await proxy.submit(identity, input);
   assert.deepEqual(await runtime.request(identity, historicalId, input.requestId), { receipt: accepted, input });
   assert.deepEqual(await proxy.request(identity, historicalId, input.requestId), { receipt: accepted, input });
   assert.equal((await proxy.conversation(identity, historicalId)).sessionId, historicalId);
-  await assert.rejects(proxy.resolveWait(identity, historicalId, { requestId: randomUUID(), waitId: randomUUID(), expectedVersion: 1, result: {} }), { code: 'forbidden' });
+  await assert.rejects(proxy.assertDispatch(identity, { sessionId: historicalId, runId: randomUUID(), stepId: randomUUID(), operationId: randomUUID(), generation: 1 }), { code: 'forbidden' });
   const schoolSkills = await school.sessionSkills(identity, historicalId);
   const skillState = await schoolSkills.resolveSession(identity, historicalId);
   assert.deepEqual(skillState.catalog, []); assert.match(skillState.selectionDigest, /^[a-f0-9]{64}$/);
@@ -171,7 +171,7 @@ test('school mapping retains historical owners through user HTTP while dependenc
   await assert.rejects(schoolSkills.resolveSession({ ...identity, principalId: randomUUID() }, historicalId), { code: 'forbidden' });
   await assert.rejects(schoolSkills.resolveSession(identity, sessionId), { code: 'identity-conflict' });
   const subject = [identity.environmentId, identity.spaceId, identity.principalId].join('.');
-  assert.deepEqual(await school.forward(connectionId, `agent-sessions/${historicalId}/skills`, undefined, subject, '', '2'), await skills.resolveSession(identity, historicalId));
+  assert.deepEqual(await school.forward(connectionId, `agent-sessions/${historicalId}/skills`, undefined, subject, '', '3'), await skills.resolveSession(identity, historicalId));
   const serverOnlyRoot = join(f.pg.root, 'server-only-client'), serverOnlyConnection = randomUUID();
   await mkdir(join(serverOnlyRoot, 'credentials'), { recursive: true });
   await writeFile(join(serverOnlyRoot, 'credentials', 'school-client-' + serverOnlyConnection), JSON.stringify({ requestId: serverOnlyConnection,
@@ -196,7 +196,7 @@ test('school mapping retains historical owners through user HTTP while dependenc
   const initialization = await schoolWithLocalApplication.sessionDirectory(identity), pendingId = randomUUID();
   const pending = await initialization.create(identity, { sessionId: pendingId, requestId: randomUUID(), scenario: 'student-assistant' });
   assert.equal(pending.state, 'initializing', 'the school directory must not invoke the local HTTP application to initialize');
-  await caller.initialize({ sessionId: pendingId, identity, scenario: pending.scenario, restartPolicy: 'explicit', createdAt: pending.createdAt });
+  await caller.initialize({ sessionId: pendingId, identity, scenario: pending.scenario, createdAt: pending.createdAt });
   await writeFile(join(f.root, 'credentials', 'school-client-' + connectionId), JSON.stringify({ ...savedConnection,
     localStudy: { version: 1, imported: true }, agentBinding: { ...savedConnection.agentBinding, dependencyConnectionId: randomUUID() } }));
   const readyInput = { sessionId: pendingId, requestId: randomUUID() };
@@ -213,11 +213,11 @@ test('school mapping retains historical owners through user HTTP while dependenc
 test('assertDispatch uses current owner checks without a local transfer journal', { timeout: 60000 }, async t => {
   const sessionId = randomUUID(), permit = { sessionId, runId: randomUUID(), stepId: randomUUID(), operationId: randomUUID(), generation: 1 };
   let checks = 0, allowed = true;
-  const f = await fixture(t, 'agent.sessions.v2', input => {
-    checks++; if (!allowed) throw new StorageError('stale-generation'); return input.args.permit;
+  const f = await fixture(t, 'agent.sessions.v3', input => {
+    checks++; if (!allowed) throw new StorageError('stale-generation'); return null;
   });
-  const call = { version: 2, operation: 'assertDispatch', identity, sessionId, args: { permit, attemptId: permit.operationId } };
-  assert.deepEqual(await f.client()(call), permit);
+  const call = { version: 3, operation: 'assertDispatch', identity, sessionId, args: { permit } };
+  assert.equal(await f.client()(call), null);
   allowed = false;
   await assert.rejects(f.client()(call), { code: 'stale-generation' });
   assert.equal(checks, 2); assert.deepEqual(await agentTransferEntries(f.root), []);
@@ -225,11 +225,11 @@ test('assertDispatch uses current owner checks without a local transfer journal'
 
 test('large conversation queries refresh after consumption and recover unknown pure reads', { timeout: 60000 }, async t => {
   let fail = true, reads = 0;
-  const f = await fixture(t, 'agent.sessions.v2', input => {
+  const f = await fixture(t, 'agent.sessions.v3', input => {
     reads++; if (fail) throw new Error('original read interrupted');
     return { text: '中文🙂'.repeat(160000), revision: reads };
   });
-  const call = { version: 2, operation: 'conversation', identity, sessionId: randomUUID(), args: { after: 0 } };
+  const call = { version: 3, operation: 'conversation', identity, sessionId: randomUUID(), args: { after: 0 } };
   await assert.rejects(f.client()(call), { code: 'unavailable' });
   fail = false;
   const recovered = await f.client()(call), refreshed = await f.client()(call);

@@ -17,12 +17,12 @@
 
 ## 公开传输
 
-- `transport/session-service` 提供 `agent.sessions.v2`，RPC 显式 `version: 2`。公开 port 与 JSON contracts 独立于 core 实现和 SDK 类型。
+- `transport/session-service` 提供 `agent.sessions.v3`，RPC 显式 `version: 3`，按 Turn/Step/Question 公开操作。公开 port 与 JSON contracts 独立于 core 实现和 SDK 类型。
 - `transport/session-dependencies` 提供 `agent.dependencies.v2`，按原 session owner、可信连接 source 和原 permit 解析模型/工具工厂。
 - `transport/workspace-data` 仅编码真实 workspace/course 领域调用，不包含旧教学 RPC 或另一套运行引擎。
-- `transport/session-storage` 组合 core v1–v8 与 chunk v9，提供完整 Agent service 维护与来源闭包；分块机制来自 storage。
+- `transport/session-storage` 组合 core v1–v9 与 chunk v10，提供完整 Agent service 维护与来源闭包；分块机制来自 storage。
 
-浏览器只能经可信 HTTP 宿主取得身份；`initialize` 由受认证宿主授权，`resolveWait` 只向可信服务开放。版本不兼容和未支持 operation 在写入前拒绝，不重派给旧协议。`conversation` 是产品投影，`snapshot` 是独立调试读取。
+浏览器只能经可信 HTTP 宿主取得身份；`initialize` 由受认证宿主授权，`answerQuestion` 与 `assertDispatch` 只向可信服务开放。版本不兼容和未支持 operation 在写入前拒绝，不重派给旧协议。`conversation` 是产品投影，`sessionSnapshot` 是独立调试读取。
 
 装配生命周期由 [product-runtime](../product-runtime/README.md) 的 `createProductAgent` 管理：defer recovery，participant reopen/resume 后放行。部署 module ID 继续为 `teaching-agent`；HTTP、能力与显式旧开发数据重置见[部署说明](../../docs/deployment.md)。
 

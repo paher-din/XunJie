@@ -680,7 +680,7 @@ function answerText(presentation: Facts, answer: Facts): string {
       FROM agent_turns t JOIN agent_steps s USING(turn_id) WHERE t.session_id=$1 AND t.turn_id=$2 AND s.step_id=$3`,
     [permit.sessionId, permit.runId, permit.stepId]);
     const deadline = row ? (row.budget as AgentTurnBudget).deadline : null;
-    if (!row || row.turn_state !== 'active' || row.step_state !== 'executing'
+    if (!row || row.turn_state !== 'active' || !['generating', 'executing'].includes(String(row.step_state))
       || (deadline !== null && now() >= Date.parse(deadline))) throw new StorageError('stale-generation');
     return null;
   }

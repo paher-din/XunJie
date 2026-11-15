@@ -57,7 +57,7 @@ for (const dataAtDevice of [false, true]) test(`device Agent uses ${dataAtDevice
       'a remote data owner does not cause a replacement local learning-data owner');
     assert.ok(deviceState.environment.services.find(item => item.unit === 'tool-execution'));
     assert.ok(deviceState.environment.services.find(item => item.unit === 'model-connection'));
-    assert.ok(deviceState.environment.services.find(item => item.unit === 'teaching-agent')?.capabilities.includes('agent.sessions.v2'),
+    assert.ok(deviceState.environment.services.find(item => item.unit === 'teaching-agent')?.capabilities.includes('agent.sessions.v3'),
       'a device Agent is available alongside the model and execution owners even when learning data lives at school');
     const admin = { authorization: 'Bearer '+await resolveCredential(schoolRoot, 'control') };
     const deviceAdmin = { authorization: 'Bearer '+await resolveCredential(deviceRoot, 'control') };

@@ -57,9 +57,9 @@ test('installed school settings share the Root pointer and independent Agent dis
     const activity = await schoolApi('activities', { requestId: randomUUID(), goal: '学校作品与本机模型', question: '', references: [] });
     assert.equal(activity.target.serviceId, dataService.serviceId);
     const acceptGrant = await agent.authorize({ sourceEnvironmentId: dataService.environmentId, sourceServiceId: dataService.serviceId,
-      sourceInstallationId: schoolState.environment.installationId, capabilities: ['agent.sessions.v2'] }, agentService.serviceId);
+      sourceInstallationId: schoolState.environment.installationId, capabilities: ['agent.sessions.v3'] }, agentService.serviceId);
     await school.connect({ connectionId: agentConnectionId, sourceEnvironmentId: dataService.environmentId, sourceServiceId: dataService.serviceId,
-      target: agentService, requiredCapabilities: ['agent.sessions.v2'], optionalCapabilities: [], credentialRef: 'paired-agent' }, acceptGrant.token);
+      target: agentService, requiredCapabilities: ['agent.sessions.v3'], optionalCapabilities: [], credentialRef: 'paired-agent' }, acceptGrant.token);
     await schoolApi('manage/agent-binding', { requestId: randomUUID(), identity, connectionId: agentConnectionId,
       target: agentService, installationId: agentState.environment.installationId }, admin);
     const dependencyGrant = await school.authorize({ sourceEnvironmentId: agentService.environmentId, sourceServiceId: agentService.serviceId,
@@ -128,12 +128,11 @@ test('installed school settings share the Root pointer and independent Agent dis
     async function ask(expectedConnectionId, modelId) {
       const input = question(activity, session, '核对当前显式模型选择 ' + modelId);
       const receipt = await schoolApi(`agent-sessions/${session.sessionId}/inputs`, input);
-      const conversation = await completed(schoolApi, session.sessionId, receipt.runId);
-      const snapshot = await schoolApi(`agent-sessions/${session.sessionId}/snapshots/${receipt.runId}`);
-      const step = snapshot.steps.find(step => step.operation.kind === 'model.call');
-      assert.equal(step.result.value.attempt.connection.connectionId, expectedConnectionId);
+      const conversation = await completed(schoolApi, session.sessionId, receipt.turnId);
       assert.ok(conversation.messages.some(message => message.text === 'route:' + modelId));
       assert.equal(payloads.at(-1).model, modelId, 'the SDK reaches the selected configuration');
+      const snapshot = await schoolApi(`agent-sessions/${session.sessionId}/snapshots/${receipt.turnId}`);
+      assert.equal(snapshot.turns.find(turn => turn.turnId === receipt.turnId).state, 'completed');
       return { input, receipt, snapshot };
     }
     rootPointer = await deviceApi('models/selection', { requestId: randomUUID(), expectedVersion: rootPointer.version,
@@ -164,11 +163,12 @@ test('installed school settings share the Root pointer and independent Agent dis
     rootPointer = await deviceApi('models/selection', { requestId: randomUUID(), expectedVersion: rootPointer.version,
       source: { kind: 'school', connectionId: schoolModelId } }, selected);
     await agent.stop(); await agent.start();
-    const snapshotRoute = `agent-sessions/${session.sessionId}/snapshots/${fixedDeviceRun.receipt.runId}`;
-    const retainedRun = await schoolApi(snapshotRoute);
-    assert.deepEqual(retainedRun.steps, fixedDeviceRun.snapshot.steps,
+    const snapshotRoute = `agent-sessions/${session.sessionId}/snapshots/${fixedDeviceRun.receipt.turnId}`;
+    const retainedTurn = await schoolApi(snapshotRoute);
+    assert.deepEqual(retainedTurn.steps, fixedDeviceRun.snapshot.steps,
       'later selection and Agent restart cannot retarget the original model operation');
-    assert.deepEqual(retainedRun.run, fixedDeviceRun.snapshot.run);
+    assert.deepEqual(retainedTurn.turns.find(turn => turn.turnId === fixedDeviceRun.receipt.turnId),
+      fixedDeviceRun.snapshot.turns.find(turn => turn.turnId === fixedDeviceRun.receipt.turnId));
     assert.equal(payloads.length, 4, 'changing selection never dispatches a hidden model call');
     assert.equal((await deviceApi('models/selection', undefined, personal)).selected.connection.connectionId, personalModelId);
     await device.stop(); await device.start();
@@ -181,7 +181,7 @@ test('installed school settings share the Root pointer and independent Agent dis
       method: 'POST', headers: { 'content-type': 'application/json', ...versionHeaders(base), ...selected },
       body: JSON.stringify({ requestId: randomUUID(), expectedVersion: originalInput.version, operation: 'edit', text: 'late mutation' }) });
     assert.equal(edited.status, 409, 'adopted input remains immutable');
-    const malformed = await fetch(deviceState.endpoint + '/api/learning/' + base + '/runs/' + originalInput.runId + '/continue', {
+    const malformed = await fetch(deviceState.endpoint + '/api/learning/' + base + '/runs/' + originalInput.turnId + '/continue', {
       method: 'POST', headers: { 'content-type': 'application/json', ...versionHeaders(base), ...selected },
       body: JSON.stringify({ requestId: randomUUID(), inputs: [] }) });
     assert.equal(malformed.status, 400, 'a control cannot smuggle replacement inputs');

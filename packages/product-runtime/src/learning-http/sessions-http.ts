@@ -31,7 +31,7 @@ const record = z.record(z.string(), z.unknown());
 /** Authentication and deployment routing remain with the HTTP host. */
 export async function routeAgentSessions(host: SessionHttpPort, identity: SpaceIdentity, route: string,
   method: string, body?: unknown, search = '', contractVersion: unknown = undefined): Promise<unknown> {
-  if (contractVersion !== '2') throw new StorageError('incompatible');
+  if (contractVersion !== '3') throw new StorageError('incompatible');
   const parts = route.split('/');
   if (parts[0] !== 'agent-sessions') throw new StorageError('missing');
   if (parts.length === 1) {
