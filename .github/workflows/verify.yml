@@ -28,6 +28,12 @@ jobs:
           name: ${{ needs.prepare.outputs.build-artifact }}
           path: ${{ runner.temp }}/build/
       - run: node scripts/ci-build-artifact.mjs restore "$RUNNER_TEMP/build"
+      - name: Install and verify the product native isolation entry
+        run: |
+          native_node_root="$(dirname "$(dirname "$(dirname "$(readlink -f "$(command -v node)")")")")"
+          sudo install -d -m 0755 /var/lib/xunjie
+          sudo sh scripts/install-linux-native-entry.sh \
+            --user "$(id -un)" --node-root "$native_node_root"
       - name: Prepare pinned PostgreSQL
         run: |
           node --input-type=module <<'NODE'

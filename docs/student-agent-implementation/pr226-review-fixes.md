@@ -84,7 +84,7 @@
 
 单个 native control 的 `cancel_requested` 与 owner 确认的 `cancelled` 分开；已生效的 control 保留 applied，不以取消意图伪造物理终态。只有 native channel 已持久确认取消的未派发 control 才释放原 expectedSeq，pending、仅有取消意图和未知回执继续占位；补充真实 PG/native 回归，覆盖取消后父进程继续接收输入。图片路由在任何上传前验证 segment 的真实 Session；缺少 Session 时拒绝使用图片能力。
 
-此外修正旧创建确认测试夹具和 Chrome E2E 的 v3 契约/已确认文案，保留原行为断言。native channel 旧验收改为公开 execute 接口及显式幂等重试，保留只读不派发、停止回执丢失、真实进程退出和 ACK 前保持 unknown 的断言。新增 CI `agent-runtime-native` 作业，在校验下载摘要的 PostgreSQL 上运行本轮及既有 PR226 回归。
+此外修正旧创建确认测试夹具和 Chrome E2E 的 v3 契约/已确认文案，保留原行为断言。native channel 旧验收改为公开 execute 接口及显式幂等重试，保留只读不派发、停止回执丢失、真实进程退出和 ACK 前保持 unknown 的断言。新增 CI `agent-runtime-native` 作业，在校验下载摘要的 PostgreSQL 上运行本轮及既有 PR226 回归。首次 Ubuntu CI 中有 11 项真实 native 用例因未安装产品隔离入口而失败；该作业现先调用正式 Linux 安装脚本，以 runner 身份和实际 Node 路径安装并执行 systemd 隔离自检，再运行原测试清单，不跳过或弱化真实进程断言。
 
 ## 三、本轮验证（2026-11-16）
 
