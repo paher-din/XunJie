@@ -12,7 +12,7 @@ type Script = 'stop-continue' | 'question' | 'notification'
 
 async function mount(page: import('@playwright/test').Page, script: Script) {
   const now = new Date().toISOString(), actor = { kind: 'personal' as const, name: 'Robert', environmentId: id(), spaceId: id(), principalId: id() }
-  const owner: AgentSession['owner'] = { version: 1, connectionId: id(), installationId: id(), target: { environmentId: actor.environmentId, serviceId: id(), unit: 'teaching-agent', endpoint: 'https://agent.example.test', protocolVersion: 1, capabilities: ['agent.sessions.v2'] } }
+  const owner: AgentSession['owner'] = { version: 1, connectionId: id(), installationId: id(), target: { environmentId: actor.environmentId, serviceId: id(), unit: 'teaching-agent', endpoint: 'https://agent.example.test', protocolVersion: 1, capabilities: ['agent.sessions.v3'] } }
   const sessionId = id(), turnId = id(), questionId = id(), inputId = id()
   const sessions = new Map<string, AgentSession>(), requests = new Map<string, unknown>()
   const writes: { path: string; body: any }[] = [], errors: string[] = []
@@ -52,7 +52,7 @@ async function mount(page: import('@playwright/test').Page, script: Script) {
     if (suffix === 'waits' && action === 'responses') {
       // Real answer recorded: the pending question closes and the batch runs to completion.
       const receipt = { requestId: body.requestId, questionId, questionVersion: question!.version + 1, turnId, status: 'accepted', reason: '' }
-      question = { ...question!, state: 'closed', answer: body.answer, answerRequestId: body.requestId, version: question!.version + 1, updatedAt: new Date().toISOString() }
+      question = { ...question!, state: 'answered', answer: body.answer, answerRequestId: body.requestId, version: question!.version + 1, updatedAt: new Date().toISOString() }
       conversation.questions = [question]
       close({ state: 'completed', completedAt: new Date().toISOString() })
       assistant(turnId, '已按你的选择创建项目。')
@@ -95,7 +95,7 @@ test('正式入口：Stop 停止当前 Turn 后手动继续开启新 Turn', asyn
   const f = await mount(page, 'stop-continue')
   await expect(page.locator('.teaching-run-status [role="status"]')).toContainText('Agent 正在回答…')
   await page.getByRole('button', { name: '停止回答', exact: true }).click()
-  await expect(page.locator('.teaching-run-status [role="status"]')).toContainText('回答尚未完成，原问题和内容已保留。')
+  await expect(page.locator('.teaching-run-status [role="status"]')).toContainText('你已停止这次回答，原问题和内容已保留。')
   const stop = f.writes.find(write => /\/runs\/.+\/stop$/.test(write.path))!
   expect(stop.body).toMatchObject({ requestId: expect.any(String) })
   expect(f.writes.filter(write => /\/runs\/.+\/stop$/.test(write.path))).toHaveLength(1)

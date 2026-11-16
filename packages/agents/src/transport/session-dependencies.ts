@@ -29,16 +29,22 @@ import { materialScopeSchema, type MaterialScopeInput, type SessionMaterialPort 
 import { personalMaterialReadSchema, materialSearchInputSchema } from '@xunjie/contracts/personal-materials';
 import { pdfReadInputSchema, pdfFindInputSchema } from '@xunjie/contracts/pdf-materials';
 import { activitySchema } from '@xunjie/contracts/learning-data';
-import type { AgentTool, ToolCall, ToolContext } from '@xunjie/agent-runtime';
+import { AgentError, type AgentTool, type ToolCall, type ToolContext, type ToolEffectReference } from '@xunjie/agent-runtime';
 import { validateTeachingAnswer } from '../capabilities/user-questions/index.js';
 
 type Json = z.infer<ReturnType<typeof z.json>>;
 export type WireToolContext = z.infer<typeof agentDependencyToolContextSchema>;
 /** Remote data-owner tools never save questions; the session owner kernel handles student_ask locally. */
-function remoteToolContext(identity: SpaceIdentity, value: WireToolContext): ToolContext {
+function remoteToolContext(identity: SpaceIdentity, value: WireToolContext, signal: AbortSignal,
+  guard: () => Promise<void>, reportEffect: (ref: ToolEffectReference) => Promise<void>): ToolContext {
   return { identity, sessionId: value.sessionId, turnId: value.turnId, stepId: value.stepId, toolCallId: value.toolCallId,
-    signal: new AbortController().signal, inputIds: value.inputIds, originInputId: null, visibleAnswerInputIds: [],
-    assertActive: async () => {}, ask: async () => { throw new StorageError('forbidden'); } };
+    ...(value.deadline ? { deadline: value.deadline } : {}), ...(value.segmentId ? { segmentId: value.segmentId } : {}),
+    signal, inputIds: value.inputIds, originInputId: value.originInputId ?? null, visibleAnswerInputIds: value.visibleAnswerInputIds ?? [], reportEffect,
+    async assertActive() {
+      if (signal.aborted) throw new StorageError('forbidden');
+      await guard();
+      if (signal.aborted) throw new StorageError('forbidden');
+    }, ask: async () => { throw new StorageError('forbidden'); } };
 }
 export interface AgentMaterialReadPort {
   personal: Pick<SessionMaterialPort['personal'], 'list' | 'material' | 'original' | 'versionContent' | 'readRange'>;
@@ -217,6 +223,13 @@ export function createAgentDependencyChannel(storage: OwnedStorage, options: Age
 
 /** Version 2 is checked before authorization, owner lookup or any domain mutation. */
 export function createAgentDependencyService(options: AgentDependencyServiceOptions) {
+  // Transport-local signals/receipts only. Durable cancellation and task delivery stay in agent_controls/the owner ledger.
+  const toolCalls = new Map<string, { controller: AbortController; reference: ToolEffectReference; expires: number; started: boolean }>();
+  function toolKey(identity: SpaceIdentity, sessionId: string, ids: { turnId: string; stepId: string; toolCallId: string }) {
+    for (const [key, entry] of toolCalls) if (entry.expires <= Date.now()) toolCalls.delete(key);
+    return canonicalDigest({ identity: [identity.kind, identity.environmentId, identity.spaceId, identity.principalId], sessionId,
+      turnId: ids.turnId, stepId: ids.stepId, toolCallId: ids.toolCallId });
+  }
   async function sourceOf(identity: SpaceIdentity) {
     if (!options.source) throw new StorageError('unavailable');
     const source = await options.source(identity);
@@ -269,17 +282,29 @@ export function createAgentDependencyService(options: AgentDependencyServiceOpti
       await assertOwner(options, created, call.identity, source); return created;
     }
     const session = await options.sessions.read(call.identity, call.sessionId);
+    if (session.sessionId !== call.sessionId) throw new StorageError('forbidden');
     await assertOwner(options, session, call.identity, source);
     const guard = async () => {
       if (!('permit' in call) || !call.permit || call.permit.sessionId !== call.sessionId || session.state !== 'ready' || session.deleted) throw new StorageError('forbidden');
       await source.assertAuthorized!(); await options.authorize(call.identity, source);
       const current = await options.sessions.read(call.identity, call.sessionId);
       await assertOwner(options, current, call.identity, source);
-      if (current.deleted || current.state !== 'ready') throw new StorageError('forbidden');
+      if (current.sessionId !== call.sessionId || current.deleted || current.state !== 'ready') throw new StorageError('forbidden');
       await options.assertDispatch(call.identity, call.permit);
     };
     if (requiresAgentDependencyDispatch(call)) await guard();
     if (call.operation.startsWith('tools.')) {
+      if (call.operation === 'tools.control') {
+        const key = toolKey(call.identity, session.sessionId, call.args);
+        let entry = toolCalls.get(key);
+        if (!entry && call.args.action === 'cancel') {
+          entry = { controller: new AbortController(), reference: {}, started: false,
+            expires: Date.now() + 86_400_000 };
+          toolCalls.set(key, entry); // Handles cancellation arriving before the execution request.
+        }
+        if (call.args.action === 'cancel') entry?.controller.abort(new StorageError('forbidden'));
+        return { found: !!entry?.started, cancelled: entry?.controller.signal.aborted ?? false, reference: entry?.reference ?? {} };
+      }
       if (session.deleted || !options.tools) throw new StorageError('forbidden');
       const tools = await options.tools(call.identity, session, source, call);
       const descriptorOf = (tool: AgentTool) => ({ id: tool.definition.name, version: 1 });
@@ -289,7 +314,8 @@ export function createAgentDependencyService(options: AgentDependencyServiceOpti
       const tool = tools.find(item => item.definition.name === descriptor.id);
       if (!tool) throw new StorageError('incompatible');
       if (call.operation === 'tools.list')
-        return [{ definition: tool.definition, supportsBackground: tool.supportsBackground, scope: {} }];
+        return [{ definition: tool.definition, supportsBackground: tool.supportsBackground,
+          ...(tool.timeoutPolicy ? { timeoutPolicy: tool.timeoutPolicy } : {}), scope: {} }];
       if (call.operation === 'tools.validateAnswer') {
         validateTeachingAnswer(call.args.presentation, call.args.answer); return null;
       }
@@ -304,7 +330,28 @@ export function createAgentDependencyService(options: AgentDependencyServiceOpti
       }
       const toolCall: ToolCall = { toolCallId: call.args.call.toolCallId, nativeCallId: call.args.call.nativeCallId,
         callIndex: call.args.call.callIndex, name: call.args.call.name, input: call.args.call.input, executionMode: call.args.call.executionMode };
-      return tool.execute(toolCall, remoteToolContext(call.identity, wire));
+      if (wire.turnId !== call.permit.runId || wire.stepId !== call.permit.stepId || wire.toolCallId !== call.permit.operationId
+        || toolCall.toolCallId !== wire.toolCallId || toolCall.name !== tool.definition.name) throw new StorageError('identity-conflict');
+      const key = toolKey(call.identity, session.sessionId, wire);
+      const entry = toolCalls.get(key) ?? { controller: new AbortController(), reference: {}, started: false,
+        expires: Date.now() + 86_400_000 };
+      entry.started = true; toolCalls.set(key, entry);
+      const expire = () => entry.controller.abort(new AgentError('deadline-exceeded'));
+      // A cancellation tombstone must survive the execution deadline (including delayed delivery).
+      const deadline = Math.min(entry.expires, wire.deadline ? Date.parse(wire.deadline) : Number.POSITIVE_INFINITY);
+      const timer = setTimeout(expire, Math.max(0, deadline - Date.now())); timer.unref();
+      if (deadline <= Date.now()) expire();
+      const context = remoteToolContext(call.identity, wire, entry.controller.signal, guard,
+        async ref => { entry.reference = { ...entry.reference, ...ref }; });
+      try {
+        await context.assertActive();
+        const result = await tool.execute(toolCall, context);
+        if (result.kind === 'accepted' || result.kind === 'outcome_unknown') entry.reference = { ...entry.reference,
+          ...(result.taskId ? { taskId: result.taskId } : {}),
+          ...(result.kind === 'outcome_unknown' && result.requestRef ? { requestRef: result.requestRef } : {}) };
+        return result;
+      }
+      finally { clearTimeout(timer); }
     }
     switch (call.operation) {
       case 'sessions.read': return session;
@@ -438,6 +485,7 @@ export function createAgentDependencyService(options: AgentDependencyServiceOpti
           if (method === 'executions.artifact') return options.learning.executions.artifact(call.identity, activity.activityId, id.parse(args[1]));
           if (method === 'executions.controlReceipt') return options.learning.executions.controlReceipt(call.identity, activity.activityId, id.parse(args[1]), id.parse(args[2]));
           const association = agentExecutionAssociationSchema.parse(args[1]);
+          if (association.sessionId !== call.sessionId) throw new StorageError('identity-conflict');
           if (requiresAgentDependencyDispatch(call) && (association.runId !== call.permit!.runId || association.commandId !== call.permit!.operationId))
             throw new StorageError('identity-conflict');
           const context = { ...association, origin: { grantId: source.grantId, sourceEnvironmentId: source.sourceEnvironmentId,
@@ -507,7 +555,7 @@ export function createAgentDependencyClient(send: (call: AgentDependencyCall) =>
       return agentDependencyDataResultSchemas[method].parse(value) as z.infer<(typeof agentDependencyDataResultSchemas)[M]>;
     }
     const association = (context: Parameters<TeachingToolData['executions']['agent']['read']>[2]) => agentExecutionAssociationSchema.parse({
-      runId: context.runId, stepId: context.stepId, snapshotId: context.snapshotId, commandId: context.commandId });
+      sessionId: context.sessionId ?? sessionId, runId: context.runId, stepId: context.stepId, snapshotId: context.snapshotId, commandId: context.commandId });
     async function material<M extends keyof typeof agentDependencyMaterialResultSchemas>(method: M, who: SpaceIdentity, scope: MaterialScopeInput, args: unknown[]): Promise<z.infer<(typeof agentDependencyMaterialResultSchemas)[M]>> {
       actor(who);
       const value = await invoke({ version: 2, operation: 'materials.read', identity, sessionId,
@@ -566,19 +614,69 @@ export function createAgentDependencyClient(send: (call: AgentDependencyCall) =>
     return {
     withAuthority,
     async tools(context: WireToolContext) {
-      const installed = await invoke({ version: 2, operation: 'tools.describe', identity, sessionId, args: {} });
+      const installed = await invoke({ version: 2, operation: 'tools.describe', identity, sessionId, args: { context } });
       const tools: AgentTool[] = [];
       for (const module of installed) {
         const offers = await invoke({ version: 2, operation: 'tools.list', identity, sessionId, args: { module, context } });
         for (const offer of offers) {
           tools.push({ definition: offer.definition, supportsBackground: offer.supportsBackground,
-            execute: (call, ctx) => invoke({ version: 2, operation: 'tools.execute', identity, sessionId,
+            ...(offer.timeoutPolicy ? { timeoutPolicy: offer.timeoutPolicy } : {}),
+            async execute(call, ctx) {
+              await ctx.assertActive();
+              const ids = { turnId: ctx.turnId, stepId: ctx.stepId, toolCallId: ctx.toolCallId,
+                ...(ctx.deadline ? { deadline: ctx.deadline } : {}) };
+              let done = false, timer: ReturnType<typeof setTimeout> | undefined, wake: (() => void) | undefined;
+              let delivered = '';
+              let reference: ToolEffectReference = {};
+              async function report(value: { taskId?: string | undefined; requestRef?: string | undefined }) {
+                reference = { ...reference, ...(value.taskId ? { taskId: value.taskId } : {}),
+                  ...(value.requestRef ? { requestRef: value.requestRef } : {}) };
+                if (!reference.taskId && !reference.requestRef) return;
+                const digest = canonicalDigest(reference);
+                if (digest !== delivered) { await ctx.reportEffect?.(reference); delivered = digest; }
+              }
+              const control = (action: 'read' | 'cancel') => invoke({ version: 2, operation: 'tools.control', identity, sessionId, args: { ...ids, action } });
+              let interruptWait: (result: import('@xunjie/contracts/agent-runtime').AgentToolResult) => void = () => {};
+              const interrupted = new Promise<import('@xunjie/contracts/agent-runtime').AgentToolResult>(resolve => { interruptWait = resolve; });
+              const onAbort = () => {
+                // Losing a host ends this wait; an independently accepted task remains owned by its ledger.
+                if ((ctx.signal.reason as { code?: string } | undefined)?.code === 'host-interrupted')
+                  interruptWait({ kind: 'interrupted', reason: 'host-interrupted' });
+                else void control('cancel').then(receipt => report(receipt.reference)).catch(() => {});
+                wake?.();
+              };
+              ctx.signal.addEventListener('abort', onAbort, { once: true });
+              const running = invoke({ version: 2, operation: 'tools.execute', identity, sessionId,
               permit: { sessionId: ctx.sessionId, runId: ctx.turnId, stepId: ctx.stepId, operationId: ctx.toolCallId, generation: 1 },
               args: { module, context: { sessionId: ctx.sessionId, turnId: ctx.turnId, stepId: ctx.stepId, toolCallId: ctx.toolCallId,
+                ...(ctx.deadline ? { deadline: ctx.deadline } : {}), ...(ctx.segmentId ? { segmentId: ctx.segmentId } : {}),
+                originInputId: ctx.originInputId, visibleAnswerInputIds: [...ctx.visibleAnswerInputIds],
                 // Forward the verified Step context unchanged; the owner re-checks its fixed workspace facts.
                 context: context.context, inputIds: [...ctx.inputIds], ...(context.sessionState ? { sessionState: context.sessionState } : {}) },
                 call: { toolCallId: call.toolCallId, nativeCallId: call.nativeCallId, callIndex: call.callIndex,
-                  name: call.name, input: call.input, executionMode: call.executionMode } } }) });
+                  name: call.name, input: call.input, executionMode: call.executionMode } } });
+              if (ctx.signal.aborted) onAbort();
+              // Only in-flight reference observation; task ownership/retry remains in the durable owner ledger.
+              const observing = (async () => {
+                let delayMs = 100;
+                while (!done && !ctx.signal.aborted) {
+                  await control('read').then(receipt => report(receipt.reference)).catch(() => {});
+                  if (delivered) break; // A trusted owner handle is sufficient; never poll an entire task lifetime.
+                  if (!done && !ctx.signal.aborted) await new Promise<void>(resolve => { wake = resolve; timer = setTimeout(resolve, delayMs); timer.unref(); });
+                  delayMs = Math.min(10_000, delayMs * 2);
+                }
+              })();
+              try {
+                const result = await Promise.race([running, interrupted]);
+                if (result.kind === 'accepted') await report({ taskId: result.taskId });
+                else if (result.kind === 'outcome_unknown') await report({
+                  ...(result.taskId ? { taskId: result.taskId } : {}), ...(result.requestRef ? { requestRef: result.requestRef } : {}) });
+                return result;
+              } finally {
+                done = true; ctx.signal.removeEventListener('abort', onAbort);
+                if (timer) clearTimeout(timer); wake?.(); void observing.catch(() => {});
+              }
+            } });
         }
       }
       return tools;

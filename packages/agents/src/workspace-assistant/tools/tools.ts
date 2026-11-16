@@ -64,7 +64,7 @@ export function createTeachingTools(options: {
   function context(scope: TeachingToolCleanupScope, command: TeachingPreparedTool): AgentExecutionContext {
     const origin = options.executionOrigin?.();
     // Reconciliation/claim reads use the already accepted original command.
-    return { ...(origin ? { origin } : {}), runId: scope.runId, stepId: scope.stepId, commandId: command.commandId, snapshotId: scope.snapshotId,
+    return { ...(origin ? { origin } : {}), ...(scope.sessionId ? { sessionId: scope.sessionId } : {}), runId: scope.runId, stepId: scope.stepId, commandId: command.commandId, snapshotId: scope.snapshotId,
       assertDispatch: async () => {
         if ((scope as HostScope).assertDispatch) await (scope as HostScope).assertDispatch!();
         else if (options.authorizeDispatch) await options.authorizeDispatch(scope as TeachingToolScope, command);
@@ -72,7 +72,7 @@ export function createTeachingTools(options: {
       } };
   }
   function scopeBasis(scope: TeachingToolCleanupScope) {
-    return { identity: scope.identity, activityId: scope.activity.activityId, runId: scope.runId,
+    return { identity: scope.identity, activityId: scope.activity.activityId, ...(scope.sessionId ? { sessionId: scope.sessionId } : {}), runId: scope.runId,
       stepId: scope.stepId, snapshotId: scope.snapshotId, segmentId: scope.segmentId ?? null, input: scope.input, course: scope.activity.course ?? null };
   }
   function approvedFile(scope: TeachingToolScope, objectId: string, contentId: string) {
@@ -210,7 +210,7 @@ export function createTeachingTools(options: {
         const control = executionControlSchema.parse({ controlId: commandId, operationId, effect: 'input',
           expectedSeq: args.expectedSeq, parameters: args.parameters });
         const original = await learning().executions.agent.original(scope.identity, scope.activity.activityId,
-          { runId: scope.runId, stepId: scope.stepId, snapshotId: scope.snapshotId, commandId, assertDispatch: async () => fail('forbidden') }, String(args.requestId));
+          { ...(scope.sessionId ? { sessionId: scope.sessionId } : {}), runId: scope.runId, stepId: scope.stepId, snapshotId: scope.snapshotId, commandId, assertDispatch: async () => fail('forbidden') }, String(args.requestId));
         if (!original || original.action.execution.instance.key !== binding.key
           || original.action.execution.instance.definitionDigest !== binding.definition.digest) fail('forbidden');
         location = original.action.receiver.location === 'remote' ? 'remote' : 'native';
@@ -271,7 +271,7 @@ export function createTeachingTools(options: {
       const reference = name !== 'execution_stop' ? scope.input.draft.references.find(item => item.source.kind === 'component'
         && item.source.origin === 'execution-result' && item.source.requestId === args.requestId) : undefined;
       const original = reference ? null : await learning().executions.agent.original(scope.identity, scope.activity.activityId,
-        { runId: scope.runId, stepId: scope.stepId, snapshotId: scope.snapshotId, commandId, assertDispatch: async () => fail('forbidden') }, String(args.requestId));
+        { ...(scope.sessionId ? { sessionId: scope.sessionId } : {}), runId: scope.runId, stepId: scope.stepId, snapshotId: scope.snapshotId, commandId, assertDispatch: async () => fail('forbidden') }, String(args.requestId));
       if (!reference && !original) fail('forbidden');
       detail = { requestId: args.requestId, ...(reference ? { reference } : { original: original ? { action: original.action, association: original.association } : null }) };
       if (name === 'execution_stop') { effect = 'stop'; conflictKey += ':execution:' + String(args.requestId); }
@@ -306,7 +306,7 @@ export function createTeachingTools(options: {
   async function queryOutcome(scope: TeachingToolCleanupScope, command: TeachingPreparedTool, query: ExecutionQuery | null) {
     if (!query) return null;
     let state: TeachingToolOutcome['state'] = query.statusKnowledge === 'unknown' ? 'unknown'
-      : query.state === 'failed' || query.state === 'cancelled' ? 'failed' : query.state === 'succeeded' ? 'completed' : 'accepted';
+      : query.state === 'failed' ? 'failed' : query.state === 'succeeded' || query.state === 'cancelled' ? 'completed' : 'accepted';
     const control = command.basis.control as { controlId: string; expectedSeq: number } | undefined;
     let receipt;
     if (control) {
@@ -317,6 +317,7 @@ export function createTeachingTools(options: {
       if (receipt) query = receipt.query;
       if (receipt?.status === 'applied') state = 'completed';
       else if (receipt?.status === 'rejected') state = 'failed';
+      else if (receipt?.status === 'cancelled') state = 'completed';
       else if (receipt?.status === 'dispatching') state = 'accepted';
       else state = 'unknown'; // A parent session is not an acceptance receipt for this control.
     } else if (command.name === 'course_operation' && query.session && query.state === 'running'
@@ -324,11 +325,13 @@ export function createTeachingTools(options: {
     if (command.effect === 'read') state = 'completed';
     if (command.name === 'execution_stop' && query.statusKnowledge === 'confirmed' && isTerminalExecutionState(query.state)) state = 'completed';
     const artifact = query.output ? await learning().executions.artifact(scope.identity, scope.activity.activityId, query.requestId) : null;
-    return outcome(command, state, { query, ...(receipt ? { controlReceipt: receipt } : {}), ...(artifact ? { artifact } : {}),
+    const cancelled = command.name !== 'execution_stop' && (control ? receipt?.status === 'cancelled'
+      : query.statusKnowledge === 'confirmed' && query.state === 'cancelled');
+    return outcome(command, state, { query, ...(cancelled ? { cancelled: true } : {}), ...(receipt ? { controlReceipt: receipt } : {}), ...(artifact ? { artifact } : {}),
       ...(control ? { operationObservation: query.session?.observations.find(item => item.controlId === control.controlId) ?? null,
         controlState: { expectedSeq: control.expectedSeq, appliedSeq: query.session?.appliedSeq ?? null,
-          effectApplied: receipt?.status === 'applied' ? true : receipt?.status === 'rejected' ? false : null } } : {}),
-      operationCompleted: state === 'completed', sessionOngoing: !!query.session && ['running', 'paused'].includes(query.state) }, '原执行结果', query);
+          effectApplied: receipt?.status === 'applied' ? true : receipt?.status === 'rejected' || receipt?.status === 'cancelled' ? false : null } } : {}),
+      operationCompleted: state === 'completed' && !cancelled, sessionOngoing: !!query.session && ['running', 'paused'].includes(query.state) }, '原执行结果', query);
   }
   async function dispatch(scope: TeachingToolScope, command: TeachingPreparedTool): Promise<TeachingToolOutcome> {
     await check(scope, command);
@@ -495,6 +498,13 @@ export function createTeachingTools(options: {
     }
     if (command.effect === 'read') return null;
     const requestId = String(command.basis.requestId ?? command.arguments.requestId ?? command.commandId);
+    const control = command.basis.control as { controlId?: string } | undefined;
+    if (control?.controlId) {
+      // Parent cleanup stops a different, independent task. The kernel delivers this control's
+      // cancel-call intent to its owner using the controlId, even when the parent keeps running.
+      return outcome(command, 'unknown', { taskId: control.controlId, requestRef: requestId,
+        requestId, cancellationRequired: true }, '控制操作效果未知，按 controlId 请求取消并查询');
+    }
     const query = await learning().executions.agent.cleanup(scope.identity, scope.activity.activityId, context(scope, command), requestId,
       { stopId: stopId(command.commandId), reason: '' });
     if (!query) return cancellationOutcome(scope, command, requestId, true);
@@ -533,7 +543,9 @@ export function createTeachingTools(options: {
       const candidate = JSON.stringify({ state: outcome.state, ...modelData });
       summary = candidate.length <= 8192 ? candidate : candidate.slice(0, 8192 - clipped.length) + clipped;
     }
-    const taskId = outcome.execution?.requestId;
+    const taskId = typeof outcome.result.taskId === 'string' ? outcome.result.taskId : outcome.execution?.requestId;
+    if (outcome.result.cancelled === true) return { kind: 'interrupted',
+      reason: ('执行已取消：' + (taskId ?? '') + '；原请求：' + (outcome.execution?.requestId ?? outcome.result.requestId ?? '')).slice(0, 500) };
     const images = outcome.feedback.images.length ? { images: outcome.feedback.images } : {};
     switch (outcome.state) {
       case 'completed': return { kind: 'completed', outcome: outcome.feedback.outcome === 'error' ? 'error' : 'success', summary, data, ...images };
@@ -541,12 +553,22 @@ export function createTeachingTools(options: {
       case 'accepted': return { kind: 'accepted', taskId: taskId ?? 'execution', summary, ...(taskId ? { resultRef: taskId } : {}) };
       case 'unknown': {
         const reference = taskId ?? (typeof outcome.result.requestId === 'string' ? outcome.result.requestId : undefined);
-        return { kind: 'outcome_unknown', reason: (summary || '效果尚未核实').slice(0, 500), ...(reference ? { taskId: reference } : {}) };
+        const requestRef = typeof outcome.result.requestRef === 'string' ? outcome.result.requestRef
+          : typeof outcome.result.requestId === 'string' ? outcome.result.requestId : outcome.execution?.requestId;
+        return { kind: 'outcome_unknown', reason: (summary || '效果尚未核实').slice(0, 500),
+          ...(reference ? { taskId: reference } : {}), ...(requestRef ? { requestRef } : {}) };
       }
       case 'not-dispatched': return { kind: 'completed', outcome: 'error', summary: summary || '工具未执行', data };
     }
   }
-  const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
+  function delay(ms: number, signal: AbortSignal) {
+    return new Promise<void>(resolve => {
+      const done = () => { clearTimeout(timer); signal.removeEventListener('abort', done); resolve(); };
+      const timer = setTimeout(done, ms); timer.unref?.();
+      signal.addEventListener('abort', done, { once: true });
+      if (signal.aborted) done();
+    });
+  }
   /** Foreground long tasks wait for a confirmed terminal state; background returns the acceptance receipt. */
   async function waitTerminal(scope: TeachingToolScope, command: TeachingPreparedTool, ctx: ToolContext): Promise<{
     query: ExecutionQuery | null; operation: Awaited<ReturnType<typeof queryOutcome>> | null }> {
@@ -554,16 +576,26 @@ export function createTeachingTools(options: {
     // The Turn deadline is a hard upper bound; a per-operation 600s wait may not outlive it.
     const deadline = Math.min(Date.now() + 600_000, ctx.deadline ? Date.parse(ctx.deadline) : Number.POSITIVE_INFINITY);
     let query: ExecutionQuery | null = null;
-    while (Date.now() < deadline && !ctx.signal.aborted) {
-      query = await learning().executions.agent.read(scope.identity, scope.activity.activityId, context(scope, command), requestId);
-      // A control receipt may complete the operation while the parent native session stays running;
-      // start_session is complete once the parent session is confirmed running.
-      const operation = await queryOutcome(scope, command, query);
-      if (query && query.statusKnowledge === 'confirmed' && isTerminalExecutionState(query.state)) return { query, operation };
-      if (operation && ['completed', 'failed', 'not-dispatched'].includes(operation.state)) return { query, operation };
-      await delay(1000);
-    }
-    return { query, operation: null };
+    let onAbort: () => void = () => {};
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const expired = new Promise<{ query: ExecutionQuery | null; operation: null }>(resolve => {
+      onAbort = () => resolve({ query, operation: null });
+      timer = setTimeout(onAbort, Math.max(0, deadline - Date.now())); timer.unref?.();
+      ctx.signal.addEventListener('abort', onAbort, { once: true });
+      if (ctx.signal.aborted) onAbort();
+    });
+    const observe = (async () => {
+      while (Date.now() < deadline && !ctx.signal.aborted) {
+        query = await learning().executions.agent.read(scope.identity, scope.activity.activityId, context(scope, command), requestId);
+        // A control completes from its own receipt, never from its parent's running state.
+        const operation = await queryOutcome(scope, command, query);
+        if (operation && ['completed', 'failed', 'not-dispatched'].includes(operation.state)) return { query, operation };
+        if (Date.now() < deadline && !ctx.signal.aborted) await delay(Math.min(1000, deadline - Date.now()), ctx.signal);
+      }
+      return { query, operation: null };
+    })();
+    try { return await Promise.race([observe, expired]); }
+    finally { if (timer) clearTimeout(timer); ctx.signal.removeEventListener('abort', onAbort); }
   }
   async function execute(scope: TeachingToolScope, call: ToolCall, ctx: ToolContext): Promise<AgentToolResult> {
     await authorize(scope);
@@ -571,26 +603,36 @@ export function createTeachingTools(options: {
       return { kind: 'completed', outcome: 'error', summary: '该工具不支持 background 模式' };
     const intent: ModelToolIntent = { callId: call.toolCallId, name: call.name, arguments: call.input };
     const command = await prepare(scope, intent, call.toolCallId);
-    if (call.name === 'course_operation' && call.executionMode === 'background') {
-      const outcome = await dispatch(scope, command);
-      const control = command.basis.control as { controlId?: string } | undefined;
-      const taskId = String(control?.controlId ?? command.basis.requestId ?? call.toolCallId);
-      return { kind: 'accepted', taskId, summary: outcome.feedback.text ?? '任务已受理', resultRef: taskId };
-    }
     let result = await dispatch(scope, command);
+    const control = command.basis.control as { controlId?: string } | undefined;
+    const reference = { taskId: String(control?.controlId ?? command.basis.requestId ?? call.toolCallId),
+      requestRef: String(command.basis.requestId ?? call.toolCallId) };
+    if (call.name === 'course_operation') {
+      result = { ...result, result: { ...result.result, ...reference } };
+      // A confirmed receipt can arrive before we save the background registration. Keep the
+      // ToolCall as acceptance; the owner fact reaches the model exactly once via notification.
+      const backgroundAccepted = call.executionMode === 'background' && (result.state === 'accepted'
+        || !!result.execution && (result.state === 'completed' || result.state === 'failed'));
+      if (result.state === 'accepted' || result.state === 'unknown' || backgroundAccepted) await ctx.reportEffect?.(reference);
+      if (backgroundAccepted)
+        return { kind: 'accepted', taskId: reference.taskId, summary: '任务已受理，终态通过任务通知返回。', resultRef: reference.taskId };
+    }
     if (call.name === 'course_operation' && result.state === 'accepted') {
       const waited = await waitTerminal(scope, command, ctx), query = waited.query;
+      if ((ctx.signal.reason as { code?: string } | undefined)?.code === 'host-interrupted')
+        return { kind: 'interrupted', reason: 'host-interrupted' };
       if (waited.operation && ['completed', 'failed', 'not-dispatched'].includes(waited.operation.state)) result = waited.operation;
-      else if (query && query.statusKnowledge === 'confirmed' && isTerminalExecutionState(query.state)) result = waited.operation ?? result;
       else if (call.executionMode === 'foreground') {
         // Foreground expiry is never a background acceptance: request cancellation and report only what is known.
-        await stop(scope, command).catch(() => {});
+        // Stop already owns a durable Turn fence; only a real business/deadline expiry cleans up here.
+        if ((ctx.signal.reason as { code?: string } | undefined)?.code !== 'turn-stopped')
+          await stop(scope, command).catch(() => {});
         const requestId = String(command.basis.requestId ?? command.arguments.requestId ?? command.commandId);
-        result = outcome(command, 'unknown', { requestId, foregroundTimedOut: true, ...(query ? { query } : {}) },
-          '前台等待超时，已请求取消；任务可能仍在执行', query);
+        result = outcome(command, 'unknown', { requestId, ...reference, foregroundTimedOut: true, ...(query ? { query } : {}) },
+          '前台等待结束，执行效果未知；按任务引用请求取消并查询', query);
       }
     }
-    return outcomeToResult(result);
+    return outcomeToResult(call.name === 'course_operation' ? { ...result, result: { ...result.result, ...reference } } : result);
   }
   return { definitions: scope => teachingDefinitions(scope), execute };
 }

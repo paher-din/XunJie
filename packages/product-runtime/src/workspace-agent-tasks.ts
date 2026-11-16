@@ -19,9 +19,11 @@ import type { ScenarioInput, TaskTerminalFact, TaskFactsPort, TaskFact, TaskCanc
 /** One durable task fact read from the course owner. `taskId` is the execution requestId. */
 export interface WorkspaceTaskRecord {
   taskId: string;
+  /** Owner-verified originating call, including controls whose taskId differs from the parent. */
+  toolCallId?: string;
   activityId: string;
   identity: SpaceIdentity;
-  /** Agent Session that owns the origin Turn; tracking only, never an authorization boundary. */
+  /** Owner-verified Agent Session of the origin Turn; checked together with the real identity. */
   sessionId: string;
   originTurnId: string;
   state: ExecutionState;
@@ -106,7 +108,7 @@ export function createWorkspaceAgentTasks(options: WorkspaceAgentTasksOptions) {
       JOIN agent_steps s USING(step_id)
       JOIN agent_turns t USING(turn_id)
       JOIN agent_runtime_sessions sess ON sess.session_id = t.session_id
-      WHERE c.execution_mode='background' AND c.task_id IS NOT NULL
+      WHERE c.execution_mode='background' AND c.task_id IS NOT NULL AND c.result->>'kind'='accepted'
       ORDER BY c.created_at, c.tool_call_id`);
     return rows.map(row => ({ taskId: String(row.task_id), sessionId: String(row.session_id),
       originTurnId: String(row.turn_id), identity: (row.body as AgentRuntimeSession).identity }));
@@ -150,6 +152,16 @@ export function createWorkspaceAgentTasks(options: WorkspaceAgentTasksOptions) {
       return records.filter(record => !isConfirmedTerminal(record)).map(record => ({ taskId: record.taskId }));
     },
     async cancel(sessionId, taskId) { await owner.cancel(taskId, { sessionId }); },
+    async cancelCall(sessionId, turnId, toolCallId) {
+      const matchesCall = (record: WorkspaceTaskRecord) => record.sessionId === sessionId
+        && record.originTurnId === turnId && (record.toolCallId ?? record.taskId) === toolCallId;
+      const records = (await owner.listByOriginTurn(sessionId, turnId)).filter(matchesCall);
+      // A missing record can still be an in-flight request. Retain the intent for late acceptance.
+      if (!records.length) return false;
+      for (const record of records) if (!isConfirmedTerminal(record)) await owner.cancel(record.taskId, { sessionId });
+      const after = (await owner.listByOriginTurn(sessionId, turnId)).filter(matchesCall);
+      return after.length > 0 && after.every(isConfirmedTerminal);
+    },
   };
 
   // ---- TaskFactsPort: deterministic selection by real association, never the whole ledger ----
@@ -231,18 +243,20 @@ export function createLearningSpaceTaskOwner(options: {
   /** The owner's agent execution facade (read/stop); never the dispatch path. */
   executions: {
     read(identity: SpaceIdentity, activityId: string, requestId: string): Promise<{ state: ExecutionState; statusKnowledge: 'confirmed' | 'unknown'; confirmedSeq: number; reason: { detail: string } | null; output: { contentId: string } | null; executionRef: string } | null>;
-    controlReceipt(identity: SpaceIdentity, activityId: string, requestId: string, controlId: string): Promise<{ status: 'dispatching' | 'applied' | 'unknown' | 'rejected'; seq: number; executionRef: string } | null>;
+    controlReceipt(identity: SpaceIdentity, activityId: string, requestId: string, controlId: string): Promise<{ status: 'dispatching' | 'applied' | 'unknown' | 'rejected' | 'cancelled'; seq: number; executionRef: string } | null>;
     agent: { stop(identity: SpaceIdentity, activityId: string, context: { runId: string; stepId: string; commandId: string; snapshotId: string; assertDispatch(): Promise<void> }, requestId: string, value: { stopId: string; reason: string }): Promise<unknown> };
   };
-  sessionIdOfTurn(turnId: string): Promise<string>;
+  sessionIdOfTurn(turnId: string, identity?: SpaceIdentity, activityId?: string): Promise<string>;
   /** Short human task name from the original action; defaults to the operation id. */
   taskName?(body: unknown): string;
 }): WorkspaceTaskOwner {
   const { storage, executions } = options;
-  const associationSchema = z.object({ runId: z.uuid(), stepId: z.uuid(), commandId: z.uuid(), snapshotId: z.uuid() });
+  const associationSchema = z.object({ runId: z.uuid(), stepId: z.uuid(), commandId: z.uuid(), snapshotId: z.uuid(), sessionId: z.uuid().optional() });
   async function origin(commandId: string) {
+    // Only root submissions own an identity origin; controls retain their own Turn/Session
+    // association while resolving the root identity through request_id.
     const { rows: [row] } = await storage.read(`SELECT c.command_id, c.request_id, c.activity_id, c.association, c.body_text, c.kind, c.cancelled, o.identity
-      FROM agent_execution_commands c JOIN agent_execution_origins o ON o.command_id=c.command_id
+      FROM agent_execution_commands c JOIN agent_execution_origins o ON o.command_id=c.request_id
       WHERE c.command_id=$1 AND c.kind IN ('submit','control')`, [commandId]);
     if (!row) return null;
     const association = associationSchema.parse(row.association);
@@ -256,38 +270,39 @@ export function createLearningSpaceTaskOwner(options: {
     if (!found) return null;
     const { row, association, identity, name } = found;
     const activityId = String(row.activity_id), requestId = String(row.request_id);
-    const sessionId = requester?.sessionId ?? await options.sessionIdOfTurn(association.runId);
+    if (requester && canonicalSubject(identity) !== canonicalSubject(requester.identity)) return null;
+    const sessionId = association.sessionId ?? await options.sessionIdOfTurn(association.runId, identity, activityId);
     // User-visible reads are authorized by the caller's real identity and Session, never the target record's identity.
     if (requester && (sessionId !== requester.sessionId
       || canonicalSubject(identity) !== canonicalSubject(requester.identity))) return null;
     if (String(row.kind) === 'control') {
       // A control operation has its own taskId (controlId) and receipt; it completes when that
-      // receipt is applied/rejected, even while the parent native session keeps running.
-      if (row.cancelled) return { taskId: commandId, activityId, identity, sessionId, originTurnId: association.runId,
-        state: 'cancelled', statusKnowledge: 'confirmed', confirmedSeq: 0, name, summary: '该控制操作已随当前 Turn 停止取消。', resultRef: null };
+      // receipt confirms its effect, even while the parent native session keeps running.
+      // The ledger's cancelled flag records intent only; an applied receipt still wins.
       const receipt = await executions.controlReceipt(identity, activityId, requestId, commandId);
-      if (!receipt) return { taskId: commandId, activityId, identity, sessionId,
+      if (!receipt) return { taskId: commandId, toolCallId: commandId, activityId, identity, sessionId,
         originTurnId: association.runId, state: 'running', statusKnowledge: 'unknown', confirmedSeq: 0,
-        name, summary: '控制操作已受理，执行节点尚未确认回执。', resultRef: null };
-      const confirmed = receipt.status === 'applied' || receipt.status === 'rejected';
+        name, summary: row.cancelled ? '已请求取消，等待执行节点确认。' : '控制操作已受理，执行节点尚未确认回执。', resultRef: null };
+      const confirmed = receipt.status === 'applied' || receipt.status === 'rejected' || receipt.status === 'cancelled';
       const state: ExecutionState = receipt.status === 'applied' ? 'succeeded'
-        : receipt.status === 'rejected' ? 'failed' : 'running';
+        : receipt.status === 'rejected' ? 'failed' : receipt.status === 'cancelled' ? 'cancelled' : 'running';
       const summary = receipt.status === 'applied' ? '控制操作已生效。' : receipt.status === 'rejected' ? '控制操作被拒绝。'
-        : '控制操作执行中。';
-      return { taskId: commandId, activityId, identity, sessionId, originTurnId: association.runId,
+        : receipt.status === 'cancelled' ? '执行节点已确认取消该控制操作。'
+        : row.cancelled ? '已请求取消，等待执行节点确认。' : '控制操作执行中。';
+      return { taskId: commandId, toolCallId: commandId, activityId, identity, sessionId, originTurnId: association.runId,
         state, statusKnowledge: confirmed ? 'confirmed' : 'unknown', confirmedSeq: receipt.seq, name,
         summary, resultRef: `execution:${receipt.executionRef}` };
     }
     const query = await executions.read(identity, activityId, requestId);
     if (!query) {
       // Accepted but no execution yet: a queued, unconfirmed task the owner still tracks.
-      return { taskId: requestId, activityId, identity, sessionId, originTurnId: association.runId,
+      return { taskId: requestId, toolCallId: commandId, activityId, identity, sessionId, originTurnId: association.runId,
         state: 'queued', statusKnowledge: 'unknown', confirmedSeq: 0, name,
         summary: '任务已受理，执行节点尚未确认状态。', resultRef: null };
     }
     const summary = query.reason?.detail
       ?? (query.state === 'succeeded' ? '任务已完成。' : query.state === 'cancelled' ? '任务已确认取消。' : '任务执行中。');
-    return { taskId: requestId, activityId, identity, sessionId, originTurnId: association.runId,
+    return { taskId: requestId, toolCallId: commandId, activityId, identity, sessionId, originTurnId: association.runId,
       state: query.state, statusKnowledge: query.statusKnowledge, confirmedSeq: query.confirmedSeq, name,
       summary: summary.slice(0, 2000), resultRef: query.output ? `execution:${query.executionRef}` : null };
   }
@@ -303,10 +318,12 @@ export function createLearningSpaceTaskOwner(options: {
       }
       return records;
     },
-    async cancel(taskId) {
+    async cancel(taskId, requester) {
       const found = await origin(taskId);
       if (!found) return;
       const { row, association, identity } = found;
+      if (requester && (association.sessionId ?? await options.sessionIdOfTurn(association.runId, identity, String(row.activity_id))) !== requester.sessionId)
+        throw new StorageError('forbidden');
       if (String(row.kind) === 'control') {
         // A control is a single operation, not the parent session: Stop cancels this operation
         // in the execution ledger and must not cancel the parent's independent lifecycle.

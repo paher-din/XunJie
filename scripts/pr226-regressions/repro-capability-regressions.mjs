@@ -124,7 +124,7 @@ try {
     draft: { token: 'review', question: '查看这些作品', references: [], bases: [] }, works: [large, asciiBig, chineseBig, png], evidence: [] };
   let imageRouteReads = 0;
   const imageSegmentId = randomUUID();
-  const models = { segments: { read: async () => { imageRouteReads++; return { segmentId: imageSegmentId, connection: { imageInput: true, capabilities: { images: 'verified' } } }; } },
+  const models = { segments: { read: async () => { imageRouteReads++; return { sessionId: ws.sessionId, segmentId: imageSegmentId, connection: { imageInput: true, capabilities: { images: 'verified' } } }; } },
     images: { upload: async () => ({}), read: async () => ({}) } };
   const inputId = randomUUID();
   const workspace = await createWorkspaceTools({ workspace: async () => activity, learning: f.data, courses: {}, models },
@@ -156,7 +156,7 @@ try {
   let capabilityReads = 0, uploads = 0;
   const imageDisabledModels = { selection: { read: async () => { capabilityReads++; return { selected: true, version: 1 }; },
       snapshot: async () => { capabilityReads++; return { choice: { connection: { imageInput: false, capabilities: { images: 'unsupported' } } } }; } },
-    segments: { read: async () => { capabilityReads++; return { connection: { imageInput: false, capabilities: { images: 'unsupported' } } }; } },
+    segments: { read: async () => { capabilityReads++; return { sessionId: ctx.sessionId, connection: { imageInput: false, capabilities: { images: 'unsupported' } } }; } },
     images: { upload: async () => { uploads++; }, read: async (_identity, ref) => ({ ...ref, mediaType: 'image/png', sha256: imageSha, byteLength: imageBytes.length }) } };
   const pdfTools = createDocumentTools({ materials: { personal: { list: async () => [] }, pdf: {
       list: async () => [doc], document: async () => doc, reading: async () => retained } }, models: imageDisabledModels,
@@ -166,7 +166,7 @@ try {
   let enabledUploads = 0;
   const imageEnabledModels = { selection: { read: async () => ({ selected: true, version: 1 }),
       snapshot: async () => ({ choice: { connection: { imageInput: true, capabilities: { images: 'verified' } } } }) },
-    segments: { read: async () => ({ connection: { imageInput: true, capabilities: { images: 'verified' } } }) },
+    segments: { read: async () => ({ sessionId: ctx.sessionId, connection: { imageInput: true, capabilities: { images: 'verified' } } }) },
     images: { upload: async () => { enabledUploads++; }, read: async (_identity, ref) => ({ ...ref, mediaType: 'image/png', sha256: imageSha, byteLength: imageBytes.length }) } };
   const pdfEnabledTools = createDocumentTools({ materials: { personal: { list: async () => [] }, pdf: {
       list: async () => [doc], document: async () => doc, reading: async () => retained } }, models: imageEnabledModels,

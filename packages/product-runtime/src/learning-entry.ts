@@ -183,7 +183,11 @@ export async function createProductLearningApplication(context: {
       const application = createStandaloneAgentApplication({ root, environment, configuration,
         storage: module.storage, binding: module.binding, enabled: enabled.has('teaching-agent') });
       await application.start();
-      return application;
+      return { ...application,
+        async poll(isOpen: () => boolean) {
+          if (isOpen()) await application.agent.observe();
+        },
+      };
     }
     const space = retained('space-course') ? await owner('space-course', spaceCourseMigrations) : undefined;
     if (!space) throw new Error('This composition requires a configured identity/course dependency.');
@@ -308,7 +312,12 @@ export async function createProductLearningApplication(context: {
       authorizeConnection: (identity, connectionId) => spaces.authorizeConnection(identity, connectionId),
       authorize: (identity, activityId) => learning!.open(identity, activityId),
       assertAgentDispatch: async (identity, activityId, association) => {
-        return assertWorkspaceCommand(identity, activityId, association);
+        try { await assertWorkspaceCommand(identity, activityId, association); }
+        catch (error) {
+          // A registered background operation may be claimed after its dispatch Step closed.
+          if (!(error instanceof StorageError) || error.code !== 'stale-generation') throw error;
+          await workspaceAuthority.assertTaskDispatch(identity, activityId, association);
+        }
       },
     }) : undefined;
     const agent = retained('teaching-agent') ? await owner('teaching-agent', agentServiceMigrations) : undefined;
@@ -684,11 +693,8 @@ export async function createProductLearningApplication(context: {
         },
         taskOwner: createLearningSpaceTaskOwner({ storage: executionModule?.storage ?? data!.storage,
           executions: independentExecution?.executions ?? learning!.executions,
-          async sessionIdOfTurn(turnId) {
-            const { rows: [row] } = await agent.storage.read('SELECT session_id FROM agent_turns WHERE turn_id=$1', [turnId]);
-            if (!row) throw new StorageError('missing');
-            return String(row.session_id);
-          } }),
+          sessionIdOfTurn: taskSessionIdOfTurn,
+        }),
       });
     }
     async function sessionRuntimeFor(session: AgentSession) {
@@ -725,14 +731,33 @@ export async function createProductLearningApplication(context: {
         return sessionSkills;
       } } : {}),
     } : undefined;
-    const taskOwnerForDependency = data && learning && agent ? (() => {
+    // Task facts can live at a different owner from their Agent Turns. Resolve the retained
+    // directory/owner association instead of looking for a remote Turn in this host's database.
+    async function taskSessionIdOfTurn(turnId: string, identity?: SpaceIdentity, activityId?: string): Promise<string> {
+      if (identity && localDirectory) {
+        const sessions = (await localDirectory.list(identity)).filter(session => !session.deleted
+          && (activityId === undefined || session.workspace?.activityId === activityId));
+        for (const session of sessions) {
+          try {
+            const port = await sessionRuntimeFor(session);
+            await port.turn(identity, session.sessionId, turnId);
+            return session.sessionId;
+          } catch (error) {
+            if (!(error instanceof StorageError) || error.code !== 'missing') throw error;
+          }
+        }
+        throw new StorageError('missing');
+      }
+      if (!agent) throw new StorageError('missing');
+      const { rows: [row] } = await agent.storage.read('SELECT session_id FROM agent_turns WHERE turn_id=$1', [turnId]);
+      if (!row) throw new StorageError('missing');
+      return String(row.session_id);
+    }
+    const taskOwnerForDependency = data && learning ? (() => {
       const owner = createLearningSpaceTaskOwner({ storage: executionModule?.storage ?? data.storage,
         executions: independentExecution?.executions ?? learning.executions,
-        async sessionIdOfTurn(turnId) {
-          const { rows: [row] } = await agent.storage.read('SELECT session_id FROM agent_turns WHERE turn_id=$1', [turnId]);
-          if (!row) throw new StorageError('missing');
-          return String(row.session_id);
-        } });
+        sessionIdOfTurn: taskSessionIdOfTurn,
+      });
       return {
         read: (identity: SpaceIdentity, sessionId: string, taskId: string) => owner.read(taskId, { sessionId, identity }),
         list: (identity: SpaceIdentity, sessionId: string, turnId: string) => owner.listByOriginTurn(sessionId, turnId),

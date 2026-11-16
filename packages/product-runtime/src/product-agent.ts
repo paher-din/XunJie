@@ -90,7 +90,8 @@ export function createProductAgent(options: ProductAgentOptions) {
     ...(options.taskOwner ? {
       taskFacts: { relevant: (input, consumed) => tasks!.taskFacts.relevant(input, consumed) },
       taskCancellation: { listNonTerminal: (s, t) => tasks!.taskCancellation.listNonTerminal(s, t),
-        cancel: (s, t) => tasks!.taskCancellation.cancel(s, t) },
+        cancel: (s, t) => tasks!.taskCancellation.cancel(s, t),
+        cancelCall: (s, t, c, r) => tasks!.taskCancellation.cancelCall!(s, t, c, r) },
     } : {}) });
   if (options.taskOwner) tasks = createWorkspaceAgentTasks({ storage: options.storage, owner: options.taskOwner,
     ...(options.taskPollMs ? { pollMs: options.taskPollMs } : {}),

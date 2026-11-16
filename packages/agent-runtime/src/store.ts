@@ -10,7 +10,7 @@ import {
   type AgentStep, type AgentAttempt, type AgentToolCall, type AgentQuestion, type AgentNotification,
   type AgentToolResult, type AgentTurnBudget, type AgentQuestionResponse, type AgentDispatchPermit,
 } from '@xunjie/contracts/agent-runtime';
-import type { Facts, HistoryEntry, TaskTerminalFact } from './ports.js';
+import type { Facts, HistoryEntry, TaskTerminalFact, ToolEffectReference } from './ports.js';
 import { AgentError } from './errors.js';
 
 export const agentRuntimeMigrations: readonly Migration[] = [{ version: 1, name: 'independent-agent-sessions', sql: `
@@ -637,18 +637,21 @@ export function createAgentStore(storage: OwnedStorage, options: StoreOptions) {
       const current = await turnRow(tx, turnId);
       if (current.state !== 'active') return false;
       // A host that lost ownership never closes the Turn; its successor repairs the open facts.
-      if (String(current.owner_instance_id) !== ownerInstanceId) return false;
+      if (String(current.owner_instance_id) !== ownerInstanceId || (options.assertOwner && !options.assertOwner())) return false;
       if (state === 'completed') {
         const { rows: [pending] } = await tx.query("SELECT input_id FROM agent_inputs WHERE turn_id=$1 AND state='pending' LIMIT 1", [turnId]);
         const { rows: [notif] } = await tx.query("SELECT notification_id FROM agent_notifications WHERE session_id=$1 AND state='pending' LIMIT 1", [sessionId]);
         if (pending || notif) return false;
       }
+      if (options.assertOwner && !options.assertOwner()) return false;
       await tx.query('UPDATE agent_turns SET state=$2, reason=$3, completed_at=clock_timestamp(), updated_at=clock_timestamp() WHERE turn_id=$1', [turnId, state, reason]);
       if (state === 'failed' && reason === 'budget_exhausted')
         await tx.query("UPDATE agent_runtime_sessions SET automatic_wake_blocked='budget_exhausted' WHERE session_id=$1", [sessionId]);
       // A failed Turn closes its own Step/Attempt/ToolCall/Question facts in the same commit.
       if (state === 'failed') await closeTurnCalls(tx, sessionId, turnId, reason, 'failed');
       await appendEvent(tx, sessionId, 'turn-' + state, { turnId, reason });
+      // Roll back the whole transition if ownership disappeared while closing child facts.
+      if (options.assertOwner && !options.assertOwner()) throw new StorageError('stale-generation');
       return true;
     });
   }
@@ -879,6 +882,37 @@ function answerText(presentation: Facts, answer: Facts): string {
     const { rows } = await storage.read("SELECT body FROM agent_controls WHERE operation='cancel-turn' AND body->>'state'='pending' ORDER BY turn_id");
     return rows.map(row => { const b = row.body as { turnId: string; sessionId: string; delivered?: string[] }; return { turnId: b.turnId, sessionId: b.sessionId, delivered: b.delivered ?? [] }; });
   }
+  /** A timeout cancels one call, never its sibling tasks or the entire Turn. */
+  async function requestCallCancellation(turnId: string, toolCallId: string, reference: ToolEffectReference) {
+    const { rows: [row] } = await storage.read('SELECT session_id FROM agent_turns WHERE turn_id=$1', [turnId]);
+    if (!row) throw new StorageError('missing');
+    const sessionId = String(row.session_id);
+    const requestId = operationId('agent-cancel-call:' + toolCallId + ':' + canonicalDigest(reference));
+    const body = { requestId, sessionId, turnId, toolCallId, reference, state: 'pending' };
+    return transition(sessionId, async tx => {
+      const current = await turnRow(tx, turnId);
+      if (current.owner_instance_id !== ownerInstanceId || (options.assertOwner && !options.assertOwner()))
+        throw new StorageError('stale-generation');
+      const { rows: [call] } = await tx.query('SELECT c.tool_call_id FROM agent_tool_calls c JOIN agent_steps s USING(step_id) WHERE s.turn_id=$1 AND c.tool_call_id=$2', [turnId, toolCallId]);
+      if (!call) throw new StorageError('missing');
+      await tx.query(`INSERT INTO agent_controls(request_id,session_id,turn_id,operation,input_digest,body)
+        VALUES($1,$2,$3,'cancel-call',$4,$5) ON CONFLICT(request_id) DO NOTHING`,
+        [requestId, sessionId, turnId, canonicalDigest(reference), body]);
+      if (options.assertOwner && !options.assertOwner()) throw new StorageError('stale-generation');
+      return body;
+    });
+  }
+  async function pendingCallCancellations(): Promise<{ requestId: string; sessionId: string; turnId: string; toolCallId: string; reference: ToolEffectReference }[]> {
+    const { rows } = await storage.read("SELECT body FROM agent_controls WHERE operation='cancel-call' AND body->>'state'='pending' ORDER BY request_id");
+    return rows.map(row => row.body as { requestId: string; sessionId: string; turnId: string; toolCallId: string; reference: ToolEffectReference });
+  }
+  async function acknowledgeCallCancellation(requestId: string) {
+    const nonce = randomUUID();
+    await storage.request({ requestId: 'agent-call-cancel-ack:' + nonce, fingerprint: nonce }, async tx => {
+      await tx.query("UPDATE agent_controls SET body=jsonb_set(body,'{state}','\"delivered\"') WHERE request_id=$1 AND operation='cancel-call'", [requestId]);
+      return null;
+    });
+  }
   async function acknowledgeCancellation(turnId: string, delivered: string[], done: boolean) {
     const requestId = operationId('agent-cancel-turn:' + turnId);
     await storage.request({ requestId: 'agent-cancel-ack:' + requestId + ':' + canonicalDigest(delivered) + ':' + done, fingerprint: requestId }, async tx => {
@@ -935,6 +969,7 @@ function answerText(presentation: Facts, answer: Facts): string {
     appendEvent: appendEventPublic, openStep, saveAttempt, finishAttempt, saveResponse, startToolCall, saveToolResult,
     completeStep, finishTurn, budgetOf, stepsOf, compactionCount, workspaceInputs, visibleInputs, turnOriginInput, toolCallsOf, toolResultsByNative, attemptsOf, sessionState, setSessionState, recordProgress,
     saveQuestion, question, answerQuestion, closeQuestion, registerNotification, notificationsOf,
-    stopTurn, pendingCancellations, acknowledgeCancellation, recoverInterrupted, assertDispatch, ownerInstanceId };
+    stopTurn, pendingCancellations, acknowledgeCancellation, requestCallCancellation, pendingCallCancellations,
+    acknowledgeCallCancellation, recoverInterrupted, assertDispatch, ownerInstanceId };
 }
 export type AgentStore = ReturnType<typeof createAgentStore>;

@@ -18,6 +18,8 @@ export type AskOutcome =
   | { kind: 'skipped'; questionId: string }
   | { kind: 'closed'; questionId: string }
   | { kind: 'expired'; questionId: string };
+/** Trusted owner handles, reported by the tool rather than inferred from model arguments. */
+export interface ToolEffectReference { taskId?: string; requestRef?: string; }
 /** Identity, correlation ids, cancellation and the ability to save a real question. No kernel DB. */
 export interface ToolContext {
   identity: SpaceIdentity;
@@ -29,6 +31,8 @@ export interface ToolContext {
   deadline?: string;
   /** Narrow execution fence: still the live Turn owner and not stopped; call before each independent write. */
   assertActive(): Promise<void>;
+  /** Report a dispatched request/accepted task before waiting; late reports re-deliver cancellation. */
+  reportEffect?(reference: ToolEffectReference): Promise<void>;
   /** The input range the model actually saw for this Step. */
   inputIds: readonly string[];
   /** The stable real user request of this Turn, even in a later Step with no newly adopted input. */
@@ -39,6 +43,9 @@ export interface ToolContext {
 }
 export interface AgentTool {
   definition: ModelTool;
+  /** Business waits enforce their own question/task deadline, capped by the Turn hard deadline.
+   * Ordinary tools (the default) additionally use the short maxCallMs RPC limit. */
+  timeoutPolicy?: 'call' | 'business';
   /** Tools that do not support background never expose the executionMode parameter. */
   supportsBackground: boolean;
   execute(call: ToolCall, context: ToolContext): Promise<AgentToolResult>;

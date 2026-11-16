@@ -18,16 +18,21 @@ export function createWorkspaceAgentAuthority(options: WorkspaceAgentAuthorityOp
   async function command(identity: SpaceIdentity, activityId: string, association: AgentExecutionAssociation) {
     const activity = await options.activity(identity, activityId);
     if (activity.status !== 'open') throw new StorageError('forbidden');
-    const session = (await options.sessions(identity)).find(item => item.workspace?.activityId === activityId);
-    if (!session || session.deleted || session.archived) throw new StorageError('forbidden');
-    const port = await options.agent(session), snapshot = await port.sessionSnapshot(identity, session.sessionId);
-    const turn = snapshot.turns.find(item => item.turnId === association.runId);
-    const step = snapshot.steps.find(item => item.stepId === association.stepId);
-    const call = snapshot.toolCalls.find(item => item.toolCallId === association.commandId);
-    // A retained command only belongs to this Turn's real Step and ToolCall; no later Turn can adopt it.
-    if (!turn || ['stopped', 'failed', 'interrupted'].includes(turn.state)
-      || !step || step.turnId !== turn.turnId || !call || call.stepId !== step.stepId) throw new StorageError('forbidden');
-    return { port, snapshot, step, call, turn, session };
+    const sessions = (await options.sessions(identity)).filter(item => item.workspace?.activityId === activityId
+      && !item.deleted && !item.archived && (!association.sessionId || item.sessionId === association.sessionId));
+    for (const session of sessions) {
+      const port = await options.agent(session), snapshot = await port.sessionSnapshot(identity, session.sessionId);
+      const turn = snapshot.turns.find(item => item.turnId === association.runId);
+      // Legacy associations lack a Session id; locate their retained Turn instead of assuming list order.
+      if (!turn) continue;
+      const step = snapshot.steps.find(item => item.stepId === association.stepId);
+      const call = snapshot.toolCalls.find(item => item.toolCallId === association.commandId);
+      // A retained command only belongs to this Turn's real Step and ToolCall; no later Turn can adopt it.
+      if (['stopped', 'failed', 'interrupted'].includes(turn.state)
+        || !step || step.turnId !== turn.turnId || !call || call.stepId !== step.stepId) throw new StorageError('forbidden');
+      return { port, snapshot, step, call, turn, session };
+    }
+    throw new StorageError('forbidden');
   }
   async function assertDispatch(identity: SpaceIdentity, activityId: string, association: AgentExecutionAssociation) {
     const { port, session } = await command(identity, activityId, association);

@@ -18,6 +18,8 @@ export interface TeachingToolScope {
   stepId: string;
   snapshotId: string;
   attemptId?: string;
+  /** Actual kernel session owning this call, supplied by the workspace adapter. */
+  sessionId?: string;
   segmentId?: string;
   /** Reconstructed from the kernel cancellation signal; never serialized or model supplied. */
   assertDispatch?: () => Promise<void>;

@@ -6,6 +6,7 @@ import { agentInputSchema, agentQuestionResponseSchema, agentDispatchPermitSchem
 import { createAgentStore, type AgentStore, type AgentSessionSnapshot, type AgentSessionInput } from './store.js';
 import { createModelAdapter, type ModelGatewaySource } from './model.js';
 import { runTurn, type LoopDependencies } from './loop.js';
+import { AgentError } from './errors.js';
 import { createCancellationRunner, type TaskCancellationPort } from './interruption.js';
 import type { AgentScenario, AgentCancellationTimers, AskInput, AskOutcome, Facts, TaskTerminalFact } from './ports.js';
 import type { TaskFactsPort } from './context.js';
@@ -53,7 +54,7 @@ export function createAgentRuntime(storage: OwnedStorage, options: AgentRuntimeO
     lock = await storage.tryHostLock('agent-host:' + storage.owner.environmentId + '/' + storage.owner.serviceId);
     if (!lock) { lockLost = true; return false; }
     lockLost = false;
-    void lock.lost.then(() => { lockLost = true; for (const controller of turnControllers.values()) controller.abort(); });
+    void lock.lost.then(() => { lockLost = true; for (const controller of turnControllers.values()) controller.abort(new AgentError('host-interrupted')); });
     return true;
   }
 
@@ -61,6 +62,9 @@ export function createAgentRuntime(storage: OwnedStorage, options: AgentRuntimeO
     // Every host that may execute Agent work must own the store before repairing or accepting Turns.
     // Opening the runtime readOnly only pauses admission until resume(); it never skips the lock.
     if (!await acquireLock()) return;
+    // Restart maintenance drains this paused host while storage gates are still closed.
+    // Keep ownership, but defer all recovery writes/cancellation delivery until resume().
+    if (options.readOnly) return;
     await store.recoverInterrupted();
     await cancellations.resumePending();
   })();
@@ -80,10 +84,10 @@ export function createAgentRuntime(storage: OwnedStorage, options: AgentRuntimeO
     entry.timer = cancellationTimers.setTimeout(() => {
       if (turnDeadlines.get(turnId) !== entry) return;
       entry.expired = true;
-      turnControllers.get(turnId)?.abort();
+      turnControllers.get(turnId)?.abort(new AgentError('deadline-exceeded'));
     }, delayMs);
     turnDeadlines.set(turnId, entry);
-    if (delayMs === 0) { entry.expired = true; turnControllers.get(turnId)?.abort(); }
+    if (delayMs === 0) { entry.expired = true; turnControllers.get(turnId)?.abort(new AgentError('deadline-exceeded')); }
   }
   function disarmTurn(turnId: string) {
     const entry = turnDeadlines.get(turnId);
@@ -110,6 +114,12 @@ export function createAgentRuntime(storage: OwnedStorage, options: AgentRuntimeO
       const sessionId = await sessionOfTurn(turnId);
       await cancellations.deliverTurn(sessionId, turnId);
     })().catch(error => { failures.push(error); }); },
+    async onCallTimeout(turnId, call, reference) {
+      if (!options.taskCancellation?.cancelCall) return;
+      await store.requestCallCancellation(turnId, call.toolCallId, reference);
+      // Enqueue is durable before the batch proceeds; owner delivery/retry runs independently.
+      void cancellations.resumePending().catch(error => { failures.push(error); });
+    },
     onProgress: async (sessionId, turnId, stepId, attemptId, progress) => { await store.recordProgress(sessionId, attemptId, progress); },
   };
   function wake(sessionId: string) {
@@ -197,7 +207,7 @@ export function createAgentRuntime(storage: OwnedStorage, options: AgentRuntimeO
     async stop(identity: AgentRuntimeSession['identity'], sessionId: string, turnId: string, requestId: string): Promise<AgentTurn> {
       await authorized(identity, sessionId); writable();
       const stopped = await store.stopTurn(sessionId, turnId, requestId);
-      turnControllers.get(turnId)?.abort();
+      turnControllers.get(turnId)?.abort(new AgentError('turn-stopped'));
       // Only a real durable cancel intent drives delivery; a late Stop on an old completed Turn never widens it.
       if (stopped.stopped) void cancellations.deliverTurn(sessionId, turnId).catch(error => { failures.push(error); });
       if (stopped.stopped) wake(sessionId);
@@ -248,8 +258,8 @@ export function createAgentRuntime(storage: OwnedStorage, options: AgentRuntimeO
       if (!dispatchOpen()) throw new StorageError('stale-generation');
       return store.assertDispatch(input);
     },
-    closeWrites() { writesClosed = true; dispatchClosed = true; for (const c of turnControllers.values()) c.abort(); },
-    closeDispatch() { dispatchClosed = true; for (const c of turnControllers.values()) c.abort(); },
+    closeWrites() { writesClosed = true; dispatchClosed = true; for (const c of turnControllers.values()) c.abort(new AgentError('host-interrupted')); },
+    closeDispatch() { dispatchClosed = true; for (const c of turnControllers.values()) c.abort(new AgentError('host-interrupted')); },
     async drain() {
       await ready;
       await Promise.allSettled([...pumps.values()]);

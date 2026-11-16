@@ -20,7 +20,7 @@ const definition = { name: 'student_ask',
 
 /** A real foreground question. The kernel stores the Question and awaits the answer; no prepare/dispatch/reconcile. */
 export function createUserQuestions(): AgentTool {
-  return { definition, supportsBackground: false,
+  return { definition, supportsBackground: false, timeoutPolicy: 'business',
     async execute(call: ToolCall, ctx: ToolContext): Promise<AgentToolResult> {
       let question = teachingStudentAskInputSchema.parse(call.input);
       if (question.purpose === 'create_personal_project') {
@@ -35,8 +35,8 @@ export function createUserQuestions(): AgentTool {
       // A later Step has no newly adopted input; the stable originating user request remains the real source.
       const sourceInputId = ctx.originInputId ?? ctx.inputIds.at(-1);
       const presentation = json({ ...question, questionId, ...(sourceInputId ? { sourceInputId } : {}) });
-      // 24h question ceiling. Anchoring to the exact Turn creation time needs a ToolContext field (see report).
-      const deadline = new Date(Date.now() + 86_400_000).toISOString();
+      const deadline = new Date(Math.min(Date.now() + 86_400_000,
+        ctx.deadline ? Date.parse(ctx.deadline) : Number.POSITIVE_INFINITY)).toISOString();
       const outcome = await ctx.ask({ presentation, deadline });
       if (outcome.kind === 'answered') {
         const answer = teachingStudentAnswerSchema.parse(outcome.answer);

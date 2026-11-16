@@ -129,7 +129,7 @@ export function createDocumentTools(options: DocumentToolOptions): AgentTool[] {
   async function imageOutcome(ctx: ToolContext, call: ToolCall, source: DocumentMaterialSource): Promise<AgentToolResult> {
     if (!options.models) throw new StorageError('forbidden');
     // Images are only sent when the actual segment that produced this call has an image-capable route.
-    const route = await imageRoute({ identity: ctx.identity, ...(ctx.segmentId ? { segmentId: ctx.segmentId } : {}) } as never,
+    const route = await imageRoute({ identity: ctx.identity, sessionId: ctx.sessionId, ...(ctx.segmentId ? { segmentId: ctx.segmentId } : {}) },
       options.models as unknown as TeachingImageModels);
     if (!route.available) return errored('当前固定模型路线未核验图像能力；仅提供 PDF 原生文字，未发送页图。', json({
       reason: route.reason, limitation: 'image-capability-unverified', imagesSent: false }));

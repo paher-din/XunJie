@@ -68,10 +68,10 @@ export async function resolveWorkspace(options: WorkspaceToolOptions, input: Sce
 }
 
 function toolScope(ctx: ToolContext, workspace: { activity: LearningActivity; action: ActionInput }): TeachingToolScope {
-  return { identity: ctx.identity, activity: workspace.activity, input: workspace.action,
+  return { identity: ctx.identity, sessionId: ctx.sessionId, activity: workspace.activity, input: workspace.action,
     runId: ctx.turnId, stepId: ctx.stepId, snapshotId: ctx.stepId, attemptId: ctx.toolCallId,
     ...(ctx.segmentId ? { segmentId: ctx.segmentId } : {}),
-    assertDispatch: async () => { if (ctx.signal.aborted) throw new StorageError('forbidden'); } };
+    assertDispatch: async () => { await ctx.assertActive(); } };
 }
 const workspaceTools = new Set(['read_work', 'read_reference', 'read_material',
   'read_student_facts', 'read_result', 'execution_query', 'execution_stop', 'course_operation',
@@ -98,6 +98,7 @@ export async function createWorkspaceTools(options: WorkspaceToolOptions, input:
         ...(definition.inputSchema.properties as Record<string, unknown>),
         scope: { type: 'string', enum: ['current-activity', 'same-course'] } } } },
     supportsBackground: definition.name === 'course_operation',
+    timeoutPolicy: definition.name === 'course_operation' ? 'business' : 'call',
     async execute(call: ToolCall, ctx: ToolContext) {
       // Ownership is re-checked at the actual call; origin Turn is tracking only, never a fence (PLAN 9).
       const current = await authorizedWorkspace(options, ctx.sessionId, ctx.identity);

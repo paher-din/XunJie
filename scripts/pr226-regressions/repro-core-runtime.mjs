@@ -45,13 +45,38 @@ test('a production-style readOnly resume holds the exclusive host lock while it 
   }
 });
 
-test('losing the real PostgreSQL host lock prevents any late final tool result or step-completed commit', async () => {
+test('a readOnly host can drain behind closed storage gates before restart resumes recovery', async () => {
+  const h = await harness([]);
+  await h.runtime.close();
+  const participant = h.storage.participant();
+  await participant.closeWrites(); await participant.closeDispatch();
+  const runtime = createAgentRuntime(h.storage, { authorize: async () => {}, readOnly: true,
+    scenario: scenario([]), gateway: mockGateway([{ text: '重启后完成', toolIntents: [] }]) });
+  let probe;
+  try {
+    await runtime.drain(); // Maintenance drains before reopening storage, so this must be read-only.
+    probe = await h.storage.tryHostLock('agent-host:' + h.storage.owner.environmentId + '/' + h.storage.owner.serviceId);
+    assert.equal(probe, null, 'paused host still holds the exclusive ownership lock');
+    await participant.resume(); await runtime.resume();
+    const receipt = await runtime.submit(h.identity, input(h.session.sessionId, 'restart'));
+    await runtime.drain();
+    const snapshot = await runtime.sessionSnapshot(h.identity, h.session.sessionId);
+    assert.equal(snapshot.turns.find(turn => turn.turnId === receipt.turnId).state, 'completed');
+    console.log('REGRESSION readOnly restart: lock held behind closed gates, recovery deferred until storage resumes');
+  } finally {
+    await probe?.release(); await participant.resume();
+    await runtime.close().catch(() => {}); await h.storage.close(); await h.postgres.close();
+  }
+});
+
+test('losing the real PostgreSQL host lock fences final facts until a new lock holder repairs the Turn', async () => {
   const b = blocking();
   const h = await harness([{ text: 'call', toolIntents: [{ callId: 'c1', name: 'block', arguments: {} }] }], [b.tool]);
   const admin = new pg.Client(h.postgres.admin);
+  let successor;
   try {
     await admin.connect();
-    await h.runtime.submit(h.identity, input(h.session.sessionId, 'run'));
+    const receipt = await h.runtime.submit(h.identity, input(h.session.sessionId, 'run'));
     await waitFor(() => b.context);
     const killed = await admin.query("SELECT pg_terminate_backend(pid) AS killed FROM pg_stat_activity WHERE application_name='xunjie-agent-host-lock' AND usename=$1", [h.binding.connection.user]);
     assert.equal(killed.rows.length, 1);
@@ -60,8 +85,66 @@ test('losing the real PostgreSQL host lock prevents any late final tool result o
     const snap = await h.runtime.sessionSnapshot(h.identity, h.session.sessionId);
     assert.equal(snap.toolCalls[0].result, null);
     assert.notEqual(snap.steps[0].state, 'completed');
-    console.log('REGRESSION lock-loss: signal.aborted=true, no final result, Step not completed');
-  } finally { b.release(); await admin.end(); await h.close(); }
+    assert.equal(snap.turns[0].state, 'active', 'the lost host cannot close its Turn in the loop error handler');
+    const oldOwner = createAgentStore(h.storage, { ownerInstanceId: snap.turns[0].ownerInstanceId,
+      assertOwner: () => !b.context.signal.aborted });
+    for (const state of ['failed', 'completed']) {
+      assert.equal(await oldOwner.finishTurn(receipt.turnId, state, 'late-finish'), false,
+        'matching the persisted owner ID is insufficient after losing the real lock');
+    }
+    assert.equal((await oldOwner.events(h.session.sessionId))
+      .some(event => ['turn-failed', 'turn-completed'].includes(event.kind)), false);
+    successor = createAgentRuntime(h.storage, { authorize: async () => {}, readOnly: true,
+      scenario: scenario([]), gateway: mockGateway([]) });
+    await successor.resume();
+    const repaired = await successor.sessionSnapshot(h.identity, h.session.sessionId);
+    assert.equal(repaired.turns[0].state, 'interrupted');
+    assert.equal(repaired.turns[0].reason, 'host-restart');
+    assert.equal(repaired.toolCalls[0].result.kind, 'outcome_unknown');
+    assert.equal(repaired.steps[0].state, 'interrupted');
+    console.log('REGRESSION lock-loss: old finish rejected, Turn stays active until successor lock/recovery => interrupted');
+  } finally { b.release(); await successor?.close(); await admin.end(); await h.close(); }
+});
+
+test('lock loss during Turn closure rolls back the terminal state and child cleanup together', async () => {
+  const h = await harness([]);
+  await h.runtime.close();
+  const admin = new pg.Client(h.postgres.admin);
+  const lock = await h.storage.tryHostLock('agent-host:' + h.storage.owner.environmentId + '/' + h.storage.owner.serviceId);
+  assert.ok(lock);
+  let owns = true, loseDuringClose = false;
+  const wrapped = { ...h.storage, request(options, work) {
+    return h.storage.request(options, tx => work({ ...tx, async query(sql, args) {
+      const result = await tx.query(sql, args);
+      if (loseDuringClose && sql.startsWith('UPDATE agent_turns SET state=$2')) {
+        loseDuringClose = false;
+        await admin.query("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE application_name='xunjie-agent-host-lock' AND usename=$1", [h.binding.connection.user]);
+        await lock.lost; owns = false;
+      }
+      return result;
+    } }));
+  } };
+  const store = createAgentStore(wrapped, { ownerInstanceId: randomUUID(), assertOwner: () => owns });
+  let successor;
+  try {
+    await admin.connect();
+    const receipt = await store.submitInput(input(h.session.sessionId, 'run'));
+    const opened = await store.openStep(receipt.turnId, {}, true);
+    assert.equal(opened.kind, 'step');
+    loseDuringClose = true;
+    await assert.rejects(() => store.finishTurn(receipt.turnId, 'failed', 'internal-error'),
+      error => error.code === 'stale-generation');
+    const unchanged = await store.sessionSnapshot(h.session.sessionId);
+    assert.equal(unchanged.turns[0].state, 'active');
+    assert.equal(unchanged.steps[0].state, 'generating');
+    assert.equal((await store.events(h.session.sessionId)).some(event => event.kind === 'turn-failed'), false);
+    successor = createAgentRuntime(h.storage, { authorize: async () => {}, readOnly: true,
+      scenario: scenario([]), gateway: mockGateway([]) });
+    await successor.resume();
+    const repaired = await successor.sessionSnapshot(h.identity, h.session.sessionId);
+    assert.equal(repaired.turns[0].state, 'interrupted');
+    assert.equal(repaired.steps[0].state, 'interrupted');
+  } finally { await successor?.close(); await lock.release(); await admin.end(); await h.storage.close(); await h.postgres.close(); }
 });
 
 test('the hard Turn deadline aborts a pending tool instead of letting the Turn finish', async () => {

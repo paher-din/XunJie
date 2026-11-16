@@ -43,8 +43,8 @@ export interface AgentExecutionContext extends AgentExecutionAssociation {
   /** Set by the trusted service host, never taken from a student or model payload. */
   origin?: AgentExecutionOrigin;
 }
-const association = ({ runId, stepId, commandId, snapshotId }: AgentExecutionContext) =>
-  associationSchema.parse({ runId, stepId, commandId, snapshotId });
+const association = ({ runId, stepId, commandId, snapshotId, sessionId }: AgentExecutionContext) =>
+  associationSchema.parse({ runId, stepId, commandId, snapshotId, ...(sessionId ? { sessionId } : {}) });
 const actionScope = (identity: SpaceIdentity, activityId: string) => ({ environmentId: identity.environmentId,
   spaceId: identity.spaceId, principalId: identity.principalId, activityId });
 const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(canonicalValue(value))).digest('hex');

@@ -6,9 +6,13 @@ import type { TeachingToolScope } from '../tool-discovery/tool-types.js';
 import type { PdfReading } from '@xunjie/contracts/pdf-materials';
 import { modelAllowsImages } from '@xunjie/contracts/model-connections';
 export type TeachingImageModels = Pick<LearningModelPort, 'images' | 'segments'>;
-export async function imageRoute(scope: TeachingToolScope, models?: TeachingImageModels) {
+export async function imageRoute(scope: Pick<TeachingToolScope, 'identity' | 'sessionId' | 'segmentId'>, models?: TeachingImageModels) {
   if (!models || !scope.segmentId) return { available: false as const, reason: 'fixed-model-segment-required' };
+  if (!scope.sessionId) return { available: false as const, reason: 'fixed-model-session-required' };
   const segment = await models.segments.read(scope.identity, scope.segmentId);
+  // Identity authorization alone permits other sessions belonging to the same student.
+  // An image capability must come from the segment that owns this kernel call.
+  if (segment.sessionId !== scope.sessionId) throw new StorageError('forbidden');
   return { available: modelAllowsImages(segment.connection), segmentId: segment.segmentId,
     connection: segment.connection };
 }

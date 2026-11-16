@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { provisionStorage, openStorage } from '../../packages/storage/dist/index.js';
+import { learningMigrations } from '../../packages/learning-space/dist/learning-data/index.js';
 import { harness, input } from './harness.mjs';
 import { createWorkspaceAssistant } from '../../packages/agents/dist/workspace-assistant/index.js';
 import { teachingDefinitions } from '../../packages/agents/dist/workspace-assistant/tools/tools-schema.js';
@@ -106,7 +108,7 @@ try {
  const listed=await controlOwner.listByOriginTurn(sessionId,turnId);
  assert.equal(listed.length,1);
  assert.equal(listed[0].taskId,controlId);
- let controlCancelled=false,parentStops=0;
+ let controlCancelled=false,parentStops=0,controlStatus='dispatching';
  const cancelOwner=createLearningSpaceTaskOwner({
   storage:{
    read:async(sql,args)=>{
@@ -117,14 +119,21 @@ try {
    },
    request:async(_options,run)=>{await run({query:async(sql)=>{if(sql.startsWith('UPDATE agent_execution_commands')) controlCancelled=true;}});},
   },
-  executions:{read:async()=>({state:'running',statusKnowledge:'confirmed',confirmedSeq:3,reason:null,output:null,executionRef}),controlReceipt:async()=>({status:'applied',seq:3,executionRef}),
+  executions:{read:async()=>({state:'running',statusKnowledge:'confirmed',confirmedSeq:3,reason:null,output:null,executionRef}),controlReceipt:async()=>({status:controlStatus,seq:3,executionRef}),
    agent:{stop:async()=>{parentStops++;throw Error('must not stop the parent session');}}},
   sessionIdOfTurn:async()=>sessionId
  });
  await cancelOwner.cancel(controlId);
+ const pendingCancel=await cancelOwner.read(controlId,{sessionId,identity});
+ assert.equal(controlCancelled,true,'control cancellation intent is durable in its own command row');
+ assert.equal(pendingCancel.state,'running');
+ assert.equal(pendingCancel.statusKnowledge,'unknown','intent alone is not confirmed cancellation');
+ controlStatus='cancelled';
  const cancelledRecord=await cancelOwner.read(controlId,{sessionId,identity});
- assert.equal(controlCancelled,true,'control operation is cancelled in its own command row');
  assert.equal(cancelledRecord.state,'cancelled');
+ assert.equal(cancelledRecord.statusKnowledge,'confirmed');
+ controlStatus='applied';
+ assert.equal((await cancelOwner.read(controlId,{sessionId,identity})).state,'succeeded','an applied receipt wins over cancellation intent');
  assert.equal(parentStops,0,'parent session remains untouched by control cancellation');
  console.log(JSON.stringify({repro:'T7 control task owner',taskId:record.taskId,parentRequestId,state:record.state,originTurnId:record.originTurnId,
   cancelledState:cancelledRecord.state,parentStops}));
@@ -165,11 +174,12 @@ try {
   sessions:{read:async()=>session},learning:{open:async()=>({})},courses:{},isOwnerSuccessor:async()=>true,
   authorize:async()=>{},assertDispatch:async()=>{},tools:async()=>[readPdf]
  });
+ const toolStepId=randomUUID(),toolCallId=randomUUID();
  const toolCall={version:2,operation:'tools.execute',identity,sessionId,
-  permit:{sessionId,runId:turnId,stepId:randomUUID(),operationId:randomUUID(),generation:1},
-  args:{module:{id:'read_pdf',version:1},context:{sessionId,turnId,stepId:randomUUID(),toolCallId:randomUUID(),
+  permit:{sessionId,runId:turnId,stepId:toolStepId,operationId:toolCallId,generation:1},
+  args:{module:{id:'read_pdf',version:1},context:{sessionId,turnId,stepId:toolStepId,toolCallId,
    context:{system:'test',facts:{},sources:[]},inputIds:[randomUUID()],sessionState:{workspaceInputs:[]}},
-   call:{toolCallId:randomUUID(),nativeCallId:'pdf-1',callIndex:0,name:'read_pdf',input:{documentId:randomUUID()},executionMode:'foreground'}}};
+   call:{toolCallId,nativeCallId:'pdf-1',callIndex:0,name:'read_pdf',input:{documentId:randomUUID()},executionMode:'foreground'}}};
  const toolResult=await toolService(toolCall,source);
  assert.equal(toolResult.kind,'completed');
  assert.equal(toolResult.summary,'真实工具已执行');
@@ -178,4 +188,36 @@ try {
  assert.equal(seen[0].call.input.documentId,toolCall.args.call.input.documentId);
  console.log(JSON.stringify({repro:'T2 remote tool execution',calls:calls.map(c=>c[0]),sessionId,taskId,executed:seen.length,tool:saw(seen[0])}));
  function saw(entry){return entry?'read_pdf':'none';}
+}
+
+// Real owner schema: only the root submission has an identity origin; controls refer to it.
+{
+ const fixture=await harness([],[]);let storage;
+ try {
+  const owner={environmentId:fixture.identity.environmentId,serviceId:randomUUID()};
+  const binding=await provisionStorage({admin:fixture.postgres.admin,owner,password:randomUUID(),migrations:learningMigrations});
+  storage=await openStorage({binding,migrations:learningMigrations,backend:fixture.backend});
+  const identity=fixture.identity,sessionId=fixture.session.sessionId,activityId=randomUUID();
+  const rootId=randomUUID(),controlId=randomUUID(),turnId=randomUUID(),executionRef=randomUUID();
+  const association={runId:turnId,stepId:randomUUID(),commandId:controlId,snapshotId:randomUUID(),sessionId};
+  await storage.request({requestId:randomUUID(),fingerprint:'root-origin-and-independent-control'},async tx=>{
+   await tx.query('INSERT INTO activities(id,space_environment_id,space_id,principal_id,body) VALUES($1,$2,$3,$4,$5)',[activityId,identity.environmentId,identity.spaceId,identity.principalId,JSON.stringify({identity})]);
+   for(const [id,kind] of [[rootId,'submit'],[controlId,'control']])await tx.query('INSERT INTO agent_execution_commands(command_id,request_id,activity_id,association,body_text,input_digest,kind) VALUES($1,$2,$3,$4,$5,$6,$7)',[id,rootId,activityId,JSON.stringify({...association,commandId:id}),JSON.stringify({execution:{operation:{operationId:'advance'}}}),'fixture',kind]);
+   await tx.query('INSERT INTO agent_execution_origins(command_id,identity) VALUES($1,$2)',[rootId,identity]);
+   return null;
+  });
+  const taskOwner=createLearningSpaceTaskOwner({storage,sessionIdOfTurn:async()=>sessionId,executions:{
+   read:async()=>({state:'running',statusKnowledge:'confirmed',confirmedSeq:1,reason:null,output:null,executionRef}),
+   controlReceipt:async()=>({status:'applied',seq:1,executionRef}),agent:{stop:async()=>{throw Error('control cancellation must preserve root');}}
+  }});
+  const fact=await taskOwner.read(controlId,{sessionId,identity});
+  assert.equal(fact?.state,'succeeded','control must resolve its parent identity origin in the real owner schema');
+  assert.equal(fact.sessionId,sessionId);assert.equal(fact.originTurnId,turnId);
+  assert.equal(await taskOwner.read(controlId,{sessionId,identity:{...identity,principalId:randomUUID()}}),null);
+  assert.equal(await taskOwner.read(controlId,{sessionId:randomUUID(),identity}),null);
+  await taskOwner.cancel(controlId,{sessionId});
+  assert.equal((await taskOwner.read(controlId,{sessionId,identity})).state,'succeeded','confirmed applied effect wins over cancellation intent');
+  assert.equal((await taskOwner.listByOriginTurn(sessionId,turnId)).filter(x=>x.taskId===controlId).length,1);
+  console.log(JSON.stringify({repro:'T7 real PG control identity origin',state:fact.state,sessionId,parentRequestId:rootId,taskId:controlId}));
+ } finally {await storage?.close();await fixture.close();}
 }

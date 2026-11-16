@@ -56,16 +56,17 @@ function fixture(fixed = connection()) {
 const prefix = options => ({ system: 'fixed', tools: [tool], options });
 test('explicit image permission enables an unmeasured route without upgrading measured evidence', async () => {
   const fixed = connection({ imageInput: true }), before = structuredClone(fixed.capabilities);
+  const sessionId = randomUUID();
   const decision = capabilities.decideModelCapabilities(fixed, prefix({ requiredCapabilities: ['images'] }));
   assert.equal(decision.available, true);
   assert.deepEqual(decision.items.find(item => item.capability === 'images').evidence, { state: 'declared', source: 'user-configuration' });
   assert.deepEqual(fixed.capabilities, before);
-  assert.equal((await imageRoute({ identity, segmentId: 'fixed' }, { segments: { read: async () => ({ connection: fixed }) } })).available, true);
+  assert.equal((await imageRoute({ identity, sessionId, segmentId: 'fixed' }, { segments: { read: async () => ({ sessionId, connection: fixed }) } })).available, true);
   fixed.imageInput = false; fixed.capabilities.images = 'verified';
   assert.equal(capabilities.decideModelCapabilities(fixed, prefix({ requiredCapabilities: ['images'] })).available, false);
-  assert.equal((await imageRoute({ identity, segmentId: 'fixed' }, { segments: { read: async () => ({ connection: fixed }) } })).available, false);
+  assert.equal((await imageRoute({ identity, sessionId, segmentId: 'fixed' }, { segments: { read: async () => ({ sessionId, connection: fixed }) } })).available, false);
   delete fixed.imageInput;
-  assert.equal((await imageRoute({ identity, segmentId: 'fixed' }, { segments: { read: async () => ({ connection: fixed }) } })).available, true);
+  assert.equal((await imageRoute({ identity, sessionId, segmentId: 'fixed' }, { segments: { read: async () => ({ sessionId, connection: fixed }) } })).available, true);
 });
 for (const protocol of ['chat-completions', 'responses', 'messages']) test(`${protocol}: explicit image disable blocks native image dispatch`, async () => {
   const f = fixture(connection({ protocol, imageInput: false,

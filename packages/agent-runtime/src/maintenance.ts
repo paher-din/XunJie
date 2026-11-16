@@ -70,7 +70,7 @@ export async function collectAgentRuntimeBoundary(storage: OwnedStorage): Promis
   for (const step of steps) { const group = stepsByTurn.get(String(step.turn_id)) ?? []; group.push(step); stepsByTurn.set(String(step.turn_id), group); }
   const callsByStep = new Map<string, Row[]>();
   for (const call of toolCalls) { const group = callsByStep.get(String(call.step_id)) ?? []; group.push(call); callsByStep.set(String(call.step_id), group); }
-  const cancelTurns = new Set(records.get('agent_controls')!.filter(control => control.operation === 'cancel-turn'
+  const cancelTurns = new Set(records.get('agent_controls')!.filter(control => ['cancel-turn', 'cancel-call'].includes(String(control.operation))
     && (control.body as Row).state === 'pending').map(control => String(control.turn_id)));
   const unresolved: AgentRuntimeBoundaryUnresolved[] = [];
   for (const turn of turns) {
