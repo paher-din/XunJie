@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { LearningActivity } from '@xunjie/contracts/learning-data'
+import { MaterialPicker } from '@xunjie/ui/workspace'
 import { toast, useToastFeedback } from '@xunjie/ui/feedback'
 import { PERSONAL_MATERIAL_LIMITS, personalMaterialReferenceSourceSchema, personalMaterialSchema,
   personalMaterialVersionContentSchema, type PersonalMaterial, type PersonalMaterialMediaType,
@@ -80,6 +81,7 @@ export function usePersonalMaterials({ activity, spaceKey, namespace, authorized
   const [materials, setMaterials] = useState<PersonalMaterial[]>([])
   const [requests, setRequests] = useState<PersonalMaterialRequest[]>([])
   const [reading, setReading] = useState<PersonalMaterialVersionContent | null>(null)
+  const [showList, setShowList] = useState(false)
   const [editing, setEditing] = useState(false)
   const [busy, setBusy] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -238,7 +240,7 @@ export function usePersonalMaterials({ activity, spaceKey, namespace, authorized
     const epoch = ++readEpoch.current
     operation.current = true; setBusy(true); setError(''); setNotice(''); setEditing(false)
     try {
-      await current.current.reveal()
+      await current.current.reveal(); setShowList(false)
       if (!alive.current || epoch !== readEpoch.current) return
       const content = await loadVersion(material.materialId, material.currentVersion)
       if (!alive.current || epoch !== readEpoch.current) return
@@ -251,7 +253,7 @@ export function usePersonalMaterials({ activity, spaceKey, namespace, authorized
     const epoch = ++readEpoch.current
     operation.current = true; setBusy(true); setError(''); setNotice('')
     try {
-      await current.current.reveal()
+      await current.current.reveal(); setShowList(false)
       if (!alive.current || epoch !== readEpoch.current) return
       if (reading && reading.material.materialId === material.materialId && reading.version.version === material.currentVersion) {
         setEditing(true); return
@@ -281,7 +283,7 @@ export function usePersonalMaterials({ activity, spaceKey, namespace, authorized
     const epoch = ++readEpoch.current
     operation.current = true; setBusy(true); setError('')
     try {
-      await current.current.reveal()
+      await current.current.reveal(); setShowList(false)
       if (!alive.current || epoch !== readEpoch.current) return { ok: false, reason: '已离开原活动。' }
       let content = exact ? reading : null
       if (!content) {
@@ -323,7 +325,7 @@ export function usePersonalMaterials({ activity, spaceKey, namespace, authorized
   }
   const latest = useRef({ locate })
   latest.current = { locate }
-  const shownSourceId = reading ? sourceIdOf(sourceOf(reading)) : null
+  const shownSourceId = reading && !showList ? sourceIdOf(sourceOf(reading)) : null
   const sourceIds = JSON.stringify([...new Set([
     ...materials.map(materialSourceId).filter(Boolean),
     ...references.references.filter(reference => reference.source?.kind === 'personal-material').map(reference => reference.sourceId),
@@ -335,18 +337,20 @@ export function usePersonalMaterials({ activity, spaceKey, namespace, authorized
     return () => unregister.forEach(stop => stop())
   }, [sourceIds, shownSourceId, references.register])
 
-  return { materials, requests, reading, editing, busy, loading, error, loadError, notice,
+  return { materials, requests, reading, editing, busy, loading, error, loadError, notice, showList, setShowList,
     writable: authorized && !references.readOnly, canQuote: references.draftReady && !!reading && !reading.material.removedAt,
     refresh, save, update, remove, open, beginUpdate, beginEditing, cancelEditing, clearReading, receive: reconcileRequest, locate,
     reveal: async () => {
-      try { await current.current.reveal() }
+      try { await current.current.reveal(); setShowList(false) }
       catch (error) { if (alive.current) setError(failureText(error)) }
     } }
 }
 export type PersonalMaterialsController = ReturnType<typeof usePersonalMaterials>
 
-export function PersonalMaterialEntries({ personal }: { personal: PersonalMaterialsController }) {
-  const [adding, setAdding] = useState(false)
+export function PersonalMaterialEntries({ personal, adding: suppliedAdding, setAdding: onAdding }: { personal: PersonalMaterialsController; adding?: boolean; setAdding?(value: boolean): void }) {
+  const [localAdding, setLocalAdding] = useState(false)
+  const adding = suppliedAdding ?? localAdding
+  const setAdding = onAdding ?? setLocalAdding
   const [name, setName] = useState('')
   const [text, setText] = useState('')
   const [mediaType, setMediaType] = useState<PersonalMaterialMediaType>('text/plain')
@@ -381,7 +385,7 @@ export function PersonalMaterialEntries({ personal }: { personal: PersonalMateri
   return <section className="personal-material-entries" aria-label="个人笔记列表与添加">
     <div className="personal-material-heading"><h3>我的个人笔记</h3>
       <button type="button" className="ws-btn ghost" disabled={!personal.writable || personal.busy}
-        aria-expanded={adding} onClick={() => { setAdding(value => !value); setLocalError('') }}>
+        aria-expanded={adding} onClick={() => { setAdding(!adding); setLocalError('') }}>
         {adding ? '收起添加' : '添加笔记'}</button></div>
     <p className="detail">仅用于你的学习活动 · 支持 .txt / .md，单份最多 2 MiB</p>
     {adding && <div className="personal-material-form">
@@ -427,13 +431,12 @@ export function PersonalMaterialEntries({ personal }: { personal: PersonalMateri
     <div className="personal-material-actions">
       <button type="button" className="ws-btn ghost" disabled={personal.busy || personal.loading}
         onClick={() => void personal.refresh()}>刷新个人笔记列表</button>
-      <button type="button" className="ws-btn ghost" onClick={() => void personal.reveal()}>打开个人笔记阅读区</button>
     </div>
   </section>
 }
 
-export function PersonalMaterials({ personal, onBack }: { personal: PersonalMaterialsController; onBack(): void }) {
-  const { reading } = personal
+export function PersonalMaterials({ personal, onBack, onAdd = () => void personal.reveal() }: { personal: PersonalMaterialsController; onBack(): void; onAdd?(): void }) {
+  const { reading, showList, setShowList } = personal
   const [text, setText] = useState('')
   useEffect(() => { setText(reading?.text ?? '') }, [reading?.text, personal.editing])
   useEffect(() => () => { personal.clearReading() }, [personal.clearReading])
@@ -442,6 +445,8 @@ export function PersonalMaterials({ personal, onBack }: { personal: PersonalMate
     <header className="personal-material-toolbar">
       <button type="button" className="ws-btn ghost" onClick={onBack}>返回作品</button>
       <strong>{reading?.version.name ?? '个人笔记'}</strong>
+      {reading && !showList && <button type="button" className="ws-btn ghost" onClick={() => setShowList(true)}>材料列表</button>}
+      {reading && showList && <button type="button" className="ws-btn ghost" onClick={() => setShowList(false)}>继续阅读</button>}
       {reading && <span className="personal-material-version">第 {reading.version.version} 版</span>}
       {reading && reading.version.version !== reading.material.currentVersion
         && <span className="personal-material-muted">当前材料已到第 {reading.material.currentVersion} 版</span>}
@@ -449,10 +454,12 @@ export function PersonalMaterials({ personal, onBack }: { personal: PersonalMate
         disabled={!personal.writable || personal.busy || !!reading.material.removedAt}
         onClick={() => personal.beginEditing()}>更新为当前文本</button>}
     </header>
-    {!reading ? <div className="personal-material-empty">
-      <h2>阅读个人笔记</h2>
-      <p>从「目标与材料」添加或打开个人笔记；在正文中选择文字即可引用到问题。</p>
-    </div> : <>
+    {!reading || showList ? <MaterialPicker title="选择要阅读的个人笔记" loading={personal.loading} error={personal.loadError} busy={personal.busy}
+      empty="还没有个人笔记。添加后可在这里打开阅读。" addLabel="添加笔记" onAdd={onAdd} canAdd={personal.writable}
+      onRefresh={() => void personal.refresh()} groups={[{ title: '我的个人笔记', items: personal.materials.filter(item => !item.removedAt).map(item => ({
+        id: item.materialId, name: item.name, detail: `第 ${item.currentVersion} 版 · ${MEDIA_LABEL[item.mediaType]}`,
+        onOpen: () => { setShowList(false); void personal.open(item) },
+      })) }]} /> : <>
       {reading.material.removedAt && <p className="personal-material-notice" role="status">这份材料已移除；固定版本仍可阅读和引用。</p>}
       <div className="personal-material-reading" data-personal-material-reading={`${reading.material.materialId}:${reading.version.version}`}>
         {source && <TextReferenceSource sourceId={sourceIdOf(source)} sourceName={reading.version.name}
@@ -471,6 +478,6 @@ export function PersonalMaterials({ personal, onBack }: { personal: PersonalMate
         </div>
       </div>}
     </>}
-    {personal.busy && <p className="personal-material-muted" role="status" aria-label="正在保存或读取个人笔记" />}
+    {personal.busy && <p className="personal-material-muted" role="status" aria-label="正在保存或读取个人笔记">正在保存或读取个人笔记…</p>}
   </section>
 }

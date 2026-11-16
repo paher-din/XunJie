@@ -97,6 +97,10 @@ beforeEach(() => {
     if (route === 'activities' && options.method === 'POST') {
       creates.push(space!); return response({ ...personalActivity, question: JSON.parse(options.body as string).question })
     }
+    if (route === 'activity-status') {
+      const input = JSON.parse(options.body as string)
+      return response({ ...(input.activityId === schoolActivity.activityId ? schoolActivity : personalActivity), status: input.status })
+    }
     if (route === 'activities') return response(space === currentSchoolKey ? [schoolActivity] : [personalActivity])
     if (route === 'activities/' + schoolActivity.activityId) return response(schoolActivity)
     if (route === 'activities/' + personalActivity.activityId) return response(personalActivity)
@@ -113,6 +117,25 @@ afterEach(async () => {
   if (originalScrollIntoView) Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', originalScrollIntoView)
   else Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView')
   toast.dismiss(); host.remove(); vi.restoreAllMocks(); vi.unstubAllGlobals()
+})
+
+it('manages each home activity through its own source without entering its workspace', async () => {
+  await mount()
+  const initialSearch = location.search
+  const closeHomeActivity = async (activityId: string) => {
+    await act(async () => {
+      host.querySelector<HTMLButtonElement>(`[data-activity-id="${activityId}"]`)!.parentElement!.querySelector<HTMLButtonElement>('.activity-card-menu-trigger')!.click()
+      await settle()
+    })
+    await act(async () => { [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(item => item.textContent === '关闭活动')!.click(); await settle() })
+    await act(async () => { [...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')].find(item => item.textContent === '关闭活动')!.click(); await settle() })
+    expect(host.querySelector(`[data-activity-id="${activityId}"]`)?.textContent).toContain('已关闭')
+    expect(location.search).toBe(initialSearch)
+  }
+  await closeHomeActivity(schoolActivity.activityId)
+  await click('个人')
+  await closeHomeActivity(personalActivity.activityId)
+  expect(reads.filter(item => item.route === 'activity-status').map(item => item.space)).toEqual([schoolKey, 'personal'])
 })
 
 it('keeps the bound account across filtering, school entry, personal Agent, settings, profile, refresh and offline reopening', async () => {

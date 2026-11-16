@@ -19,6 +19,8 @@ import { ProductProfile } from './ProductProfile'
 import { Button, ConfirmationDialog, SessionLogin } from '@xunjie/ui/foundation'
 import { Toaster, toast, useToastFeedback } from '@xunjie/ui/feedback'
 import { Icon } from '@xunjie/ui/icons'
+import { CourseBreadcrumb } from '@xunjie/ui/home'
+import { ProductActivityList } from './ProductActivityList'
 import { SettingsStatus, TextInput } from '@xunjie/ui/settings'
 import { createBrowserRouter, RouterProvider, useBlocker, useLocation, useNavigate } from 'react-router-dom'
 import { LearningReadCache } from './learning-read-cache'
@@ -114,11 +116,11 @@ function CourseSections({ content, level, busy, onMaterial, requirementsContent 
 }) {
   const Heading = level === 4 ? 'h4' : 'h3'
   return <>
-    <Heading>学习目标</Heading><ul className="course-points">{content.objectives.map((item, index) => <li key={index}>{item}</li>)}</ul>
-    <Heading>任务要求</Heading>{requirementsContent ?? <p className="preserve-lines">{content.requirements}</p>}
+    <Heading>学习目标</Heading><div className="course-objectives course-section-body">{content.objectives.map((item, index) => <p className="preserve-lines" key={index}>{item}</p>)}</div>
+    <Heading>任务要求</Heading><div className="course-section-body">{requirementsContent ?? <p className="preserve-lines">{content.requirements}</p>}</div>
     <Heading>学习材料</Heading>
-    {content.materials.length === 0 ? <p className="detail">这个版本没有开放材料。</p>
-      : <ul className="material-list">{content.materials.map(item => <li key={item.materialId}>
+    {content.materials.length === 0 ? <p className="course-section-body">这个版本没有开放材料。</p>
+      : <ul className="material-list course-section-body">{content.materials.map(item => <li key={item.materialId}>
         <button type="button" disabled={busy} onClick={() => onMaterial(item)}>{item.title}</button>
         <span className="detail">{item.mediaType} · {formatBytes(item.byteLength)}</span></li>)}</ul>}
     {content.starterWorks.length > 0 && <><Heading>起始作品</Heading>
@@ -572,11 +574,11 @@ function LearningView() {
     params.delete('view'); params.delete('session')
     navigate({ pathname: route.pathname, search: params.toString() })
   }
-  async function changeStatus(activity: LearningActivity) {
+  async function changeStatus(activity: LearningActivity, sourceKey = key) {
     const generation = epoch.current
     const next = activitySchema.parse(await api('activity-status', { requestId: crypto.randomUUID(), activityId: activity.activityId,
-      status: activity.status === 'closed' ? 'open' : 'closed' }, key))
-    if (generation === epoch.current) { setOpened(next); publishActivity(next) }
+      status: activity.status === 'closed' ? 'open' : 'closed' }, sourceKey))
+    if (generation === epoch.current) { if (opened?.activityId === next.activityId) setOpened(next); publishActivity(next, sourceKey) }
   }
   async function viewRelease(releaseId: string) {
     const generation = epoch.current
@@ -896,7 +898,7 @@ function LearningView() {
         requestedArtifactId={requestedArtifactId}
         nativeAvailable={context.profile === 'local'}
         workspaceRef={workspace} busy={busy} onBack={goHome} onStatus={() => void action(() => changeStatus(opened))}
-        onRefresh={() => void action(async generation => { await refreshContext(undefined, generation) })} onModels={openModels} account={schoolControls}
+        onModels={openModels}
         details={openCoursePdf => <>
           {opened.course ? <><CourseSections content={opened.course} level={3} busy={busy}
             requirementsContent={<CourseRequirementsReference course={opened.course} />}
@@ -932,8 +934,8 @@ function LearningView() {
       </div>}
       {selectedCourseId && identity.kind === 'school' ? <div className="content home-page product-home">
         <section className="course-region" aria-labelledby="course-title">
-          <div className="sectionhead"><h2 id="course-title" tabIndex={-1}>{selectedCourse?.name ?? '我的课程'}<small>{selectedCourse ? `${selectedCourse.tasks.length} 个任务` : ''}</small></h2>
-            <button type="button" className="outline" onClick={() => selectCourse(null)}>全部课程</button></div>
+          <div className="sectionhead"><h2 id="course-title" tabIndex={-1}>课程与任务<small>{selectedCourse ? `${selectedCourse.tasks.length} 个任务` : ''}</small></h2></div>
+          <CourseBreadcrumb title={selectedCourse?.name ?? '我的课程'} onBack={() => selectCourse(null)} />
           {catalog === null ? <p>{error ? '课程列表尚未读取成功。' : ''}</p>
             : !selectedCourse ? <p className="empty">无法找到这门课程。</p>
             : <div className="task-card-grid">{selectedCourse.tasks.map(task => <article key={task.taskId} className="product-course-task">
@@ -946,14 +948,19 @@ function LearningView() {
             {material && <p role="status">已读取 {material.title}：<a href={material.url} target="_blank" rel="noreferrer" download={material.title}>打开或下载材料</a></p>}
             <button type="button" className="primary" disabled={busy || !!coursePending || context.readOnly} onClick={() => void action(() => startCourse(visibleRelease.releaseId))}>从这一版本开始活动</button>
           </article>}
+          {visibleHome?.school && selectedCourse && <ProductActivityList key={selectedCourse.courseId}
+            activities={visibleHome.school.filter(activity => activity.course?.courseId === selectedCourse.courseId)} titles={projectTitles}
+            onOpen={id => void action(() => openActivity(id, false, schoolKey!))}
+            disabled={busy || context.readOnly} onStatus={activity => changeStatus(activity, schoolKey!)} />}
         </section>
-      </div> : <ProductHome projectTitles={projectTitles} accountName={accountName} personalActivities={visibleHome?.personal ?? null} schoolActivities={visibleHome?.school ?? null}
+      </div> : null}
+      <div hidden={!!selectedCourseId && identity.kind === 'school'}><ProductHome projectTitles={projectTitles} accountName={accountName} personalActivities={visibleHome?.personal ?? null} schoolActivities={visibleHome?.school ?? null}
         courses={visibleHome?.courses ?? null} personalKey={personalKey} schoolKey={schoolKey}
         initialCategory={schoolKey ? 'school' : 'personal'} dashboardKey={(context.clientNamespace + ':home-dashboard')}
-        busy={busy} personalError={visibleHome?.personalError} schoolError={visibleHome?.schoolError}
+        busy={busy} canManageActivities={!context.readOnly} onActivityStatus={changeStatus} personalError={visibleHome?.personalError} schoolError={visibleHome?.schoolError}
         onOpenActivity={(id, source) => void action(() => openActivity(id, source === personalKey, source))} onOpenCourse={selectCourse}
         onStartConversation={openAgent} onConnectSchool={() => openSettings('school')}
-        onRefresh={() => void action(async generation => { await refreshContext(undefined, generation) })} />}
+        onRefresh={() => void action(async generation => { await refreshContext(undefined, generation) })} /></div>
     </>}
   </ProductShell>
 }

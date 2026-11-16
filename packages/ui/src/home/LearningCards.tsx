@@ -45,15 +45,17 @@ export function CourseTile({ id, title, summary, tone, index, register, onOpen, 
 export interface LearningTaskCardProps {
   title: string; goal?: string; badge?: ReactNode; children?: ReactNode; footer?: ReactNode
   action: string; onOpen: () => void; register?: (index: number, element: HTMLElement | null) => void; index?: number; accessibleLabel?: string; activityId?: string
+  menu?: ReactNode
 }
 
-export function LearningTaskCard({ title, goal, badge, children, footer, action, onOpen, register, index = 0, accessibleLabel, activityId }: LearningTaskCardProps) {
+export function LearningTaskCard({ title, goal, badge, children, footer, action, onOpen, register, index = 0, accessibleLabel, activityId, menu }: LearningTaskCardProps) {
   const ref = useRef<HTMLButtonElement>(null)
   useRegisterFluidHoverItem(register ?? (() => {}), index, ref)
-  return <button ref={ref} aria-label={accessibleLabel} data-activity-id={activityId} className={`task-card${children ? '' : ' task-card-without-progress'}`} onClick={onOpen}>
+  const card = <button ref={ref} aria-label={accessibleLabel} data-activity-id={activityId} className={`task-card${children ? '' : ' task-card-without-progress'}`} onClick={onOpen}>
     {badge && <div>{badge}</div>}<h3>{title}</h3>{goal && <p>{goal}</p>}{children}
     <div className="card-foot"><span>{footer}</span><span className="action"><IconText name="arrow-right" position="end">{action}</IconText></span></div>
   </button>
+  return menu ? <div className="task-card-shell">{card}<div className="task-card-menu" onClick={event => event.stopPropagation()}>{menu}</div></div> : card
 }
 
 export interface LearningCardGridProps { children: (register: (index: number, element: HTMLElement | null) => void) => ReactNode }

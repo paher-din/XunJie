@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import type { LearningActivity } from '@xunjie/contracts/learning-data'
 import type { Course } from '@xunjie/contracts/courses'
 import { DASHBOARD_WIDGETS, DashboardSection, defaultDashboardLayout, type DashboardLayout } from '@xunjie/ui/dashboard'
-import { ContinueTaskCard, CourseTiles, HomeCourseRegion, HomeIntro, HomeSectionHeading, HomeStatus, LearningCardGrid, LearningTaskCard } from '@xunjie/ui/home'
+import { ContinueTaskCard, CourseTiles, HomeCourseRegion, HomeIntro, HomeSectionHeading, HomeStatus } from '@xunjie/ui/home'
 import './product-home.css'
+import { ProductActivityList } from './ProductActivityList'
 
 export interface ProductHomeProps {
   projectTitles?: Record<string, string>
@@ -20,6 +21,8 @@ export interface ProductHomeProps {
   onOpenCourse: (id: string) => void
   onStartConversation: () => void
   onRefresh: () => void
+  canManageActivities?: boolean
+  onActivityStatus?: (activity: LearningActivity, sourceKey: string) => Promise<void>
   /** A failed read; null data without an error is still loading. */
   personalError?: string | null
   schoolError?: string | null
@@ -42,7 +45,7 @@ function readLayout(key: string): DashboardLayout {
 
 export function ProductHome({ projectTitles = {}, accountName, personalActivities: personalData, schoolActivities: schoolData, courses,
   personalKey, schoolKey, initialCategory = schoolKey ? 'school' : 'personal', dashboardKey,
-  busy, onOpenActivity, onOpenCourse, onStartConversation, onRefresh, personalError, schoolError, onConnectSchool }: ProductHomeProps) {
+  busy, onOpenActivity, onOpenCourse, onStartConversation, onRefresh, personalError, schoolError, onConnectSchool, canManageActivities = true, onActivityStatus }: ProductHomeProps) {
   const [category, setCategory] = useState(initialCategory)
   const [layout, setLayout] = useState(() => readLayout(dashboardKey))
   useEffect(() => setLayout(readLayout(dashboardKey)), [dashboardKey])
@@ -56,7 +59,6 @@ export function ProductHome({ projectTitles = {}, accountName, personalActivitie
   const personalActivities = useMemo(() => personalData?.filter(activity => activity.identity.kind === 'personal' && !activity.course) ?? null, [personalData])
   const schoolActivities = useMemo(() => schoolKey ? schoolData?.filter(activity => activity.identity.kind === 'school') ?? null : [], [schoolData, schoolKey])
   const coursesById = useMemo(() => new Map(courses?.map((course, index) => [course.courseId, { course, index }])), [courses])
-  const activitiesById = useMemo(() => new Map(personalActivities?.map((activity, index) => [activity.activityId, { activity, index }])), [personalActivities])
   const currentActivities = category === 'school' ? schoolActivities : personalActivities
   const recent = currentActivities?.reduce<LearningActivity | undefined>((previous, activity) =>
     activity.status === 'open' && (!previous || activity.createdAt > previous.createdAt) ? activity : previous, undefined)
@@ -75,7 +77,7 @@ export function ProductHome({ projectTitles = {}, accountName, personalActivitie
           <button type="button" className="outline" disabled={busy} onClick={onStartConversation}>开始对话</button>
         </div>} />
     <HomeCourseRegion selected={false}>
-      <HomeSectionHeading title="我的课程" count={!error ? category === 'school' && courses ? `${courses.length} 门` : category === 'personal' && personalActivities ? `${personalActivities.length} 个活动` : '' : ''}
+      <HomeSectionHeading title="课程与任务" count={!error ? category === 'school' && courses ? `${courses.length} 门` : category === 'personal' && personalActivities ? `${personalActivities.length} 个活动` : '' : ''}
         refresh={{ disabled: busy, onRefresh }} />
       <div className="product-home-categories" role="group" aria-label="课程分类">
         <button type="button" className={category === 'school' ? 'active' : ''} aria-pressed={category === 'school'} onClick={() => setCategory('school')}>学校</button>
@@ -88,26 +90,16 @@ export function ProductHome({ projectTitles = {}, accountName, personalActivitie
           : courses.length === 0 ? <HomeStatus kind="empty" message="暂无学校课程。" />
             : <CourseTiles courses={courses.map(course => course.courseId)} toneOf={id => coursesById.get(id)!.index}
               titleOf={id => coursesById.get(id)!.course.name}
-              summaryOf={id => `${coursesById.get(id)!.course.tasks.length} 个任务`}
+              summaryOf={id => `${coursesById.get(id)!.course.tasks.length} 个任务 · ${schoolActivities?.filter(activity => activity.course?.courseId === id).length ?? 0} 个活动`}
               onOpen={id => onOpenCourse(id)} />
-          : personalActivities === null ? <HomeStatus kind="loading" message="学习活动" />
-            : personalActivities.length === 0 ? <div className="empty product-home-empty">暂无自主学习活动。<button type="button" className="outline" disabled={busy} onClick={onStartConversation}>开始对话</button></div>
-              : <CourseTiles courses={personalActivities.map(activity => activity.activityId)} idKind="activity"
-                toneOf={id => activitiesById.get(id)!.index}
-                titleOf={id => projectTitles[id] || activityTitle(activitiesById.get(id)!.activity)}
-                summaryOf={id => activitiesById.get(id)!.activity.status === 'closed' ? '已关闭' : '进行中'}
-                actionOf={id => activitiesById.get(id)!.activity.status === 'closed' ? '查看活动' : '继续学习'}
-                onOpen={id => onOpenActivity(id, personalKey!)} />}
+          : null}
+      {sourceKey && !error && (currentActivities === null ? <HomeStatus kind="loading" message="正在读取学习活动" />
+        : <ProductActivityList key={category} activities={currentActivities} titles={projectTitles}
+          onOpen={id => onOpenActivity(id, sourceKey)} onStart={onStartConversation} groupByCourse={category === 'school'}
+          onCourse={onOpenCourse} disabled={busy || !canManageActivities}
+          onStatus={onActivityStatus ? activity => onActivityStatus(activity, sourceKey) : undefined} />)}
     </HomeCourseRegion>
-    {category === 'school' && !error && currentActivities && currentActivities.length > 0 && <section aria-labelledby="school-activities-title">
-      <HomeSectionHeading title="我的学习活动" count={`${currentActivities.length} 个`} />
-      <LearningCardGrid>{register => currentActivities.map((activity, index) => <LearningTaskCard
-        key={activity.activityId} activityId={activity.activityId} title={projectTitles[activity.activityId] || activityTitle(activity)}
-        goal={activity.course?.objectives[0] || activity.question || undefined}
-        badge={<span className={'status' + (activity.status === 'closed' ? ' pending' : '')}>{activity.status === 'closed' ? '已关闭' : '进行中'}</span>}
-        footer={activity.course?.courseName ?? '自主学习'} action={activity.status === 'closed' ? '查看活动' : '继续学习'}
-        register={register} index={index} onOpen={() => onOpenActivity(activity.activityId, schoolKey!)} />)}</LearningCardGrid>
-    </section>}
+
   </div>
 }
 

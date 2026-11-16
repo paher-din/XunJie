@@ -64,8 +64,8 @@ export function useFluidHover<T extends HTMLElement>(
   const moveRafRef = useRef<number | null>(null)
   const itemRoRef = useRef<ResizeObserver | null>(null)
 
-  // 子项是容器的直接子元素且容器 position:relative，offset* 即容器坐标系下的布局值，
-  // 不受祖先 transform 影响。
+  // 卡片可能包在定位外框内（例如独立操作菜单）。逐级累加 offsetParent 的布局位置，
+  // 将测量统一到高亮层所在容器，避免把每个外框内的 (0, 0) 当成网格坐标。
   const runMeasurement = useCallback(() => {
     const container = containerRef.current
     if (!container) return false
@@ -76,9 +76,16 @@ export function useFluidHover<T extends HTMLElement>(
         complete = false
         return
       }
+      let top = el.offsetTop, left = el.offsetLeft
+      let parent = el.offsetParent
+      while (parent instanceof HTMLElement && parent !== container) {
+        top += parent.offsetTop
+        left += parent.offsetLeft
+        parent = parent.offsetParent
+      }
       rects[i] = {
-        top: el.offsetTop,
-        left: el.offsetLeft,
+        top,
+        left,
         width: el.offsetWidth,
         height: el.offsetHeight,
       }

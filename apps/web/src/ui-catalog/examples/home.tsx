@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import {
-  ContinueTaskCard, CourseBreadcrumb, CourseTile, CourseTiles, HomeCourseRegion, HomeIntro,
+  ActivityCardMenu, ContinueTaskCard, CourseBreadcrumb, CourseTile, CourseTiles, HomeCourseRegion, HomeIntro,
   HomeSectionHeading, HomeStatus, HomeTaskCard, LearningCardGrid, LearningTaskCard,
   PreparationEntryCard, TaskToolbar, useFluidHover,
 } from '@xunjie/ui/home'
@@ -88,7 +88,17 @@ function ToolbarDemo({ initial = '' }: { initial?: string }) {
     <output>示例筛选：{value}；搜索：{query || '空'}</output></div>
 }
 
+function ActivityMenuDemo() {
+  const [closed, setClosed] = useState(false)
+  const [event, setEvent] = useState('')
+  return <div style={{ width: 'min(520px, 90vw)', padding: 24 }}><LearningTaskCard title="示例活动" goal="此示例只改变内存状态，不连接学习数据。"
+    badge={<span className="status">{closed ? '已关闭' : '进行中'}</span>} footer="示例课程" action="打开活动" onOpen={() => setEvent('打开卡片')}
+    menu={<ActivityCardMenu title="示例活动" closed={closed} onOpen={() => setEvent('菜单打开')}
+      onChangeStatus={() => { setClosed(value => !value); setEvent('状态回调；确认与持久化由调用方提供') }} />} /><output>{event}</output></div>
+}
+
 export const homeEntries: CatalogEntry[] = [
+  { id: 'activity-card-menu', name: 'ActivityCardMenu', description: '活动卡片的独立管理菜单；生命周期由调用方负责。', importPath, source: 'packages/ui/src/home/ActivityCardMenu.tsx', exampleSource, props: ['title/closed/disabled', 'onOpen/onChangeStatus'], dependencies: ['Base UI Menu', 'Icon'], states: [{ id: 'interactive', name: '打开／关闭与重开回调', component: ActivityMenuDemo }] },
   { id: 'continue-task-card', name: 'ContinueTaskCard', description: '继续任务内嵌卡，区分未知完成度与明确示例进度。', importPath, source: primitivesSource, exampleSource, props: ['tag/title/description', 'meta/metaClassName/action/onOpen'], dependencies: ['Button', 'IconText'], states: [
     { id: 'assigned', name: '已分配，无进度', component: () => <ContinueDemo /> }, { id: 'progress', name: '带进度说明', component: () => <ContinueDemo progress /> },
   ] },
@@ -115,7 +125,7 @@ export const homeEntries: CatalogEntry[] = [
     { id: 'unknown', name: '未知进度', component: () => <TaskDemo mode="unknown" /> }, { id: 'overdue', name: '逾期', component: () => <TaskDemo mode="overdue" /> },
   ] },
   { id: 'learning-card-grid', name: 'LearningCardGrid', description: '任务网格与鼠标／键盘高亮注册。', importPath, source: cardsSource, exampleSource, props: ['children(register)'], dependencies: ['FluidHighlight'], states: [{ id: 'interactive', name: '三张任务卡', component: GridDemo }] },
-  { id: 'learning-task-card', name: 'LearningTaskCard', description: '可组合的任务卡内容与打开操作。', importPath, source: cardsSource, exampleSource, props: ['title/goal/badge/children/footer', 'register/index/action/onOpen'], dependencies: ['IconText'], states: [
+  { id: 'learning-task-card', name: 'LearningTaskCard', description: '可组合的任务卡内容与打开操作。', importPath, source: cardsSource, exampleSource, props: ['title/goal/badge/children/footer', 'register/index/action/onOpen/menu?'], dependencies: ['IconText'], states: [
     { id: 'slots', name: '状态与内容插槽', component: () => <TaskDemo primitive /> }, { id: 'grid', name: '无进度的简洁卡片', component: GridDemo },
   ] },
   { id: 'preparation-entry-card', name: 'PreparationEntryCard', description: '准备入口的明确示例文案与本地回调。', importPath, source: sectionsSource, exampleSource, props: ['flag/title/description/note/action/onOpen'], dependencies: ['Icon', 'IconText'], states: [{ id: 'interactive', name: '打开回调', component: PreparationDemo }] },

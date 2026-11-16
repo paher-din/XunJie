@@ -354,7 +354,32 @@ function GuideDemo({ card = false }: { card?: boolean }) {
     onIpClick={() => setEvent('本地打开学习助手')} /></div></Stage>
 }
 
+function ManagedFilesDemo() {
+  const [items, setItems] = useState([{ id: 'main', name: 'main.c' }, { id: 'notes', name: 'notes.md' }])
+  const [open, setOpen] = useState(['main', 'notes'])
+  const [active, setActive] = useState<string | null>('main')
+  const [event, setEvent] = useState('')
+  return <Stage event={event}><W.FileStripView files={items} openFiles={items.filter(item => open.includes(item.id))} activeId={active}
+    onOpen={id => { setOpen(current => [...new Set([...current, id])]); setActive(id) }}
+    onClose={id => { setOpen(current => current.filter(item => item !== id)); setActive(null) }}
+    onCreate={name => { if (!name || items.some(item => item.name === name)) return '请输入非空且不重复的文件名。'; const id = crypto.randomUUID(); setItems(current => [...current, { id, name }]); setOpen(current => [...current, id]); setActive(id); return null }}
+    onRename={(id, name) => { if (!name || items.some(item => item.id !== id && item.name === name)) return '请输入非空且不重复的文件名。'; setItems(current => current.map(item => item.id === id ? { ...item, name } : item)); return null }}
+    onDelete={id => { setItems(current => current.filter(item => item.id !== id)); setOpen(current => current.filter(item => item !== id)); setActive(null); return null }}
+    onExport={() => setEvent('导出回调；示例不生成实际作品')} /></Stage>
+}
+function MaterialPickerDemo({ empty = false, error = false, loading = false }: { empty?: boolean; error?: boolean; loading?: boolean }) {
+  const [event, setEvent] = useState('')
+  return <Stage event={event}><W.MaterialPicker title="选择要阅读的 PDF" empty="还没有 PDF 资料。" addLabel="添加 PDF"
+    onAdd={() => setEvent('调用方打开上传入口')} onRefresh={() => setEvent('调用方刷新材料列表')} loading={loading} error={error ? '读取失败，请重试。' : ''}
+    groups={[{ title: '课程 PDF', items: empty ? [] : [{ id: 'course', name: '实验要求与背景.pdf', detail: '课程材料 · 尚未导入', onOpen: () => setEvent('调用方打开固定课程材料') }] },
+      { title: '我的 PDF', items: empty ? [] : [{ id: 'mine', name: '个人阅读资料.pdf', detail: '12 页 · 个人材料', onOpen: () => setEvent('调用方打开文档') }] }]} /></Stage>
+}
+
 export const workspaceEntries: CatalogEntry[] = [
+  entry('FileStripView', 'FileStripView', '自动保存作品的旧版文件栏布局：行内命名、改名、删除确认与关闭标签。', ['files/openFiles/activeId', 'onCreate/onRename/onDelete/onOpen/onClose/onExport'], ['FileTabs', 'ConfirmationDialog'], [state('interactive', '文件菜单与操作', ManagedFilesDemo)]),
+  entry('FileStripFrame', 'FileStripView', '新旧文件栏共用的布局容器。', ['children'], [], [state('frame', '文件条布局', () => <Stage><W.FileStripFrame>文件栏内容插槽</W.FileStripFrame></Stage>)]),
+  entry('MaterialPicker', 'MaterialPicker', '阅读工具的真实材料选择列表。', ['groups/title/loading/error/busy', 'onAdd/onRefresh'], ['Icon'], [state('list', '有材料', () => <MaterialPickerDemo />), state('empty', '无材料', () => <MaterialPickerDemo empty />), state('error', '读取失败', () => <MaterialPickerDemo error />), state('loading', '加载中', () => <MaterialPickerDemo loading empty />)]),
+
   entry('TaskProgress', 'TaskPresentation', '受控进度环；每个实例的 gradient ID 独立。', ['percent/done/status', 'title/ariaLabel'], [], [state('progress', '进行中／可调进度', () => <TaskProgressDemo />), state('done', '已完成', () => <TaskProgressDemo done />)]),
   entry('TaskInfo', 'TaskPresentation', '任务展示字段由调用方提供，演示说明可省略。', ['name/status/goal', 'percent/done/currentProgress/stage/deadline/course', 'demoNotice?'], ['ProgressBar', '状态节点插槽'], [state('plain', '无演示标识', () => <TaskInfoDemo />), state('demo', '显式演示标识', () => <TaskInfoDemo demo />)]),
   entry('FileTabs', 'FileTabs', '关闭标签与删除文件明确分离。', ['files/activeId/tabRoles', 'onOpen/onClose'], ['Icon'], [state('tabs', '打开／关闭', () => <FileTabsDemo />), state('empty', '空标签', () => <FileTabsDemo empty />)]),

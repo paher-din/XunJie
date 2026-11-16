@@ -42,7 +42,16 @@
 .product-workspace .ws-body { min-height: 0; }
 .product-workspace .ws-center { min-width: 280px; }
 .product-workspace .ws-toolpane { padding: 0; display: flex; min-height: 0; }
-.product-task-details { width: 300px; flex: none; overflow: auto; padding: 24px; border-right: 1px solid var(--line); }
+.product-task-details { width: 280px; flex: none; overflow: auto; padding: 20px; border-right: 1px solid var(--line); background: var(--shell-bg); }
+.product-materials-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 24px; }
+.product-materials-heading h2 { margin: 0; font-size: 17px; font-weight: 600; }
+.product-context-section { padding-bottom: 20px; }
+.product-context-section h2 { font-size: 17px; font-weight: 400; }
+.product-task-details .detail { color: var(--muted); font-size: 12px; line-height: 1.6; }
+.product-work-empty { display: grid; align-content: start; justify-items: center; gap: 12px; padding: 64px 24px; }
+.product-work-empty h2 { margin: 0; color: var(--ink); font-size: 17px; font-weight: 400; }
+.product-work-empty p { margin: 0; color: var(--muted); font-size: 13px; }
+.product-workspace .cw-filetabs { min-width: 0; overflow-x: auto; }
 .product-task-details h3 { margin: 24px 0 12px; }
 .product-task-details h3:first-child { margin-top: 0; }
 .product-task-details h4 { font-size: 13px; font-weight: 600; }
@@ -115,3 +124,22 @@
 .product-create-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .product-settings a.product-school-auth-link,
 .product-settings a.product-school-auth-link:hover { text-decoration: none; }
+
+.product-task-details h3, .product-task-details h4 { font-size: 17px; font-weight: 400; margin: 24px 0 12px; }
+.product-task-details .course-points, .product-task-details .preserve-lines { font-size: 15px; line-height: 1.6; }
+.product-task-details .material-list { font-size: 13px; }
+.product-task-details .pdf-material-heading, .product-task-details .personal-material-heading { flex-wrap: wrap; gap: 8px; }
+.product-task-details .pdf-material-heading h3, .product-task-details .personal-material-heading h3 { margin: 0; }
+.product-task-details .material-list strong, .product-task-details .material-list button { overflow-wrap: anywhere; }
+
+.product-task-details .course-section-body,
+.product-task-details .course-section-body > li,
+.product-task-details .course-section-body .wr-text-source,
+.product-task-details .course-section-body .preserve-lines {
+  font-family: var(--font-sans); font-size: 15px; font-weight: 400; line-height: 1.6; color: var(--ink-soft);
+}
+.product-task-details .course-section-body { margin-top: 0; margin-bottom: 0; }
+.product-task-details .course-section-body .wr-text-source { margin: 0; padding: 0; }
+.product-task-details .course-section-body button { font: inherit; }
+.product-task-details .course-objectives > p { margin: 0; }
+.product-task-details .course-objectives > p + p { margin-top: 8px; }

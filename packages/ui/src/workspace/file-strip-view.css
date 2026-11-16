@@ -1,0 +1,12 @@
+.cw-managed-menu { max-height: min(540px, 70vh); overflow-y: auto; }
+.cw-managed-menu .cw-filemenu-row { flex-wrap: wrap; }
+.cw-managed-menu .cw-filemenu-open { min-width: 0; }
+.cw-managed-menu .cw-filemenu-path { white-space: normal; overflow-wrap: anywhere; }
+.cw-managed-menu .cw-name-wrap { width: 100%; padding: 12px; }
+.cw-name-label { display: grid; gap: 8px; font-size: 13px; }
+.cw-name-label input { width: 100%; box-sizing: border-box; background: var(--paper); color: var(--ink); border: 1px solid var(--line-strong); border-radius: 8px; padding: 8px 10px; font: inherit; }
+.cw-name-label input:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.cw-name-actions, .cw-row-actions { display: flex; gap: 8px; margin-top: 8px; }
+.cw-row-actions { flex-basis: 100%; padding: 0 8px 8px 28px; }
+.cw-managed-menu .cw-name-error, .cw-managed-menu .cw-delete-action { color: var(--danger-deep); }
+.cw-export-action { border-top: 1px solid var(--line); padding: 8px; }

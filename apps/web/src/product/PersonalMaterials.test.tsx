@@ -289,6 +289,11 @@ it('creates a personal-material text reference from a selection', async () => {
   expect(references[0]).toMatchObject({ kind: 'text', source: { kind: 'personal-material', activityId: activity.activityId,
     materialId: material.materialId, version: 1, sha256: material.versions[0].sha256 }, range: { start, end },
     copy: '正文内容', sourceName: '课堂笔记' })
+  await click('材料列表')
+  expect(host.querySelector('.personal-material-reading')).toBeNull()
+  await click('probe-reference-locate')
+  await waitFor(() => expect(host.querySelector('.personal-material-reading .wr-text-source')?.textContent).toBe(text))
+  await waitFor(() => expect(document.getSelection()?.toString()).toBe('正文内容'))
 })
 
 it('opens the fixed version on locate and reports a missing fixed version without pretending success', async () => {

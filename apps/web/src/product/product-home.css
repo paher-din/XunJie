@@ -57,3 +57,20 @@
   color: var(--ink);
   font: inherit;
 }
+
+.product-activity-list { margin-top: 32px; }
+.product-activity-list .sectionhead { margin-bottom: 16px; }
+.product-activity-list .task-toolbar { margin-bottom: 24px; }
+.product-activity-list .task-card h3, .product-activity-list .task-card p { overflow-wrap: anywhere; }
+.product-activity-list .task-card p { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.product-home .status.product-status-closed { color: var(--muted); background: transparent; }
+@media (max-width: 1100px) { .product-activity-list .task-toolbar { flex-wrap: wrap; gap: 12px; } }
+
+.product-home .task-toolbar label.search { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+.product-home .task-toolbar .search input { width: auto; min-width: 0; min-height: 24px; padding: 0; border: 0; border-radius: 0; background: transparent; font-size: 12px; }
+.product-home .task-toolbar .search input::placeholder { color: var(--muted); }
+
+.product-activity-course-group + .product-activity-course-group { margin-top: 32px; }
+.product-activity-course-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; }
+.product-activity-course-heading h3 { font-size: 17px; font-weight: 400; margin: 0; overflow-wrap: anywhere; }
+.product-activity-course-heading h3 span { font-family: var(--font-sans); font-size: 12px; color: var(--muted); margin-left: 12px; white-space: nowrap; }

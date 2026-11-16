@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react'
 import type { LearningActivity } from '@xunjie/contracts/learning-data'
+import type { CourseMaterial } from '@xunjie/contracts/courses'
+import { MaterialPicker } from '@xunjie/ui/workspace'
 import { useToastFeedback } from '@xunjie/ui/feedback'
 import { PDF_LIMITS, pdfDocumentSchema, pdfReadingSchema, pdfReferenceCopy, pdfReferenceSourceSchema,
   type PdfDocument, type PdfReading, type PdfRegion } from '@xunjie/contracts/pdf-materials'
@@ -47,12 +49,14 @@ export function usePdfMaterials({ activity, spaceKey, namespace, authorized, rev
   const [requests, setRequests] = useState<PdfMaterialRequest[]>([])
   const [document, setDocument] = useState<PdfDocument | null>(null)
   const [reading, setReading] = useState<PdfReading | null>(null)
+  const [showList, setShowList] = useState(false)
   const [pendingRead, setPendingRead] = useState<ReadRequest | null>(null)
   const [busy, setBusy] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [loadError, setLoadError] = useState('')
   const [notice, setNotice] = useState('')
+  const uploadInput = useRef<HTMLInputElement>(null)
   useToastFeedback(error)
   useToastFeedback(notice, 'success')
   const alive = useRef(false), operation = useRef(false), readEpoch = useRef(0), listEpoch = useRef(0)
@@ -132,7 +136,7 @@ export function usePdfMaterials({ activity, spaceKey, namespace, authorized, rev
     if (!alive.current || operation.current) return
     operation.current = true; setBusy(true)
     try {
-      await current.current.reveal()
+      await current.current.reveal(); setShowList(false)
       if (!alive.current) return
       setDocument(doc); setReading(null); setPendingRead(null); setError(''); setNotice('')
       operation.current = false; setBusy(false)
@@ -191,7 +195,7 @@ export function usePdfMaterials({ activity, spaceKey, namespace, authorized, rev
     ++listEpoch.current; setLoading(false)
     operation.current = true; setBusy(true); setError('')
     try {
-      await current.current.reveal()
+      await current.current.reveal(); setShowList(false)
       if (!canWrite()) return
       const record = await retainCoursePdf(scope, materialId, existing)
       if (!canWrite()) return
@@ -222,7 +226,7 @@ export function usePdfMaterials({ activity, spaceKey, namespace, authorized, rev
       if (doc.activityId !== source.activityId || doc.documentId !== source.documentId || doc.sha256 !== source.documentSha256)
         throw new Error('PDF 原文件身份与固定阅读记录不一致。')
       if (!alive.current || epoch !== readEpoch.current) return { ok: false as const, reason: '已离开原活动。' }
-      await current.current.reveal()
+      await current.current.reveal(); setShowList(false)
       if (!alive.current || epoch !== readEpoch.current) return { ok: false as const, reason: '已离开原活动。' }
       adopt(doc); setDocument(doc); setReading(fixed); setPendingRead(null); setNotice('已打开引用时保留的页图。')
       for (let attempt = 0; attempt < 120 && alive.current && epoch === readEpoch.current; attempt++) {
@@ -258,28 +262,31 @@ export function usePdfMaterials({ activity, spaceKey, namespace, authorized, rev
     }
   }, [reading])
 
-  return { documents, requests, document, reading, pendingRead, busy, loading, error, loadError, notice,
+  return { documents, requests, document, reading, pendingRead, busy, loading, error, loadError, notice, showList, setShowList,
     writable: authorized && !references.readOnly, canQuote: references.draftReady && availableReading(reading),
-    refresh, upload, receive, openCourse, openDocument, locate,
+    refresh, upload, receive, openCourse, openDocument, locate, uploadInput,
+    chooseUpload: () => uploadInput.current?.click(),
     readPages: (pages: number[], region: PdfRegion | null = null, quote = false) => document
       ? read({ requestId: crypto.randomUUID(), documentId: document.documentId, pages, region }, quote) : Promise.resolve(),
     retryRead: () => pendingRead ? read(pendingRead) : Promise.resolve(),
     quote: () => reading && addReference(reading),
-    reveal: async () => { try { await current.current.reveal() } catch (error) { if (alive.current) setError(failureText(error)) } },
+    reveal: async () => { try { await current.current.reveal(); setShowList(false) } catch (error) { if (alive.current) setError(failureText(error)) } },
   }
 }
 export type PdfMaterialsController = ReturnType<typeof usePdfMaterials>
 
+export function PdfUploadInput({ pdf }: { pdf: PdfMaterialsController }) {
+  return <input ref={pdf.uploadInput} type="file" accept="application/pdf,.pdf" hidden onChange={event => {
+    const file = event.target.files?.[0]; event.target.value = ''; if (file) void pdf.upload(file)
+  }} />
+}
+
 export function PdfMaterialEntries({ pdf }: { pdf: PdfMaterialsController }) {
-  const input = useRef<HTMLInputElement>(null)
   const pending = pdf.requests.filter(item => !item.document)
   const personalDocuments = pdf.documents.filter(doc => !doc.courseSource)
   return <section className="pdf-material-entries" aria-label="个人 PDF 资料">
     <div className="pdf-material-heading"><h3>我的 PDF 资料</h3>
-      <button type="button" className="ws-btn ghost" disabled={!pdf.writable || pdf.busy} onClick={() => input.current?.click()}>添加 PDF</button></div>
-    <input ref={input} type="file" accept="application/pdf,.pdf" hidden onChange={event => {
-      const file = event.target.files?.[0]; event.target.value = ''; if (file) void pdf.upload(file)
-    }} />
+      <button type="button" className="ws-btn ghost" disabled={!pdf.writable || pdf.busy} onClick={pdf.chooseUpload}>添加 PDF</button></div>
     <p className="detail">仅用于你的学习活动 · 单份最多 20 MiB</p>
     {personalDocuments.length > 0 && <ul className="material-list">{personalDocuments.map(doc => <li key={doc.documentId}>
       <button type="button" disabled={pdf.busy || !pdf.writable} onClick={() => void pdf.openDocument(doc)}>{doc.name}</button>
@@ -293,12 +300,11 @@ export function PdfMaterialEntries({ pdf }: { pdf: PdfMaterialsController }) {
     {pdf.busy && <p className="detail" role="status" aria-label="正在保存或读取 PDF" />}
     {pdf.loadError && <p className="detail">{pdf.loadError}</p>}
     <button type="button" className="ws-btn ghost" disabled={pdf.busy || pdf.loading} onClick={() => void pdf.refresh()}>刷新 PDF 列表</button>
-    <button type="button" className="ws-btn ghost" onClick={() => void pdf.reveal()}>打开 PDF 阅读区</button>
   </section>
 }
 
-export function PdfMaterials({ pdf, onBack }: { pdf: PdfMaterialsController; onBack(): void }) {
-  const { document: doc, reading } = pdf
+export function PdfMaterials({ pdf, onBack, courseMaterials = [] }: { pdf: PdfMaterialsController; onBack(): void; courseMaterials?: CourseMaterial[] }) {
+  const { document: doc, reading, showList, setShowList } = pdf
   const [pageInput, setPageInput] = useState('1')
   const [selectionMode, setSelectionMode] = useState<'page' | 'region'>('page')
   const [region, setRegion] = useState<PdfRegion | null>(null)
@@ -319,8 +325,21 @@ export function PdfMaterials({ pdf, onBack }: { pdf: PdfMaterialsController; onB
       <button type="button" className="ws-btn ghost" onClick={onBack}>返回作品</button>
       <strong>{doc?.name ?? 'PDF 资料'}</strong>
       {doc && <span className="pdf-muted">{doc.pageCount} 页</span>}
+      {doc && !showList && <button type="button" className="ws-btn ghost" onClick={() => setShowList(true)}>材料列表</button>}
+      {doc && showList && <button type="button" className="ws-btn ghost" onClick={() => setShowList(false)}>继续阅读</button>}
     </header>
-    {!doc ? <div className="pdf-empty"><h2>阅读 PDF 资料</h2><p>从「目标与材料」添加 PDF，或打开课程中的 PDF 材料。</p></div>
+    {!doc || showList ? <MaterialPicker title="选择要阅读的 PDF" loading={pdf.loading} error={pdf.loadError} busy={pdf.busy}
+      empty="还没有 PDF 资料。添加后可在这里打开阅读。" addLabel="添加 PDF" onAdd={pdf.chooseUpload} canAdd={pdf.writable}
+      onRefresh={() => void pdf.refresh()} groups={[
+        { title: '课程 PDF', items: courseMaterials.filter(item => item.mediaType === 'application/pdf').map(item => ({
+          id: item.materialId, name: item.title, detail: (() => { const doc = pdf.documents.find(doc => doc.courseSource?.materialId === item.materialId); return doc ? (doc.state === 'ready' ? `${doc.pageCount} 页 · 课程材料` : documentStates[doc.state]) : '课程材料'; })(), disabled: !pdf.writable,
+          onOpen: () => { setShowList(false); void pdf.openCourse(item.materialId) },
+        })) },
+        { title: '我的 PDF', items: pdf.documents.filter(item => !item.courseSource).map(item => ({
+          id: item.documentId, name: item.name, detail: item.state === 'ready' ? `${item.pageCount} 页 · 个人材料` : documentStates[item.state],
+          disabled: !pdf.writable, onOpen: () => { setShowList(false); void pdf.openDocument(item) },
+        })) },
+      ]} />
       : doc.state !== 'ready' ? <div className="pdf-empty"><p role="status">{documentStates[doc.state]}</p>{doc.detail && <p>{doc.detail}</p>}</div>
       : <>
         <div className="pdf-toolbar pdf-page-controls">
@@ -375,7 +394,7 @@ export function PdfMaterials({ pdf, onBack }: { pdf: PdfMaterialsController; onB
         </div>}
       </>}
     {pdf.pendingRead && !pdf.busy && <button type="button" className="ws-btn ghost" disabled={!pdf.writable} onClick={() => void pdf.retryRead()}>核对并继续本次阅读</button>}
-    {pdf.busy && <p className="pdf-hint" role="status" aria-label="正在保存或读取 PDF" />}
+    {pdf.busy && <p className="pdf-hint" role="status" aria-label="正在保存或读取 PDF">正在保存或读取 PDF…</p>}
   </section>
 }
 

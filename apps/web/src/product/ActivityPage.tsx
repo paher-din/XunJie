@@ -22,7 +22,7 @@ import { AgentInputMode } from './AgentInteraction'
 import { AgentModelPicker, useAgentModelPicker } from './AgentModelPicker'
 import type { ModelSelectionController } from './ModelSelection'
 import { waitForComposerComposition } from '../components/workspace/references/composer-view'
-import { PdfMaterials, PdfMaterialEntries, usePdfMaterials } from './PdfMaterials'
+import { PdfMaterials, PdfMaterialEntries, PdfUploadInput, usePdfMaterials } from './PdfMaterials'
 import { PersonalMaterials, PersonalMaterialEntries, usePersonalMaterials } from './PersonalMaterials'
 import { panes, type LayoutNode } from '../lib/wsLayout'
 import { useTeachingArtifacts } from '../teaching-artifacts/useTeachingArtifacts'
@@ -64,16 +64,17 @@ async function focusLocation(root: HTMLDivElement | null, selector: string) {
 import { RuntimeTool, type ComponentResultLocation } from './RuntimeTool'
 
 /** The existing workspace container consumes the reliable session; it owns only layout and focus. */
-export function ActivityPage({ activity, spaceKey, namespace, authorized, nativeAvailable, workspaceRef, busy, onBack, onStatus, onRefresh, onModels, details, account, requestedArtifactId, selection }: {
+export function ActivityPage({ activity, spaceKey, namespace, authorized, nativeAvailable, workspaceRef, busy, onBack, onStatus, onModels, details, requestedArtifactId, selection }: {
   activity: LearningActivity; spaceKey: string; namespace: string; authorized: boolean; nativeAvailable: boolean
   workspaceRef: RefObject<ActivityWorkspaceHandle | null>; busy: boolean
-  onBack: () => void; onStatus: () => void; onRefresh: () => void
+  onBack: () => void; onStatus: () => void
   onModels?: () => void; selection: ModelSelectionController
   requestedArtifactId?: string | null
-  details: (openCoursePdf: (materialId: string) => void) => ReactNode; account: ReactNode
+  details: (openCoursePdf: (materialId: string) => void) => ReactNode
 }) {
   const project = usePersonalProject(activity, spaceKey, namespace, authorized)
   const [materialsOpen, setMaterialsOpen] = useState(!!activity.course)
+  const [addingNote, setAddingNote] = useState(false)
   useEffect(() => { if (project.project) setMaterialsOpen(true) }, [project.project])
   const [conversationActive, setConversationActive] = useState(false)
   const [tabsSlot, setTabsSlot] = useState<HTMLDivElement | null>(null)
@@ -233,14 +234,16 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
         </div>
         : <div key={binding.key} style={{ height: '100%' }} data-component-key={binding.key} tabIndex={-1}>
           <ComponentView activity={activity} binding={binding} spaceKey={spaceKey} namespace={namespace} authorized={authorized} /></div>)]))
-  toolBodies[PDF_TOOL] = <PdfMaterials pdf={pdf} onBack={() => setTool('design')} />
-  toolBodies[PERSONAL_TOOL] = <PersonalMaterials personal={personal} onBack={() => setTool('design')} />
+  toolBodies[PDF_TOOL] = <PdfMaterials pdf={pdf} courseMaterials={activity.course?.materials} onBack={() => setTool('design')} />
+  toolBodies[PERSONAL_TOOL] = <PersonalMaterials personal={personal} onBack={() => setTool('design')}
+    onAdd={() => { setMaterialsOpen(true); setAddingNote(true); requestAnimationFrame(() => root.current?.querySelector<HTMLInputElement>('[aria-label="个人笔记名称"]')?.focus()) }} />
   for (const entry of artifacts.entries.filter(item => item.revision)) toolBodies[`gen:${entry.artifact.artifactId}`] =
     <ArtifactCard center entry={entry} controller={artifacts} onClose={async () => {
       await workspace.leave(); artifacts.setOpened(null); center.current?.closeGenTab(entry.artifact.artifactId); setTool('design')
     }} />
   const title = activity.course?.taskTitle || project.project?.content.title || activity.goal || activity.question || '资料学习'
   return <div ref={root} className={'ws ws-organized product-workspace' + (references.open ? ' discussion-open' : '')}>
+    <PdfUploadInput pdf={pdf} />
     <header className="ws-head">
       <button type="button" className="ws-navbtn" aria-label="返回活动列表" onClick={onBack}><Icon name="arrow-left" size={18} /></button>
       <div className="product-activity-title"><span>{activity.course?.courseName ?? '自主学习'}</span><h1 id="activity-title">{title}</h1></div>
@@ -258,12 +261,10 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
         <WorkspacePopover label="活动" icon="menu-dots">
           <p>{activity.status === 'closed' ? '活动已关闭，可随时重新开始。' : '继续围绕这个目标学习。'}</p>
           <button type="button" className="ws-btn ghost" disabled={busy || readOnly} onClick={onStatus}>{activity.status === 'closed' ? '重新开始活动' : '关闭活动'}</button>
-          <button type="button" className="ws-btn ghost" disabled={busy} onClick={onRefresh}>刷新列表</button>
           {artifacts.entries.some(entry => entry.artifact.shelved) && <div className="teaching-artifact-shelf" aria-label="收纳的学习页面">
             {artifacts.entries.filter(entry => entry.artifact.shelved).map(entry => <button key={entry.artifact.artifactId}
               type="button" className="ws-btn ghost" onClick={() => void openArtifact(entry.artifact.artifactId).catch(() => toast.error('当前输入尚未保护，请保留页面后继续。'))}>{entry.artifact.title}</button>)}
           </div>}
-          {account}
         </WorkspacePopover>
       </div>
     </header>
@@ -272,8 +273,13 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
       <span className="product-workspace-caption">当前作品{activity.status === 'closed' ? ' · 活动已关闭' : ''}</span></div>
     <div className="ws-body">
       {materialsOpen && <aside className="product-task-details" aria-label="目标与材料">
-        {project.project ? <PersonalProjectPlan project={project.project} /> : details(materialId => void pdf.openCourse(materialId))}
-        {project.error && <p role="alert">项目清单暂时无法读取。<button type="button" onClick={() => void project.retry()}>重试</button></p>}<PdfMaterialEntries pdf={pdf} /><PersonalMaterialEntries personal={personal} />
+        <header className="product-materials-heading"><h2>目标与材料</h2><button type="button" className="ws-btn ghost"
+          aria-label="收起目标与材料" onClick={() => setMaterialsOpen(false)}><Icon name="close" size={16} /></button></header>
+        <section className="product-context-section" aria-label="当前学习任务">
+          {project.project ? <PersonalProjectPlan project={project.project} /> : details(materialId => void pdf.openCourse(materialId))}
+        </section>
+        {project.error && <p role="alert">项目清单暂时无法读取。<button type="button" onClick={() => void project.retry()}>重试</button></p>}
+        <PdfMaterialEntries pdf={pdf} /><PersonalMaterialEntries personal={personal} adding={addingNote} setAdding={setAddingNote} />
       </aside>}
       {layoutReady && <CenterToolArea ref={center} taskId={namespace + ':' + activity.activityId} tools={tools} toolBodies={toolBodies}
         genCards={artifacts.entries.flatMap(entry => entry.revision ? [{ cardId: entry.artifact.artifactId, title: entry.artifact.title,
