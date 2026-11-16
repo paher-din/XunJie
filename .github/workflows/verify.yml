@@ -13,7 +13,7 @@ permissions:
 jobs:
   agent-runtime-native:
     needs: prepare
-    runs-on: ubuntu-24.04
+    runs-on: macos-15
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -23,17 +23,7 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci --include=dev --no-audit --no-fund
-      - uses: actions/download-artifact@v4
-        with:
-          name: ${{ needs.prepare.outputs.build-artifact }}
-          path: ${{ runner.temp }}/build/
-      - run: node scripts/ci-build-artifact.mjs restore "$RUNNER_TEMP/build"
-      - name: Install and verify the product native isolation entry
-        run: |
-          native_node_root="$(dirname "$(dirname "$(dirname "$(readlink -f "$(command -v node)")")")")"
-          sudo install -d -m 0755 /var/lib/xunjie
-          sudo sh scripts/install-linux-native-entry.sh \
-            --user "$(id -un)" --node-root "$native_node_root"
+      - run: node scripts/build.mjs product-runtime:test
       - name: Prepare pinned PostgreSQL
         run: |
           node --input-type=module <<'NODE'
@@ -41,7 +31,9 @@ jobs:
           import { join } from 'node:path';
           import { cachedArchive, unpackArchive } from './scripts/package-product.mjs';
           const catalog = JSON.parse(await readFile('scripts/product-resources.json', 'utf8'));
-          const resource = catalog.postgres.platforms['linux-x64'];
+          const platform = `${process.platform}-${process.arch}`;
+          const resource = catalog.postgres.platforms[platform];
+          if (!resource) throw new Error(`Unsupported PostgreSQL platform: ${platform}`);
           const destination = join(process.env.RUNNER_TEMP, 'agent-postgres');
           const archive = await cachedArchive(join(process.env.RUNNER_TEMP, 'postgres-cache'), resource);
           await unpackArchive(archive, resource, destination);
