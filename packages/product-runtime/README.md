@@ -2,9 +2,9 @@
 
 默认本机学习副本、学校交付与显式混合／独立部署的接线、课程执行位置及运行恢复规则见 [产品部署说明](../../docs/deployment.md)。
 
-保留的显式学校身份/课程与客户端学习数据混合组合、窄领域能力 `learning.authority`、`createSshRecoveryReceiver` 和正式接管配置见 [#154 操作说明](../../docs/student-agent-implementation/wp02-hybrid-deployment.md)。远端 SSH 仅承接维护，不是学生业务隧道。
+保留的显式学校身份/课程与客户端学习数据混合组合、窄领域能力 `learning.authority`、`createSshRecoveryReceiver` 和正式接管配置见 #154 操作说明。远端 SSH 仅承接维护，不是学生业务隧道。
 
-`@xunjie/product-runtime` 提供本机/学校可信宿主共用的运行生命周期、连接授权、维护、完整备份、隔离恢复及接管编排。CLI 见 [apps/local-runtime](../../apps/local-runtime/README.md)，既有运行交接见 [#143](../../docs/student-agent-implementation/runtime-acceptance.md)，#145 的命令、失败处理和实际验收见 [维护与恢复](../../docs/student-agent-implementation/maintenance-acceptance.md)，组合结论见 [WP01 父票验收](../../docs/student-agent-implementation/wp01-acceptance.md)。
+`@xunjie/product-runtime` 提供本机/学校可信宿主共用的运行生命周期、连接授权、维护、完整备份、隔离恢复及接管编排。CLI 见 [apps/local-runtime](../../apps/local-runtime/README.md)，既有运行交接见 #143，#145 的命令、失败处理和实际验收见 维护与恢复，组合结论见 WP01 父票验收。
 
 ## Session v2 与 HTTP 边界
 
@@ -68,9 +68,9 @@ import {
 
 显式独立 Agent 通过 `agent.dependencyConnectionId` 固定依赖连接，向学习数据 owner 调用 `agent.dependencies.v2`；可信宿主通过 `agent.sessions.v3` 调用固定的 Agent owner。每个 serviceId 只发布自身实际装配的能力。维护者使用 `authorize(input,targetServiceId)` 签发对应授权，并配置成员 Agent 与独立模型绑定，学生使用同一正式对话和工作区界面。连接、路由、任务及分片资源随各自所属 owner 参加维护、备份和隔离恢复。
 
-`createProductLearningApplication` 装配生产业务和 HTTP，`createLearningRecoveryTargets` 按备份实际描述提供空间/课程、学习数据、模型连接及教学 Agent owner 的独立恢复目标，使用与验收限制见 [#149 交接](../../docs/student-agent-implementation/wp02-identity-activity.md) 与[模型连接](../model-gateway/README.md)。实际 owner 集合由 environment.services、部署启用集合和 requiredServiceIds 核对，源码包的数量不是 owner 数量。
+`createProductLearningApplication` 装配生产业务和 HTTP，`createLearningRecoveryTargets` 按备份实际描述提供空间/课程、学习数据、模型连接及教学 Agent owner 的独立恢复目标，使用与验收限制见 #149 交接 与[模型连接](../model-gateway/README.md)。实际 owner 集合由 environment.services、部署启用集合和 requiredServiceIds 核对，源码包的数量不是 owner 数量。
 
-Agent 的正常与独立装配均使用 agentServiceMigrations（core v1–v8 + chunk v9），并登记 Agent runtime boundary 与 service source closure；目标通过 `validateAgentServiceStorage` / `validateAgentServiceSources` 核对内核记录、输入、等待及 chunk 原资源，运行层不枚举或修改场景业务表。返回的还原 owner 保留同一领域清单接口，供隔离校验及后续备份使用。维护与接管沿用本模块的关闸、源退休、接收端撤权及命名空间流程；历史交付见 [#204 交付](../../docs/student-agent-implementation/wp07-204-conversation-recovery.md)。
+Agent 的正常与独立装配均使用 agentServiceMigrations（core v1–v8 + chunk v9），并登记 Agent runtime boundary 与 service source closure；目标通过 `validateAgentServiceStorage` / `validateAgentServiceSources` 核对内核记录、输入、等待及 chunk 原资源，运行层不枚举或修改场景业务表。返回的还原 owner 保留同一领域清单接口，供隔离校验及后续备份使用。维护与接管沿用本模块的关闸、源退休、接收端撤权及命名空间流程；历史交付见 #204 交付。
 
 恢复按备份实际 owner 集合、schema 版本与边界格式核验。旧教学 schema 不属于 session v2 的自动恢复兼容范围；开发数据重置也不是旧备份升级或生产恢复流程。已有安装的升级、隔离、源退休和唯一写方规则仍按下文执行。
 
@@ -104,7 +104,7 @@ takeover 要求最新且仍 held 的源备份、源 `retire` 绑定证明及全�
 
 ## 组件与执行恢复（#176）
 
-维护材料与恢复接线见 [#176 实施记录](../../docs/student-agent-implementation/wp03-176-recovery-implementation.md)。新增备份要求每个必要 owner 提供版本化 `material()`；逐命令证据在加密数据中，公开清单仅保留聚合计数。排队投影不能证明浏览器 Worker 未开始：服务已接收的浏览器命令没有确认终态时，维护拒绝安全排空，保留原身份等待原浏览器核实。
+维护材料与恢复接线见 #176 实施记录。新增备份要求每个必要 owner 提供版本化 `material()`；逐命令证据在加密数据中，公开清单仅保留聚合计数。排队投影不能证明浏览器 Worker 未开始：服务已接收的浏览器命令没有确认终态时，维护拒绝安全排空，保留原身份等待原浏览器核实。
 
 `restore` 后可用同一产品的 `start` 打开目标，状态为 `maintenance`，首页、活动与工作区只读。此模式不启动实验、自检、后台同步或旧队列；个人身份只读取既有绑定，学校隔离登录使用进程内只读会话。接管后重新登录，新的成员写入必须携带当前 `x-xj-namespace`；旧 namespace 和缺失握手均拒绝。普通维护不开放此读取例外。
 
@@ -122,4 +122,4 @@ npm test -w @xunjie/product-runtime
 node scripts/probe-recovery.mjs --help
 ```
 
-独立原生验收使用实际产品包与仓库外新 root，完整命令与证据见 [#145 维护验收](../../docs/student-agent-implementation/maintenance-acceptance.md#独立验收命令与证据)。普通回归、独立分发恢复、浏览器和教学结果分别记录，未执行不算通过。
+独立原生验收使用实际产品包与仓库外新 root，完整命令与证据见 #145 维护验收。普通回归、独立分发恢复、浏览器和教学结果分别记录，未执行不算通过。

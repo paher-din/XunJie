@@ -4,7 +4,7 @@
 
 ## 状态、范围与依据
 
-本页最初作为实施前设计与验收计划交付，随后负责人明确要求按本方案实施并接续完成 #176。既定要求来自本票、[WP03 母规范](wp03-course-components-and-execution.md) §13 及 Testing Decisions、[WP01 维护契约](../../../packages/product-runtime/README.md)、[WP02 混合恢复](wp02-hybrid-deployment.md)和根目录 [DESIGN.md](../../../DESIGN.md)。下文保留设计决定与切片；当前实现、证据和未执行边界见[接续实施记录](../wp03-176-recovery-implementation.md)，设计本身不代替验收。
+本页最初作为实施前设计与验收计划交付，随后负责人明确要求按本方案实施并接续完成 #176。既定要求来自本票、[WP03 母规范](wp03-course-components-and-execution.md) §13 及 Testing Decisions、[WP01 维护契约](../../../packages/product-runtime/README.md)、[WP02 混合恢复](wp02-hybrid-deployment.md)和根目录 [DESIGN.md](../../../DESIGN.md)。下文保留设计决定与切片；当前实现、证据和未执行边界见接续实施记录，设计本身不代替验收。
 
 目标：维护者从既有产品维护入口获得可验证的一致备份，在独立目标只读核对，确认源与旧连接失权后接管。学生回到原活动，能读原作品、语义引用、问题草稿、结果和会话历史；只有适用的检查点才能创建新的恢复实例。
 
@@ -18,8 +18,8 @@
 | --- | --- | --- |
 | [生产装配](../../../packages/product-runtime/src/learning-entry.ts) | 已注册课程与学习数据恢复 owner；先关派发、等待领取端排空和本机会话 shutdown，再关闭所属存储写入 | 沿用已有顺序，补全本次备份的跨 owner 边界材料、浏览器已接收执行覆盖与完整恢复证明，不重做维护框架 |
 | [原生会话](../../../packages/learning-space/src/learning-data/native-sessions.ts) | shutdown 已等待启动/控制收尾、真实退出确认和持久结算，未解未知状态会失败 | 将这些证据与备份身份、恢复验证和接管流程关联，而非把现有真实停止误写成待实现 |
-| [领取通道](../../../packages/learning-space/src/learning-data/native-channel.ts)与 [#175 交付](../wp03-course-execution-plan.md) | 已有领取目标固定、迟到报告归档、独立清理证明、撤权后窄清理接口和受管排空；学习 owner 迁移已到 16 | 复用清理/晚报告通路，补本次 installation 永久退休、全部接收端验证与跨安装接管，不复制领取账本 |
-| [#174 检查点](wp03-session-recovery.md)与 [#175 汇合](../wp03-course-execution-plan.md) | 已有检查点资源、恢复关系、学校侧检查点目录及原文摘要保留 | 统一纳入备份、隔离只读及恢复后正式工作区验收；不再实现一套检查点格式 |
+| [领取通道](../../../packages/learning-space/src/learning-data/native-channel.ts)与 #175 交付 | 已有领取目标固定、迟到报告归档、独立清理证明、撤权后窄清理接口和受管排空；学习 owner 迁移已到 16 | 复用清理/晚报告通路，补本次 installation 永久退休、全部接收端验证与跨安装接管，不复制领取账本 |
+| [#174 检查点](wp03-session-recovery.md)与 #175 汇合 | 已有检查点资源、恢复关系、学校侧检查点目录及原文摘要保留 | 统一纳入备份、隔离只读及恢复后正式工作区验收；不再实现一套检查点格式 |
 | [运行库连接](../../../packages/product-runtime/src/connections.ts) | 已有 installation 级 fencing 与 handler 排空；旧授权代际会失效 | 不能仅据此推断异步实验已停止；须验证退休 installation 不能重新申请有效授权，并与实际执行 owner 的安全边界合并 |
 | [产品 CLI](../../../apps/local-runtime/src/cli.ts) | 已有 backup/restore/takeover；restore 返回 isolated | 补齐无需测试宿主的隔离只读产品打开与完整参与者装配证据 |
 

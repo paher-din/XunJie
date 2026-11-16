@@ -65,5 +65,5 @@
 
 此处描述当前源码接口；历史交付记录不表示 session v3 已完成真实浏览器、供应商或跨机验收。
 
-完整使用与验证边界见 [交接说明](../../../../docs/student-agent-implementation/wp02-identity-activity.md)。
-混合部署的 `createLearningAuthority` 在 WP01 认证传输内逐次核验学校连接主体、成员级目标和课程资格，仅提供 access/prepare/confirm/authorize。`manage/local-binding` 仅管理员可用；工作区转发同时校验预期主体与恢复 namespace，部署者不能通过普通重试替换事实 owner。操作与验收见 [#154 交接](../../../../docs/student-agent-implementation/wp02-hybrid-deployment.md)。
+完整使用与验证边界见 交接说明。
+混合部署的 `createLearningAuthority` 在 WP01 认证传输内逐次核验学校连接主体、成员级目标和课程资格，仅提供 access/prepare/confirm/authorize。`manage/local-binding` 仅管理员可用；工作区转发同时校验预期主体与恢复 namespace，部署者不能通过普通重试替换事实 owner。操作与验收见 #154 交接。

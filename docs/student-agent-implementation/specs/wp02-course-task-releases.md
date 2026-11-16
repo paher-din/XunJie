@@ -2,7 +2,7 @@
 
 日期：2026-10-31（Asia/Shanghai）。对应[课程任务与固定发布版本](https://github.com/paher-din/XunJie/issues/150)，上位规范为[学习空间与可靠工作区](wp02-learning-space-and-reliable-workspace.md)。
 
-**状态：已实施（2026-10-31，`codex/wp02` 分支，未合并 `main`）。** 实施落点、支持入口、工程与浏览器结果、未执行项见[实施与验收记录](../wp02-course-releases-acceptance.md)。下文保留方案原文供追溯；实际接口、命令和验证以实施记录与源码为准。
+**状态：已实施（2026-10-31，`codex/wp02` 分支，未合并 `main`）。** 实施落点、支持入口、工程与浏览器结果、未执行项见实施与验收记录。下文保留方案原文供追溯；实际接口、命令和验证以实施记录与源码为准。
 
 ## 问题与交付边界
 
@@ -144,4 +144,4 @@ wire 在 `@xunjie/contracts` 增量导出，公共契约不反向依赖服务实
 
 沿相关工程 scripts 运行类型检查、构建、公共契约浏览器检查、相关/全量测试及文档链接检查；故障测试断言公开结果、原文、版本与归属，不断言私有方法、SQL 次数或组件 state。具体命令和环境标识在实施交接补齐，日志不含凭据。
 
-实施与验证结果记录在[实施与验收记录](../wp02-course-releases-acceptance.md)：Windows 11 x64 的工程、真实 PostgreSQL 与 Chrome 验收已执行；Apple Silicon Mac、教学效果和跨机混合部署未执行。本票修改保留在 `codex/wp02`，未合并 `main`。
+实施与验证结果记录在实施与验收记录：Windows 11 x64 的工程、真实 PostgreSQL 与 Chrome 验收已执行；Apple Silicon Mac、教学效果和跨机混合部署未执行。本票修改保留在 `codex/wp02`，未合并 `main`。

@@ -55,7 +55,7 @@
 - **L46**：2026-10-28 存储确认：负责人对“本机与共享端统一使用原生 PostgreSQL，由产品管理本机实例”回复“ok”“同意”。采用统一引擎与产品本机管理；资源、直接重建、实施顺序和验收安排据已确认要求形成工程交接，详见[重构存储与验收决议](https://github.com/paher-din/XunJie/issues/120#issuecomment-6473266878)。最终二进制、安装/升级/恢复、产品实现与教学效果仍须后续验证；设计收束不等于开始开发或通过验收。
 
 - **L47**：2026-10-29 实施组织确认：负责人要求先形成工作包总览，再逐包写规范、拆实施子票；包之间标注 `blocked by`。每个包完成自身范围与已完成依赖的完整验收，不另设整轮重构总验收。跨包场景由负责打通该场景的工作包承担，不能把真实联调统一留到最后。总览见[实施工作包](student-agent-implementation-overview.md)，覆盖核对由实施规划内部完成，不增加公开覆盖表。
-- **L48**：2026-10-29 本地知识入口：负责人要求逐张核对决策地图下子议题的交付结果，把尚未进入项目文档的结论补齐并加索引，随后提出集中放入 docs 专门目录。八个主题的最终决议与来源收录在[Wayfinder 本地目录](wayfinder/student-agent/README.md)，并关联既有研究、设计附件和探针；旧决议中的实施顺序按 L47 更新。
+- **L48**：2026-10-29 本地知识入口：负责人要求逐张核对决策地图下子议题的交付结果，把尚未进入项目文档的结论补齐并加索引，随后提出集中放入 docs 专门目录。八个主题的最终决议与来源收录在Wayfinder 本地目录，并关联既有研究、设计附件和探针；旧决议中的实施顺序按 L47 更新。
 - **L49**：2026-10-29 目录组织：负责人明确在 `docs/` 新建 `student-agent-implementation/`，将本轮 student-agent 相关文件和整个 `wayfinder/` 放入其中。架构、需求决策、实施总览、ADR、已有组件规范、研究与文档内验证附件据此集中保存，[本目录 README](README.md)负责检索，项目总文档入口保留导航。负责人随后明确：最初产品 idea 是整个产品项目的 ideation 来源，保留在 `docs/` 父目录，不归入 student-agent 实施目录。
 
 开发协作的补充输入单独编号如下，保留两条分支的产品与开发要求：
@@ -171,7 +171,7 @@ GitHub 核对表明，[本地优先执行](https://github.com/paher-din/XunJie/i
 
 ## 后续实施与验证
 
-八个 Wayfinder 主题已形成最终决议，完整正文、后续确认和研究附件从[本地决议索引](wayfinder/student-agent/README.md)进入。GitHub [决策地图](https://github.com/paher-din/XunJie/issues/112)保留原始讨论与确认；统一 PostgreSQL、直接重建和 STAT 20 / Flights 已由[重构决议](wayfinder/student-agent/rebuild-storage.md)收束，不再作为待选项。
+八个 Wayfinder 主题已形成最终决议，完整正文、后续确认和研究附件从本地决议索引进入。GitHub [决策地图](https://github.com/paher-din/XunJie/issues/112)保留原始讨论与确认；统一 PostgreSQL、直接重建和 STAT 20 / Flights 已由重构决议收束，不再作为待选项。
 
 本轮按 L47 进入[实施总览](student-agent-implementation-overview.md)：逐个形成工作包规范与实施子票，按 `blocked by` 推进。每包验收自己的真实行为、失败恢复、与已完成依赖的集成和受影响回归，不另设整轮重构总验收。
 

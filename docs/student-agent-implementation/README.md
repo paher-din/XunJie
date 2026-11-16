@@ -8,7 +8,7 @@
 
 2026-11-14 Agent 运行时迁移完成后，WP07/WP08 的交付与验收页保留当时的产品行为、证据和测试名，不能作为当前源码入口。当前包职责、session v2、测试命令和旧开发数据边界分别从[当前架构](student-agent-architecture.md)、[工程入口](engineering-entrypoints.md)及对应包 README 读取。
 
-最终结论从[Wayfinder 本地决议索引](wayfinder/student-agent/README.md)读取，包含完整决议、后续确认及研究附件入口。讨论与原始确认保留在 [GitHub 决策地图：学生端 Agent 与工作区重新设计](https://github.com/paher-din/XunJie/issues/112)。本地决议索引不复制 Issue 的动态认领或实施状态；实施工作包的边界与 `blocked by` 见总览，具体规范和实施票随后逐包形成。
+最终结论从Wayfinder 本地决议索引读取，包含完整决议、后续确认及研究附件入口。讨论与原始确认保留在 [GitHub 决策地图：学生端 Agent 与工作区重新设计](https://github.com/paher-din/XunJie/issues/112)。本地决议索引不复制 Issue 的动态认领或实施状态；实施工作包的边界与 `blocked by` 见总览，具体规范和实施票随后逐包形成。
 
 | 需要了解什么 | 阅读入口 |
 | --- | --- |
@@ -38,8 +38,8 @@
 | Robert 已明确的要求、工程决定与待验证项 | [需求与决策记录](student-agent-decisions.md) |
 | 已确认的学生主动性设置与无扰检测路线、验证方法 | [跨课程主动引导方案](references/2026-10-23-proactive-guidance-proposal.md) |
 | 活动恢复、学习证据、学生画像纠正与教师共享边界 | [连续教学方案](references/2026-10-23-continuous-learning-proposal.md) |
-| 自动保存、实验输入、固定引用、待发动作与同浏览器恢复 | [工作区交互与状态决议](wayfinder/student-agent/workspace-state.md)及[可操作原型](../../apps/web/prototypes/workspace-state.README.md) |
-| 教师组件库、组件接入、生成内容状态与版本更新 | [课程组件决议](wayfinder/student-agent/course-components.md)、[详细设计](references/2026-10-26-course-tool-host-proposal.md)及[宿主技术研究](references/2026-10-26-course-tool-host-research.md) |
+| 自动保存、实验输入、固定引用、待发动作与同浏览器恢复 | 工作区交互与状态决议及[可操作原型](../../apps/web/prototypes/workspace-state.README.md) |
+| 教师组件库、组件接入、生成内容状态与版本更新 | 课程组件决议、[详细设计](references/2026-10-26-course-tool-host-proposal.md)及[宿主技术研究](references/2026-10-26-course-tool-host-research.md) |
 | GitHub 议题、原生依赖与后续会话工作方式 | [Issue tracker](../agents/issue-tracker.md) |
 | 教师设计运行方案、本地优先的理由 | [ADR 0001](adr/0001-teacher-owned-course-execution-plan.md) |
 | 历史持久 driver 选型、替代方案与维护责任；当前按通用内核包实现 | [ADR 0002](adr/0002-own-teaching-state-and-effect-control.md) |

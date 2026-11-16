@@ -12,11 +12,11 @@
 
 迁移 30 `school-acquisitions-and-submissions` 提供 `schoolDeliveries.acquire/acquisitionReceipt/submit/receipt/list/read`。领取回执只绑定活动与固定发布；提交固定 `works`、`artifacts` 及可选 `evidence`，持久校验资源与 pin 后返回学校收件回执。同一 `requestId`、相同输入幂等，不同输入拒绝；未知结果先查询原回执。原提交可按 `submissionId` 回读，本机继续编辑不改旧提交。HTTP 使用 `activity-receipts/<activityId>[/<requestId>]`、`submissions/<activityId>`、`submissions/<activityId>/receipts/<requestId>` 与 `submissions/<activityId>/<submissionId>`，沿用主体与课程授权；选定实验依据属于学生交付，不生成学校执行命令或“已验证实验”结论。
 
-[#218 PDF](../../../../docs/student-agent-implementation/wp08-218-pdf.md) 在迁移 23 增加本活动的原件与不可变页/区域读取记录。[#219 个人资料与检索](../../../../docs/student-agent-implementation/wp08-219-personal-materials.md) 在迁移 24 增加个人 UTF-8 笔记的不可变版本与固定引用；`search` 在每次查询时按授权范围重读课程材料、个人原件、固定 PDF 原生文字和 Skill 附件，不维护可过期索引。`pdf` 接口复用当前空间、主体及课程资格核验；`pdf-pages` 引用进入同一 `drafts/intents`，原件与已用文字/页图随资源 pin 保留。恢复直接校验保存字节，不重新转换。个人资料不会写入课程发布或教师投影。
+#218 PDF 在迁移 23 增加本活动的原件与不可变页/区域读取记录。#219 个人资料与检索 在迁移 24 增加个人 UTF-8 笔记的不可变版本与固定引用；`search` 在每次查询时按授权范围重读课程材料、个人原件、固定 PDF 原生文字和 Skill 附件，不维护可过期索引。`pdf` 接口复用当前空间、主体及课程资格核验；`pdf-pages` 引用进入同一 `drafts/intents`，原件与已用文字/页图随资源 pin 保留。恢复直接校验保存字节，不重新转换。个人资料不会写入课程发布或教师投影。
 
 本模块拥有无课程活动及其请求身份和回执；通过 `SpaceAuthority.resolveBinding` 取得当前成员与实际目标，不访问空间 owner 的数据库。wire 从 `@xunjie/contracts/learning-data` 消费，生产入口见 [learning-http](../../../product-runtime/README.md#session-v2-与-http-边界)。
 
-[#224 可交互教学内容](../../../../docs/student-agent-implementation/wp09-implementation.md) 由 `artifacts` 持有活动产物、不可变内容版本、候选、检查/采用/收纳及原回执（迁移 25）。交互状态仍在同一 `works`，采用在所属事务内一起更新绑定与状态；字段含义和完整旧输入范围均可保留时原位采用，收窄结构等不兼容修订另开关联实例。普通 HTTP 不能自报 Agent 来源；资源、版本、检查和回执进入同一恢复校验与来源闭包。
+#224 可交互教学内容 由 `artifacts` 持有活动产物、不可变内容版本、候选、检查/采用/收纳及原回执（迁移 25）。交互状态仍在同一 `works`，采用在所属事务内一起更新绑定与状态；字段含义和完整旧输入范围均可保留时原位采用，收窄结构等不兼容修订另开关联实例。普通 HTTP 不能自报 Agent 来源；资源、版本、检查和回执进入同一恢复校验与来源闭包。
 
 活动可由目标、起始问题或 HTTPS 资料引用建立，完全不生成课程、Assignment 或教师。`create/list/open/setStatus/receipt` 均经真实所属 PostgreSQL。每次读取和写入先核验空间环境、空间、主体和学习数据服务绑定；不存在及无权读取均不能触发新建。
 
@@ -24,11 +24,11 @@
 
 课程绑定活动经 `createCourse` 使用同一活动模型，并按 `register -> prepare -> 持久 pending -> confirm -> 可见提交` 协调两个真实 owner：课程 owner 保存原活动 ID、发布版本、内容摘要和保留依据；本 owner 只在对方确认后提交可见活动与成功回执。`courseResult` 查询原请求的 pending/accepted/rejected 状态；重复请求返回同一活动 ID，改发布或主体拒绝。准备或确认前的资源、资格故障不确认成功；已确认但回执丢失时按原身份续接。上述原创建与显式远端路径在读取、列出、重开和回执查询时重新核验学校课程资格与原版本；默认本机副本改由下载课程 authority 核对当前本机绑定与固定课程依据，学校暂时断连不阻断已受领活动，新的领取和提交仍核验学校资格。自主活动仍按原路径工作。整合后保留已在 `codex/wp02` 的 v2 作品迁移，课程协调状态与固定绑定追加为 v3；不改写已有作品迁移。原独立课程分支的 v2 验收环境不能直接冒充整合后数据库，正式升级/恢复须核对迁移谱系。
 
-`learning.works.read/sync/receipt/content` 是 [#151 作品接口](../../../../docs/student-agent-implementation/wp02-reliable-works.md)：文本/代码文件、类型化资源与状态共用稳定对象和不可变内容身份；同步携带基线与请求身份，拒绝过期覆盖或同 ID 换内容。大内容先经资源后端持久化及重读校验，再同事务发布引用、版本和回执。历史内容保留引用；删除对象留下 tombstone，不因同名新建被复用。
+`learning.works.read/sync/receipt/content` 是 #151 作品接口：文本/代码文件、类型化资源与状态共用稳定对象和不可变内容身份；同步携带基线与请求身份，拒绝过期覆盖或同 ID 换内容。大内容先经资源后端持久化及重读校验，再同事务发布引用、版本和回执。历史内容保留引用；删除对象留下 tombstone，不因同名新建被复用。
 
-`works.registerBasis` 为[#152 固定引用](../../../../docs/student-agent-implementation/wp02-fixed-references-acceptance.md)登记选择时的作品对象、内容、正文与资源引用，**不推进当前 head**，因此可以引用尚未同步或已被后续编辑替换的内容。`learning.drafts.read/sync/receipt/revision` 使用同一 owner 的活动与访问核验：每活动稳定 `draftId`、单调版本 CAS、不可变修订、稳定请求回执和按 `revisionId` 的历史读取；引用来源只接受本活动本人作品、活动固定发布的课程要求或开放文本材料。问题与引用在同一草稿修订中提交，作品内容登记和课程核验在所属事务前完成，不建立第二套同步引擎。
+`works.registerBasis` 为#152 固定引用登记选择时的作品对象、内容、正文与资源引用，**不推进当前 head**，因此可以引用尚未同步或已被后续编辑替换的内容。`learning.drafts.read/sync/receipt/revision` 使用同一 owner 的活动与访问核验：每活动稳定 `draftId`、单调版本 CAS、不可变修订、稳定请求回执和按 `revisionId` 的历史读取；引用来源只接受本活动本人作品、活动固定发布的课程要求或开放文本材料。问题与引用在同一草稿修订中提交，作品内容登记和课程核验在所属事务前完成，不建立第二套同步引擎。
 
-`learning.intents` 为 [#153 固定动作](../../../../docs/student-agent-implementation/wp02-action-intents.md)提供准备、查询、取消、派发和注册接收能力。固定内容独立保留，不推进可变 head；当前主体、资格和目标每次核验。派发先记录，未知先查询原接收方，同身份幂等，取消先落地的未派发动作不再发送；工作区内容确认不代替业务回执。
+`learning.intents` 为 #153 固定动作提供准备、查询、取消、派发和注册接收能力。固定内容独立保留，不推进可变 head；当前主体、资格和目标每次核验。派发先记录，未知先查询原接收方，同身份幂等，取消先落地的未派发动作不再发送；工作区内容确认不代替业务回执。
 
 `learningMigrations` 在 v4 草稿之后追加 v5 `durable-action-intents`，包含固定输入、派发/取消及真实回执；`validateLearningData` 同时核对原活动范围、不可变输入摘要、资源字节和固定引用。产品宿主将派发关闸/排空纳入同一维护及三 owner 备份恢复。活动、固定动作与已发布内容持续保留，不按页面或活动关闭删除；浏览器独有待发不在服务端备份中。
 
@@ -38,16 +38,16 @@
 
 隔离读取不创建作品/问题/执行的新身份，不写浏览器保护分区，也不运行恢复核实写入。原生历史仍保留原节点、执行实例与检查点；真正恢复必须在接管后通过新请求创建关联实例。维护边界逐项重推导原身份、操作位置、停止事实与节点证据，不能仅比较数量或状态类别；浏览器未确认终态时不承诺已排空。
 
-[#195 ALU 恢复](../../../../docs/student-agent-implementation/wp04-195-acceptance.md)进一步要求已声明的原结果实际保留后才能完成排空。维护失败时原查询、停止、资源及状态可按原身份收尾，新命令仍被拒绝；接收确认丢失先查询原三项身份，不能被接收重试挡住终态同步。隔离 ALU 历史及波形选择仅改变当前视图，不写恢复作品或浏览器队列。
+#195 ALU 恢复进一步要求已声明的原结果实际保留后才能完成排空。维护失败时原查询、停止、资源及状态可按原身份收尾，新命令仍被拒绝；接收确认丢失先查询原三项身份，不能被接收重试挡住终态同步。隔离 ALU 历史及波形选择仅改变当前视图，不写恢复作品或浏览器队列。
 
 ## 独立 Agent 安装继任（#204）
 
 追加迁移 22 `agent-execution-recovery-authorities`，保留已发布迁移及原 `agent_execution_origins`。`executions.agent.adoptAuthorization` 只在真实新授权签发时，由可信宿主确认同一安装的授权轮换，或通过 WP01 继任证明核对同一环境/服务的旧安装与目标安装；所属事务为未取消、尚未开始清理的原命令附加当前授权及交接历史。原请求、摘要、回执、Wait 和副作用不重新创建，既有登记重试核对原件后返回。
 
-授权扫描在正式继任已确认但新授权尚未签发时保留原未结项；活动关闭及普通撤权继续清理，已有清理/终态不复活。同一当前安装已登记的授权中任一仍有效即可保留，全部失效后仍按原清理协议停止；历史旧安装的授权不能替代当前安装资格。清理前锁定并重读当前授权，旧扫描结果不能取消刚完成迁接的命令。宿主先关闸并排空轮询，再一次完成源安装全部服务的撤权与继任登记，避免把分阶段处理间隙误认成普通撤权。实际平台结果见 [#204 交付](../../../../docs/student-agent-implementation/wp07-204-conversation-recovery.md)。
+授权扫描在正式继任已确认但新授权尚未签发时保留原未结项；活动关闭及普通撤权继续清理，已有清理/终态不复活。同一当前安装已登记的授权中任一仍有效即可保留，全部失效后仍按原清理协议停止；历史旧安装的授权不能替代当前安装资格。清理前锁定并重读当前授权，旧扫描结果不能取消刚完成迁接的命令。宿主先关闸并排空轮询，再一次完成源安装全部服务的撤权与继任登记，避免把分阶段处理间隙误认成普通撤权。实际平台结果见 #204 交付。
 
 ## 非文本引用（#172）
 
-组件状态和真实执行结果通过注册语义范围生成固定副本，复用 drafts/intents 和 owner 内的资源引用。创建时核对当前课程 authority；保存后的未知适配只读恢复。历史修订、固定动作和资源 pin 参与恢复验证，不修改原迁移。具体格式、保留责任与验证见 [#172 交付](../../../../docs/student-agent-implementation/wp03-semantic-references.md)。
+组件状态和真实执行结果通过注册语义范围生成固定副本，复用 drafts/intents 和 owner 内的资源引用。创建时核对当前课程 authority；保存后的未知适配只读恢复。历史修订、固定动作和资源 pin 参与恢复验证，不修改原迁移。具体格式、保留责任与验证见 #172 交付。
 
 ALU 的 `alu-case`、`alu-observation`、`alu-waveform`、`alu-reflection` 沿同一边界接入。固定预测来自原执行 state basis，实际值与 VCD 来自执行结果资源，解释修订是作品 owner 的不可变专用状态资源；服务重读原资源、归属和范围后生成副本。原命令 / 结果未到达时返回 `unavailable`，允许浏览器保留待同步引用，不重跑旧观察。作品和执行的维护校验覆盖解释父链、固定来源、同身份字节和资源 pin；没有新增表或独立保存队列。接口与范围见 [#194 方案](../../../../docs/student-agent-implementation/specs/wp04-alu-learning.md)。

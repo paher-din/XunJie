@@ -1,10 +1,10 @@
 # WP04：正式活动中的 ALU 编辑与运行设计与实施方案
 
-日期：2026-11-05（Asia/Shanghai）。依据：[正式活动中的 ALU 编辑与运行](https://github.com/paher-din/XunJie/issues/192)、[ALU 浏览器实验能力规范](https://github.com/paher-din/XunJie/issues/190)、[ALU 活动决议](../wayfinder/student-agent/alu-activity.md)。核对基线：`wp04@2d030fc`。
+日期：2026-11-05（Asia/Shanghai）。依据：[正式活动中的 ALU 编辑与运行](https://github.com/paher-din/XunJie/issues/192)、[ALU 浏览器实验能力规范](https://github.com/paher-din/XunJie/issues/190)、ALU 活动决议。核对基线：`wp04@2d030fc`。
 
-**2026-11-06 状态更新：负责人已授权继续实施，并要求先收口 Windows 本机。** 实现、实际截图和分项证据见 [Windows 本机交付](../wp04-192-windows-acceptance.md)；Mac 验收另见 [#206](https://github.com/paher-din/XunJie/issues/206)。本文保留 2026-11-05 的设计基线，下方原文档检查表是设计当日记录，不替代实施验收。工作仍在 `wp04`，沿用正式产品页面与所有者。
+**2026-11-06 状态更新：负责人已授权继续实施，并要求先收口 Windows 本机。** 实现、实际截图和分项证据见 Windows 本机交付；Mac 验收另见 [#206](https://github.com/paher-din/XunJie/issues/206)。本文保留 2026-11-05 的设计基线，下方原文档检查表是设计当日记录，不替代实施验收。工作仍在 `wp04`，沿用正式产品页面与所有者。
 
-交互细节见 [工作区交互设计](../wp04-192-workspace-design.md)。源码结构遵循 [ADR 0003](../adr/0003-runtime-entrypoints-and-owned-modules.md)，视觉遵循根目录 [DESIGN.md](../../../DESIGN.md)。
+交互细节见 工作区交互设计。源码结构遵循 [ADR 0003](../adr/0003-runtime-entrypoints-and-owned-modules.md)，视觉遵循根目录 [DESIGN.md](../../../DESIGN.md)。
 
 ## 1. 目标与范围
 
@@ -30,7 +30,7 @@
 | [ActivityPage](../../../apps/web/src/product/ActivityPage.tsx)、[ActivityWorkspace](../../../apps/web/src/product/ActivityWorkspace.tsx) | 正式外壳、目标/材料、组件标签和可靠编辑已存在；作品编辑没有 ALU 运行入口，`.sv` 尚未映射到 Verilog 编辑器语言。 |
 | [ComponentView](../../../apps/web/src/component-host/ComponentView.tsx)、[bridge](../../../apps/web/src/component-host/bridge.ts) | 沙箱 iframe、旧连接退役和操作回执可复用；初始挂载依赖在线 bundle/view/material，离线重开还须补固定视图与材料缓存，不能仅缓存 WASM。 |
 
-[运行包交付](../wp04-191-runtime-plan.md)与 [Mac 验收](../wp04-205-mac-acceptance.md)仅证明独立运行包，不作为本票正式产品、同步或学校部署通过证据。
+运行包交付与 Mac 验收仅证明独立运行包，不作为本票正式产品、同步或学校部署通过证据。
 
 ## 3. 所有者与调用链
 
@@ -142,7 +142,7 @@ A/B 为无符号 4 位，S 为 2 位，M/Cin 为 1 位；逻辑操作忽略 Cin�
 
 建议首版支架在 `timescale 1ns/1ps` 下 t=0 施加输入、t=1ns 采样、t=2ns 结束；样例身份固定为一个 index。支架/采样版本、顶层及结果完整性规则对学生公开。组合逻辑未在采样时稳定、X/Z 或没有完整记录均不显示“正确”。这只是本票单次观察，不是 4096 组通过，也不自动判定掌握。
 
-按需补学沿用 [课程资料索引](../../../course_matrial/README.md)：位宽/进位定位理论 01 第 23–24、41–42 页；按位运算定位理论 02 第 3–18 页；表达式/波形关系定位理论 02 第 45–48 页。包内短说明保留原来源、页码及本版改编说明；PDF 走授权材料读取/查看，不能经 UTF-8 组件材料入口解码。原课件访问不足时保留来源与可用短说明，不用旧 PPT 的不同端口覆盖活动规范。
+按需补学沿用 课程资料索引：位宽/进位定位理论 01 第 23–24、41–42 页；按位运算定位理论 02 第 3–18 页；表达式/波形关系定位理论 02 第 45–48 页。包内短说明保留原来源、页码及本版改编说明；PDF 走授权材料读取/查看，不能经 UTF-8 组件材料入口解码。原课件访问不足时保留来源与可用短说明，不用旧 PPT 的不同端口覆盖活动规范。
 
 ## 7. 固定执行依据与 Adapter Interface
 

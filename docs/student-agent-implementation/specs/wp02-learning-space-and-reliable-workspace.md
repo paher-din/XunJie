@@ -214,7 +214,7 @@
 
 ## Further Notes
 
-本规范依据[实施总览](../student-agent-implementation-overview.md)、[工作区交互与状态决议](../wayfinder/student-agent/workspace-state.md)、[总体架构决议](../wayfinder/student-agent/architecture.md)、[重构与存储决议](../wayfinder/student-agent/rebuild-storage.md)及 [ADR 0003](../adr/0003-runtime-entrypoints-and-owned-modules.md)。领域用语沿用[循阶学习领域](../../../CONTEXT.md)，呈现遵循[设计系统](../../../DESIGN.md)。
+本规范依据[实施总览](../student-agent-implementation-overview.md)、工作区交互与状态决议、总体架构决议、重构与存储决议及 [ADR 0003](../adr/0003-runtime-entrypoints-and-owned-modules.md)。领域用语沿用[循阶学习领域](../../../CONTEXT.md)，呈现遵循[设计系统](../../../DESIGN.md)。
 
 负责人于 2026-10-30 明确要求系统自动实时保存，不需要用户手动操作，也不需要界面上的保存状态和按钮。这一要求取代工作区早期决议中的常态保存状态显示；可靠性确认仍保留在系统内部，异常反馈不构成日常保存流程。
 

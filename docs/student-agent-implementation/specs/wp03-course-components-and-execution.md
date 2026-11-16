@@ -294,11 +294,11 @@ DOM、焦点、浮层和进程句柄不是持久作品。选择、筛选、标�
 
 ## Further Notes
 
-本规范的既定产品边界来自[课程组件最终决议](../wayfinder/student-agent/course-components.md)、[组件宿主详细设计](../references/2026-10-26-course-tool-host-proposal.md)、[本地优先执行决议](../wayfinder/student-agent/local-execution.md)、[公共执行讨论细节](../references/2026-10-23-local-execution-proposal.md)及[总体运行与部署设计](../references/2026-10-27-overall-architecture-proposal.md)。术语使用[领域语言](../../../CONTEXT.md)，架构遵循 [ADR 0001](../adr/0001-teacher-owned-course-execution-plan.md)、[ADR 0002](../adr/0002-own-teaching-state-and-effect-control.md)和 [ADR 0003](../adr/0003-runtime-entrypoints-and-owned-modules.md)，UI 遵循[设计系统](../../../DESIGN.md)。
+本规范的既定产品边界来自课程组件最终决议、[组件宿主详细设计](../references/2026-10-26-course-tool-host-proposal.md)、本地优先执行决议、[公共执行讨论细节](../references/2026-10-23-local-execution-proposal.md)及[总体运行与部署设计](../references/2026-10-27-overall-architecture-proposal.md)。术语使用[领域语言](../../../CONTEXT.md)，架构遵循 [ADR 0001](../adr/0001-teacher-owned-course-execution-plan.md)、[ADR 0002](../adr/0002-own-teaching-state-and-effect-control.md)和 [ADR 0003](../adr/0003-runtime-entrypoints-and-owned-modules.md)，UI 遵循[设计系统](../../../DESIGN.md)。
 
-当前接入事实以主线 `2d12519` 核对：正式入口已完成 [WP02 UI 整合](../wp02-product-ui.md)；可靠工作区支持类型化状态，本机接收方可登记，但动作仍捕获问题草稿，引用 wire 仅支持文本/代码，中心工具仍用固定代码模式。上述缺口由本规范明确承接，不把已有扩展点或旧桥接当作 WP03 已交付。
+当前接入事实以主线 `2d12519` 核对：正式入口已完成 WP02 UI 整合；可靠工作区支持类型化状态，本机接收方可登记，但动作仍捕获问题草稿，引用 wire 仅支持文本/代码，中心工具仍用固定代码模式。上述缺口由本规范明确承接，不把已有扩展点或旧桥接当作 WP03 已交付。
 
-接入与测试先例：[正式 Web 接入表](../../../apps/web/README.md#正式产品入口与后续-wp)、[可靠工作区接口](../../../apps/web/src/reliable-workspace/README.md)、[持久动作与本机接收](../wp02-action-intents.md)、[当前动作契约](../../../packages/contracts/src/action-intents.ts)、[当前引用契约](../../../packages/contracts/src/question-drafts.ts)、[可靠动作竞争回归](../../../apps/web/e2e/reliableWorkspaceActions.spec.ts)、[产品 UI 回归](../../../apps/web/e2e/productUi.spec.ts)、[旧 runner 控制先例](../../../apps/server/runner/control.test.ts)和[旧 iframe 桥接](../../../apps/web/src/bridge/genSandbox.ts)。这些链接用于定位复用依据，不冻结内部实现路径。
+接入与测试先例：[正式 Web 接入表](../../../apps/web/README.md#正式产品入口与后续-wp)、[可靠工作区接口](../../../apps/web/src/reliable-workspace/README.md)、持久动作与本机接收、[当前动作契约](../../../packages/contracts/src/action-intents.ts)、[当前引用契约](../../../packages/contracts/src/question-drafts.ts)、[可靠动作竞争回归](../../../apps/web/e2e/reliableWorkspaceActions.spec.ts)、[产品 UI 回归](../../../apps/web/e2e/productUi.spec.ts)、[旧 runner 控制先例](../../../apps/server/runner/control.test.ts)和[旧 iframe 桥接](../../../apps/web/src/bridge/genSandbox.ts)。这些链接用于定位复用依据，不冻结内部实现路径。
 
 负责人于 2026-11-02 授权对上述测试边界及规范进行第一性原理、对抗性审查，通过后直接发布。审查已补齐原请求查询、取消与停止分界、缺失组件的只读恢复、执行控制独立生命周期、发起者授权来源和撤销后资源处置，未留需要另行产品决定的阻塞项。依[Issue tracker 约定](../../agents/issue-tracker.md)发布带 `ready-for-agent` 标签的规范母票；后续按可独立交付的能力拆票，使用原生依赖与子议题关系。本规范不新增一份实施状态清单，不因发布规范自动认领、开发或部署。
 

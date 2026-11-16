@@ -12,6 +12,6 @@
 
 执行 `node components/material-annotation/package.mjs` 生成 v4 的 `component.json` 与 v2 的 `component-v2.json`。v4 的视图与样式统一为 LF 后再打包；v1/v2 的旧资源保持原字节，原导出包可继续使用。旧打包器在 LF 与 CRLF checkout 曾产生两种 v1 摘要，兼容回归分别核实这两种已有字节，不重写存量定义。
 
-组件导入、课程固定绑定与浏览器验收见[组件宿主交付](../../docs/student-agent-implementation/wp03-component-host.md)和[浏览器执行最终审查](../../docs/student-agent-implementation/wp03-execution.md#最终审查与-pr-182-整合)。
+组件导入、课程固定绑定与浏览器验收见组件宿主交付和浏览器执行最终审查。
 
-非文本选区与固定副本见 [#172 交付](../../docs/student-agent-implementation/wp03-semantic-references.md)。
+非文本选区与固定副本见 #172 交付。

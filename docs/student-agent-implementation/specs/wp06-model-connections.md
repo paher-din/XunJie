@@ -276,7 +276,7 @@ Command Code 上述型号的 Messages 当时不在模型目录支持列表中，
 
 ## Further Notes
 
-需求与设计依据：[实施总览](../student-agent-implementation-overview.md)、[三协议模型接入决议](../wayfinder/student-agent/model-access.md)、[端点评估与已测限制](../references/2026-10-23-model-endpoint-assessment.md)、[SDK 原生续接研究](../references/2026-10-22-model-protocol-sdk-research.md)、[总体运行与部署设计](../references/2026-10-27-overall-architecture-proposal.md)、[ADR 0003](../adr/0003-runtime-entrypoints-and-owned-modules.md)。产品用语沿用[领域术语](../../../CONTEXT.md)，UI 遵循[设计系统](../../../DESIGN.md)。
+需求与设计依据：[实施总览](../student-agent-implementation-overview.md)、三协议模型接入决议、[端点评估与已测限制](../references/2026-10-23-model-endpoint-assessment.md)、[SDK 原生续接研究](../references/2026-10-22-model-protocol-sdk-research.md)、[总体运行与部署设计](../references/2026-10-27-overall-architecture-proposal.md)、[ADR 0003](../adr/0003-runtime-entrypoints-and-owned-modules.md)。产品用语沿用[领域术语](../../../CONTEXT.md)，UI 遵循[设计系统](../../../DESIGN.md)。
 
 编写时核对代码基线 `2d12519`：WP02 正式产品已经使用统一外壳与可靠工作区，模型设置仍属于旧消费者。当前接入位置见 [Web 正式入口说明](../../../apps/web/README.md#正式产品入口与后续-wp)；[既有产品 UI 迁接议题](https://github.com/paher-din/XunJie/issues/159)的当前交付不能被理解为模型配置已迁接。
 

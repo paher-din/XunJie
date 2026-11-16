@@ -9,7 +9,7 @@
 | [apps/web](../../apps/web/package.json)，`@xunjie/web` | 师生共用浏览器应用；页面与权限投影区分身份。[运行说明](../../apps/web/README.md) |
 | [apps/server](../../apps/server/package.json)，`@xunjie/server` | 可组合后端与既有课程 runner。[启动入口](../../apps/server/server/main.ts)读取[宿主配置](../../apps/server/server/app/config.ts)；普通无业务配置启动只有基础健康服务。旧 runner 仍在 [runner/](../../apps/server/runner)，其搬迁不代表 WP03 执行改造完成。 |
 | [packages/contracts](../../packages/contracts/package.json)，`@xunjie/contracts` | 编译后的浏览器安全 wire 导出；当前根导出汇合 `./http` 与 `./editor-diagnostics`，分别提供响应/错误和编辑诊断数据及纯校验。Web 与后端从公开 package exports 消费。 |
-| [apps/local-runtime](../../apps/local-runtime/README.md)、[packages/product-runtime](../../packages/product-runtime/package.json) | 产品安装、进程、环境、部署连接与维护接入；`@xunjie/contracts/product-runtime` 提供对应 wire。实际资源、验证与后续项目见[运行交接](runtime-acceptance.md)。 |
+| [apps/local-runtime](../../apps/local-runtime/README.md)、[packages/product-runtime](../../packages/product-runtime/package.json) | 产品安装、进程、环境、部署连接与维护接入；`@xunjie/contracts/product-runtime` 提供对应 wire。实际资源、验证与后续项目见运行交接。 |
 | [tools/xj-dev](../../tools/xj-dev/README.md) | 成员开发、三模式连接、独立基线与复现。当前内部工厂/测试夹具依赖仅用于开发；后续产品运行 package 不继承它们，产品底座接入与新对象复现归 WP13。 |
 
 本轮 Agent 源码职责从 [通用内核](../../packages/agent-runtime/README.md)、[场景/能力与 v2 transport](../../packages/agents/README.md)、[模型 Gateway](../../packages/model-gateway/README.md)、[学习数据 owner](../../packages/learning-space/README.md) 和 [可信产品宿主](../../packages/product-runtime/README.md)读取。运行依赖为 contracts → storage → runtime/model/learning → agents → product-runtime/server；浏览器消费 contracts 与正式 UI。部署保留 teaching-agent/model-connection 标识，旧开发数据处理见[显式重置](../deployment.md#旧开发-agent-数据的显式重置)。
@@ -20,7 +20,7 @@
 
 [#159](https://github.com/paher-din/XunJie/issues/159) 将默认 Web 和独立产品包接到同一个 [LearningApp](../../apps/web/src/product/LearningApp.tsx)。外壳、首页课程与任务卡、中心工具区、Monaco、文件标签和选区组件复用既有产品实现；业务状态只从新公开契约与[可靠工作区](../../apps/web/src/reliable-workspace/README.md)消费。
 
-后续 WP 的接入位置、临时旧消费方及移除责任统一见 [Web 入口表](../../apps/web/README.md#正式产品入口与后续-wp)。WP03 扩展当前中心工具与结果，Agent 会话在当前问题／引用面板通过 v2 原 owner 接收固定输入，WP12 扩展当前活动交付；均随能力完成真实接线与旧路径清理。`runtime/` 是装配与辅助诊断，`dev:prep` 是隔离 UI 参考，二者都不是另建正式学习页的入口。基线、映射和真实截图见 [UI 整合交付](wp02-product-ui.md)。
+后续 WP 的接入位置、临时旧消费方及移除责任统一见 [Web 入口表](../../apps/web/README.md#正式产品入口与后续-wp)。WP03 扩展当前中心工具与结果，Agent 会话在当前问题／引用面板通过 v2 原 owner 接收固定输入，WP12 扩展当前活动交付；均随能力完成真实接线与旧路径清理。`runtime/` 是装配与辅助诊断，`dev:prep` 是隔离 UI 参考，二者都不是另建正式学习页的入口。基线、映射和真实截图见 UI 整合交付。
 
 ## 安装、构建与测试
 
@@ -80,7 +80,7 @@ npm run test:external -- --list
 npm run test:external:tools -- --list
 ```
 
-其接口为 `node scripts/test.mjs <server|contracts|storage|agent-runtime|agents|learning-space|product-runtime|tools|checks> [--external] [--list]`：递归发现 `**/*.test.{ts,mjs,py}`，排除 `node_modules`、`dist`、`evidence`；`--list` 只列清单。产品原生 PG 测试为 `*.runtime.test.mjs`，进入 external 组，需 `XUNJIE_PRODUCT_POSTGRES_BIN` 指向支持的完整 PostgreSQL 17.10、17.11 或 18.6 分发。存储真实 PG/S3 与 HTTP 消费者由 `test:storage:native` 一并运行，另需 `XUNJIE_STORAGE_S3_CONFIG`，见[存储验收](storage-acceptance.md)。Web 继续使用自身 Vitest 配置；浏览器测试单独从根 `npm run test:e2e` 进入。
+其接口为 `node scripts/test.mjs <server|contracts|storage|agent-runtime|agents|learning-space|product-runtime|tools|checks> [--external] [--list]`：递归发现 `**/*.test.{ts,mjs,py}`，排除 `node_modules`、`dist`、`evidence`；`--list` 只列清单。产品原生 PG 测试为 `*.runtime.test.mjs`，进入 external 组，需 `XUNJIE_PRODUCT_POSTGRES_BIN` 指向支持的完整 PostgreSQL 17.10、17.11 或 18.6 分发。存储真实 PG/S3 与 HTTP 消费者由 `test:storage:native` 一并运行，另需 `XUNJIE_STORAGE_S3_CONFIG`，见存储验收。Web 继续使用自身 Vitest 配置；浏览器测试单独从根 `npm run test:e2e` 进入。
 
 新增 core、Agent scene/transport 与学习数据的真实 PG 测试位于各包 `test/*.runtime.test.mjs`，统一 verify/unit 不运行这些文件，也不将 native-only workspace 的 0 个 local 文件计为通过。fixture 支持文件不带 `.test` 后缀；当前文件系统递归发现，不保存已删测试的任务清单。learning-space 即使没有 npm test script 也纳入已知 Node 目录，本地 HTTP body 用例的独立入口准备 product-runtime 依赖；模型回归仍在 server 测试目录。
 
@@ -133,8 +133,8 @@ npm run test:external:tools -- --list
 
 | 票 | 继续使用的入口 | 仍待该票实现与验证 |
 | --- | --- | --- |
-| [#143 运行安装](https://github.com/paher-din/XunJie/issues/143) | `apps/local-runtime`、`packages/product-runtime`、独立运行网页与环境 wire；[实际资源和验收](runtime-acceptance.md) | 子票已完成目标设备、学校和真实跨机验收；本轮签名/公证排除，Windows 依赖和安装前提按实际证据记录。组合核对见[父票验收](wp01-acceptance.md)。 |
-| [#144 存储](https://github.com/paher-din/XunJie/issues/144) | [packages/storage](../../packages/storage/README.md)、[实际 module 示例](../../apps/server/server/storage-sample/index.ts)及 `@xunjie/contracts/storage`；旧 SQLite 原件独立保留 | 子票已交付 PostgreSQL 事务/迁移、资源发布/保留/GC 与维护接入。当前版本在 #145 修改后的补验、接口和故障范围见[父票验收](wp01-acceptance.md)及[存储交接](storage-acceptance.md)。 |
-| [#145 维护恢复](https://github.com/paher-din/XunJie/issues/145) | [公开运行库](../../packages/product-runtime/README.md)与[维护操作和证据](maintenance-acceptance.md) | 子票已交付一致备份、隔离还原、升级和权威接管；新业务 owner 随所属 WP 登记并完整验收，父票不预先声称其恢复已完成。 |
+| [#143 运行安装](https://github.com/paher-din/XunJie/issues/143) | `apps/local-runtime`、`packages/product-runtime`、独立运行网页与环境 wire；实际资源和验收 | 子票已完成目标设备、学校和真实跨机验收；本轮签名/公证排除，Windows 依赖和安装前提按实际证据记录。组合核对见父票验收。 |
+| [#144 存储](https://github.com/paher-din/XunJie/issues/144) | [packages/storage](../../packages/storage/README.md)、[实际 module 示例](../../apps/server/server/storage-sample/index.ts)及 `@xunjie/contracts/storage`；旧 SQLite 原件独立保留 | 子票已交付 PostgreSQL 事务/迁移、资源发布/保留/GC 与维护接入。当前版本在 #145 修改后的补验、接口和故障范围见父票验收及存储交接。 |
+| [#145 维护恢复](https://github.com/paher-din/XunJie/issues/145) | [公开运行库](../../packages/product-runtime/README.md)与维护操作和证据 | 子票已交付一致备份、隔离还原、升级和权威接管；新业务 owner 随所属 WP 登记并完整验收，父票不预先声称其恢复已完成。 |
 
-运行安装提供资源与连接，存储提供事务与资源机制，不互相接管事实。环境/服务身份、凭据引用、维护参与 interface、PG 18.6 与初始化条件现从[产品运行交接](runtime-acceptance.md)消费；存储可独立开发并完成最终关键事务验收。旧数据、DTO 或队列不自动接入新产品。工作区、原生执行、模型与 Agent 深化分别随所属 WP，备份升级与恢复交接按 WP01 对应后续票完成。
+运行安装提供资源与连接，存储提供事务与资源机制，不互相接管事实。环境/服务身份、凭据引用、维护参与 interface、PG 18.6 与初始化条件现从产品运行交接消费；存储可独立开发并完成最终关键事务验收。旧数据、DTO 或队列不自动接入新产品。工作区、原生执行、模型与 Agent 深化分别随所属 WP，备份升级与恢复交接按 WP01 对应后续票完成。

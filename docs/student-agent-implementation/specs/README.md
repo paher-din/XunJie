@@ -19,17 +19,17 @@ WP06 的五张实施子票入口见[规范末尾](wp06-model-connections.md#furt
 
 | 实施票 | 文档 | 文档性质 |
 | --- | --- | --- |
-| [组件与执行数据的备份、还原和接管](https://github.com/paher-din/XunJie/issues/176) | [设计与验收计划](wp03-execution-recovery.md) · [实现与验证](../wp03-176-recovery-implementation.md) · [#188 跨平台与跨机验收](../wp03-188-cross-platform.md) | Windows 实际产品包恢复链路已验证；Mac 与 Windows 客户端连接独立学校节点的跨机验收见 #188，备份资源/恢复格式负例、执行器状态注入的 disposition 负例、真实停节点与 fence 后旧连接/可信晚回包负例均已在两客户端补跑，教学效果未评估 |
-| [组件依赖准备、自检与失败恢复](https://github.com/paher-din/XunJie/issues/171) | [实施方案与验收计划](wp03-component-preparation.md) · [Mac 交接](../wp03-171-mac-handoff.md) · [Mac 与学校路径验收](../wp03-mac-school-acceptance.md) | Windows 实现与复审证据见记录；Mac 完整包、Chrome、系统输入法及学校跨机路径由 #179/#181 接续完成，实际结果与限制见验收记录，教学效果未评估 |
+| [组件与执行数据的备份、还原和接管](https://github.com/paher-din/XunJie/issues/176) | [设计与验收计划](wp03-execution-recovery.md) · 实现与验证 · #188 跨平台与跨机验收 | Windows 实际产品包恢复链路已验证；Mac 与 Windows 客户端连接独立学校节点的跨机验收见 #188，备份资源/恢复格式负例、执行器状态注入的 disposition 负例、真实停节点与 fence 后旧连接/可信晚回包负例均已在两客户端补跑，教学效果未评估 |
+| [组件依赖准备、自检与失败恢复](https://github.com/paher-din/XunJie/issues/171) | [实施方案与验收计划](wp03-component-preparation.md) · Mac 交接 · Mac 与学校路径验收 | Windows 实现与复审证据见记录；Mac 完整包、Chrome、系统输入法及学校跨机路径由 #179/#181 接续完成，实际结果与限制见验收记录，教学效果未评估 |
 ## WP06 子票实施方案
 
-WP06 首张子票 [#164：个人模型设置与可靠连接检查](https://github.com/paher-din/XunJie/issues/164)的范围、owner 和测试边界见[实施方案](wp06-personal-model-checks.md)，实际结果与前后截图见[交付记录](../wp06-personal-models-acceptance.md)。
+WP06 首张子票 [#164：个人模型设置与可靠连接检查](https://github.com/paher-din/XunJie/issues/164)的范围、owner 和测试边界见[实施方案](wp06-personal-model-checks.md)，实际结果与前后截图见交付记录。
 
-WP06 [#166：Responses 完整接入](https://github.com/paher-din/XunJie/issues/166)的原生结果、工具图像、续接及验收见[实施方案](wp06-responses.md)和[交付记录](../wp06-responses-acceptance.md)。
+WP06 [#166：Responses 完整接入](https://github.com/paher-din/XunJie/issues/166)的原生结果、工具图像、续接及验收见[实施方案](wp06-responses.md)和交付记录。
 
-WP06 [#167：Anthropic Messages 完整接入](https://github.com/paher-din/XunJie/issues/167)见[实施方案](wp06-messages.md)和[交付记录](../wp06-messages-acceptance.md)，复用现有模型 owner，Mac 后续交接 #178。
+WP06 [#167：Anthropic Messages 完整接入](https://github.com/paher-din/XunJie/issues/167)见[实施方案](wp06-messages.md)和交付记录，复用现有模型 owner，Mac 后续交接 #178。
 
-[#165：学校／个人模型选择与 Chat 原生续接](https://github.com/paher-din/XunJie/issues/165)见[实施方案](wp06-selection-chat-continuations.md)、[模型 owner](../../../packages/model-gateway/README.md)及[分项验收](../wp06-chat-selection-acceptance.md)。Mac 后续验收统一交接 #178。
+[#165：学校／个人模型选择与 Chat 原生续接](https://github.com/paher-din/XunJie/issues/165)见[实施方案](wp06-selection-chat-continuations.md)、[模型 owner](../../../packages/model-gateway/README.md)及分项验收。Mac 后续验收统一交接 #178。
 
 ## WP04 实施子票
 
@@ -39,15 +39,15 @@ WP06 [#167：Anthropic Messages 完整接入](https://github.com/paher-din/XunJi
 | --- | --- |
 | [可复现的 ALU 浏览器运行包](https://github.com/paher-din/XunJie/issues/191) | 固定源码与补丁重建 Icarus/WASM，修正系统模块，真实 Worker 编译/仿真/VCD、四态与预算停止，并以正确实现和负对照验证运行包。 |
 | [正式活动中的 ALU 编辑与运行](https://github.com/paher-din/XunJie/issues/192) | 课程资料与起始作品导入、依赖准备、自检、正式工作区编辑运行、诊断、固定结果及保存同步；接通 WP03 公共执行与真实产品入口。 |
-| [虚拟板自由实验与 4096 组行为检查](https://github.com/paher-din/XunJie/issues/193) | 连续调整输入、真实输出与时序归属、完整行为检查及反例、未知/中止区分、输入与检查报告重开；[#193 设计与实施方案](wp04-alu-board-check.md) · [工作区交互设计](../wp04-193-workspace-design.md) · [审查修复与本机验收](../wp04-193-acceptance.md)。Mac/跨机 HTTPS/系统输入法已由 [#211](https://github.com/paher-din/XunJie/issues/211) 接续并逐条登记于[#211 验收记录](../wp04-211-acceptance.md)，未用转交抵扣通过。 |
+| [虚拟板自由实验与 4096 组行为检查](https://github.com/paher-din/XunJie/issues/193) | 连续调整输入、真实输出与时序归属、完整行为检查及反例、未知/中止区分、输入与检查报告重开；[#193 设计与实施方案](wp04-alu-board-check.md) · 工作区交互设计 · 审查修复与本机验收。Mac/跨机 HTTPS/系统输入法已由 [#211](https://github.com/paher-din/XunJie/issues/211) 接续并逐条登记于#211 验收记录，未用转交抵扣通过。 |
 | [波形引用、预测用例与比较解释](https://github.com/paher-din/XunJie/issues/194) | 真实波形与范围引用、运行前预测与理由、比较和解释、已观察/缺项记录、不可变修订及问题草稿恢复。 |
 | [ALU 数据备份、隔离还原与恢复接管](https://github.com/paher-din/XunJie/issues/195) | ALU 作品、预测、检查、观察、VCD 与引用的维护和真实恢复；隔离试还原只读、正式接管拒绝旧安装、原身份查询且不自动重跑。 |
 
 每张功能票随实现完成自己的自动保存、日常重开、失败处理、正式 UI 接线及适用的 Windows/Mac 桌面 Chrome 验证；新增事实与资源同步接入所属维护机制。最后一票专门验收 ALU 的备份、隔离还原与恢复接管，不承接积压的产品整合。WP05 及 Flights 仍暂缓。
 
-#191 的运行包构建、公开适配与复跑入口见 [实施与交付记录](../wp04-191-runtime-plan.md)；Apple Silicon Mac 验收已完成并记录于 [Mac 验收记录](../wp04-205-mac-acceptance.md)，产品接线仍按后续实施票完成。
+#191 的运行包构建、公开适配与复跑入口见 实施与交付记录；Apple Silicon Mac 验收已完成并记录于 Mac 验收记录，产品接线仍按后续实施票完成。
 
-正式活动编辑与运行的公共执行改造、固定多资源准备、单次实验、结果保留和分项验收见 [#192 设计与实施方案](wp04-alu-edit-run.md)及[交互设计](../wp04-192-workspace-design.md)。2026-11-06 的实际实现、产品包与普通 Web 结果见 [Windows 本机交付](../wp04-192-windows-acceptance.md)，Apple Silicon Mac 本机实跑与 #206 逐项登记见 [跨平台与剩余验收登记](../wp04-206-acceptance.md)及[#206](https://github.com/paher-din/XunJie/issues/206)；不将本机证据当作完整平台矩阵通过。
+正式活动编辑与运行的公共执行改造、固定多资源准备、单次实验、结果保留和分项验收见 [#192 设计与实施方案](wp04-alu-edit-run.md)及交互设计。2026-11-06 的实际实现、产品包与普通 Web 结果见 Windows 本机交付，Apple Silicon Mac 本机实跑与 #206 逐项登记见 跨平台与剩余验收登记及[#206](https://github.com/paher-din/XunJie/issues/206)；不将本机证据当作完整平台矩阵通过。
 
 ## WP07 实施子票
 
@@ -57,12 +57,12 @@ WP06 [#167：Anthropic Messages 完整接入](https://github.com/paher-din/XunJi
 | --- | --- |
 | [可恢复的基础学习对话](https://github.com/paher-din/XunJie/issues/197) | 可靠首问与无课程活动、持久 RunDriver、session log、可重建请求快照、三协议真实文本问答、实际用量与单一推进权，接入正式对话及日常恢复；额度范围以修订票与交付记录为准。 |
 | [Agent 读取作品、调用课程工具并解释结果](https://github.com/paher-din/XunJie/issues/198) | 固定作品与资料、受控工具往返、业务命令与持久 Wait、真实有限作业/有状态会话、停止及未知效果核对，接入工具记录与课程求助。[实现选择](wp07-agent-tools.md)。 |
-| [Agent 提问与学生明确回应](https://github.com/paher-din/XunJie/issues/199) | 固定学生提问、明确回应入口、一次消费、超时与晚回应处理、重启恢复，同步接入对话和 IP。[实现选择](wp07-student-ask.md) · [实现与验收](../wp07-199-student-ask.md)。 |
+| [Agent 提问与学生明确回应](https://github.com/paher-din/XunJie/issues/199) | 固定学生提问、明确回应入口、一次消费、超时与晚回应处理、重启恢复，同步接入对话和 IP。[实现选择](wp07-student-ask.md) · 实现与验收。 |
 | [运行中引导、排队与暂停后继续](https://github.com/paher-din/XunJie/issues/200) | 默认 steering 与可选 queue、派发竞争裁决、FIFO 与输入修订、学生 Wait 取代、暂停项与关联后继，接入设置和实际对话。[实现选择](wp07-input-control.md)。 |
 | [切换模型并延续学习](https://github.com/paher-din/XunJie/issues/201) | 获准边界的模型/协议切换、原生段封存与跨 owner 来源、原结果保留、预算连续及失败恢复。 |
-| [ALU 的真实 Agent 辅导](https://github.com/paher-din/XunJie/issues/202) | 消费 WP04 的正式编辑、观察及用例能力，围绕真实代码/反例/波形求助与验证；只解释、不代改，Agent 验证与学生预测分别保留。[实现选择](wp07-alu-tutoring.md) · [交付与验收](../wp07-202-alu-tutoring.md)。 |
+| [ALU 的真实 Agent 辅导](https://github.com/paher-din/XunJie/issues/202) | 消费 WP04 的正式编辑、观察及用例能力，围绕真实代码/反例/波形求助与验证；只解释、不代改，Agent 验证与学生预测分别保留。[实现选择](wp07-alu-tutoring.md) · 交付与验收。 |
 | [Agent 独立部署与真实跨机对话](https://github.com/paher-din/XunJie/issues/203) | teaching-agent 正式装配与配对、本机/学校/真实跨机混合路径、原 owner 查询、断线撤权及重启恢复。 |
-| [学习对话的备份、还原与接管](https://github.com/paher-din/XunJie/issues/204) | 会话/请求快照与未结 Run/命令/Wait/预算的跨安装备份恢复、隔离只读还原、正式接管和旧实例失权。[实施选择](wp07-conversation-recovery.md) · [交付与验收](../wp07-204-conversation-recovery.md)。 |
+| [学习对话的备份、还原与接管](https://github.com/paher-din/XunJie/issues/204) | 会话/请求快照与未结 Run/命令/Wait/预算的跨安装备份恢复、隔离只读还原、正式接管和旧实例失权。[实施选择](wp07-conversation-recovery.md) · 交付与验收。 |
 
 每张功能票随实现完成正式接线、日常恢复、资源保留与维护登记，以及适用的工程、真实模型/工具和 Windows/Mac 桌面 Chrome 验证。备份还原票专门验证跨安装恢复，不承接积压的保存或 UI 接线。
 
@@ -70,13 +70,13 @@ ALU 辅导票必须等全部原生 blocker 完成，且所需 WP04 公开能力�
 
 ## WP02 子票实施方案
 
-混合部署与恢复接管见 [#154 实施方案](wp02-hybrid-deployment.md) 与[生产操作及验收记录](../wp02-hybrid-deployment.md)。真实跨机与 Mac 结果分别登记，不以同机替代。
+混合部署与恢复接管见 [#154 实施方案](wp02-hybrid-deployment.md) 与生产操作及验收记录。真实跨机与 Mac 结果分别登记，不以同机替代。
 
 | 实施票 | 文档 | 文档性质 |
 | --- | --- | --- |
-| [固定依据与持久待发意图](https://github.com/paher-din/XunJie/issues/153) | [实施方案](wp02-durable-action-intents.md) · [接入与交接](../wp02-action-intents.md) | 当前分支实施；固定输入、可靠待发、取消、原请求核实与接收回执，Mac/跨机交接 #155 |
-| [课程任务与固定发布版本](https://github.com/paher-din/XunJie/issues/150) | [实施方案与验收计划](wp02-course-task-releases.md) · [实施与验收记录](../wp02-course-releases-acceptance.md) | 已实施（`codex/wp02`，未合并 main）；工程及 Windows/Mac 分项验证范围见验收记录，教学效果未评估 |
-| [固定引用与问题草稿恢复](https://github.com/paher-din/XunJie/issues/152) | [实施方案与验收计划](wp02-fixed-references-and-question-drafts.md) · [实施与验收记录](../wp02-fixed-references-acceptance.md) | 已实施（`codex/wp02` 工作树，未提交/合并）；Windows 工程、真实 PG 与 Chrome 已验证，Mac 与教学效果未执行 |
+| [固定依据与持久待发意图](https://github.com/paher-din/XunJie/issues/153) | [实施方案](wp02-durable-action-intents.md) · 接入与交接 | 当前分支实施；固定输入、可靠待发、取消、原请求核实与接收回执，Mac/跨机交接 #155 |
+| [课程任务与固定发布版本](https://github.com/paher-din/XunJie/issues/150) | [实施方案与验收计划](wp02-course-task-releases.md) · 实施与验收记录 | 已实施（`codex/wp02`，未合并 main）；工程及 Windows/Mac 分项验证范围见验收记录，教学效果未评估 |
+| [固定引用与问题草稿恢复](https://github.com/paher-din/XunJie/issues/152) | [实施方案与验收计划](wp02-fixed-references-and-question-drafts.md) · 实施与验收记录 | 已实施（`codex/wp02` 工作树，未提交/合并）；Windows 工程、真实 PG 与 Chrome 已验证，Mac 与教学效果未执行 |
 
 ## 已有前端能力
 

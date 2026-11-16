@@ -1,6 +1,6 @@
 # 课程组件与生成内容：契约讨论稿
 
-日期：2026-10-26（Asia/Shanghai）。对应[课程工具与生成内容：接入、运行宿主和状态恢复](https://github.com/paher-din/XunJie/issues/117)。负责人已答复“符合，按此形成决议”。本文件保留已获确认的详细设计，完整最终决定已收录在[本地课程组件决议](../wayfinder/student-agent/course-components.md)，并链接该议题的原始确认；不表示相关能力已经实现。
+日期：2026-10-26（Asia/Shanghai）。对应[课程工具与生成内容：接入、运行宿主和状态恢复](https://github.com/paher-din/XunJie/issues/117)。负责人已答复“符合，按此形成决议”。本文件保留已获确认的详细设计，完整最终决定已收录在本地课程组件决议，并链接该议题的原始确认；不表示相关能力已经实现。
 
 术语更新（2026-10-27）：按负责人要求，本文课程装配层的旧称 Course Tool / 课程工具统一为 Course Component / 课程组件；历史议题标题保留。模型可调用操作另称 Agent Tool / Agent 工具。
 

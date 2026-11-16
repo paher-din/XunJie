@@ -1,8 +1,8 @@
 # 可靠活动工作区
 
-正式产品的 [ActivityWorkspace](../product/ActivityWorkspace.tsx) 与现有 [Monaco 宿主](../components/workspace/CodeEditorHost.tsx) 通过 `ReliableWorkspace` 处理文件变化，不各自安排保存、冻结或同步。课程与自主活动共用这条路径；组件状态与资源使用相同的类型化 wire，不强制变成代码文件。需求和验证见 [#151 交接](../../../../docs/student-agent-implementation/wp02-reliable-works.md)。
+正式产品的 [ActivityWorkspace](../product/ActivityWorkspace.tsx) 与现有 [Monaco 宿主](../components/workspace/CodeEditorHost.tsx) 通过 `ReliableWorkspace` 处理文件变化，不各自安排保存、冻结或同步。课程与自主活动共用这条路径；组件状态与资源使用相同的类型化 wire，不强制变成代码文件。需求和验证见 #151 交接。
 
-问题草稿由同模块的 [`ReliableQuestionDraft`](draft.ts) 持有，沿用同库 v2 新增的 `drafts`/`draftCandidates` 分区，当前数据库非破坏升级为 v4；它复用相同的等待窗口、稳定 pending、迟到确认、本机竞争与离开保护，但不发送问题或调用模型。界面通过 [DraftReferencesProvider](../components/workspace/references/DraftReferences.tsx) 消费它，问题、引用顺序、固定来源与选中副本均以该记录为唯一可变权威。需求与验收见 [#152 记录](../../../../docs/student-agent-implementation/wp02-fixed-references-acceptance.md)。
+问题草稿由同模块的 [`ReliableQuestionDraft`](draft.ts) 持有，沿用同库 v2 新增的 `drafts`/`draftCandidates` 分区，当前数据库非破坏升级为 v4；它复用相同的等待窗口、稳定 pending、迟到确认、本机竞争与离开保护，但不发送问题或调用模型。界面通过 [DraftReferencesProvider](../components/workspace/references/DraftReferences.tsx) 消费它，问题、引用顺序、固定来源与选中副本均以该记录为唯一可变权威。需求与验收见 #152 记录。
 
 ## 对外接口
 
@@ -18,7 +18,7 @@
 活动级聚合 leave 由持续挂载的 ActivityPage 提供，等待作品、问题草稿和动作，不依赖当前中心工具是否显示编辑器。所有导航与身份切换共用该入口；活动存在却无保护句柄时拒绝离开，不能按空 ref 判断安全。
 - `trackInput/applyOperation`：组件输入在异步回执查询期间也参与离开保护；以空间/主体/活动/实例和 operationId 定位本机操作回执。同一操作以 Chrome Web Locks 跨页互斥，回执和内容在同一 IndexedDB 事务提交；同身份换输入拒绝，重载或超过 256 次操作不淘汰原回执。没有 Web Locks 时明确拒绝并保留输入候选。
 - `retainInput/protectInput`：Agent 回应和输入修订按原记录 key 登记完整草稿；事务失败后仍保留保护义务，复用工作区本机重试周期、`leave/flush` 和浏览器离开确认。`inputProtection` 提供保护结果，`retainedInput` 让临时卸载的视图恢复未落盘正文；只有最新编辑对应的事务完成才解除义务，提交前以 `protectInput` 确认原记录。不以 `trackInput` 的 Promise 结束代替持久化成功。
-- `adoptRemote`：WP09 内容采用复用原作品记录的持久基线与 `remoteOperation` 标记，先保护输入、查询原采用回执，再共同接回新绑定和状态；等待中的新输入以同一三方合并规则保留。采用/收纳操作身份在既有 `agentControls` 分区保护，未确认时不换 ID；活动产物状态参与相同保存与导出，默认作品文件列表不展示其内部信封。见 [WP09](../../../../docs/student-agent-implementation/wp09-implementation.md)。
+- `adoptRemote`：WP09 内容采用复用原作品记录的持久基线与 `remoteOperation` 标记，先保护输入、查询原采用回执，再共同接回新绑定和状态；等待中的新输入以同一三方合并规则保留。采用/收纳操作身份在既有 `agentControls` 分区保护，未确认时不换 ID；活动产物状态参与相同保存与导出，默认作品文件列表不展示其内部信封。见 WP09。
 
 ## 确认与竞争
 
@@ -40,7 +40,7 @@ v4 新增 `workOperations` 本机确认元数据分区，不是第二份作品�
 
 owner 明确判定无效的待发请求（例如问题超过长度限制，服务端没有写入任何回执）与“未知接收结果”不同：原文完整保留、该请求不再重发，界面明确提示未通过校验；内容被修改后即建立新请求并自动同步，不会因为一次校验失败停止该身份的草稿同步。
 
-作品同步同样使用可选 pendingRejected：仅直接同步的明确 invalid 拒绝可持久标记；修正正文已保护时用新请求接续。未知接收、丢回包或查询失败仍保留原身份。历史 invalid pending 不要求清库；状态位置修正后继续查证原请求，再安全接续，详见 [#169 修复](../../../../docs/student-agent-implementation/wp03-component-remediation.md)。
+作品同步同样使用可选 pendingRejected：仅直接同步的明确 invalid 拒绝可持久标记；修正正文已保护时用新请求接续。未知接收、丢回包或查询失败仍保留原身份。历史 invalid pending 不要求清库；状态位置修正后继续查证原请求，再安全接续，详见 #169 修复。
 
 组件状态的普通编辑与显式冲突裁决分开：普通编辑禁止删除或替换现有状态对象身份；裁决校验目标候选的完整绑定、路径与结构，允许选择合法的对方对象或空状态。裁决沿用原保护事务和 pending 身份处理，不把普通文件编辑当作状态重置。
 
@@ -48,7 +48,7 @@ owner 明确判定无效的待发请求（例如问题超过长度限制，服�
 
 Agent 交互设置和输入/运行控制使用同库 v9 新增的 `agentControls` 分区，按恢复命名空间、真实主体和目标隔离。`agent-controls.ts` 在提交前保护不可变请求，刷新后先查询原回执，再用同一身份重送；`record-store.ts` 与明确回应共用本机事务保护。输入修订草稿和预期版本独立保留，后台采纳或拒绝不覆盖草稿。它们不是作品/问题草稿的另一份权威，也不改变原动作的字节。设计见 [#200](../../../../docs/student-agent-implementation/specs/wp07-input-control.md)。
 
-[#153 的 `workspace.actions(draft, transport)`](../../../../docs/student-agent-implementation/wp02-action-intents.md) 将同步捕获的固定输入与动作保存在同库 v3 分区；独立依赖登记不推进当前作品/草稿 head。待发、取消和原接收回执按原身份协调；新命名空间不自动消费旧队列，显式接回先核实原范围及请求结果。没有真实接收器时正式输入区继续明确不可发送。
+#153 的 `workspace.actions(draft, transport)` 将同步捕获的固定输入与动作保存在同库 v3 分区；独立依赖登记不推进当前作品/草稿 head。待发、取消和原接收回执按原身份协调；新命名空间不自动消费旧队列，显式接回先核实原范围及请求结果。没有真实接收器时正式输入区继续明确不可发送。
 
 普通页面不显示保存按钮或常态保存状态。会话内的 context/activity 缓存只负责在原 API 断开时定位原活动，不是认证或作品权威；离线恢复页暂停网络派发，重新核实原身份后才续传。服务器备份不包含浏览器未同步的正文。
 

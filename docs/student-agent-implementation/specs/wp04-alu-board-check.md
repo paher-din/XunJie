@@ -2,9 +2,9 @@
 
 日期：2026-11-06（Asia/Shanghai）。需求依据：[实施票 #193](https://github.com/paher-din/XunJie/issues/193)、[WP04 母票 #190](https://github.com/paher-din/XunJie/issues/190)。源码核对基线：`wp04@c8932ed8`，本次已从 `origin/wp04` 快进同步。
 
-> **实施状态（2026-11-07）：** 本方案的三操作课程包 v2、适配器、4096 检查、状态与 UI 已在本工作树实现；工程检查、真实 WASM 检查及 Windows 本机产品 Chrome 证据见 [实现与验收记录](../wp04-193-acceptance.md)。Apple Silicon Mac、独立学校 HTTPS 路径、完整 A01–A13 平台矩阵和教学效果未执行；实施差异以实现记录为准。
+> **实施状态（2026-11-07）：** 本方案的三操作课程包 v2、适配器、4096 检查、状态与 UI 已在本工作树实现；工程检查、真实 WASM 检查及 Windows 本机产品 Chrome 证据见 实现与验收记录。Apple Silicon Mac、独立学校 HTTPS 路径、完整 A01–A13 平台矩阵和教学效果未执行；实施差异以实现记录为准。
 
-以下保留2026-11-06的设计基线；当日仅交付文档，未实施验收。2026-11-07已按负责人要求实现并审查修复，最终实现与验证以顶部交付记录为准；Mac、跨机与系统输入法由 [#211](https://github.com/paher-din/XunJie/issues/211) 接续并已登记于[#211 验收记录](../wp04-211-acceptance.md)，不计作通过。交互及线框见 [工作区设计](../wp04-193-workspace-design.md)，视觉遵循 [DESIGN.md](../../../DESIGN.md)，模块职责遵循 [ADR 0003](../adr/0003-runtime-entrypoints-and-owned-modules.md)。
+以下保留2026-11-06的设计基线；当日仅交付文档，未实施验收。2026-11-07已按负责人要求实现并审查修复，最终实现与验证以顶部交付记录为准；Mac、跨机与系统输入法由 [#211](https://github.com/paher-din/XunJie/issues/211) 接续并已登记于#211 验收记录，不计作通过。交互及线框见 工作区设计，视觉遵循 [DESIGN.md](../../../DESIGN.md)，模块职责遵循 [ADR 0003](../adr/0003-runtime-entrypoints-and-owned-modules.md)。
 
 ## 1. 交付边界与现状
 
@@ -21,7 +21,7 @@
 | [ExecutionPanel](../../../apps/web/src/product/ExecutionPanel.tsx)、[ALU 呈现器](../../../apps/web/src/product/execution-presenters/alu.tsx) | 通用历史/查询/停止与 ALU 单次结果已分开；尚无当前输入和历史选择隔离、检查摘要与反例呈现。 |
 | [执行契约](../../../packages/contracts/src/execution.ts)、[执行 owner](../../../packages/learning-space/src/learning-data/executions.ts) | v3 同属原执行账本，多资源最多 4 项、每项至多 8 MiB；主 artifact 至多 1 MiB。复用这些限制，不往查询摘要塞入全部采样或 VCD。 |
 | [旧板卡展示](../../../apps/web/src/components/workspace/HdlToolArea.tsx) | 四态灯、开关、数码管可复用，但 `HdlBoardPane` 直接依赖旧会话、装载、推进周期和 AN/SEG 扫描。先提取纯受控显示，再接 ALU 固定映射。 |
-| [#206 验收登记](../wp04-206-acceptance.md) | 已有跨机取证，也明确 M1–M8 细项未全收口；存在多活动写入 `409 identity-conflict` 的真实缺陷。本票复用事实，不继承“全通过”；相关恢复/同步验收须包含第二个活动，失败如实登记并定位原 owner。 |
+| #206 验收登记 | 已有跨机取证，也明确 M1–M8 细项未全收口；存在多活动写入 `409 identity-conflict` 的真实缺陷。本票复用事实，不继承“全通过”；相关恢复/同步验收须包含第二个活动，失败如实登记并定位原 owner。 |
 
 不将 #191 的运行包 4096 探针、#192 单次产品运行或 #206 跨机跑通当成本票功能已交付。
 
@@ -266,4 +266,4 @@ P0/P1 在正确实现上分别建立 `{Cout,F}=00000/11111`。每个目标重新
 
 后续大改动需负责人确认具体方案；删除文件、schema/迁移、`.env`/密钥/CI/CD 或公开部署仍按根 [AGENTS.md](../../../AGENTS.md)逐项说明理由/风险并单独获准。本次未提交或推送 Git 变更，也未更新/关闭 GitHub 实施票。
 
-> **实施后记（2026-11-07）：** 上段及 §10 的“本次未执行/未更改”描述的是 2026-11-06 设计稿提交时的状态，不是当前工作树状态。实际实现、工程检查、真实 WASM 和 Windows 本机产品 Chrome 结果见 [实现与验收记录](../wp04-193-acceptance.md)；Mac、学校 HTTPS、完整平台矩阵和教学效果仍未执行。
+> **实施后记（2026-11-07）：** 上段及 §10 的“本次未执行/未更改”描述的是 2026-11-06 设计稿提交时的状态，不是当前工作树状态。实际实现、工程检查、真实 WASM 和 Windows 本机产品 Chrome 结果见 实现与验收记录；Mac、学校 HTTPS、完整平台矩阵和教学效果仍未执行。

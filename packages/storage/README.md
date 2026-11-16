@@ -55,7 +55,7 @@ GC 的 `olderThan` 是宿主明确给定的保留边界。候选对象与新引�
 
 管理员恢复入口 `prepareStorageRestore({admin, owner, password})` 只接受未占用的目标 schema/角色，返回含 `migratorRole` 的 binding，临时授予该迁移角色创建 schema 的权限。维护宿主使用公开 binding 与原生 `pg_restore --role <migratorRole> --no-owner --no-acl` 还原完整所属 schema；不另枚举业务表。
 
-复制全部原始资源对象后，`finalizeStorageRestore({binding, admin, migrations, manifest, backend})` 撤销临时 DDL 权限、推进关闭的恢复代际，按 owner 登记的迁移检查实际结构、约束、序列、角色权限与读写能力，并校验引用资源。返回的 `OwnedStorage` 保持写入和派发关闭。新凭据须私密持久保存，生产维护适配器负责这一步；重启接入与完整操作见 [#145 维护交接](../../docs/student-agent-implementation/maintenance-acceptance.md)。失败不回退为开放状态，不靠新建业务请求或重放外部效果恢复资源。
+复制全部原始资源对象后，`finalizeStorageRestore({binding, admin, migrations, manifest, backend})` 撤销临时 DDL 权限、推进关闭的恢复代际，按 owner 登记的迁移检查实际结构、约束、序列、角色权限与读写能力，并校验引用资源。返回的 `OwnedStorage` 保持写入和派发关闭。新凭据须私密持久保存，生产维护适配器负责这一步；重启接入与完整操作见 #145 维护交接。失败不回退为开放状态，不靠新建业务请求或重放外部效果恢复资源。
 
 ## 错误语义
 
@@ -73,4 +73,4 @@ GC 的 `olderThan` 是宿主明确给定的保留边界。候选对象与新引�
 
 ## 验证
 
-运行方式、固定后端和实际平台证据见 [存储接入与验收](../../docs/student-agent-implementation/storage-acceptance.md)。普通 `npm test` 覆盖文件/HTTP 协议回归；真实 PG、S3、子进程及服务 HTTP 案例由 `npm run test:storage:native` 明确运行，缺少配置失败而非跳过。
+运行方式、固定后端和实际平台证据见 存储接入与验收。普通 `npm test` 覆盖文件/HTTP 协议回归；真实 PG、S3、子进程及服务 HTTP 案例由 `npm run test:storage:native` 明确运行，缺少配置失败而非跳过。

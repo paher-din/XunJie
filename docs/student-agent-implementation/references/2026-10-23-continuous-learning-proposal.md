@@ -4,7 +4,7 @@
 
 完整决定、来源与交接范围以[连续教学决议](https://github.com/paher-din/XunJie/issues/118#issuecomment-6364486548)为准；本文是其详细设计附件。
 
-后续确认（2026-10-28）：第二个样本已选择伯克利 STAT 20 / Flights，详见[重构与存储决议](../wayfinder/student-agent/rebuild-storage.md)。下文验收交接中的“待定”保留 2026-10-23 的原时点；当前待完成的是资料制作、真实接入与验证，按[实施总览](../student-agent-implementation-overview.md)逐包推进，不再重新选择第二课程。
+后续确认（2026-10-28）：第二个样本已选择伯克利 STAT 20 / Flights，详见重构与存储决议。下文验收交接中的“待定”保留 2026-10-23 的原时点；当前待完成的是资料制作、真实接入与验证，按[实施总览](../student-agent-implementation-overview.md)逐包推进，不再重新选择第二课程。
 
 ## 活动要记住目标与依据，而非只保存聊天
 

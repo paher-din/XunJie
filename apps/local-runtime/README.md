@@ -2,15 +2,15 @@
 
 模块启用、学校数据＋本机 Agent／模型／执行、教师执行位置设计及发布流程见 [可组合部署](../../docs/deployment.md)。已有环境通过 `configure-deployment --file ... --dry-run` 预览，停止后应用；`status.deployment` 区分启用模块与保留的历史 owner。
 
-WP03 新增 `component-import` / `component-read` / `component-status`，用于登记不可变组件、读取固定定义、启停新装载；样例生成、输入及平台限制见 [#169 操作与交接](../../docs/student-agent-implementation/wp03-component-host.md)。沿用产品管理授权，停用不会删除学生作品。
+WP03 新增 `component-import` / `component-read` / `component-status`，用于登记不可变组件、读取固定定义、启停新装载；样例生成、输入及平台限制见 #169 操作与交接。沿用产品管理授权，停用不会删除学生作品。
 
-混合部署管理新增 `learning-binding --file` 与远端维护的 `fence-source --file`；成员创建支持首次固定 target，takeover 的 receiver 支持既有 SSH 部署配置。具体输入、认证边界及恢复顺序见 [#154 操作说明](../../docs/student-agent-implementation/wp02-hybrid-deployment.md)。原同机 receiver 的 `{id,root}` 仍受支持。
+混合部署管理新增 `learning-binding --file` 与远端维护的 `fence-source --file`；成员创建支持首次固定 target，takeover 的 receiver 支持既有 SSH 部署配置。具体输入、认证边界及恢复顺序见 #154 操作说明。原同机 receiver 的 `{id,root}` 仍受支持。
 
-本目录提供产品运行、维护恢复及学校成员管理 CLI，薄装配 `@xunjie/product-runtime` 公共 API。项目入口见[根 README](../../README.md)，既有教学 Web 说明见[相邻 Web README](../web/README.md)。默认产品网页已接入[学习空间身份与活动](../../docs/student-agent-implementation/wp02-identity-activity.md)与[课程任务与固定发布版本](../../docs/student-agent-implementation/specs/wp02-course-task-releases.md)，`school-member` / `school-membership` / `school-connection` 从仓库外私密输入建立成员、授予或撤销资格、撤销指定客户端连接；`course-import` / `course-access` / `course-result` 消费版本化课程清单、授予/撤销课程资格并查询原登记结果。安装或启动成功不代表课程、Agent 或教学效果验收通过。
+本目录提供产品运行、维护恢复及学校成员管理 CLI，薄装配 `@xunjie/product-runtime` 公共 API。项目入口见[根 README](../../README.md)，既有教学 Web 说明见[相邻 Web README](../web/README.md)。默认产品网页已接入学习空间身份与活动与[课程任务与固定发布版本](../../docs/student-agent-implementation/specs/wp02-course-task-releases.md)，`school-member` / `school-membership` / `school-connection` 从仓库外私密输入建立成员、授予或撤销资格、撤销指定客户端连接；`course-import` / `course-access` / `course-result` 消费版本化课程清单、授予/撤销课程资格并查询原登记结果。安装或启动成功不代表课程、Agent 或教学效果验收通过。
 
 `course-import --file <清单.json>` 从清单所在目录读取每个材料的 `path`，拒绝越出目录、摘要或长度不一致的文件；清单格式见 `@xunjie/contracts/courses` 的 `courseImportSchema`（不含 `resources` 字段）。单次导入请求上限 64 MiB（含所有资源），更大课程请拆分为多个发布版本。`course-access --file` 输入 `{requestId,courseId,principalId,active}`，`course-result --file` 输入 `{requestId}`。
 
-这是产品运行底座的候选交付。完整工程门禁、Mac/Windows 实际包安装、启停、隔离与故障恢复、Linux 独立包运行及 Mac→学校 Linux 的真实公网 HTTPS 认证、断连重连和撤销已经验证。Windows Chrome/Edge 基础页面由负责人实机确认；各平台证据、限制和可重复入口见[运行交接](../../docs/student-agent-implementation/runtime-acceptance.md)。签名、公证按负责人要求移出本轮；不宣称完整课程产品或自动更新已交付。
+这是产品运行底座的候选交付。完整工程门禁、Mac/Windows 实际包安装、启停、隔离与故障恢复、Linux 独立包运行及 Mac→学校 Linux 的真实公网 HTTPS 认证、断连重连和撤销已经验证。Windows Chrome/Edge 基础页面由负责人实机确认；各平台证据、限制和可重复入口见运行交接。签名、公证按负责人要求移出本轮；不宣称完整课程产品或自动更新已交付。
 
 ## 入口与环境目录
 
@@ -104,7 +104,7 @@ xunjie install --root /private/environment --config /private/install.json --reso
 xunjie database --root /private/environment
 ```
 
-凭据文件为单行文本，可带一个末尾换行，空格原样保留；命令不回显内容。不要将密码写入命令参数或安装 JSON。已有实例须符合固定 PG **17.10、17.11 或 18.6**、UTF8、UTC、C collation，连接角色须有执行 `pg_control_system()` 的只读权限；安装绑定 cluster identity 与 database OID，之后地址指向其他数据库时明确拒绝，不自动重新绑定。数据库配置还可选择 `{ "mode": "managed" }` 或 `{ "mode": "none" }`，具体资源需求与服务可用性由库报告。`database` 返回绑定或 `null`，不表示课程库已交付。学校 external 的服务启停、空的独立目标 cluster、权限及升级工具由管理员负责；产品完整备份/恢复按 [#145 owner 契约](../../docs/student-agent-implementation/maintenance-acceptance.md)装配，产品不接管 external 服务生命周期。
+凭据文件为单行文本，可带一个末尾换行，空格原样保留；命令不回显内容。不要将密码写入命令参数或安装 JSON。已有实例须符合固定 PG **17.10、17.11 或 18.6**、UTF8、UTC、C collation，连接角色须有执行 `pg_control_system()` 的只读权限；安装绑定 cluster identity 与 database OID，之后地址指向其他数据库时明确拒绝，不自动重新绑定。数据库配置还可选择 `{ "mode": "managed" }` 或 `{ "mode": "none" }`，具体资源需求与服务可用性由库报告。`database` 返回绑定或 `null`，不表示课程库已交付。学校 external 的服务启停、空的独立目标 cluster、权限及升级工具由管理员负责；产品完整备份/恢复按 #145 owner 契约装配，产品不接管 external 服务生命周期。
 
 ## 保留数据与显式删除
 
@@ -152,7 +152,7 @@ token 只从文件读取，交给库持久化与连接，不在 stdout 回显。
 
 ## 维护、备份与恢复（#145）
 
-操作 JSON 的完整示例、独立目标约束、失败重建与实际验收矩阵见 [#145 维护验收](../../docs/student-agent-implementation/maintenance-acceptance.md)。父票的组合验收与证据适用范围见 [WP01 父票验收](../../docs/student-agent-implementation/wp01-acceptance.md)。
+操作 JSON 的完整示例、独立目标约束、失败重建与实际验收矩阵见 #145 维护验收。父票的组合验收与证据适用范围见 WP01 父票验收。
 
 ```sh
 xunjie recovery-key --out /secure/xunjie/recovery.key
@@ -183,7 +183,7 @@ xunjie takeover --root /srv/xunjie/restored-new --file /secure/xunjie/takeover.j
 
 升级 kind 为 `schema|pg-minor|pg-major`；固定引擎 17.10/17.11/18.6，版本前进通过逻辑备份与新目标恢复完成。默认产品的 restore/upgrade 自动装配备份中的 runtime、空间身份和学习数据 owner，旧的 runtime-only 备份仍可恢复；`schema` 没有实际注册迁移时报 `no-schema-upgrade-registered`。其他业务 targets 仍由[可信宿主公开 API](../../packages/product-runtime/README.md)提供。
 
-restore/upgrade JSON 支持目标 `database`、`databaseCredentialFile` 与 `installation`。external 密码由单行非空私密文件读取，可带一个末尾换行，空格原样保留；读后加入错误输出 redaction，JSON/argv 不放明文密码。`installation` 支持 profile、host、port、publicEndpoint、tls（certificateFile、keyFile），用于目标学校 HTTPS 入口，不含 database/requiredServiceIds；数据库单独配置，必需参与者从备份恢复。完整 external/TLS JSON 示例见 [维护说明](../../docs/student-agent-implementation/maintenance-acceptance.md#最终-held-备份与恢复)。
+restore/upgrade JSON 支持目标 `database`、`databaseCredentialFile` 与 `installation`。external 密码由单行非空私密文件读取，可带一个末尾换行，空格原样保留；读后加入错误输出 redaction，JSON/argv 不放明文密码。`installation` 支持 profile、host、port、publicEndpoint、tls（certificateFile、keyFile），用于目标学校 HTTPS 入口，不含 database/requiredServiceIds；数据库单独配置，必需参与者从备份恢复。完整 external/TLS JSON 示例见 维护说明。
 
 外部数据库的源备份、目标恢复及升级必须使用带匹配 PG 备份/还原工具的**完整管理分发包**；无 PG 工具的 remote-client 包不能作为维护入口。external cluster/database、权限、工具与服务启停仍由学校管理员准备及管理；恢复默认隔离，实际学校 external 验收范围见维护验收的证据矩阵。
 

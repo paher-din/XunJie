@@ -1,6 +1,6 @@
 # WP04 #194：预测、比较、解释与真实波形引用
 
-需求与验收以 [#194](https://github.com/paher-din/XunJie/issues/194) 为准。前置是已交付的 [#192](wp04-alu-edit-run.md)、[#193](wp04-alu-board-check.md) 及 [#211 验收](../wp04-211-acceptance.md)；本票沿用现有 ALU 工具、虚拟板、作品编辑器和问题草稿，不增加平行工作区或执行链。
+需求与验收以 [#194](https://github.com/paher-din/XunJie/issues/194) 为准。前置是已交付的 [#192](wp04-alu-edit-run.md)、[#193](wp04-alu-board-check.md) 及 #211 验收；本票沿用现有 ALU 工具、虚拟板、作品编辑器和问题草稿，不增加平行工作区或执行链。
 
 ## 学生行为
 

@@ -1,6 +1,6 @@
 # #173 本机有状态实验会话
 
-状态：Windows 11 x64 与 Apple Silicon macOS 两条本机路径均已实施并通过各自的隔离探针与产品包验收；签名、干净机器与教学效果未验收。实施与验收记录见 [本机有状态实验会话](../wp03-native-sessions.md) 与 [#184 Apple Silicon 验收](../wp03-184-mac-native-isolation.md)。实施基线以远端 wp03 为准，公共执行接线参照 [#170 交付记录](../wp03-execution.md)、[WP03 规范](wp03-course-components-and-execution.md)与[组件准备](wp03-component-preparation.md)。范围以 [#173](https://github.com/paher-din/XunJie/issues/173) 为准。
+状态：Windows 11 x64 与 Apple Silicon macOS 两条本机路径均已实施并通过各自的隔离探针与产品包验收；签名、干净机器与教学效果未验收。实施与验收记录见 本机有状态实验会话 与 #184 Apple Silicon 验收。实施基线以远端 wp03 为准，公共执行接线参照 #170 交付记录、[WP03 规范](wp03-course-components-and-execution.md)与[组件准备](wp03-component-preparation.md)。范围以 [#173](https://github.com/paher-din/XunJie/issues/173) 为准。
 
 ## 产品路径
 
@@ -31,4 +31,4 @@ macOS 的既有边界须随实现一同声明：profile 采用「宽读 + 显式
 3. 接正式中心工具区。以固定初态 0 的四态累加模拟为候选样例，输入 1、2、2 后观察 1、3、1，另开会话从 0 开始并对同一输入独立核对。跨学生、活动、会话尝试读写均隔离。重开按原引用核对，停止后输入不能推进。
 4. 用两平台实际产品包、桌面 Chrome 和真实资源复验以上路径及预算超限。运行受影响工程检查与浏览器有限作业、可靠动作、编辑回归。若产生大幅 UI 变更，附实际前后截图。交付分别记录工程、产品包与真实运行、Chrome 和教学效果，附版本、限制、原始证据与未执行项。
 
-当前交付为 Windows 11 x64 与 Apple Silicon macOS 两条本机路径；OS 级强制隔离在两端均有探针证据，签名、干净机器验收与跨所有者接管仍未交付。平台选型、产品行为和教学效果分别记录在[实施与验收记录](../wp03-native-sessions.md)与[#184 Apple Silicon 验收](../wp03-184-mac-native-isolation.md)。
+当前交付为 Windows 11 x64 与 Apple Silicon macOS 两条本机路径；OS 级强制隔离在两端均有探针证据，签名、干净机器验收与跨所有者接管仍未交付。平台选型、产品行为和教学效果分别记录在实施与验收记录与#184 Apple Silicon 验收。

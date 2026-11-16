@@ -19,6 +19,6 @@ WP07 合入后继续复用上述组件 v4；带 Agent 帮助策略的新课程�
 
 修改适配器后用 `node tools/alu-wasm/refresh-adapter.mjs <new-version>` 重验六项工具资源，保留原完整包到 `components/alu-icarus-runtime/versions/<old-version>/`，再更新当前清单与身份；不重新编译或替换已验证的工具链二进制。宿主显式登记当前包和 [0.3.0 原清单](../alu-icarus-runtime/versions/0.3.0/manifest.json)，按活动固定身份选择各自的 Worker；未知版本仍拒绝。发布新身份时同步增加组件版本、导入请求和课程发布 ID，避免与已批准的不可变记录冲突。
 
-PR #213 审查包的全部修复、版本共存与真实运行界面前后对照见 [修复验收](../../docs/student-agent-implementation/wp04-pr213-review-fixes.md)。
+PR #213 审查包的全部修复、版本共存与真实运行界面前后对照见 修复验收。
 
-完整设计与验收条目另见 [#193 设计与实施方案](../../docs/student-agent-implementation/specs/wp04-alu-board-check.md)、[工作区设计](../../docs/student-agent-implementation/wp04-193-workspace-design.md) 与 [#194 预测 / 波形引用](../../docs/student-agent-implementation/specs/wp04-alu-learning.md)。课程包可生成不代表正式运行、恢复或教学验收完成。
+完整设计与验收条目另见 [#193 设计与实施方案](../../docs/student-agent-implementation/specs/wp04-alu-board-check.md)、工作区设计 与 [#194 预测 / 波形引用](../../docs/student-agent-implementation/specs/wp04-alu-learning.md)。课程包可生成不代表正式运行、恢复或教学验收完成。

@@ -12,7 +12,7 @@
 
 模型迁移 23 为 session effect 建唯一索引，迁移 24 固定配对路由所属 session。按 storage 既有维护流程关闭写入／派发后增量 provision；不重建 owner、vault 或已有配置。公开 Gateway／模型任务及真实 PostgreSQL 回归见 [model-session-authority.runtime.test.mjs](../../apps/server/tests/model-session-authority.runtime.test.mjs)。
 
-`@xunjie/model-gateway` 独立持有模型配置、凭据与调用事实，只依赖 contracts/storage 与协议实现。它不推进 Agent Run、不读取学习数据库；由可信宿主注入会话权限。本包承接 #164–#167 的 `ModelGateway`，由产品组合注入 WP02 的真实授权与所属 storage。配置、加密凭据、选择/授权、固定图片、工具结果、原生段和调用事实属于独立 `model-connection` owner。浏览器只消费 [公开 wire](../contracts/src/model-connections.ts)，不引用 SDK、数据库或旧 Session/store。历史交付记录见 [#164](../../docs/student-agent-implementation/wp06-personal-models-acceptance.md)、[#165](../../docs/student-agent-implementation/wp06-chat-selection-acceptance.md)、[#166](../../docs/student-agent-implementation/wp06-responses-acceptance.md)和 [#167](../../docs/student-agent-implementation/wp06-messages-acceptance.md)。
+`@xunjie/model-gateway` 独立持有模型配置、凭据与调用事实，只依赖 contracts/storage 与协议实现。它不推进 Agent Run、不读取学习数据库；由可信宿主注入会话权限。本包承接 #164–#167 的 `ModelGateway`，由产品组合注入 WP02 的真实授权与所属 storage。配置、加密凭据、选择/授权、固定图片、工具结果、原生段和调用事实属于独立 `model-connection` owner。浏览器只消费 [公开 wire](../contracts/src/model-connections.ts)，不引用 SDK、数据库或旧 Session/store。历史交付记录见 #164、#165、#166和 #167。
 
 ## 公开接口与生命周期
 
@@ -78,7 +78,7 @@ Agent 对话的模型选择器通过 `models/selection` 读取学校服务、本
 
 学习 attempt 的增量正文写入独立 `model_attempt_progress` 表（迁移 11）。三种协议都在解析各自增量后调用同一个凭据尾部扣留发布器：完整凭据出现前不公开可能拼出凭据的尾部，出现后停止公开；探针、检查与取消不产生进度行。进度读取只返回已持久化的安全前缀与修订号，`teaching-agent` 再用稳定 attempt 身份追加事件。
 
-WP09 在相同进度记录中追加有界工具参数预览。只有固定工具定义声明的 JSON 字符串属性可投影，保留原 call/attempt 与单调修订；三协议共用凭据处理和持久确认，不把该内部描述传给供应商。半截 JSON 不修复成工具意图，完整结果与派发仍由下述终态边界决定；渲染和启用归 [WP09](../../docs/student-agent-implementation/wp09-implementation.md)。
+WP09 在相同进度记录中追加有界工具参数预览。只有固定工具定义声明的 JSON 字符串属性可投影，保留原 call/attempt 与单调修订；三协议共用凭据处理和持久确认，不把该内部描述传给供应商。半截 JSON 不修复成工具意图，完整结果与派发仍由下述终态边界决定；渲染和启用归 WP09。
 
 工具参数按 choice/tool index 聚合；只有名字、身份、完整 JSON/schema、整体终态和可读持久结果同时成立，公开结果才出现 `toolIntents`。拒绝、半截参数、截断、未知关键块、缺终态或本地发布失败不交付意图。DeepSeek 保留 `reasoning_content`；已实测 Command Code 方言保留 `reasoning` 及按块索引聚合的 `reasoning_details`，未知关键格式保留原始 chunks 但不可续接。公开投影不返回原生推理。
 
@@ -155,7 +155,7 @@ const result = await school.modelTask({ operation: 'read', identity, binding, ta
 
 owner 保存完整 events/response/output，并在维护和续接时校验格式、已观察增量与终态的一致性。工具 added 暂缺 arguments 合法，只有完整 completed、原生回放验证与工具参数应用校验都通过才发布意图。凭据回显拒绝成功，敏感原生正文及可重建的碎片不保存。图片使用固定所属资源；工具图片直接进入 `function_call_output.output`，按 call_id 配对，不使用 item ID。新段沿用结清工具与可移植上下文规则。
 
-主测试 [model-responses.runtime.test.mjs](../../apps/server/tests/model-responses.runtime.test.mjs) 使用生产 Gateway、真实 PG/资源和 SDK；含重启、备份还原、取消和 Chat 双向换段。[实际路线及能力边界](../../docs/student-agent-implementation/wp06-responses-acceptance.md)区分 JSON mode、应用 schema、原生 schema 与 strictTools；未知能力不自动晋升。显式实测工具 [probe-model-responses.mjs](../../scripts/probe-model-responses.mjs) 从获准 Magpie 私有配置读取 DeepSeek key，支持 `--case native|schemas`；每次最多六次有限生成，输出不含原生推理或密钥。Command Code 本轮由负责人豁免真实端点，合成 summary/缺 arguments 方言回归保留。
+主测试 [model-responses.runtime.test.mjs](../../apps/server/tests/model-responses.runtime.test.mjs) 使用生产 Gateway、真实 PG/资源和 SDK；含重启、备份还原、取消和 Chat 双向换段。实际路线及能力边界区分 JSON mode、应用 schema、原生 schema 与 strictTools；未知能力不自动晋升。显式实测工具 [probe-model-responses.mjs](../../scripts/probe-model-responses.mjs) 从获准 Magpie 私有配置读取 DeepSeek key，支持 `--case native|schemas`；每次最多六次有限生成，输出不含原生推理或密钥。Command Code 本轮由负责人豁免真实端点，合成 summary/缺 arguments 方言回归保留。
 
 ## Anthropic Messages（#167）
 
@@ -169,7 +169,7 @@ system 为顶层字段，thinking 模式明确编码；DeepSeek 忽略 budget_to
 
 `ModelAttempt.upstream` 只保存可确认 HTTP 状态、有限 request-id、retry-after 秒数或绝对日期，不投影其他 headers/body；含凭据的请求 ID 丢弃，等待提示不授权自动重试。该事实同结果一次提交并纳入 owner 9 的 JSON 约束/版本；旧 owner 8 环境通过 WP01 正式 schema upgrade，正常启动不偷偷迁移。
 
-主测试 [model-messages.runtime.test.mjs](../../apps/server/tests/model-messages.runtime.test.mjs)、[桌面 Chrome 用例](../../apps/web/e2e/messagesModelSettings.spec.ts)和[真实端点探针](../../scripts/probe-model-messages.mjs)均消费生产入口。探针按 `--case native|schemas|controls|check|cancel` 分组，显式提供获准私有配置与脱敏输出，单组最多 6 次，输出只含状态、哈希、保真比较和用量。完整行为、反例与验证限制见 [#167 交付](../../docs/student-agent-implementation/wp06-messages-acceptance.md)。
+主测试 [model-messages.runtime.test.mjs](../../apps/server/tests/model-messages.runtime.test.mjs)、[桌面 Chrome 用例](../../apps/web/e2e/messagesModelSettings.spec.ts)和[真实端点探针](../../scripts/probe-model-messages.mjs)均消费生产入口。探针按 `--case native|schemas|controls|check|cancel` 分组，显式提供获准私有配置与脱敏输出，单组最多 6 次，输出只含状态、哈希、保真比较和用量。完整行为、反例与验证限制见 #167 交付。
 
 ## PR #177 审查修复
 
@@ -181,7 +181,7 @@ system 为顶层字段，thinking 模式明确编码；DeepSeek 忽略 budget_to
 
 Chat 先补齐同一组全部工具回复，再追加用户图片消息；每张工具图携带原 callId 与固定资源版本。Messages 截断工具 JSON 时继续读取有界终态与用量，合法空 end_turn 可完成；半截参数始终不产生工具意图。设置页后台读取不会清除操作失败；冲突时保留草稿与密钥意图，显式读取/核对后重试；未知提交使用原 requestId 与原 payload 核对。
 
-定向单测见 [协议](../../apps/server/tests/model-protocol-review.test.mjs)、[Messages](../../apps/server/tests/model-messages-review.test.mjs)、[网络政策](../../apps/server/tests/model-network-policy.test.mjs)、[能力和图片](../../apps/server/tests/model-capability-images.test.mjs)。真实 PostgreSQL、宿主权限、持久化和重启回归见 [model-review.runtime.test.mjs](../../apps/server/tests/model-review.runtime.test.mjs)；修复矩阵与实际验收见 [PR #177 修复记录](../../docs/student-agent-implementation/wp06-pr177-review-fixes.md)。
+定向单测见 [协议](../../apps/server/tests/model-protocol-review.test.mjs)、[Messages](../../apps/server/tests/model-messages-review.test.mjs)、[网络政策](../../apps/server/tests/model-network-policy.test.mjs)、[能力和图片](../../apps/server/tests/model-capability-images.test.mjs)。真实 PostgreSQL、宿主权限、持久化和重启回归见 [model-review.runtime.test.mjs](../../apps/server/tests/model-review.runtime.test.mjs)；修复矩阵与实际验收见 PR #177 修复记录。
 
 ## Learning 共享准入（R9）
 
