@@ -1,3 +1,0 @@
-
-> @xunjie/teaching@0.0.0 typecheck
-> node tools/check-runtime.mjs && tsc --noEmit

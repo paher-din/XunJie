@@ -14,61 +14,9 @@
 | --- | --- |
 | 当前 Agent 包职责、session v2、真实普通/工作区会话与部署 | [当前架构](student-agent-architecture.md) · [通用内核](../../packages/agent-runtime/README.md) · [场景与传输](../../packages/agents/README.md) · [模型 Gateway](../../packages/model-gateway/README.md) · [可信宿主](../../packages/product-runtime/README.md) |
 | 旧开发 Agent 数据的显式重置 | [部署与数据边界](../deployment.md#旧开发-agent-数据的显式重置)；不属于旧引擎/API 自动兼容 |
-| WP08 正式 PDF 添加、页/区域固定引用、真实页图入模与两平台证据 | [#218 PDF 交付](wp08-218-pdf.md) · [验收证据](evidence/wp08-218/README.md) |
 | 本轮有哪些工作包、前置依赖和完整验收边界 | [实施总览](student-agent-implementation-overview.md) |
-| WP02 的统一产品 UI、复用组件、前后截图及后续 WP 接入位置 | [产品 UI 整合与验收](wp02-product-ui.md) · [Web 接入表](../../apps/web/README.md#正式产品入口与后续-wp) |
-| WP03 的组件宿主、语义引用、依赖准备及有限作业/持续会话实施契约 | [课程组件宿主与公共执行规范](specs/wp03-course-components-and-execution.md) |
-| WP04 正式 ALU 活动的资料导入、公共执行适配、编辑运行及固定结果恢复 | [#192 设计与实施方案](specs/wp04-alu-edit-run.md) · [工作区交互设计](wp04-192-workspace-design.md) · [Windows 本机交付](wp04-192-windows-acceptance.md) · [#206 跨平台与剩余验收登记](wp04-206-acceptance.md) · [Mac 接续验收票](https://github.com/paher-din/XunJie/issues/206) |
-| WP04 虚拟板自由实验、已启用作品、4096 组检查及反例/恢复 | [#193 设计与实施方案](specs/wp04-alu-board-check.md) · [工作区交互设计](wp04-193-workspace-design.md) · [审查修复与本机验收](wp04-193-acceptance.md) · [剩余验收 #211 记录](wp04-211-acceptance.md)；Mac/跨机 HTTPS/系统输入法已在 #211 逐条登记，未用转交抵扣通过 |
-| WP04 的固定预测、比较、解释修订、真实 VCD 与语义引用 | [#194 设计与验证边界](specs/wp04-alu-learning.md) · [#194 验收与实际界面对照](wp04-194-acceptance.md) |
-| WP04 ALU 一致备份、隔离重读、维护结算与唯一接管 | [#195 实现与恢复验收](wp04-195-acceptance.md) |
-| WP03 合入 main 的双轴审查、冲突裁决与 Windows 集成复验 | [PR #189 审查与复验](wp03-pr189-review.md) |
-| WP03 组件与未结执行的一致备份、隔离只读还原及权威接管 | [#176 设计与验收计划](specs/wp03-execution-recovery.md) · [实现与本机验收](wp03-176-recovery-implementation.md) · [#188 Mac/学校跨机验收](wp03-188-cross-platform.md) |
-| WP03 的浏览器有限作业：固定执行请求、持久接收、真实 Worker/WASM 计算、查询/停止与结果重读 | [浏览器计算与持久执行](wp03-execution.md) · [固定表格聚合样例](../../components/table-aggregation/README.md) |
-| WP03 标注对象与真实聚合结果的固定选区、来源核验和定位 | [#172 交付](wp03-semantic-references.md) · [实施方案](specs/wp03-nontext-references.md) · [#185 Apple Silicon 验收](wp03-185-mac-references.md) |
-| WP03 第三项：真实依赖准备、独立自检、版本缓存及失败继续的方案与验收 | [#171 实施与验收](specs/wp03-component-preparation.md) · [Mac 交接](wp03-171-mac-handoff.md) |
-| WP03 第四项：本机原生有状态会话、连续输入、持久会话事实与真实停止 | [设计与边界](specs/wp03-native-sessions.md) · [实施与验收](wp03-native-sessions.md) · [四态累加样例](../../components/state-accumulator/README.md) |
-| WP03 第五项：会话控制、可靠检查点与关联恢复实例 | [实施方案](specs/wp03-session-recovery.md) · [实现与验证](wp03-session-recovery.md) · [#187 Apple Silicon 验收](wp03-187-mac-session-recovery.md) |
-| WP03 第四项的 Apple Silicon 收口：Seatbelt 隔离、回收与预算、产品包与桌面 Chrome 验收 | [#184 原生会话隔离与产品包验收](wp03-184-mac-native-isolation.md) |
-| #175 已完成：课程运行方案固定、按操作判定执行位置、Linux 受限会话入口、学校节点真实原生会话与撤权/旧安装失权 | [#175 课程运行方案与学校节点执行](wp03-course-execution-plan.md) |
-| WP06 的模型配置、三协议接入、原生续接及调用恢复边界 | [三协议模型连接规范](specs/wp06-model-connections.md) |
-| WP07 的持久运行、session log、请求重建及正式学习对话 | [WP07：持久 Agent 与学习对话](https://github.com/paher-din/XunJie/issues/196) · [交付与验收](wp07-197-recoverable-learning-conversation.md) · [双轴审查](wp07-197-code-review.md) · [实施子票](specs/README.md#wp07-实施子票) |
-| WP07 固定作品读取、课程工具、持久等待与原执行核对 | [#198 实现与验收](wp07-198-agent-tools.md) · [实施选择](specs/wp07-agent-tools.md) · [双轴审查](wp07-198-code-review.md) · [旧消费者迁接归属](wp07-198-legacy-consumers.md) |
-| WP07 Agent 独立服务、固定活动路由与跨机设备模型 | [#203 部署与验收](wp07-203-agent-deployment.md) · [双轴审查](wp07-203-code-review.md) |
-| WP07 Agent 固定提问、可靠明确回应及原 Run 继续 | [#199 实现与验收](wp07-199-student-ask.md) · [实施选择](specs/wp07-student-ask.md) · [双轴审查](wp07-199-code-review.md) · [Agent owner](../../packages/agents/README.md) |
-| WP07 忙碌时引导、FIFO 排队、输入修订及暂停选择继续 | [#200 实施选择](specs/wp07-input-control.md) · [实现与验收](wp07-200-input-control.md) · [双轴审查](wp07-200-code-review.md) |
-| WP07 #200 的 macOS 引导、排队与暂停续接实机验收 | [#210 macOS 验收](wp07-210-mac-acceptance.md) |
-| WP07 学习对话的完整备份、隔离还原与权威接管 | [#204 实施选择](specs/wp07-conversation-recovery.md) · [交付与验收](wp07-204-conversation-recovery.md) · [双轴审查](wp07-204-code-review.md) · [Mac/跨机交接 #212](https://github.com/paher-din/XunJie/issues/212) |
-| WP07 Windows 工程检查的 20 项后续修复与重新验收 | [实施与复验](wp07-engineering-checks.md) · [双轴审查](wp07-engineering-code-review.md) |
-| WP07 与已合入 main 的最终 WP04 整合、组合回归及清理 | [合并与复验](wp07-main-integration.md) |
-| WP08 的能力装配、独立 Skills、上下文压缩、记忆读取及 PDF 资料来源；MCP/Plugin 暂缓 | [WP08：Agent 能力、上下文与扩展](https://github.com/paher-din/XunJie/issues/214) |
-| WP08 现有学习对话的版本化能力装配、固定上下文与持久换段 | [#215 实现与验收](wp08-215-versioned-assembly.md) · [实际验收证据](evidence/wp08-215/README.md) |
-| WP08 平台与课程工具的按需发现、固定加载、大结果原件与范围读取 | [#216 实现与验收](wp08-216-tool-discovery.md) · [实际验收证据](evidence/wp08-216/README.md) |
-| WP08 课程与个人独立 Skills、正式设置和问题草稿、固定版本及渐进读取 | [#217 实现与验收](wp08-217-skills.md) · [实际验收证据](evidence/wp08-217/README.md) |
-| WP08 长历史的有界压缩、原操作延续及摘要恢复 | [#220 实现与验收](wp08-220-context-compaction.md) · [实际验收证据](evidence/wp08-220/README.md) |
-| WP08 四项能力合入 `wp08`、旧分支迁移与备份兼容、组合验证 | [整合说明](wp08-integration.md) · [本次验证证据](evidence/wp08-integration/README.md) |
-| WP08 个人资料、统一检索与明确事实读取 | [#219 实现与验收](wp08-219-personal-materials.md) · [实际验收证据](evidence/wp08-219/README.md) |
-| WP08 最后交付：跨服务接线、恢复来源闭包、跨安装备份与接管凭据门禁 | [#221 实现与验收](wp08-221.md) · [实际验收证据](evidence/wp08-221/README.md) |
-| WP09 的生成页面/卡片、渐进预览、校验启用、受控能力、状态恢复和修订保留输入；MCP Apps 暂缓 | [WP09：可交互教学内容](https://github.com/paher-din/XunJie/issues/224) · [实施与验收](wp09-implementation.md) |
-| PR #177 审查报告的 12 项修复与回归 | [审查修复记录](wp06-pr177-review-fixes.md) |
-| WP06 Responses 原生结果、工具图像和持久续接 | [Responses 交付与验收](wp06-responses-acceptance.md) |
-| WP06 Messages 思考/签名、工具图像和持久续接 | [Messages 交付与验收](wp06-messages-acceptance.md) |
-| WP06 学校/个人来源选择、Chat 图片工具与原生续接的实际交付 | [选择与原生 Chat 验收](wp06-chat-selection-acceptance.md) · [模型 owner](../../packages/model-gateway/README.md) |
-| 学习空间身份、学校接入及无课程活动的生产入口和验证边界 | [学习空间身份与活动交接](wp02-identity-activity.md) |
-| 课程任务、固定发布、访问投影及跨 owner 活动建立的实施方案与验收记录 | [课程任务与固定发布版本实施方案](specs/wp02-course-task-releases.md) · [验收记录](wp02-course-releases-acceptance.md) |
-| 活动作品编辑、自动保存、本机保护、冲突与资源恢复 | [可靠作品编辑与自动保存](wp02-reliable-works.md) |
-| 固定引用、问题草稿持久恢复及来源授权 | [实施方案](specs/wp02-fixed-references-and-question-drafts.md) · [验收记录](wp02-fixed-references-acceptance.md) |
-| 明确动作的固定依据、可靠待发、取消、原请求核实及接收回执 | [固定依据与持久待发意图](wp02-action-intents.md) · [实施方案](specs/wp02-durable-action-intents.md) |
-| 学校身份与本机学习数据绑定、业务备份及跨机接管 | [混合部署与业务恢复](wp02-hybrid-deployment.md) |
 | 目标代码结构、依赖规则及各 WP 同步完成的结构改造 | [代码结构与实施节奏](student-agent-implementation-overview.md#代码结构与实施节奏)；取舍见 [ADR 0003](adr/0003-runtime-entrypoints-and-owned-modules.md) |
 | 当前工程入口、测试环境及 #143/#144 接入交接 | [工程入口与 WP01 交接](engineering-entrypoints.md) |
-| #142 产品运行与数据底座的预期、实际效果及组合验收 | [WP01 父票验收](wp01-acceptance.md) |
-| #143 产品运行候选、公开接口、安装资源与实际验收 | [产品运行交接](runtime-acceptance.md)；[固定资源](runtime-resources.md) |
-| #144 PostgreSQL 事务、所属资源、维护接入与故障证据 | [存储接入与验收](storage-acceptance.md)；[package 使用说明](../../packages/storage/README.md) |
-| #145 维护、完整备份、隔离恢复、升级与权威接管 | [维护操作与验收](maintenance-acceptance.md)；[运行库接入](../../packages/product-runtime/README.md) |
-| 八个 Wayfinder 主题的完整结论、来源和后续修正 | [本地决议索引](wayfinder/student-agent/README.md) |
-| 本轮设计决策的讨论与确认来源 | [学生端 Agent 与工作区重新设计：数字逻辑与部件设计先行](https://github.com/paher-din/XunJie/issues/112) |
-| ALU 的学习目标、公开行为表、帮助边界和场景 | [活动决议](wayfinder/student-agent/alu-activity.md)及[活动设计](references/2026-10-23-alu-activity-design.md) |
 | 直接重建范围、统一 PostgreSQL、STAT 20 / Flights 与实施验收 | [重构、存储与验收方案](references/2026-10-28-rebuild-storage-and-acceptance-proposal.md) |
 | SQLite / PostgreSQL 与文件 / S3 资源的事实和代价 | [存储方案官方研究](references/2026-10-28-storage-options-research.md) |
 | 原生 PostgreSQL 本机管理与 PGlite 的实际差异 | [本机数据库运行研究](references/2026-10-28-postgres-local-runtime-research.md) |
@@ -109,4 +57,4 @@
 
 架构与决策记录随本轮讨论更新。最初 idea、用户原话和架构附件作为来源保留；其中的建议、技术核验声明和落地顺序不自动成为本轮已批准决定。最初 idea 中的教师设计、教学分析和跨学生案例库描述整体愿景，本轮教师端范围以决策记录为准。
 
-本目录的设计状态与代码实现状态分别记录。产品要求、工程选择和具体确认来源已在决策记录中区分；端点、生产恢复、安装、渲染器和性能仍需实测。工程测试、浏览器验收与教学效果分别记录。历史归档的使用规则见 [AGENTS.md](../../AGENTS.md)。
+本目录的设计状态与代码实现状态分别记录。产品要求、工程选择和具体确认来源已在决策记录中区分；端点、生产恢复、安装、渲染器和性能仍需实测。工程测试、浏览器验收与教学效果分别记录。

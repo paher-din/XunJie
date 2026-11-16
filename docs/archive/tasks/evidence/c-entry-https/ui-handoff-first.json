@@ -1,8 +1,0 @@
-{
-  "failed": true,
-  "code": "ECONNREFUSED",
-  "message": "Handoff preparation stopped, original records retained; no secret values logged.",
-  "serviceRunning": false,
-  "stopConfirmed": true,
-  "serverExitCode": null
-}

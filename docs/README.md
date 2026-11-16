@@ -15,6 +15,4 @@
 | GitHub 议题、原生依赖和后续会话工作方式 | [Issue tracker](agents/issue-tracker.md) |
 | 当前 session v2 架构与源码职责 | [架构](student-agent-implementation/student-agent-architecture.md) · [Agent 场景](../packages/agents/README.md) · [通用内核](../packages/agent-runtime/README.md) |
 | 历史架构决定及其理由 | [教师运行方案](student-agent-implementation/adr/0001-teacher-owned-course-execution-plan.md)、[早期 driver 选型](student-agent-implementation/adr/0002-own-teaching-state-and-effect-control.md) |
-| 领域术语与 UI 设计规范 | [CONTEXT.md](../CONTEXT.md)、[DESIGN.md](../DESIGN.md) |
-
-开发协作环境与产品部署分别设计。项目边界见 [AGENTS.md](../AGENTS.md)；`archive/` 停止维护，只有明确追溯历史时读取。
+| 领域术语与 UI 设计规范 | [CONTEXT.md](../CONTEXT.md) [GLOSSARY.md](../GLOSSARY.md)、[DESIGN.md](../DESIGN.md) |
