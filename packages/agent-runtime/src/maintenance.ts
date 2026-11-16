@@ -8,8 +8,8 @@ import { collectAgentRuntimeSources, validateAgentRuntime } from './source-closu
 export const agentRuntimeMaintenanceKind = 'xunjie.agent-runtime.boundary/2' as const;
 export const agentRuntimeReceiverMaintenanceKind = 'xunjie.agent-runtime.receiver-boundary/2' as const;
 /** Only kernel tables. Application transports attest their own additional tables separately. */
-const tables = ['agent_runtime_sessions', 'agent_runs', 'agent_inputs', 'agent_steps', 'agent_waits',
-  'agent_events', 'agent_controls', 'agent_progress', '_storage_references'] as const;
+const tables = ['agent_runtime_sessions', 'agent_turns', 'agent_inputs', 'agent_steps', 'agent_attempts',
+  'agent_tool_calls', 'agent_questions', 'agent_notifications', 'agent_events', 'agent_controls', 'agent_progress', '_storage_references'] as const;
 type Row = Record<string, unknown>;
 const count = z.number().int().nonnegative();
 const digest = z.string().regex(/^[a-f0-9]{64}$/);
@@ -39,7 +39,6 @@ async function closed(storage: OwnedStorage) {
 /** Pure inventory at a host-closed, drained boundary. This never recovers or dispatches work. */
 export async function collectAgentRuntimeBoundary(storage: OwnedStorage): Promise<AgentRuntimeBoundary> {
   await closed(storage);
-  // This owner read also verifies original inputs/receipts, relationships and every retained resource.
   const sources = await collectAgentRuntimeSources(storage);
   const records = new Map<string, Row[]>(), inventory: AgentRuntimeBoundary['evidence']['tables'] = {};
   for (const table of tables) {
@@ -54,7 +53,8 @@ export async function collectAgentRuntimeBoundary(storage: OwnedStorage): Promis
     if (previous && canonicalDigest(previous) !== canonicalDigest(resource)) throw new StorageError('corrupt');
     resources.set(resource.resourceId, resource);
   }
-  const steps = records.get('agent_steps')!, waits = records.get('agent_waits')!, runs = records.get('agent_runs')!;
+  const turns = records.get('agent_turns')!, steps = records.get('agent_steps')!;
+  const toolCalls = records.get('agent_tool_calls')!, questions = records.get('agent_questions')!;
   const inputs = new Map(records.get('agent_inputs')!.map(input => [String(input.input_id), input]));
   const inputReceipts: AgentRuntimeBoundary['evidence']['inputReceipts'] = [];
   for (const input of inputs.values()) {
@@ -66,46 +66,39 @@ export async function collectAgentRuntimeBoundary(storage: OwnedStorage): Promis
     inputReceipts.push({ requestId, sha256: canonicalDigest(receipt) });
   }
   inputReceipts.sort((a, b) => a.requestId.localeCompare(b.requestId));
-  const grouped = (rows: Row[]) => {
-    const result = new Map<string, Row[]>();
-    for (const row of rows) {
-      const id = String(row.run_id), group = result.get(id) ?? [];
-      group.push(row); result.set(id, group);
-    }
-    return result;
-  };
-  const stepsByRun = grouped(steps), waitsByRun = grouped(waits);
-  const cancellationRuns = new Set(records.get('agent_controls')!.filter(control => control.operation === 'cancel'
-    && (control.body as Row).state === 'pending').map(control => String(control.run_id)));
+  const stepsByTurn = new Map<string, Row[]>();
+  for (const step of steps) { const group = stepsByTurn.get(String(step.turn_id)) ?? []; group.push(step); stepsByTurn.set(String(step.turn_id), group); }
+  const callsByStep = new Map<string, Row[]>();
+  for (const call of toolCalls) { const group = callsByStep.get(String(call.step_id)) ?? []; group.push(call); callsByStep.set(String(call.step_id), group); }
+  const cancelTurns = new Set(records.get('agent_controls')!.filter(control => ['cancel-turn', 'cancel-call'].includes(String(control.operation))
+    && (control.body as Row).state === 'pending').map(control => String(control.turn_id)));
   const unresolved: AgentRuntimeBoundaryUnresolved[] = [];
-  for (const run of runs) {
-    const operations = stepsByRun.get(String(run.run_id)) ?? [], logicalWaits = waitsByRun.get(String(run.run_id)) ?? [];
-    // Acknowledged asynchronous work and a cancelled continuation have not proved physical settlement.
-    const unknown = cancellationRuns.has(String(run.run_id))
-      || operations.some(step => ['dispatching', 'waiting', 'unknown'].includes(String(step.state)) || step.continuation_open === true)
-      || logicalWaits.some(wait => wait.continuation_operation_id != null && ['pending', 'cancelled'].includes(String(wait.state)));
-    if (['completed', 'failed', 'stopped'].includes(String(run.state)) && !unknown) continue;
-    const input = inputs.get(String(run.input_id));
-    if (!input) throw new StorageError('corrupt');
-    unresolved.push({ requestId: String(run.request_id), inputDigest: String(input.input_digest), executionRef: String(run.run_id),
-      sessionId: String(run.session_id), location: 'agent-runtime', state: String(run.state),
-      statusKnowledge: unknown ? 'unknown' : 'confirmed', stopRequested: run.stop_requested === true,
-      disposition: run.stop_requested ? 'stop-pending' : unknown ? 'unknown' : run.state === 'received' ? 'accepted-not-started'
-        : run.state === 'running' && !logicalWaits.some(wait => wait.state === 'pending') ? 'running' : 'paused' });
+  for (const turn of turns) {
+    const turnSteps = stepsByTurn.get(String(turn.turn_id)) ?? [];
+    const unknown = cancelTurns.has(String(turn.turn_id))
+      || turnSteps.some(step => ['generating', 'executing'].includes(String(step.state))
+        || (callsByStep.get(String(step.step_id)) ?? []).some(call => call.state === 'started' || (call.state === 'closed' && (call.result as Row)?.kind === 'outcome_unknown')));
+    if (['completed', 'failed', 'stopped', 'interrupted'].includes(String(turn.state)) && !unknown) continue;
+    const triggerInput = [...inputs.values()].find(input => input.turn_id === turn.turn_id);
+    const inputDigest = triggerInput ? String(triggerInput.input_digest) : canonicalDigest({ turnId: turn.turn_id });
+    unresolved.push({ requestId: String(turn.request_id), inputDigest, executionRef: String(turn.turn_id),
+      sessionId: String(turn.session_id), location: 'agent-runtime', state: String(turn.state),
+      statusKnowledge: unknown ? 'unknown' : 'confirmed', stopRequested: turn.state === 'stopped',
+      disposition: turn.state === 'stopped' ? 'stop-pending' : unknown ? 'unknown' : turn.state === 'active' ? 'running' : 'paused' });
   }
   unresolved.sort((a, b) => a.executionRef.localeCompare(b.executionRef));
-  return { kind: agentRuntimeMaintenanceKind, unresolved, settled: runs.length - unresolved.length,
+  return { kind: agentRuntimeMaintenanceKind, unresolved, settled: turns.length - unresolved.length,
     retained: { resources: resources.size, checkpoints: steps.length }, blocking: [],
     evidence: { formatVersion: 2, owner: storage.owner, tables: inventory, sources, inputReceipts,
       resources: [...resources.values()].sort((a, b) => a.resourceId.localeCompare(b.resourceId)),
       pending: { inputs: records.get('agent_inputs')!.filter(input => input.state === 'pending').length,
-        waits: waits.filter(wait => wait.state === 'pending').length, operations: steps.filter(step => step.state !== 'completed').length,
-        continuations: steps.filter(step => step.continuation_open === true).length } } };
+        waits: questions.filter(question => question.state === 'pending').length,
+        operations: steps.filter(step => step.state !== 'completed').length, continuations: 0 } } };
 }
 
 export async function collectAgentRuntimeReceiverBoundary(storage: OwnedStorage): Promise<AgentRuntimeBoundary> {
   const boundary = await collectAgentRuntimeBoundary(storage);
-  const unresolved = boundary.unresolved.filter(run => run.statusKnowledge === 'unknown' || run.stopRequested);
+  const unresolved = boundary.unresolved.filter(turn => turn.statusKnowledge === 'unknown' || turn.stopRequested);
   return { ...boundary, kind: agentRuntimeReceiverMaintenanceKind, unresolved,
     evidence: { ...boundary.evidence, dormantRuns: boundary.unresolved.length - unresolved.length } };
 }
@@ -116,7 +109,6 @@ export async function validateAgentRuntimeBoundary(storage: OwnedStorage, materi
   const value = material as Record<string, unknown>;
   if (value.kind !== agentRuntimeMaintenanceKind || (value.evidence as { formatVersion?: unknown } | undefined)?.formatVersion !== 2)
     throw new StorageError('incompatible');
-  // Product recovery adds its own owner envelope and full application source closure outside these fields.
   const { kind, unresolved, settled, retained, blocking, evidence } = value;
   const parsed = boundarySchema.safeParse({ kind, unresolved, settled, retained, blocking, evidence });
   if (!parsed.success) throw new StorageError('corrupt');

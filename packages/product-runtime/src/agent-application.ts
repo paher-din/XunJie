@@ -2,9 +2,12 @@ import { join } from 'node:path';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { z } from 'zod';
 import { StorageError, type OwnedStorage, type StorageBinding } from '@xunjie/storage';
+import { operationId } from '@xunjie/storage/identity';
 import { createChunkChannel } from '@xunjie/storage/chunk-channel';
 import { agentSessionCallSchema, agentSessionsCapability, sameAgentSubject } from '@xunjie/contracts/agent-service';
+import { activitySchema } from '@xunjie/contracts/learning-data';
 import type { AgentSession } from '@xunjie/contracts/agent-sessions';
+import type { AgentRuntimeSession } from '@xunjie/contracts/agent-runtime';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import { agentDependenciesCapability } from '@xunjie/contracts/agent-dependencies';
 import { agentExecutionAssociationSchema } from '@xunjie/contracts/execution';
@@ -18,7 +21,7 @@ import type { InstalledConfiguration } from './runtime.js';
 import { createStorageRecoveryOwner } from './storage-recovery.js';
 import { createAgentConnection } from './agent-connections.js';
 import { createProductAgent } from './product-agent.js';
-import { readWorkspaceAgentWait } from './workspace-agent-waits.js';
+import type { WorkspaceTaskOwner, WorkspaceTaskRecord } from './workspace-agent-tasks.js';
 import { collectAgentRuntimeBoundary, collectAgentRuntimeReceiverBoundary } from '@xunjie/agent-runtime/maintenance';
 import { readJson } from './io.js';
 import type { CapabilityHandler } from './connections.js';
@@ -45,7 +48,7 @@ export function createStandaloneAgentApplication(options: {
   });
   // Admission belongs to one incoming call, never to a run or a background wake.
   const admissions = new AsyncLocalStorage<{ active: boolean; reusable: boolean; session?: AgentSession }>();
-  const canReuseAdmission = (operation: string) => ['initialize', 'assertDispatch', 'run', 'events', 'conversation', 'snapshot', 'request'].includes(operation);
+  const canReuseAdmission = (operation: string) => ['initialize', 'assertDispatch', 'turn', 'events', 'conversation', 'sessionSnapshot', 'request'].includes(operation);
   function admitted(identity: SpaceIdentity, sessionId?: string) {
     const scope = admissions.getStore(), session = scope?.session;
     return scope?.active && scope.reusable && session && sameAgentSubject(session.identity, identity)
@@ -64,22 +67,46 @@ export function createStandaloneAgentApplication(options: {
       return session ? structuredClone(session) : dependencies.sessions.read(identity, sessionId);
     },
   };
-  const agent = createProductAgent({ storage, directory, readOnly: true,
-    withAuthority: dependencies.withAuthority,
-    async authorize(identity) { if (!admitted(identity)) await dependencies.source.describe(identity); },
-    async modelsForSession(session) { return options.models ?? dependencies.forSession(session.identity, session.sessionId).models; },
-    async tools(session) { return dependencies.forSession(session.identity, session.sessionId).tools(); },
-    async workspace(session) {
-      if (!session.workspace) throw new StorageError('forbidden');
-      const ports = dependencies.forSession(session.identity, session.sessionId);
-      return { workspace: ports.workspace, learning: ports.learning, courses: ports.courses };
+  // The independent host owns no execution ledger. Task facts, terminal notifications and
+  // cancellation always go to the authenticated school owner through the same dependency channel.
+  const taskOwner: WorkspaceTaskOwner = {
+    async read(taskId, requester) {
+      if (!requester) return null;
+      return await dependencies.invoke({ version: 2, operation: 'tasks', identity: requester.identity,
+        sessionId: requester.sessionId, args: { method: 'read', taskId } }) as unknown as WorkspaceTaskRecord | null;
     },
-    waits: { async read(session, wait) {
-      const fixed = z.object({ activityId: z.uuid(), requestId: z.uuid(), association: agentExecutionAssociationSchema }).passthrough().parse(wait.presentation);
-      const directory = await dependencies.sessions.read(session.identity, session.sessionId);
-      if (fixed.activityId !== directory.workspace?.activityId) throw new StorageError('forbidden');
-      return readWorkspaceAgentWait(dependencies.forSession(session.identity, session.sessionId).learning.executions, session, wait);
-    } },
+    async listByOriginTurn(sessionId, turnId) {
+      const { rows: [row] } = await storage.read('SELECT body FROM agent_runtime_sessions WHERE session_id=$1', [sessionId]);
+      if (!row) return [];
+      const identity = (row.body as AgentRuntimeSession).identity;
+      return await dependencies.invoke({ version: 2, operation: 'tasks', identity, sessionId, args: { method: 'list', turnId } }) as unknown as WorkspaceTaskRecord[];
+    },
+    async cancel(taskId, requester) {
+      if (!requester) return;
+      const { rows: [row] } = await storage.read('SELECT body FROM agent_runtime_sessions WHERE session_id=$1', [requester.sessionId]);
+      if (!row) return;
+      await dependencies.invoke({ version: 2, operation: 'tasks', identity: (row.body as AgentRuntimeSession).identity,
+        sessionId: requester.sessionId, args: { method: 'cancel', taskId } });
+    },
+  };
+  const agent = createProductAgent({ storage, directory, readOnly: true, taskOwner, taskPollMs: 2_000,
+    models: options.models ?? ((identity, sessionId) => dependencies.forSession(identity, sessionId).models),
+    async authorize(identity) { if (!admitted(identity)) await dependencies.source.describe(identity); },
+    async scene(session) {
+      const ports = dependencies.forSession(session.identity, session.sessionId);
+      if (session.scenario === 'student-assistant') {
+        // The data owner supplies the Step's tool set; the kernel runs on the authenticated device host.
+        return { tools: input => ports.tools({ sessionId: input.sessionId, turnId: input.turnId, stepId: input.stepId,
+          toolCallId: operationId('agent-step-tools:' + input.stepId),
+          context: { system: '', facts: {}, sources: [] }, inputIds: [...input.inputIds], sessionState: input.sessionState }) };
+      }
+      if (!session.workspace) throw new StorageError('forbidden');
+      const activity = activitySchema.parse(await ports.workspace());
+      return { workspace: { workspace: async () => ports.workspace(), learning: ports.learning, courses: ports.courses },
+        tools: input => ports.tools({ sessionId: input.sessionId, turnId: input.turnId, stepId: input.stepId,
+          toolCallId: operationId('agent-step-tools:' + input.stepId),
+          context: { system: '', facts: { workspace: JSON.parse(JSON.stringify(activity)) }, sources: [] }, inputIds: [...input.inputIds], sessionState: input.sessionState }) };
+    },
   });
   const service = createAgentSessionService(agent.local, { audience: 'service',
     async authorize(identity, sessionId, operation) {
@@ -87,11 +114,9 @@ export function createStandaloneAgentApplication(options: {
       if (scope) scope.reusable = canReuseAdmission(operation);
       await authorizeSession(identity, sessionId);
     },
-    // The common authorize above admits these service-only operations. The local
-    // backend still checks the fixed directory owner and original core permit.
+    async authorizeService(identity, sessionId) { await authorizeSession(identity, sessionId); },
+    // The common authorize above admits initialization; the backend still checks the fixed scope.
     async authorizeInitialize() {},
-    async authorizeResolveWait() {},
-    async authorizeDispatchPermit() {},
   });
   const authorizeSource: CapabilityHandler = async (_value, source) => {
     if (!source.assertAuthorized || !z.uuid().safeParse(source.sourceInstallationId).success) throw new StorageError('forbidden');
@@ -113,14 +138,14 @@ export function createStandaloneAgentApplication(options: {
   const chunks = createChunkChannel(storage);
   const chunked = chunks.wrap(async value => {
     try {
-      if ((value as { version?: unknown })?.version !== 2) throw new StorageError('incompatible');
+      if ((value as { version?: unknown })?.version !== 3) throw new StorageError('incompatible');
       return await service(value);
     } catch (error) { return { error: error instanceof StorageError ? error.code : 'invalid' }; }
   }, { readOnly: isAgentSessionRead,
     successor: async (from, to) => !!from.sourceInstallationId && !!to.sourceInstallationId
       && isRecoverySuccessor(root, { ...from, sourceInstallationId: from.sourceInstallationId }, to.sourceInstallationId),
     async authorize(value, source) {
-      if ((value as { version?: unknown })?.version !== 2) throw new StorageError('incompatible');
+      if ((value as { version?: unknown })?.version !== 3) throw new StorageError('incompatible');
       const call = agentSessionCallSchema.safeParse(value);
       if (!call.success) throw new StorageError('invalid');
       await authorizeSource(value, source);

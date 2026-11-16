@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { spaceIdentitySchema, learningTargetSchema } from './spaces.js';
 import { learningPageSchema, learningSearchSchema, learningReadSchema, learningReferenceSchema, learningProvenanceSchema } from './student-learning.js';
 import { activitySchema, workFileSchema } from './learning-data.js';
-import { agentDispatchPermitSchema, agentWaitSchema } from './agent-runtime.js';
+import { agentDispatchPermitSchema, agentToolResultSchema, agentExecutionModeSchema } from './agent-runtime.js';
 import { modelToolSchema, modelToolIntentSchema, modelToolResultSchema } from './model-connections.js';
 import { pdfReadingSchema, pdfSearchResultSchema } from './pdf-materials.js';
 import { personalMaterialReadResultSchema, personalMaterialVersionContentSchema, materialSearchResultSchema,
@@ -11,9 +11,9 @@ import { scopedPersonalMaterialSchema, scopedPersonalMaterialVersionContentSchem
 import { scopedPdfDocumentSchema, scopedPdfReadingSchema, scopedPdfSearchResultSchema, scopedPdfReferenceSourceSchema, PDF_LIMITS } from './pdf-materials.js';
 import { materialScopeSchema } from './session-materials.js';
 import { teachingArtifactSchema, teachingArtifactRevisionSchema, teachingArtifactReceiptSchema } from './teaching-artifacts.js';
-import { executionQuerySchema, executionArtifactSchema, executionControlReceiptSchema, agentBrowserCommandSchema } from './execution.js';
+import { executionQuerySchema, executionArtifactSchema, executionControlReceiptSchema, agentBrowserCommandSchema, executionStateSchema } from './execution.js';
 import { agentSessionSchema, createAgentSessionSchema, updateAgentSessionSchema, markAgentSessionReadySchema } from './agent-sessions.js';
-import { sameAgentSubject, agentSnapshotSchema } from './agent-service.js';
+import { sameAgentSubject } from './agent-service.js';
 import { executionRecordEventSchema, executionRecordPageSchema, executionRecordSchema } from './execution-records.js';
 
 export const agentDependenciesCapability = 'agent.dependencies.v2' as const;
@@ -65,21 +65,36 @@ export const agentDependencyMaterialSelectionSchema = z.object({
 }).strict();
 export const agentDependencyMaterialMethodSchema = z.enum(Object.keys(agentDependencyMaterialResultSchemas) as [keyof typeof agentDependencyMaterialResultSchemas, ...(keyof typeof agentDependencyMaterialResultSchemas)[]]);
 const facts = z.record(z.string(), json);
-export const agentDependencyToolContextSchema = z.object({ snapshot: agentSnapshotSchema,
-  context: z.object({ system: z.string(), facts, sources: z.array(facts) }).strict(), basisStepId: z.uuid().nullable(), inputIds: z.array(z.uuid()) }).strict();
-export const agentDependencyToolOfferSchema = z.object({ definition: modelToolSchema, effect: z.enum(['read', 'write', 'execute', 'ask']), scope: facts }).strict();
-export const agentDependencyPreparedToolSchema = z.object({ commandId: z.uuid(), name: z.string(),
-  effect: agentDependencyToolOfferSchema.shape.effect, input: facts }).strict();
-export const agentDependencyToolOutcomeSchema = z.object({ state: z.enum(['completed', 'accepted', 'failed', 'unknown', 'not-dispatched']),
-  feedback: modelToolResultSchema.omit({ callId: true }), result: facts,
-  nextCommand: agentDependencyPreparedToolSchema.optional(),
-  continuation: z.boolean().optional(),
-  wait: z.object({ kind: z.string(), presentation: facts, deadline: z.string().nullable(), interruptible: z.boolean().optional() }).strict().optional() }).strict()
-  .refine(value => !value.nextCommand || value.state === 'unknown' && !value.wait && !value.continuation,
-    'A continuation command is an unfinished tool call without a separate wait');
+/** A task fact the owner can authorize and read; no arbitrary text or target identity is trusted. */
+export const agentTaskRecordSchema = z.object({
+  taskId: z.string().min(1).max(200), toolCallId: z.uuid().optional(), activityId: z.uuid(), identity: spaceIdentitySchema,
+  sessionId: z.uuid(), originTurnId: z.uuid(), state: executionStateSchema,
+  statusKnowledge: z.enum(['confirmed', 'unknown']), confirmedSeq: z.number().int().nonnegative(),
+  name: z.string().max(500), summary: z.string().max(2000), resultRef: z.string().max(1000).nullable(),
+}).strict();
+export const agentTaskMethodSchema = z.discriminatedUnion('method', [
+  z.object({ method: z.literal('read'), taskId: z.string().min(1).max(200) }).strict(),
+  z.object({ method: z.literal('list'), turnId: z.uuid() }).strict(),
+  z.object({ method: z.literal('cancel'), taskId: z.string().min(1).max(200) }).strict(),
+]);
+export const agentDependencyToolContextSchema = z.object({
+  sessionId: z.uuid(), turnId: z.uuid(), stepId: z.uuid(), toolCallId: z.uuid(),
+  deadline: z.iso.datetime().optional(), segmentId: z.uuid().optional(),
+  originInputId: z.uuid().nullable().optional(), visibleAnswerInputIds: z.array(z.uuid()).optional(),
+  context: z.object({ system: z.string(), facts, sources: z.array(facts) }).strict(), inputIds: z.array(z.uuid()),
+  /** The verified kernel session snapshot: workspace actions/answers this Step actually saw. */
+  sessionState: facts.optional() }).strict();
+export const agentDependencyToolOfferSchema = z.object({ definition: modelToolSchema, supportsBackground: z.boolean(),
+  timeoutPolicy: z.enum(['call', 'business']).optional(), scope: facts }).strict();
+const toolEffectReference = z.object({ taskId: z.string().min(1).max(200).optional(), requestRef: z.string().min(1).max(300).optional() }).strict();
+const toolControlArgs = z.object({ turnId: z.uuid(), stepId: z.uuid(), toolCallId: z.uuid(),
+  action: z.enum(['read', 'cancel']), deadline: z.iso.datetime().optional() }).strict();
+export const agentDependencyToolCallSchema = z.object({ toolCallId: z.uuid(), nativeCallId: z.string().min(1).max(200),
+  callIndex: z.number().int().nonnegative(), name: z.string().min(1).max(200), input: facts, executionMode: agentExecutionModeSchema }).strict();
+export const agentDependencyToolOutcomeSchema = agentToolResultSchema;
 const moduleDescriptor = z.object({ id: z.string().min(1).max(200), version: z.number().int().positive() }).strict();
 const moduleArgs = z.object({ module: moduleDescriptor, context: agentDependencyToolContextSchema }).strict();
-const commandArgs = moduleArgs.extend({ command: agentDependencyPreparedToolSchema });
+const callArgs = moduleArgs.extend({ call: agentDependencyToolCallSchema });
 export const agentWorkspaceDataMethodSchema = z.enum(['open', 'works.content', 'works.inspectVersion', 'drafts.verifyReferences',
   'pdf.read', 'pdf.reading', 'pdf.find', 'materials.original', 'materials.readRange',
   'artifacts.list', 'artifacts.read', 'artifacts.revision', 'artifacts.receipt', 'artifacts.publish',
@@ -110,20 +125,18 @@ export const agentDependencyCallSchema = z.discriminatedUnion('operation', [
   session.extend({ operation: z.literal('model'), args: z.object({ method: agentDependencyModelMethodSchema, args: z.array(json).max(4) }).strict() }),
   session.extend({ operation: z.literal('materials.read'), args: z.object({ method: agentDependencyMaterialMethodSchema,
     scope: materialScopeSchema, args: z.array(json).max(3) }).strict() }),
-  session.extend({ operation: z.literal('tools.describe'), args: empty }),
+  session.extend({ operation: z.literal('tools.describe'), args: z.object({ context: agentDependencyToolContextSchema }).strict() }),
   session.extend({ operation: z.literal('tools.list'), args: moduleArgs }),
-  session.extend({ operation: z.literal('tools.prepare'), args: moduleArgs.extend({ offer: agentDependencyToolOfferSchema,
-    intent: modelToolIntentSchema, commandId: z.uuid() }) }),
-  session.extend({ operation: z.literal('tools.dispatch'), args: commandArgs }),
-  session.extend({ operation: z.literal('tools.reconcile'), args: commandArgs }),
-  session.extend({ operation: z.literal('tools.stop'), args: commandArgs }),
-  session.extend({ operation: z.literal('tools.validateResponse'), args: moduleArgs.extend({ wait: agentWaitSchema, answer: facts }) }),
+  session.extend({ operation: z.literal('tools.execute'), args: callArgs }),
+  session.extend({ operation: z.literal('tools.control'), args: toolControlArgs }),
+  session.extend({ operation: z.literal('tools.validateAnswer'), args: moduleArgs.extend({ presentation: facts, answer: facts }) }),
   session.extend({ operation: z.literal('sessions.create'), args: createAgentSessionSchema }),
   session.extend({ operation: z.literal('sessions.read'), args: empty }),
   base.extend({ operation: z.literal('sessions.list'), args: empty }),
   session.extend({ operation: z.literal('sessions.update'), args: updateAgentSessionSchema }),
   session.extend({ operation: z.literal('sessions.markReady'), args: markAgentSessionReadySchema }),
   session.extend({ operation: z.literal('authorize'), args: empty }),
+  session.extend({ operation: z.literal('tasks'), args: agentTaskMethodSchema }),
   session.extend({ operation: z.literal('workspace.activity'), args: empty }),
   session.extend({ operation: z.literal('workspace.data'), args: z.object({ method: agentWorkspaceDataMethodSchema, args: z.array(json).max(8) }).strict() }),
   session.extend({ operation: z.literal('workspace.course'), args: z.object({ method: agentWorkspaceCourseMethodSchema, args: z.array(json).max(4) }).strict() }),
@@ -133,9 +146,8 @@ export const agentDependencyCallSchema = z.discriminatedUnion('operation', [
     context.addIssue({ code: 'custom', path: ['args', 'sessionId'], message: 'Directory operation must retain its session identity.' });
   if ('permit' in call && call.permit && call.permit.sessionId !== call.sessionId)
     context.addIssue({ code: 'custom', path: ['permit', 'sessionId'], message: 'Permit belongs to another session.' });
-  if ('context' in call.args && (call.args.context.snapshot.session.sessionId !== (call as { sessionId: string }).sessionId
-    || !sameAgentSubject(call.args.context.snapshot.session.identity, call.identity)))
-    context.addIssue({ code: 'custom', path: ['args', 'context'], message: 'Tool context must retain the session and identity.' });
+  if ('context' in call.args && call.args.context.sessionId !== (call as { sessionId: string }).sessionId)
+    context.addIssue({ code: 'custom', path: ['args', 'context'], message: 'Tool context must retain the session identity.' });
 });
 export type AgentDependencyCall = z.infer<typeof agentDependencyCallSchema>;
 export const agentDependencyResultSchemas = {
@@ -144,11 +156,11 @@ export const agentDependencyResultSchemas = {
   'source.read': json,
   'sessions.create': agentSessionSchema, 'sessions.read': agentSessionSchema, 'sessions.list': z.array(agentSessionSchema),
   'sessions.update': agentSessionSchema, 'sessions.markReady': agentSessionSchema,
-  authorize: z.object({ authorized: z.literal(true) }).strict(), 'workspace.activity': activitySchema,
+  authorize: z.object({ authorized: z.literal(true) }).strict(), tasks: json, 'workspace.activity': activitySchema,
   'workspace.data': json, 'workspace.course': json, model: json, 'materials.read': json,
   'tools.describe': moduleDescriptor.array(), 'tools.list': agentDependencyToolOfferSchema.array(),
-  'tools.prepare': agentDependencyPreparedToolSchema, 'tools.dispatch': agentDependencyToolOutcomeSchema,
-  'tools.reconcile': agentDependencyToolOutcomeSchema.nullable(), 'tools.stop': agentDependencyToolOutcomeSchema.nullable(), 'tools.validateResponse': z.null(),
+  'tools.execute': agentDependencyToolOutcomeSchema, 'tools.validateAnswer': z.null(),
+  'tools.control': z.object({ found: z.boolean(), cancelled: z.boolean(), reference: toolEffectReference }).strict(),
 };
 export type AgentDependencyResults = { [K in keyof typeof agentDependencyResultSchemas]: z.infer<(typeof agentDependencyResultSchemas)[K]> };
 export function parseAgentDependencyResult<C extends AgentDependencyCall>(call: C, value: unknown): AgentDependencyResults[C['operation']] {
@@ -156,6 +168,11 @@ export function parseAgentDependencyResult<C extends AgentDependencyCall>(call: 
   if (call.operation === 'source.describe' && !sameAgentSubject(agentSourceDescriptionSchema.parse(result).identity, call.identity))
     throw new Error('Source identity changed.');
   if (call.operation === 'workspace.data') agentDependencyDataResultSchemas[call.args.method].parse(result);
+  if (call.operation === 'tasks') {
+    if (call.args.method === 'read') agentTaskRecordSchema.nullable().parse(result);
+    else if (call.args.method === 'list') agentTaskRecordSchema.array().parse(result);
+    else z.null().parse(result);
+  }
   if (call.operation === 'source.read') agentSourceReadResultSchemas[call.args.method].parse(result);
   if (call.operation === 'materials.read') agentDependencyMaterialResultSchemas[call.args.method].parse(result);
   if (call.operation.startsWith('sessions.')) {
@@ -167,17 +184,19 @@ export function parseAgentDependencyResult<C extends AgentDependencyCall>(call: 
   return result as AgentDependencyResults[C['operation']];
 }
 export function isAgentDependencyRead(call: AgentDependencyCall): boolean {
+  if (call.operation === 'tools.control') return call.args.action === 'read';
   if (call.operation === 'materials.read') return !['pdf.read', 'pdf.find'].includes(call.args.method);
-  if (call.operation.startsWith('tools.')) return ['tools.describe', 'tools.list', 'tools.prepare', 'tools.validateResponse'].includes(call.operation);
+  if (call.operation.startsWith('tools.')) return ['tools.describe', 'tools.list', 'tools.validateAnswer'].includes(call.operation);
   if (call.operation === 'model') return ['selection.read', 'selection.snapshot', 'selection.resolve', 'selection.pinned',
     'segments.read', 'checks.read', 'checks.requestPayload', 'checks.progress', 'checks.summary', 'images.read'].includes(call.args.method);
   if (call.operation === 'workspace.data') return !['pdf.read', 'pdf.find', 'artifacts.publish', 'executions.agent.dispatch', 'executions.agent.control', 'executions.agent.cleanup'].includes(call.args.method);
   if (call.operation === 'workspace.course') return true;
+  if (call.operation === 'tasks') return call.args.method !== 'cancel';
   return ['source.describe', 'source.read', 'query.list', 'query.search', 'query.read', 'materials.read', 'sessions.read', 'sessions.list', 'authorize', 'workspace.activity'].includes(call.operation);
 }
 export function requiresAgentDependencyDispatch(call: AgentDependencyCall): boolean {
   if (call.operation === 'materials.read') return ['pdf.read', 'pdf.find'].includes(call.args.method);
-  if (call.operation === 'tools.dispatch') return true;
-  if (call.operation === 'model') return !isAgentDependencyRead(call) && call.args.method !== 'checks.cancel';
+  if (call.operation === 'tools.execute') return true;
+  if (call.operation === 'model') return ['checks.receive', 'checks.dispatch'].includes(call.args.method);
   return call.operation === 'workspace.data' && ['pdf.read', 'pdf.find', 'artifacts.publish', 'executions.agent.dispatch', 'executions.agent.control'].includes(call.args.method);
 }

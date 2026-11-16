@@ -10,8 +10,8 @@ import { resolveCredential } from './postgres.js';
 import type { InstalledConfiguration } from './runtime.js';
 import { createChunkClient } from '@xunjie/storage/chunk-channel';
 import { withAgentTransfer } from './agent-transfer-journal.js';
-import { agentSessionCallSchema } from '@xunjie/contracts/agent-service';
-import { agentDependencyCallSchema, isAgentDependencyRead } from '@xunjie/contracts/agent-dependencies';
+import { agentSessionCallSchema, agentSessionsCapability } from '@xunjie/contracts/agent-service';
+import { agentDependenciesCapability, agentDependencyCallSchema, isAgentDependencyRead } from '@xunjie/contracts/agent-dependencies';
 
 /** A connection id denotes one owner. Looking up current configuration cannot change it. */
 export function createAgentConnection(root: string, connectionId: string, capability: string,
@@ -39,18 +39,18 @@ export function createAgentConnection(root: string, connectionId: string, capabi
   const chunked = createChunkClient(send);
   const retryQuery = Symbol('retry-query');
   const invoke = async (payload: unknown, recoverQuery = true): Promise<unknown> => {
-    if (!['agent.sessions.v2', 'agent.dependencies.v2'].includes(capability)
-      || (payload as { version?: unknown })?.version !== 2) throw new StorageError('incompatible');
-    const session = capability === 'agent.sessions.v2' ? agentSessionCallSchema.safeParse(payload) : undefined;
-    const dependency = capability === 'agent.dependencies.v2' ? agentDependencyCallSchema.safeParse(payload) : undefined;
+    const version = capability === agentSessionsCapability ? 3 : capability === agentDependenciesCapability ? 2 : undefined;
+    if (version === undefined || (payload as { version?: unknown })?.version !== version) throw new StorageError('incompatible');
+    const session = capability === agentSessionsCapability ? agentSessionCallSchema.safeParse(payload) : undefined;
+    const dependency = capability === agentDependenciesCapability ? agentDependencyCallSchema.safeParse(payload) : undefined;
     const parsed = session ?? dependency!;
     if (!parsed.success) throw new StorageError('invalid');
     const call = parsed.data;
     payload = call;
     const readOnlyQuery = dependency?.success ? isAgentDependencyRead(dependency.data)
-      : ['run', 'events', 'snapshot', 'request', 'conversation'].includes(call.operation);
+      : ['turn', 'events', 'conversation', 'sessionSnapshot', 'request', 'assertDispatch'].includes(call.operation);
     // Bounded authority checks always consult the original owner and never a saved receipt.
-    if (call.operation === 'assertDispatch' || call.operation === 'authorize') return send(payload);
+    if (call.operation === 'authorize') return send(payload);
     // A pure owner query has no effect to recover. Small replies use one fresh call;
     // large replies still use bounded chunks and release their temporary bytes after decoding.
     if (readOnlyQuery) return chunked(payload, { inline: true, acknowledge: true });

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,9 +10,9 @@ import { openProductRuntime, resolveCredential } from '@xunjie/product-runtime';
 export const resources = { nodePath: process.execPath, nodeVersion: '24.21.0', postgresBin: process.env.XUNJIE_PRODUCT_POSTGRES_BIN,
   postgresVersion: '18.6', webRoot: fileURLToPath(new URL('../../../../apps/web/dist-runtime', import.meta.url)),
   windowsPrerequisitePath: fileURLToPath(new URL('../../../../scripts/windows-prereq-prepare.ps1', import.meta.url)) };
-export const versionHeaders = route => /^agent-(sessions|sources)(\/|$|\?)/.test(route) ? { 'x-xj-agent-contract': '2' } : {};
+export const versionHeaders = route => /^agent-(sessions|sources)(\/|$|\?)/.test(route) ? { 'x-xj-agent-contract': '3' } : {};
 export function question(activity, session, text, requestId = randomUUID(), extra = {}) {
-  return { requestId, sessionId: session.sessionId, text, mode: 'steering', context: { action: {
+  return { requestId, sessionId: session.sessionId, text, context: { action: {
     requestId, receiver: { receiverId: 'agent-session:' + session.sessionId, kind: 'question', location: 'remote' },
     scope: { environmentId: activity.identity.environmentId, spaceId: activity.identity.spaceId,
       principalId: activity.identity.principalId, activityId: activity.activityId },
@@ -24,23 +24,23 @@ export async function until(check, description, timeoutMs = 60000) {
   while (Date.now() < deadline) { const result = await check(); if (result) return result; await new Promise(resolve => setTimeout(resolve, 50)); }
   assert.fail(description);
 }
-export async function completed(api, sessionId, runId) {
+export async function completed(api, sessionId, turnId) {
   return until(async () => {
     const conversation = await api(`agent-sessions/${sessionId}/conversation`);
-    const run = conversation.runs.find(item => item.runId === runId);
-    if (!run || !['completed', 'failed', 'paused', 'stopped'].includes(run.state)) return null;
-    assert.equal(run.state, 'completed', JSON.stringify(conversation)); return conversation;
-  }, 'The original v2 Run did not finish.');
+    const turn = conversation.turns.find(item => item.turnId === turnId);
+    if (!turn || !['completed', 'failed', 'interrupted', 'stopped'].includes(turn.state)) return null;
+    assert.equal(turn.state, 'completed', JSON.stringify(conversation)); return conversation;
+  }, 'The original Turn did not finish.');
 }
 export async function bindIndependent({ school, agent, schoolState, agentState, dependencyConnectionId, agentConnectionId, identity, api, admin }) {
   const data = schoolState.environment.services.find(item => item.unit === 'learning-data');
   const service = agentState.environment.services.find(item => item.unit === 'teaching-agent');
-  assert.ok(service.capabilities.includes('agent.sessions.v2'));
+  assert.ok(service.capabilities.includes('agent.sessions.v3'));
   assert.ok(data.capabilities.includes('agent.dependencies.v2'));
   const sessionGrant = await agent.authorize({ sourceEnvironmentId: data.environmentId, sourceServiceId: data.serviceId,
-    sourceInstallationId: schoolState.environment.installationId, capabilities: ['agent.sessions.v2'] }, service.serviceId);
+    sourceInstallationId: schoolState.environment.installationId, capabilities: ['agent.sessions.v3'] }, service.serviceId);
   await school.connect({ connectionId: agentConnectionId, sourceEnvironmentId: data.environmentId, sourceServiceId: data.serviceId,
-    target: service, requiredCapabilities: ['agent.sessions.v2'], optionalCapabilities: [], credentialRef: 'remote-agent-v2' }, sessionGrant.token);
+    target: service, requiredCapabilities: ['agent.sessions.v3'], optionalCapabilities: [], credentialRef: 'remote-agent-v2' }, sessionGrant.token);
   await api('manage/agent-binding', { requestId: randomUUID(), identity, connectionId: agentConnectionId,
     target: service, installationId: agentState.environment.installationId }, admin);
   const dependencyGrant = await school.authorize({ sourceEnvironmentId: service.environmentId, sourceServiceId: service.serviceId,
@@ -84,7 +84,6 @@ export async function installedIndependent(t, reply, beforeStop = async () => {}
   }
   return { root, school, agent, api, bind, model, requests, requestTimes, admin,
     get schoolState() { return schoolState; }, get agentState() { return agentState; },
-    async restartAgent() { await agent.stop(); agentState = await agent.start(); },
     async restartSchool() { await school.stop(); schoolState = await school.start(); },
     async recoverAgent() { agentState = await agent.start(); },
   };

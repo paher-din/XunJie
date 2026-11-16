@@ -31,7 +31,6 @@ export function createAgentSessionHandler(options: SessionHandlerOptions): Capab
     const service = createAgentSessionService(options.agent, { audience: 'service',
       authorize: () => authorize(call, source),
       authorizeInitialize: () => authorize(call, source),
-      authorizeDispatchPermit: () => authorize(call, source),
       ...(options.externalResults ? { authorizeResolveWait: () => authorize(call, source) } : {}),
     });
     return service(call);

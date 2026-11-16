@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { z } from 'zod'
+import { agentToolResultSchema } from '@xunjie/contracts/agent-runtime'
 import { acceptsState, componentStateName, componentStateSchema } from '@xunjie/contracts/components'
 import type { LearningActivity, WorkFile } from '@xunjie/contracts/learning-data'
 import { teachingArtifactSchema, teachingArtifactRevisionSchema, teachingArtifactCandidateSchema, teachingArtifactReceiptSchema,
@@ -90,20 +91,16 @@ export function useTeachingArtifacts(activity: LearningActivity, spaceKey: strin
           if (proposed.origin && !pending) {
             if (!agent?.sessionId) throw new Error('工作区对话尚未准备好。')
             const conversation = await agent.client.conversation(agent.sessionId)
-            const run = conversation.runs.find(run => run.runId === proposed.origin!.runId)
-            let after = 0, published = false
-            while (after < conversation.lastSeq) {
-              const events = await agent.client.events(agent.sessionId, after)
-              if (!events.length) break
-              for (const event of events) {
-                if (event.kind !== 'tool-result' || event.body.commandId !== proposed.origin!.commandId || event.body.runId !== proposed.origin!.runId) continue
-                const outcome = z.object({ state: z.string(), result: z.object({ artifact: teachingArtifactReceiptSchema }).passthrough() }).passthrough().safeParse(event.body.outcome)
-                published = outcome.success && outcome.data.state === 'completed' && outcome.data.result.artifact.candidateId === candidateId
-              }
-              after = events.at(-1)!.seq
-            }
-            if (!run || run.stopRequested || !['running', 'waiting', 'completed'].includes(run.state) || !published) {
-              if (run?.stopRequested || run?.state === 'stopped') issues.current.set(artifact.artifactId, '生成已停止；原页面和输入仍保留。')
+            const turn = conversation.turns.find(turn => turn.turnId === proposed.origin!.runId)
+            const call = conversation.tools.find(call => call.toolCallId === proposed.origin!.commandId)
+            const result = agentToolResultSchema.safeParse(call?.result)
+            const publishedArtifact = result.success && result.data.kind === 'completed' && result.data.outcome === 'success'
+              && result.data.data && typeof result.data.data === 'object' && !Array.isArray(result.data.data)
+              ? (result.data.data as { artifact?: unknown }).artifact : undefined
+            const receipt = teachingArtifactReceiptSchema.safeParse(publishedArtifact)
+            const published = receipt.success && receipt.data.candidateId === candidateId
+            if (!turn || !['active', 'completed'].includes(turn.state) || !published) {
+              if (turn?.state === 'stopped' || turn?.state === 'interrupted' || turn?.state === 'failed') issues.current.set(artifact.artifactId, '生成已停止；原页面和输入仍保留。')
               shown.push({ artifact, revision, issue: issues.current.get(artifact.artifactId) ?? '' })
               continue
             }

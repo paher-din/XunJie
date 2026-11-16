@@ -57,7 +57,7 @@ for (const dataAtDevice of [false, true]) test(`device Agent uses ${dataAtDevice
       'a remote data owner does not cause a replacement local learning-data owner');
     assert.ok(deviceState.environment.services.find(item => item.unit === 'tool-execution'));
     assert.ok(deviceState.environment.services.find(item => item.unit === 'model-connection'));
-    assert.ok(deviceState.environment.services.find(item => item.unit === 'teaching-agent')?.capabilities.includes('agent.sessions.v2'),
+    assert.ok(deviceState.environment.services.find(item => item.unit === 'teaching-agent')?.capabilities.includes('agent.sessions.v3'),
       'a device Agent is available alongside the model and execution owners even when learning data lives at school');
     const admin = { authorization: 'Bearer '+await resolveCredential(schoolRoot, 'control') };
     const deviceAdmin = { authorization: 'Bearer '+await resolveCredential(deviceRoot, 'control') };
@@ -123,7 +123,7 @@ for (const dataAtDevice of [false, true]) test(`device Agent uses ${dataAtDevice
       'the school learning-data owner retains the authoritative directory row');
     const input = question(activity, agentSession, '请简短解释本机路径');
     const receipt = (await deviceApi(`agent-sessions/${agentSession.sessionId}/inputs`, input, connected)).value;
-    const conversation = await completed(async (route, body) => (await deviceApi(route, body, connected)).value, agentSession.sessionId, receipt.runId);
+    const conversation = await completed(async (route, body) => (await deviceApi(route, body, connected)).value, agentSession.sessionId, receipt.turnId);
     assert.equal(conversation.messages.filter(item => item.role === 'assistant').at(-1).text, '本机直接生成的回答');
     assert.equal(generations, 1);
     await device.stop(); await device.start();

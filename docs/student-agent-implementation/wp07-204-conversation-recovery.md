@@ -1,6 +1,6 @@
 # #204 学习对话的备份、还原与接管
 
-本文保留旧版本的验收历史；旧 Agent 探针已退休，文中脚本名仅标识原证据来源。当前 session v2 工程入口为 [recovery-agent-sessions.runtime.test.mjs](../../packages/product-runtime/test/recovery-agent-sessions.runtime.test.mjs)、[teaching-agent.independent-recovery.runtime.test.mjs](../../apps/server/tests/teaching-agent.independent-recovery.runtime.test.mjs)、[teaching-agent.recovery.runtime.test.mjs](../../apps/server/tests/teaching-agent.recovery.runtime.test.mjs)。这些测试不继承本页的历史通过结论，真实供应商、桌面与跨机结果须另行验收。
+本文保留旧版本的验收历史；旧 Agent 探针已退休，文中脚本名仅标识原证据来源。当前 session v2 工程入口为 [recovery-agent-sessions.runtime.test.mjs](../../packages/product-runtime/test/recovery-agent-sessions.runtime.test.mjs)、teaching-agent.independent-recovery.runtime.test.mjs、teaching-agent.recovery.runtime.test.mjs。这些测试不继承本页的历史通过结论，真实供应商、桌面与跨机结果须另行验收。
 
 本次在同一 `wp07` 实施，不创建 PR。来源为 [#204](https://github.com/paher-din/XunJie/issues/204)，方案见[实施选择](specs/wp07-conversation-recovery.md)。Mac 与真实跨机验收由使用已有环境的执行者在新票 [#212](https://github.com/paher-din/XunJie/issues/212) 接手；本机多安装不计为跨机。
 

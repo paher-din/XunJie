@@ -18,18 +18,18 @@ async function fixture(t, capability) {
 }
 const identity = { environmentId: randomUUID(), spaceId: randomUUID(), principalId: randomUUID(), kind: 'personal', name: 'Student' };
 
-test('connection rejects mixed capabilities and malformed v2 calls before configuration or network access', async () => {
+test('connection rejects mixed capabilities and malformed versioned calls before configuration or network access', async () => {
   await assert.rejects(async () => createAgentConnection('/absent', randomUUID(), 'teaching.agent')({ version: 1 }), { code: 'incompatible' });
-  const client = createAgentConnection('/absent', randomUUID(), 'agent.sessions.v2');
-  await assert.rejects(client({ version: 1, operation: 'accept', args: [] }), { code: 'incompatible' });
-  await assert.rejects(client({ version: 2, operation: 'accept', args: [] }), { code: 'invalid' });
+  const client = createAgentConnection('/absent', randomUUID(), 'agent.sessions.v3');
+  await assert.rejects(client({ version: 2, operation: 'submit', args: [] }), { code: 'incompatible' });
+  await assert.rejects(client({ version: 3, operation: 'accept', args: [] }), { code: 'invalid' });
 });
 
-test('v2 object args retain one request journal and reject edits under the original request', async t => {
-  const options = await fixture(t, 'agent.sessions.v2');
+test('v3 session args retain one request journal and reject edits under the original request', async t => {
+  const options = await fixture(t, 'agent.sessions.v3');
   const sessionId = randomUUID(), requestId = randomUUID();
-  const payload = { version: 2, operation: 'accept', identity, sessionId,
-    args: { input: { sessionId, requestId, text: 'fixed', mode: 'steering', context: {} } } };
+  const payload = { version: 3, operation: 'submit', identity, sessionId,
+    args: { input: { sessionId, requestId, text: 'fixed', context: {} } } };
   let effects = 0;
   const work = async (entry, receive) => {
     if (entry.state !== 'pending') return entry.result;

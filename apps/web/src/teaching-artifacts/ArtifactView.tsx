@@ -3,7 +3,7 @@ import { useToastFeedback } from '@xunjie/ui/feedback'
 import { z } from 'zod'
 import { componentChangeSchema, componentStateName, componentReply, matchesComponentState } from '@xunjie/contracts/components'
 import { actionInputSchema } from '@xunjie/contracts/action-intents'
-import { agentWaitReceiptSchema } from '@xunjie/contracts/agent-service'
+import { agentQuestionReceiptSchema } from '@xunjie/contracts/agent-runtime'
 import { teachingArtifactReferenceCopy } from '@xunjie/contracts/teaching-artifacts-reference'
 import { questionWorkBasisSchema } from '@xunjie/contracts/question-drafts'
 import { personalMaterialVersionContentSchema } from '@xunjie/contracts/personal-materials'
@@ -120,12 +120,12 @@ export function ArtifactView({ revision, controller }: { revision: TeachingArtif
                 const agent = sessionLatest.current.agent
                 if (!agent?.sessionId) throw new Error('capability-unavailable')
                 const conversation = await agent.client.conversation(agent.sessionId); assert()
-                const question = input.questionId ? conversation.waits.find(wait => wait.waitId === input.questionId || wait.presentation.questionId === input.questionId) : undefined
+                const question = input.questionId ? conversation.questions.find(item => item.questionId === input.questionId) : undefined
                 if (question) {
-                  if (question.kind !== 'user' || question.state !== 'pending') throw new Error('conflict')
-                  const fixed = { requestId: input.requestId, expectedVersion: question.version,
+                  if (question.state !== 'pending') throw new Error('conflict')
+                  const fixed = { requestId: input.requestId, questionId: question.questionId, expectedVersion: question.version,
                     answer: input.optionId ? { kind: 'choice', optionId: input.optionId } : { kind: 'text', text: input.text } }
-                  pending = { requestId: input.requestId, route: `${agent.sessionId}/waits/${question.waitId}/responses`, queryRoute: '', input: fixed }
+                  pending = { requestId: input.requestId, route: `${agent.sessionId}/waits/${question.questionId}/responses`, queryRoute: '', input: fixed }
                   await protectAgentOperation(key, workspace.key, pending)
                 } else {
                   if (input.questionId) throw new Error('resource-unavailable')
@@ -141,8 +141,8 @@ export function ArtifactView({ revision, controller }: { revision: TeachingArtif
               if (pending) {
                 const agent = sessionLatest.current.agent
                 if (!agent?.sessionId || !pending.route.startsWith(agent.sessionId + '/waits/')) throw new Error('conflict')
-                const confirmed = agentWaitReceiptSchema.parse(await agent.client.request(pending.route, pending.input))
-                if (confirmed.waitId !== pending.route.split('/')[2]) throw new Error('conflict')
+                const confirmed = agentQuestionReceiptSchema.parse(await agent.client.request(pending.route, pending.input))
+                if (confirmed.questionId !== pending.route.split('/')[2]) throw new Error('conflict')
                 payload = confirmed
                 await agent.refresh()
                 await confirmAgentOperation(key, pending, payload)

@@ -133,7 +133,7 @@ test('school record authority keeps the original executor and requires proved in
   await f.spaces.approveConnection(login.token, connectionId); await f.spaces.exchangeConnection(connectionId, verifier);
   const bindings = createMemberAgentBindings(f.space, f.spaces.authorize);
   const module = (unit, serviceId) => ({ environmentId: f.device.environmentId, serviceId, unit,
-    endpoint: 'http://127.0.0.1:1', protocolVersion: 1, capabilities: unit === 'teaching-agent' ? ['agent.sessions.v2'] : [] });
+    endpoint: 'http://127.0.0.1:1', protocolVersion: 1, capabilities: unit === 'teaching-agent' ? ['agent.sessions.v3'] : [] });
   const binding = { requestId: randomUUID(), identity: f.identity, connectionId,
     target: module('teaching-agent', randomUUID()), installationId: f.installationId, delivery: 'client',
     executionGrantId: f.source.grantId, deviceModules: [module('tool-execution', f.device.serviceId)] };
@@ -224,8 +224,8 @@ test('remote home query reads original records and owner conversation facts with
   const agentStorage = await f.open('conversation-agent', agentRuntimeMigrations);
   const runtime = createAgentRuntime(agentStorage, { authorize: f.spaces.authorize }); f.beforeClose(() => runtime.close());
   const sessionId = randomUUID();
-  await runtime.initialize({ sessionId, identity: f.identity, scenario: 'student-assistant', restartPolicy: 'explicit', createdAt: new Date().toISOString() });
-  await runtime.accept(f.identity, { sessionId, requestId: randomUUID(), text: '原会话中的实验记录说明', mode: 'steering', context: {} });
+  await runtime.initialize({ sessionId, identity: f.identity, scenario: 'student-assistant', createdAt: new Date().toISOString() });
+  await runtime.submit(f.identity, { sessionId, requestId: randomUUID(), text: '原会话中的实验记录说明', context: {} });
   const conversationOwner = { ...agentStorage.owner, version: 1 };
   async function conversation(who, id) {
     const snapshot = await runtime.sessionSnapshot(who, id);
@@ -242,7 +242,7 @@ test('remote home query reads original records and owner conversation facts with
     const json = value => { response.writeHead(200, { 'content-type': 'application/json' }); response.end(JSON.stringify(value)); };
     if (request.url === '/api/learning/access') return json({ identity: { ...f.identity, name: '当前名字', ...(revoked ? { principalId: randomUUID() } : {}) }, target: { ...f.data.owner, version: 1 } });
     if (request.url === '/api/learning/agent-sources') {
-      assert.equal(request.headers['x-xj-agent-contract'], '2');
+      assert.equal(request.headers['x-xj-agent-contract'], '3');
       return json({ identity: f.identity, learningTarget: { ...f.data.owner, version: 1 }, courseTarget: { ...f.space.owner, version: 1 } });
     }
     if (request.url === '/api/learning/activities') return json(await f.learning.list(f.identity));

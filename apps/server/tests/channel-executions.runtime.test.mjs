@@ -38,10 +38,10 @@ test('approved channel checkpoints survive a lost report and restore real state 
 test('an Agent uses the authenticated native channel for real continuous state and original stop', { timeout: 120000 },
   t => approvedLocalProcess(t, 'agent'));
 
-test('an Agent native outbox resumes the original submit and input after interruption before channel enqueue', { timeout: 120000 },
+test('an Agent explicitly retries the same native outbox after interruption without query-side dispatch', { timeout: 120000 },
   t => approvedLocalProcess(t, 'agent-recovery'));
 
-test('an Agent stop tool waits for its original native process to exit after the stop request is accepted', { timeout: 120000 },
+test('an Agent stop tool reports unknown until the original native exit report is acknowledged', { timeout: 120000 },
   t => approvedLocalProcess(t, 'agent-stop-tool'));
 
 test('stopping an Agent native outbox before channel enqueue records a durable cancellation without launching a process', { timeout: 120000 },
@@ -179,8 +179,9 @@ async function approvedLocalProcess(t, cleanupBoundary = 'revocation') {
       assert.equal((await reopened.read(identity, activityId, requestId)).state, 'queued');
       await worker.tick();
       assert.equal(children.length, 0, 'an ordinary query cannot dispatch an Agent pending command');
-      await assert.rejects(reopened.agent.read(identity, activityId, { ...contextFor(requestId),
-        assertDispatch: async () => { throw new StorageError('forbidden'); } }, requestId), { code: 'forbidden' });
+      assert.equal((await reopened.agent.read(identity, activityId, { ...contextFor(requestId),
+        assertDispatch: async () => { throw new StorageError('forbidden'); } }, requestId)).state, 'queued',
+      'reading an accepted command does not require a new dispatch permit');
       await worker.tick();
       assert.equal(children.length, 0, 'a reconstructed handler still needs the original current permit');
       if (cleanupBoundary.startsWith('agent-outbox-')) {
@@ -205,8 +206,8 @@ async function approvedLocalProcess(t, cleanupBoundary = 'revocation') {
         await reopened.agent.validate();
         return;
       }
-      accepted = await reopened.agent.read(identity, activityId, contextFor(requestId), requestId);
-      assert.equal(children.length, 0, 'reconciliation queues the original command; it does not execute on the school');
+      accepted = await reopened.agent.dispatch(identity, activityId, contextFor(requestId), action);
+      assert.equal(children.length, 0, 'an explicit retry queues the original command without executing on the school');
     } else accepted = await executionOwner.accept(identity, activityId, { action });
     assert.equal(accepted.state, 'queued');
     assert.equal(accepted.inputDigest, digest(action));
@@ -233,6 +234,8 @@ async function approvedLocalProcess(t, cleanupBoundary = 'revocation') {
         interruptEnqueue();
         await assert.rejects(executionOwner.control(identity, activityId, requestId, control), /before channel enqueue/);
         await originalOwner.agent.read(identity, activityId, contextFor(control.controlId), requestId);
+        assert.equal((await channel.query(identity, requestId)).state, 'reported');
+        await executionOwner.control(identity, activityId, requestId, control);
       } else await executionOwner.control(identity, activityId, requestId, control);
       await worker.tick();
       last = await executionOwner.read(identity, activityId, requestId);
@@ -332,30 +335,36 @@ async function approvedLocalProcess(t, cleanupBoundary = 'revocation') {
       const tools = createTeachingTools({ learning: () => ({ open: async (who, id) => {
         await authorize(who, id); return activity;
       }, executions: originalOwner }), courses: {} });
-      const command = await tools.prepare(scope, { callId: 'stop-original', name: 'execution_stop', arguments: { requestId } }, randomUUID());
-      const requested = await tools.dispatch(scope, command);
-      assert.equal(requested.state, 'unknown', 'the original node has not yet confirmed the stop effect');
-      assert.equal(requested.result.query.statusKnowledge, 'unknown');
-      assert.equal(requested.result.operationCompleted, false);
-      assert.equal(requested.result.query.stopRequested, true);
-      assert.equal(requested.result.query.state, 'running');
+      const toolCallId = randomUUID(), sessionId = randomUUID();
+      scope.sessionId = sessionId;
+      const call = { toolCallId, nativeCallId: 'stop-original', callIndex: 0, name: 'execution_stop',
+        input: { requestId }, executionMode: 'foreground' };
+      const context = { identity, sessionId, turnId: scope.runId, stepId: scope.stepId, toolCallId,
+        signal: new AbortController().signal, inputIds: [], ask: async () => { throw Error('unused'); } };
+      const executeStop = () => tools.execute(scope, call, context);
+      const requested = await executeStop();
+      assert.equal(requested.kind, 'outcome_unknown', 'queueing a stop is not a confirmed effect');
+      const requestedQuery = await originalOwner.read(identity, activityId, requestId);
+      assert.equal(requestedQuery.statusKnowledge, 'unknown');
+      assert.equal(requestedQuery.stopRequested, true);
+      assert.equal(requestedQuery.state, 'running');
       assert.equal(children[0].exitFact, null);
       for (let attempt = 0; attempt < 2; attempt++) {
-        const waiting = await tools.reconcile(scope, command);
-        assert.equal(waiting.state, 'unknown', 'old running observations cannot confirm an unclaimed stop');
-        assert.equal(waiting.result.query.statusKnowledge, 'unknown');
-        assert.equal(waiting.result.operationCompleted, false);
-        assert.equal(waiting.result.query.stopRequested, true);
-        assert.equal(waiting.result.query.state, 'running');
-        assert.deepEqual(fixed(waiting.result.query), fixed(accepted));
+        assert.equal((await executeStop()).kind, 'outcome_unknown');
+        const waiting = await originalOwner.read(identity, activityId, requestId);
+        assert.equal(waiting.statusKnowledge, 'unknown', 'old running observations cannot confirm an unclaimed stop');
+        assert.equal(waiting.stopRequested, true);
+        assert.equal(waiting.state, 'running');
+        assert.deepEqual(fixed(waiting), fixed(accepted));
         assert.equal(children[0].exitFact, null);
       }
-      const stopId = requested.result.stopId;
+      const { rows: [queuedStop] } = await data.read("SELECT command_id FROM native_channel_commands WHERE session_id=$1 AND operation='stop'", [accepted.executionRef]);
+      const stopId = queuedStop.command_id;
       const pendingStop = await channel.query(identity, stopId);
-      assert.equal(pendingStop.state, 'pending',
-        'owner cleanup must deliver the original stop to the live node, not only mark the school projection unknown');
-      assert.equal(pendingStop.statusKnowledge, 'unknown', 'queue receipt does not confirm the stop effect');
-      assert.deepEqual((await tools.dispatch(scope, command)).result.query, requested.result.query,
+      assert.equal(pendingStop.state, 'pending', 'the original stop must reach the live node');
+      assert.equal(pendingStop.statusKnowledge, 'unknown');
+      assert.equal((await executeStop()).kind, 'outcome_unknown');
+      assert.deepEqual(await originalOwner.read(identity, activityId, requestId), requestedQuery,
         'retrying the original stop before ACK must preserve its unknown execution');
       const stopCommand = { commandId: stopId, activityId, sessionId: accepted.executionRef, operation: 'stop',
         payload: { requestId, executionRef: accepted.executionRef, stop: { stopId, reason: '' } } };
@@ -366,12 +375,11 @@ async function approvedLocalProcess(t, cleanupBoundary = 'revocation') {
       assert.equal(children[0].exitFact.confirmed, true, 'the actual process exited before its stop report was delivered');
       assert.equal(stopAcknowledged, false);
       assert.equal((await channel.query(identity, stopId)).state, 'claimed');
-      const unacknowledged = await tools.reconcile(scope, command);
-      assert.equal(unacknowledged.state, 'unknown', 'an undelivered exit report is not an acknowledged stop');
-      assert.equal(unacknowledged.result.operationCompleted, false);
-      assert.equal(unacknowledged.result.query.statusKnowledge, 'unknown');
-      assert.equal(unacknowledged.result.query.stopRequested, true);
-      assert.deepEqual(fixed(unacknowledged.result.query), fixed(accepted));
+      assert.equal((await executeStop()).kind, 'outcome_unknown', 'an undelivered exit report is not an acknowledged stop');
+      const unacknowledged = await originalOwner.read(identity, activityId, requestId);
+      assert.equal(unacknowledged.statusKnowledge, 'unknown');
+      assert.equal(unacknowledged.stopRequested, true);
+      assert.deepEqual(fixed(unacknowledged), fixed(accepted));
       await worker.tick();
       assert.equal(stopAcknowledged, true);
       const stopFact = await channel.query(identity, stopId);
@@ -379,15 +387,16 @@ async function approvedLocalProcess(t, cleanupBoundary = 'revocation') {
       assert.equal(stopFact.result.statusKnowledge, 'confirmed');
       assert.equal(stopFact.result.state, 'cancelled');
       assert.deepEqual(fixed(stopFact.result), fixed(accepted));
-      const completed = await tools.reconcile(scope, command);
-      assert.equal(completed.state, 'completed');
-      assert.equal(completed.result.operationCompleted, true);
-      assert.equal(completed.result.query.state, 'cancelled');
-      assert.equal(completed.result.query.statusKnowledge, 'confirmed');
-      assert.equal(completed.result.query.executionRef, accepted.executionRef);
-      assert.equal(completed.result.sessionOngoing, false);
+      const completed = await executeStop();
+      assert.equal(completed.kind, 'completed');
+      assert.equal(completed.outcome, 'success');
+      assert.equal(completed.data.operationCompleted, true);
+      assert.equal(completed.data.query.state, 'cancelled');
+      assert.equal(completed.data.query.statusKnowledge, 'confirmed');
+      assert.equal(completed.data.query.executionRef, accepted.executionRef);
+      assert.equal(completed.data.sessionOngoing, false);
       assert.equal(children[0].exitFact.confirmed, true);
-      assert.deepEqual(await tools.reconcile(scope, command), completed);
+      assert.deepEqual(await executeStop(), completed);
       assert.equal(children.length, 1, 'reconciliation never creates another process');
       await validateChannelExecutions(data);
       return;

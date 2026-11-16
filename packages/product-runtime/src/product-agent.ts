@@ -1,105 +1,108 @@
 import type { OwnedStorage } from '@xunjie/storage';
-import { StorageError } from '@xunjie/storage';
+import type { AgentScenario, AgentTool, ModelGatewaySource, ScenarioInput } from '@xunjie/agent-runtime';
 import type { AgentSession } from '@xunjie/contracts/agent-sessions';
 import type { AgentSessionPort } from '@xunjie/contracts/agent-service';
-import type { LearningTarget, SpaceIdentity } from '@xunjie/contracts/spaces';
-import type { SessionMaterialPort } from '@xunjie/contracts/session-materials';
-import type { LearningModelPort } from '@xunjie/model-gateway/service';
+import type { SpaceIdentity } from '@xunjie/contracts/spaces';
+import type { PersonalProject } from '@xunjie/contracts/student-learning';
 import { createStudentAssistant } from '@xunjie/agents/student-assistant/index';
-import { createWorkspaceAssistant, createWorkspaceToolModule, type WorkspaceToolOptions } from '@xunjie/agents/workspace-assistant/index';
-import { createDocumentTools, type DocumentMaterialsPort } from '@xunjie/agents/capabilities/documents/index';
-import type { ConversationOptions } from '@xunjie/agents/conversation/index';
-import type { ConversationToolModule } from '@xunjie/agents/conversation/tools';
-import { createLearningTools, type LearningToolsHost } from '@xunjie/agents/student-assistant/tools/learning-tools';
-import { createUserQuestions } from '@xunjie/agents/capabilities/user-questions/index';
-import { createToolDiscovery } from '@xunjie/agents/capabilities/tool-discovery/index';
+import type { LearningToolsHost } from '@xunjie/agents/student-assistant/tools/learning-tools';
+import { createWorkspaceAssistant, type WorkspaceToolOptions } from '@xunjie/agents/workspace-assistant/index';
 import type { AgentSessionApplicationHost, AgentSessionDirectory } from './agent-sessions.js';
 import { createSessionRuntimeHost } from './session-runtime.js';
-import { operationId, canonicalDigest } from '@xunjie/storage/identity';
-import { createWorkspaceAgentWaits, type WorkspaceAgentWaitOptions, type ObservedAgentWaits } from './workspace-agent-waits.js';
+import { createWorkspaceAgentTasks, type WorkspaceTaskOwner } from './workspace-agent-tasks.js';
 
+/** Concrete scene ports per session: the product host builds real owner tools, not the kernel. */
+export interface ProductAgentScene {
+  student?: LearningToolsHost;
+  workspace?: WorkspaceToolOptions;
+  /** A dependency host supplies the Step's tool set from the data owner. */
+  tools?(input: ScenarioInput): Promise<readonly AgentTool[]>;
+  documents?: readonly AgentTool[];
+  skills?: readonly AgentTool[];
+  project?(identity: SpaceIdentity, activityId: string): Promise<PersonalProject | null>;
+}
 export interface ProductAgentOptions {
   storage: OwnedStorage;
   directory: AgentSessionDirectory;
-  models?: LearningModelPort;
-  modelsForSession?(session: AgentSession): Promise<LearningModelPort>;
+  models: ModelGatewaySource;
   authorize(identity: SpaceIdentity): Promise<void>;
-  student?(session: AgentSession): Promise<LearningToolsHost>;
-  workspace(session: AgentSession): Promise<WorkspaceToolOptions>;
-  materials?(session: AgentSession): Promise<DocumentMaterialsPort>;
-  materialSource?(session: AgentSession): Promise<{ sourceId: string; owner: LearningTarget }>;
-  skills?(session: AgentSession, companions: readonly ConversationToolModule[]): Promise<ConversationToolModule>;
-  tools?(session: AgentSession): Promise<readonly ConversationToolModule[] | undefined>;
+  scene(session: AgentSession): Promise<ProductAgentScene>;
+  taskOwner?: WorkspaceTaskOwner;
+  /** The host's own observation cadence for terminal task facts; foreground only uses observe. */
+  taskPollMs?: number;
   remote?(session: AgentSession): Promise<AgentSessionPort>;
   deleted?(session: AgentSession): Promise<void>;
-  withAuthority?: ConversationOptions['withAuthority'];
   readOnly?: boolean;
-  waits?: Omit<WorkspaceAgentWaitOptions, 'resolve'>;
   workspaceRequest?: AgentSessionApplicationHost['workspaceRequest'];
 }
 
-/** Both product and independent Agent hosts use these exact scene assemblies. */
+/** Both product hosts assemble scenes here and inject concrete tools into the shared kernel loop. */
 export function createProductAgent(options: ProductAgentOptions) {
-  let observer: ReturnType<typeof createWorkspaceAgentWaits> | undefined;
-  let waitsClosed = !!options.readOnly;
-  const waiting = new Map<string, ObservedAgentWaits>();
-  function observeWaits(value: ObservedAgentWaits) {
-    if (value.waits.some(wait => wait.kind === 'workspace-execution')) waiting.set(value.runId, value);
-    else waiting.delete(value.runId);
-    if (!options.waits || waitsClosed) return;
-    if (!observer && value.waits.some(wait => wait.kind === 'workspace-execution')) observer = createWorkspaceAgentWaits({ ...options.waits,
-      async resolve(session, wait, result) {
-        await host.runtime.resolveWait(session.identity, session.sessionId, { waitId: wait.waitId, expectedVersion: wait.version,
-          requestId: operationId(`workspace-wait-result:${wait.waitId}:${wait.version}:${canonicalDigest(result)}`), result });
-      } });
-    observer?.observe(value);
+  const scenes = new Map<string, Promise<AgentScenario>>();
+  function build(session: AgentSession): Promise<AgentScenario> {
+    let pending = scenes.get(session.sessionId);
+    if (!pending) {
+      pending = (async () => {
+        const parts = await options.scene(session);
+        if (session.scenario === 'student-assistant') {
+          if (!parts.student && !parts.tools) throw new Error('missing-student-scene');
+          return createStudentAssistant({ ...(parts.student ? { learning: parts.student } : {}),
+            ...(parts.tools ? { tools: parts.tools } : {}),
+            ...(parts.documents ? { documents: parts.documents } : {}), ...(parts.skills ? { skills: parts.skills } : {}) });
+        }
+        if (!parts.workspace) throw new Error('missing-workspace-scene');
+        return createWorkspaceAssistant({ ...parts.workspace, ...(parts.tools ? { tools: parts.tools } : {}),
+          ...(parts.documents ? { documents: parts.documents } : {}), ...(parts.skills ? { skills: parts.skills } : {}),
+          ...(parts.project ? { project: parts.project } : {}) });
+      })();
+      scenes.set(session.sessionId, pending);
+      void pending.catch(() => { if (scenes.get(session.sessionId) === pending) scenes.delete(session.sessionId); });
+    }
+    return pending;
   }
-  const host = createSessionRuntimeHost({ storage: options.storage, directory: options.directory,
-    authorize: options.authorize, readOnly: options.readOnly, remote: options.remote, deleted: options.deleted,
-    workspaceRequest: options.workspaceRequest,
-    observeWaits,
-    async pipeline(session) {
-      const models = await options.modelsForSession?.(session) ?? options.models;
-      if (!models) throw new StorageError('unavailable');
-      const provided = await options.tools?.(session);
-      const materials = provided ? undefined : await options.materials?.(session);
-      if (!provided && !materials) throw new StorageError('unavailable');
-      const source = materials ? await options.materialSource?.(session) : undefined;
-      const documents = materials ? createDocumentTools({ materials, models, ...(source ? { source } : {}) }) : undefined;
-      const learning = !provided && session.scenario === 'student-assistant' ? await options.student?.(session) : undefined;
-      const workspace = session.scenario === 'workspace-assistant' ? { ...await options.workspace(session), models } : undefined;
-      if (!provided && session.scenario === 'student-assistant' && !learning) throw new StorageError('unavailable');
-      const companions = provided ? [...provided] : [learning ? createLearningTools(learning) : createWorkspaceToolModule(workspace!), createUserQuestions(), documents!];
-      const skills = provided ? undefined : await options.skills?.(session, companions);
-      const tools = [createToolDiscovery({ modules: [...companions, ...(skills ? [skills] : [])],
-        // Keep the scene's working tools available; optional Skill content is discovered before use.
-        initiallyVisible: binding => !['skill_load', 'skill_read'].includes(binding.offer.definition.name) })];
-      const common = { models, ...(documents ? { documents } : {}), ...(skills ? { skills } : {}),
-        ...(options.withAuthority ? { withAuthority: options.withAuthority } : {}),
-        progress: async (_snapshot: Parameters<NonNullable<ConversationOptions['progress']>>[0],
-          _step: Parameters<NonNullable<ConversationOptions['progress']>>[1],
-          permit: Parameters<NonNullable<ConversationOptions['progress']>>[2],
-          value: Parameters<NonNullable<ConversationOptions['progress']>>[3]) => {
-          if (_step.operation.kind === 'model.call') await host.runtime.recordProgress(session.identity, permit, value);
-        } };
-      if (session.scenario === 'student-assistant') return createStudentAssistant({ ...common, tools });
-      return createWorkspaceAssistant({ ...common, ...workspace!, tools });
-    } });
-  function closeWaits() { waitsClosed = true; observer?.closeDispatch(); }
-  return { ...host,
-    async materials(identity: SpaceIdentity, sessionId: string) {
-      const session = await options.directory.read(identity, sessionId);
-      if (!options.materials) throw new StorageError('unavailable');
-      return options.materials(session);
+  async function sceneFor(identity: SpaceIdentity, sessionId: string) {
+    return build(await options.directory.read(identity, sessionId));
+  }
+  const dispatcher: AgentScenario = { id: 'product', version: 1,
+    async context(input) {
+      const scene = await sceneFor(input.identity, input.sessionId);
+      const prepared = await scene.context(input);
+      return { system: prepared.system, facts: scene.modelFacts ? scene.modelFacts(prepared.facts) : prepared.facts, sources: prepared.sources };
     },
-    closeWrites() { closeWaits(); host.closeWrites(); },
-    closeDispatch() { closeWaits(); host.closeDispatch(); },
-    async drain() { await Promise.all([host.drain(), observer?.drain()]); },
-    async resume() {
-      await observer?.drain(); observer = undefined; waitsClosed = false;
-      await host.resume();
-      for (const facts of waiting.values()) observeWaits(facts);
+    async tools(input) { return (await sceneFor(input.identity, input.sessionId)).tools(input); },
+    async authorizeHistory(input, history) {
+      const scene = await sceneFor(input.identity, input.sessionId);
+      if (!scene.authorizeHistory) return [...history];
+      return [...await scene.authorizeHistory(input, history)];
     },
-    async close() { closeWaits(); await observer?.drain(); waiting.clear(); await host.close(); },
+    async validateAnswer(presentation, answer) {
+      // Student and workspace scenes validate teaching answers identically; any built scene suffices.
+      for (const pending of scenes.values()) { const scene = await pending.catch(() => null); if (scene?.validateAnswer) return scene.validateAnswer(presentation, answer); }
+    },
+    async compactionFor(input) { return (await sceneFor(input.identity, input.sessionId)).compaction; },
   };
+  let tasks: ReturnType<typeof createWorkspaceAgentTasks> | undefined;
+  const host = createSessionRuntimeHost({ storage: options.storage, directory: options.directory,
+    authorize: options.authorize, scenario: dispatcher, gateway: options.models,
+    ...(options.readOnly ? { readOnly: options.readOnly } : {}),
+    ...(options.remote ? { remote: options.remote } : {}), ...(options.deleted ? { deleted: options.deleted } : {}),
+    ...(options.workspaceRequest ? { workspaceRequest: options.workspaceRequest } : {}),
+    ...(options.taskOwner ? {
+      taskFacts: { relevant: (input, consumed) => tasks!.taskFacts.relevant(input, consumed) },
+      taskCancellation: { listNonTerminal: (s, t) => tasks!.taskCancellation.listNonTerminal(s, t),
+        cancel: (s, t) => tasks!.taskCancellation.cancel(s, t),
+        cancelCall: (s, t, c, r) => tasks!.taskCancellation.cancelCall!(s, t, c, r) },
+    } : {}) });
+  if (options.taskOwner) tasks = createWorkspaceAgentTasks({ storage: options.storage, owner: options.taskOwner,
+    ...(options.taskPollMs ? { pollMs: options.taskPollMs } : {}),
+    registerNotification: (identity, sessionId, originTurnId, fact) =>
+      host.runtime.registerNotification(identity, sessionId, originTurnId, fact) });
+  return { ...host,
+    observe: () => tasks?.observe() ?? Promise.resolve(),
+    materials: async (identity: SpaceIdentity, sessionId: string) => {
+      const session = await options.directory.read(identity, sessionId);
+      const parts = await options.scene(session);
+      if (!parts.student) throw new Error('missing-student-scene');
+      return parts.student;
+    } };
 }

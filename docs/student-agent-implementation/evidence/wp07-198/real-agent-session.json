@@ -1,0 +1,37 @@
+{
+  "measuredAt": "2026-11-15T11:55:08.050Z",
+  "realProvider": "deepseek",
+  "model": "deepseek-chat",
+  "modelRequests": 3,
+  "limits": {
+    "maxOutputTokens": 512,
+    "timeoutMs": 120000
+  },
+  "results": [
+    {
+      "name": "plain-question-answer",
+      "answerLength": 40,
+      "answer": "递归的基本思想：把大问题拆成同类的更小问题，直到小到能直接求解，再逐层返回结果。",
+      "usage": {
+        "state": "final",
+        "inputTokens": 8102,
+        "outputTokens": 28,
+        "totalTokens": 8130,
+        "cachedTokens": 0
+      }
+    },
+    {
+      "name": "segment-continuation",
+      "answerLength": 34,
+      "answer": "日常例子：问“排我前面有几人”，他再问前一位，逐个问到队首再加回来。",
+      "usage": {
+        "state": "final",
+        "inputTokens": 8143,
+        "outputTokens": 24,
+        "totalTokens": 8167,
+        "cachedTokens": 7936
+      }
+    }
+  ],
+  "passed": true
+}

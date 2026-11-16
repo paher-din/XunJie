@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AgentEmptyState, ChatComposerDock, PromptInput, type PromptAttachment, Markdown } from '@xunjie/ui/chat'
-import { Button, SelectField } from '@xunjie/ui/foundation'
+import { Button } from '@xunjie/ui/foundation'
 import type { AgentSession } from '@xunjie/contracts/agent-sessions'
 import type { SpaceIdentity } from '@xunjie/contracts/spaces'
 import type { ModelSelectionController } from './ModelSelection'
@@ -31,7 +31,7 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
   const draftKey = 'xj.agent-draft.' + scope + '.' + (sessionId ?? 'new')
   const composer = useSessionDraft(client.scope, sessionId, 'composer', { text: '', editing: true, expectedVersion: 1 }, draftKey)
   const text = composer.value.text
-  const [mode, setMode] = useState<'steering' | 'queue'>('steering'), [busy, setBusy] = useState(false), [error, setError] = useState('')
+  const [busy, setBusy] = useState(false), [error, setError] = useState('')
   const [excluded, setExcluded] = useState<string[]>([]), [reading, setReading] = useState<{ name: string; text: string; images: string[]; record: SessionMaterialUpload; page: number; pageCount: number } | null>(null)
   const [pending, setPending] = useState(() => outbox.start())
   const viewKey = scope + ':' + sessionId
@@ -107,7 +107,7 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
         scope: { kind: 'session', sessionId }, objectId: item.input.documentId ?? item.input.materialId, requestId: item.input.requestId })) }
       if (!sessionId) { const value = outbox.begin(text); setPending(value); await completeStart() }
       else {
-        await controller.send(text, mode, JSON.parse(JSON.stringify(context)))
+        await controller.send(text, JSON.parse(JSON.stringify(context)))
         await composer.clearIfMatches(text)
       }
     } catch (cause) { if (alive.current && route.current === viewKey) setError(sessionError(cause)) }
@@ -145,14 +145,12 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
         <button type="button" disabled={busy} onClick={() => void openMaterial(item)}>{item.input.name}</button>
         {!item.confirmed && <button type="button" disabled={busy} onClick={() => { setBusy(true); void deliverSessionUpload(client, sessionId, item).then(() => sessionUploads(client, sessionId)).then(setUploads).catch(cause => setError(sessionError(cause))).finally(() => setBusy(false)) }}>继续上传</button>}
       </div>)}</details>}
-      <SelectField label="发送方式" value={mode} disabled={!writable || busy} onChange={value => setMode(value as 'steering' | 'queue')}
-        options={[{ value: 'steering', label: '引导当前回答' }, { value: 'queue', label: '排队处理' }]} />
     </div>
     <ChatComposerDock anchorRef={anchor} atBottom suggestions={{ items: [], show: false, onPick: () => {} }} followUps={{ items: [], show: false, onPick: () => {}, label: '' }}
       onBackToBottom={() => { following.current = true; scroll.current?.scrollTo?.({ top: scroll.current.scrollHeight }) }}
       input={<PromptInput value={text} onChange={value => { void composer.change({ ...composer.value, text: value }).catch(() => {}) }} autoFocus
         onSend={send} canSend={composer.ready && !!text.trim() && !busy && !pending && writable && !picker.blocked && !uploads.some(item => !item.confirmed)}
-        submitting={busy || !writable} busy={controller.active} onStop={() => { const run = controller.conversation?.runs.find(run => !run.stopRequested && ['received', 'running', 'waiting'].includes(run.state)); if (run) void controller.control(run.runId, 'stop').catch(() => {}) }}
+        submitting={busy || !writable} busy={controller.active} onStop={() => { const turn = controller.conversation?.turns.find(turn => turn.state === 'active'); if (turn) void controller.control(turn.turnId, 'stop').catch(() => {}) }}
         attachments={attachments} onAddFiles={addFiles} onRemoveAttachment={id => setExcluded(items => [...items, id])} attachmentTitle="添加会话资料" accept=".pdf,.txt,.md,.markdown"
         model={picker.model} models={picker.models} modelDisabled={busy || !writable || picker.busy || picker.stale || !picker.models.length} onModelChange={picker.change}
         effort="" efforts={[]} onEffortChange={() => {}} showEffort={false} contextIndicator={<AgentModelFeedback controller={picker} />} />}

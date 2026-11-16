@@ -25,10 +25,10 @@ test('the product HTTP boundary rejects old Agent contracts and authenticates a 
     return { sessions: { async list() { return []; } } };
   } });
   const wrong = await fetch(endpoint + '/api/learning/agent-sessions', { headers: { ...headers,
-    'x-xj-agent-contract': '2', 'x-xj-expected-subject': randomUUID() } });
+    'x-xj-agent-contract': '3', 'x-xj-expected-subject': randomUUID() } });
   assert.equal(wrong.status, 403);
   assert.equal(selected, 0);
-  const current = await fetch(endpoint + '/api/learning/agent-sessions', { headers: { ...headers, 'x-xj-agent-contract': '2' } });
+  const current = await fetch(endpoint + '/api/learning/agent-sessions', { headers: { ...headers, 'x-xj-agent-contract': '3' } });
   assert.equal(current.status, 200);
   assert.deepEqual(await current.json(), { items: [] });
   assert.equal(selected, 1);

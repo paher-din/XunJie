@@ -13,4 +13,4 @@ export { StorageError } from './errors.js';
 export { supportedPostgresVersions, isSupportedPostgresVersion } from './postgres-policy.js';
 export { createFileBackend, createS3Backend, BlobError } from './blobs.js';
 export type { BlobBackend } from './blobs.js';
-export type { DatabaseConnection, StorageBinding, Migration, OwnedTransaction, QueryResult, StorageParticipant, OwnedStorage } from './types.js';
+export type { DatabaseConnection, StorageBinding, Migration, OwnedTransaction, QueryResult, StorageParticipant, OwnedStorage, HostLock } from './types.js';

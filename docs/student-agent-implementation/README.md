@@ -99,7 +99,7 @@
 | 固定版本 SDK 如何保留原生续接数据 | [SDK 源码调查](references/2026-10-22-model-protocol-sdk-research.md) |
 | Agent 如何阅读 PDF，以及循阶的按页读取路线 | [PDF 能力调查](references/2026-10-22-agent-pdf-capabilities-research.md) |
 | 项目领域术语 | [CONTEXT.md](../../CONTEXT.md) |
-| 最早的产品愿景 | [最初 idea](<../基于个性化学生画像的引导式项目制教学测验 Agent 系统.md>) |
+| 最早的产品愿景 | 最初 idea |
 | 原聊天中每条用户消息 | [用户原话](references/2026-10-18-user-discussion.md) |
 | 原聊天交付的架构附件 | [2026-10-18 架构底稿](references/XunJie_Student_Agent_Architecture_2026-10-18.md) |
 | 当前实现差距与关键技术前提 | [架构事实核对](references/2026-10-18-architecture-checks.md) |

@@ -4,17 +4,18 @@ import { activitySchema, type LearningActivity } from '@xunjie/contracts/learnin
 import { learningTargetSchema, spaceIdentitySchema, type SpaceIdentity, type LearningTarget } from '@xunjie/contracts/spaces';
 import { agentSessionSchema, type AgentSession } from '@xunjie/contracts/agent-sessions';
 import { agentEventSchema, type AgentEvent } from '@xunjie/contracts/agent-runtime';
-import { agentSessionSnapshotSchema, agentSnapshotSchema, agentConversationSchema, sameAgentSubject, type AgentSessionSnapshot, type AgentSessionPort } from '@xunjie/contracts/agent-service';
+import { agentSessionSnapshotSchema, sameAgentSubject, type AgentSessionSnapshot } from '@xunjie/contracts/agent-service';
 import { studentFactSchema, studentFactsReadInputSchema, studentFactsReadResultSchema,
   type StudentFact, type StudentFactsPort, type StudentFactsReadResult } from '@xunjie/contracts/student-facts';
-import { extractStudentFacts, scopeOf, topicSimilarity, CONTINUATION_TEXT } from './extraction.ts';
-export { extractStudentFacts } from './extraction.ts';
+import { extractStudentFacts, scopeOf, topicSimilarity, CONTINUATION_TEXT } from './extraction.js';
+export { extractStudentFacts } from './extraction.js';
 export type { StudentFactsPort } from '@xunjie/contracts/student-facts';
 
-/** Generic core read ports. Neither a database nor a legacy teaching service is accepted. */
+/** Generic kernel read ports: the new Turn/Step snapshot plus the event log. */
 export type StudentFactsCorePort = {
   events(identity: SpaceIdentity, sessionId: string, after?: number): Promise<AgentEvent[]>;
-} & ({ sessionSnapshot(identity: SpaceIdentity, sessionId: string): Promise<AgentSessionSnapshot> } | Pick<AgentSessionPort, 'snapshot' | 'conversation'>);
+  sessionSnapshot(identity: SpaceIdentity, sessionId: string): Promise<AgentSessionSnapshot>;
+};
 export interface StudentFactsSource {
   sourceId: string;
   identity: SpaceIdentity;
@@ -25,7 +26,6 @@ export interface StudentFactsSource {
   core(session: AgentSession): Promise<StudentFactsCorePort>;
 }
 export interface StudentFactsOptions {
-  /** The calling workspace's real source owner, never an activity chosen by tool arguments. */
   activity(identity: SpaceIdentity, activityId: string): Promise<LearningActivity>;
   sources(identity: SpaceIdentity): Promise<readonly StudentFactsSource[]>;
 }
@@ -57,31 +57,11 @@ async function readEvents(core: StudentFactsCorePort, identity: SpaceIdentity, s
   }
 }
 async function inputView(core: StudentFactsCorePort, identity: SpaceIdentity, sessionId: string) {
-  const check = (session: AgentSessionSnapshot['session']) => {
-    if (session.sessionId !== sessionId || session.scenario !== 'workspace-assistant' || !sameAgentSubject(session.identity, identity))
-      throw new StorageError('forbidden');
-  };
-  if ('sessionSnapshot' in core) {
-    const snapshot = agentSessionSnapshotSchema.parse(await core.sessionSnapshot(identity, sessionId)); check(snapshot.session);
-    return { session: snapshot.session, inputs: snapshot.inputs.filter(input => input.state !== 'removed')
-      .map(({ inputId, runId, version, input }) => ({ inputId, runId, version, input })) };
-  }
-  let session: AgentSessionSnapshot['session'] | undefined;
-  const inputs: Pick<AgentSessionSnapshot['inputs'][number], 'inputId' | 'runId' | 'version' | 'input'>[] = [];
-  const conversation = agentConversationSchema.parse(await core.conversation(identity, sessionId));
-  if (conversation.sessionId !== sessionId) throw new StorageError('forbidden');
-  for (const { runId } of conversation.runs) {
-    const snapshot = agentSnapshotSchema.parse(await core.snapshot(identity, sessionId, runId)); check(snapshot.session);
-    if (snapshot.run.runId !== runId || session && !equal(snapshot.session, session)) throw new StorageError('corrupt');
-    session = snapshot.session;
-    inputs.push(...snapshot.inputs.map(({ inputId, version, input }) => ({ inputId, runId, version, input })));
-  }
-  const expected = conversation.inputs.filter(input => input.state !== 'removed');
-  if (expected.length !== inputs.length || inputs.some(input => !expected.some(current => current.inputId === input.inputId
-    && current.runId === input.runId && current.version === input.version && current.mode === input.input.mode && current.text === input.input.text)))
-    throw new StorageError('conflict');
-  inputs.sort((a, b) => a.inputId.localeCompare(b.inputId));
-  return { session: session ?? null, inputs };
+  const snapshot = agentSessionSnapshotSchema.parse(await core.sessionSnapshot(identity, sessionId));
+  if (snapshot.session.sessionId !== sessionId || snapshot.session.scenario !== 'workspace-assistant' || !sameAgentSubject(snapshot.session.identity, identity))
+    throw new StorageError('forbidden');
+  return { session: snapshot.session, inputs: snapshot.inputs.filter(input => input.state !== 'removed')
+    .map(({ inputId, turnId, version, input }) => ({ inputId, turnId, version, input })) };
 }
 async function sourceFacts(source: StudentFactsSource, identity: SpaceIdentity): Promise<SourcedFact[]> {
   const target = learningTargetSchema.parse(source.target);
@@ -97,19 +77,22 @@ async function sourceFacts(source: StudentFactsSource, identity: SpaceIdentity):
     const session = sessionOf(await source.sessions.read(identity, listed.sessionId), identity, activity);
     if (!equal(session, listed) || session.deleted || session.state !== 'ready') throw new StorageError('conflict');
     const core = await source.core(session);
-    const before = await inputView(core, identity, session.sessionId);
+    const view = await inputView(core, identity, session.sessionId);
     const events = await readEvents(core, identity, session.sessionId);
-    const after = await inputView(core, identity, session.sessionId);
-    if (!equal(before, after)) throw new StorageError('conflict');
     const owner = learningTargetSchema.parse({ version: 1,
       environmentId: session.owner.target.environmentId, serviceId: session.owner.target.serviceId });
-    for (const input of before.inputs) {
+    for (const input of view.inputs) {
       const original = events.find(event => event.kind === 'input-received' && event.body.inputId === input.inputId);
       if (!original || original.body.input === null || typeof original.body.input !== 'object'
         || Array.isArray(original.body.input) || original.body.input.requestId !== input.input.requestId) throw new StorageError('corrupt');
-      const event = input.version === 1 ? original : events.find(event => ['input-edited', 'input-moved'].includes(event.kind)
+      const event = input.version === 1 ? original : events.find(event => event.kind === 'input-edited'
         && event.body.inputId === input.inputId && event.body.version === input.version);
-      if (!event || event.body.runId !== input.runId || input.version === 1 && !equal(original.body.input, input.input)) throw new StorageError('corrupt');
+      // A deferred message legitimately moves into a later Turn; the owner records that move so the
+      // original creation/edit event keeps its origin while consumption stays attributable.
+      const adopted = events.find(candidate => candidate.kind === 'input-adopted'
+        && candidate.body.inputId === input.inputId && candidate.body.version === input.version
+        && candidate.body.turnId === input.turnId);
+      if (!event || event.body.turnId !== input.turnId && !adopted) throw new StorageError('corrupt');
       const topics = new Set<string>();
       for (const candidate of extractStudentFacts(input.input.text)) {
         if (topics.has(candidate.topic)) continue;
@@ -117,7 +100,7 @@ async function sourceFacts(source: StudentFactsSource, identity: SpaceIdentity):
         const fact = studentFactSchema.parse({ factId: operationId(`student-fact:${owner.environmentId}:${owner.serviceId}:${session.sessionId}:${event.eventId}:${candidate.topic}`),
           kind: 'preference', topic: candidate.topic, statement: candidate.statement,
           source: { activityId: activity.activityId, eventId: event.eventId, seq: event.seq, inputId: input.inputId, createdAt: event.createdAt,
-            sessionId: session.sessionId, runId: input.runId, owner, learningTarget: activity.target, inputDigest: canonicalDigest(input.input) },
+            sessionId: session.sessionId, runId: String(event.body.turnId), owner, learningTarget: activity.target, inputDigest: canonicalDigest(input.input) },
           contentVersion: input.version, scope: scopeOf(candidate.statement, activity), reviewStatus: 'unreviewed', supersedes: null, retractedBy: null });
         facts.push({ fact, activity, correction: candidate.correction });
       }

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { StorageError } from '@xunjie/storage';
-import { agentInputSchema, agentWaitResponseSchema } from '@xunjie/contracts/agent-runtime';
+import { agentInputSchema, agentQuestionResponseSchema } from '@xunjie/contracts/agent-runtime';
 import { agentSessionSchema, createAgentSessionSchema, updateAgentSessionSchema,
   type AgentSession, type CreateAgentSession, type UpdateAgentSession } from '@xunjie/contracts/agent-sessions';
 import { agentInputControlSchema, type AgentSessionPort, type BrowserAgentSessionCall } from '@xunjie/contracts/agent-service';
@@ -31,7 +31,7 @@ const record = z.record(z.string(), z.unknown());
 /** Authentication and deployment routing remain with the HTTP host. */
 export async function routeAgentSessions(host: SessionHttpPort, identity: SpaceIdentity, route: string,
   method: string, body?: unknown, search = '', contractVersion: unknown = undefined): Promise<unknown> {
-  if (contractVersion !== '2') throw new StorageError('incompatible');
+  if (contractVersion !== '3') throw new StorageError('incompatible');
   const parts = route.split('/');
   if (parts[0] !== 'agent-sessions') throw new StorageError('missing');
   if (parts.length === 1) {
@@ -72,21 +72,22 @@ export async function routeAgentSessions(host: SessionHttpPort, identity: SpaceI
     if (parts[2] === 'conversation') call = make(identity, sessionId, 'conversation', { after });
     else if (parts[2] === 'events') call = make(identity, sessionId, 'events', { after });
   } else if (parts.length === 3 && parts[2] === 'inputs' && method === 'POST') {
-    call = make(identity, sessionId, 'accept', { input: agentInputSchema.parse(body) });
+    call = make(identity, sessionId, 'submit', { input: agentInputSchema.parse(body) });
   } else if (parts.length === 4 && method === 'GET') {
     const id = z.uuid().parse(parts[3]);
-    if (parts[2] === 'runs') call = make(identity, sessionId, 'run', { runId: id });
-    else if (parts[2] === 'snapshots') call = make(identity, sessionId, 'snapshot', { runId: id });
+    if (parts[2] === 'runs') call = make(identity, sessionId, 'turn', { turnId: id });
+    else if (parts[2] === 'snapshots') call = make(identity, sessionId, 'sessionSnapshot', {});
     else if (parts[2] === 'requests') call = make(identity, sessionId, 'request', { requestId: id });
   } else if (parts.length === 5 && method === 'POST') {
     const id = z.uuid().parse(parts[3]);
     if (parts[2] === 'runs' && ['stop', 'continue'].includes(parts[4]!)) {
       const input = control.parse(body);
-      call = make(identity, sessionId, parts[4] === 'stop' ? 'stop' : 'continueRun', { runId: id, requestId: input.requestId });
+      call = parts[4] === 'stop' ? make(identity, sessionId, 'stop', { turnId: id, requestId: input.requestId })
+        : make(identity, sessionId, 'continueSession', { requestId: input.requestId });
     } else if (parts[2] === 'waits' && parts[4] === 'responses') {
       const input = record.parse(body);
-      if (input.waitId !== undefined && input.waitId !== id) throw new StorageError('forbidden');
-      call = make(identity, sessionId, 'respond', { response: agentWaitResponseSchema.parse({ ...input, waitId: id }) });
+      const questionId = z.uuid().parse(input.questionId ?? input.waitId ?? id);
+      call = make(identity, sessionId, 'answerQuestion', { response: agentQuestionResponseSchema.parse({ ...input, questionId }) });
     } else if (parts[2] === 'inputs' && parts[4] === 'control') {
       call = make(identity, sessionId, 'inputControl', { inputId: id, control: agentInputControlSchema.parse(body) });
     }
@@ -96,7 +97,7 @@ export async function routeAgentSessions(host: SessionHttpPort, identity: SpaceI
   const service = createAgentSessionService(agent, { audience: 'browser', async authorize(_identity, _sessionId, operation) {
     const current = await host.sessions.read(identity, sessionId);
     if (current.deleted) throw new StorageError('missing');
-    if (current.archived && ['accept', 'respond', 'continueRun', 'inputControl'].includes(operation)) throw new StorageError('conflict');
+    if (current.archived && ['submit', 'answerQuestion', 'continueSession', 'inputControl'].includes(operation)) throw new StorageError('conflict');
   } });
   return service(call);
 }

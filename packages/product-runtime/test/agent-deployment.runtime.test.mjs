@@ -25,33 +25,36 @@ test('independently installed v2 Agent preserves original sessions and operation
   assert.equal(session.owner.target.serviceId, binding.service.serviceId);
   const model = await f.model();
   const input = question(remoteActivity, session, '解释独立运行的 Agent');
-  const firstAcceptedAt = Date.now();
   const receipt = await f.api(`agent-sessions/${session.sessionId}/inputs`, input);
   assert.deepEqual(await f.api(`agent-sessions/${session.sessionId}/inputs`, input), receipt);
-  let conversation = await completed(f.api, session.sessionId, receipt.runId);
-  t.diagnostic(JSON.stringify({ firstDispatchMs: f.requestTimes[0] - firstAcceptedAt, firstRunMs: Date.now() - firstAcceptedAt }));
+  let conversation = await completed(f.api, session.sessionId, receipt.turnId);
   assert.equal(conversation.messages.filter(item => item.role === 'assistant').at(-1).text, '原活动的独立服务回答');
-  const first = await f.api(`agent-sessions/${session.sessionId}/snapshots/${receipt.runId}`);
-  const firstModel = first.steps.find(step => step.operation.kind === 'model.call');
-  assert.ok(firstModel); assert.equal(firstModel.result.value.attempt.connection.connectionId, model.connectionId);
-  await f.restartAgent();
+  const first = await f.api(`agent-sessions/${session.sessionId}/snapshots/${receipt.turnId}`);
+  assert.equal(first.attempts.filter(attempt => attempt.state === 'completed').length, 1);
+  assert.equal(f.requests.length, 1);
   assert.deepEqual(await f.api(`agent-sessions/${session.sessionId}/conversation`), conversation);
+  // The v3 contract does not restore a Turn in place; the SIGKILL below verifies
+  // successor recovery, and the runtime unit suite covers graceful shutdown.
   const initialCalls = f.requests.length;
   const started = new Promise(resolve => { held = resolve; });
   const nextInput = question(remoteActivity, session, '重启后查询同一个请求');
   const next = await f.api(`agent-sessions/${session.sessionId}/inputs`, nextInput);
   await started;
-  const before = await f.api(`agent-sessions/${session.sessionId}/snapshots/${next.runId}`);
-  const originalOperation = before.steps.find(step => step.operation.kind === 'model.call').operation.operationId;
+  const before = await f.api(`agent-sessions/${session.sessionId}/snapshots/${next.turnId}`);
+  const turnAttempts = snapshot => snapshot.attempts.filter(attempt => snapshot.steps.some(step => step.stepId === attempt.stepId && step.turnId === next.turnId));
+  const originalAttempt = turnAttempts(before)[0].attemptId;
   const owner = JSON.parse(await readFile(join(f.root, 'agent', 'instance.json'), 'utf8'));
   process.kill(owner.pid, 'SIGKILL'); release();
   await f.recoverAgent();
+  await new Promise(resolve => setTimeout(resolve, 2000));
   await until(async () => {
-    const value = await f.api(`agent-sessions/${session.sessionId}/runs/${next.runId}`);
-    return ['completed', 'paused', 'stopped', 'failed'].includes(value.state) ? value : null;
+    const value = await f.api(`agent-sessions/${session.sessionId}/runs/${next.turnId}`);
+    return ['completed', 'interrupted', 'stopped', 'failed'].includes(value.state) ? value : null;
   }, 'The successor did not reconcile the original operation.');
-  const after = await f.api(`agent-sessions/${session.sessionId}/snapshots/${next.runId}`);
-  assert.equal(after.steps.find(step => step.operation.kind === 'model.call').operation.operationId, originalOperation);
+  const after = await f.api(`agent-sessions/${session.sessionId}/snapshots/${next.turnId}`);
+  const afterAttempts = turnAttempts(after);
+  assert.equal(afterAttempts.length, 1, 'successor must not create a replacement attempt');
+  assert.equal(afterAttempts[0].attemptId, originalAttempt);
   assert.equal(f.requests.length, initialCalls + 1, 'restart must never send a replacement model request');
   assert.deepEqual(await f.api(`agent-sessions/${session.sessionId}/requests/${nextInput.requestId}`), { receipt: next, input: nextInput });
   conversation = await f.api(`agent-sessions/${session.sessionId}/conversation`);
@@ -82,8 +85,8 @@ test('revoking the original dependency grant aborts an independent Agent SDK req
   const base = `agent-sessions/${session.sessionId}`, input = question(activity, session, '保留这个原始请求');
   const receipt = await f.api(base + '/inputs', input);
   await until(() => f.requests.length === 1 && release, 'The original physical SDK request did not start.');
-  const original = await f.api(base + '/snapshots/' + receipt.runId);
-  const operation = original.steps.find(step => step.operation.kind === 'model.call').operation.operationId;
+  const original = await f.api(base + '/snapshots/' + receipt.turnId);
+  const attemptId = original.attempts[0].attemptId;
   assert.equal(await f.school.revoke(binding.dependencyGrant.grantId, binding.data.serviceId), true);
   await until(() => closed, 'The original model owner did not abort after the Agent dependency grant was revoked.', 20000);
   assert.deepEqual(await f.api(base + '/requests/' + input.requestId, undefined, {}, 403), { error: 'forbidden' });
@@ -93,8 +96,9 @@ test('revoking the original dependency grant aborts an independent Agent SDK req
   const retainedOwner = createAgentRuntime(storage, { readOnly: true, authorize: async who => { assert.deepEqual(who, activity.identity); } });
   try {
     assert.deepEqual(await retainedOwner.request(activity.identity, session.sessionId, input.requestId), { receipt, input });
-    const retained = await retainedOwner.snapshot(activity.identity, session.sessionId, receipt.runId);
-    assert.equal(retained.steps.find(step => step.operation.kind === 'model.call').operation.operationId, operation);
+    const retained = await retainedOwner.sessionSnapshot(activity.identity, session.sessionId);
+    assert.equal(retained.attempts.length, 1);
+    assert.equal(retained.attempts[0].attemptId, attemptId);
   } finally { await retainedOwner.close(); await storage.close(); }
   assert.equal(f.requests.length, 1);
 });

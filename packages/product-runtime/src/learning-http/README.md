@@ -59,11 +59,11 @@
 
 设备组合的监听及公开入口仅允许 loopback；学校共享组合不装配设备凭据代理。宿主关闭新入口后等待已接收的异步业务请求结束，包含远端派发和连接凭据持久化，超时不宣告安全排空。
 
-浏览器正式入口为 `apps/web/src/product/LearningApp.tsx`，`runtime` 仅装配启动与诊断。普通首页使用本机 personal identity 创建 session，不先创建 activity；工作区保留真实 activity、作品和固定引用，直接提交带 `context.action` 的 v2 输入，不调用旧 question intent dispatch。列表失败不当成空列表，未知写入先查询原 request。
+浏览器正式入口为 `apps/web/src/product/LearningApp.tsx`，`runtime` 仅装配启动与诊断。普通首页使用本机 personal identity 创建 session，不先创建 activity；工作区保留真实 activity、作品和固定引用，直接提交带 `context.action` 的输入，不调用旧 question intent dispatch。列表失败不当成空列表，未知写入先查询原 request。
 
-[session 路由](sessions-http.ts) 在 school forwarding 前处理，要求 `x-xj-agent-contract: 2` 并核验当前已认证身份、expected subject 与 namespace。`x-xj-space` 不允许注入浏览器自报身份。RPC 使用 `agent.sessions.v2` / `agent.dependencies.v2`，显式 version 2；旧 `agent/:activityId/*` 返回 incompatible，不回退旧 runtime。initialize 仅由已授权宿主调用，resolveWait 仅向可信 Node 服务开放。持久推进与场景边界见 [agent-runtime](../../../agent-runtime/README.md)和[agents](../../../agents/README.md)；部署、原 owner 恢复与显式旧开发数据 reset 见[产品运行库](../../README.md#session-v2-与-http-边界)。
+[session 路由](sessions-http.ts) 在 school forwarding 前处理，要求 `x-xj-agent-contract: 3` 并核验当前已认证身份、expected subject 与 namespace。`x-xj-space` 不允许注入浏览器自报身份。RPC 使用 `agent.sessions.v3` / `agent.dependencies.v2`；旧 `agent/:activityId/*` 返回 incompatible，不回退旧 runtime。initialize 与 assertDispatch 仅由已授权宿主调用，answerQuestion 仅向真实用户回应开放。持久推进与场景边界见 [agent-runtime](../../../agent-runtime/README.md)和[agents](../../../agents/README.md)；部署、原 owner 恢复与显式旧开发数据 reset 见[产品运行库](../../README.md#session-v3-与-http-边界)。
 
-此处描述当前源码接口；历史交付记录不表示 session v2 已完成真实浏览器、供应商或跨机验收。
+此处描述当前源码接口；历史交付记录不表示 session v3 已完成真实浏览器、供应商或跨机验收。
 
 完整使用与验证边界见 [交接说明](../../../../docs/student-agent-implementation/wp02-identity-activity.md)。
 混合部署的 `createLearningAuthority` 在 WP01 认证传输内逐次核验学校连接主体、成员级目标和课程资格，仅提供 access/prepare/confirm/authorize。`manage/local-binding` 仅管理员可用；工作区转发同时校验预期主体与恢复 namespace，部署者不能通过普通重试替换事实 owner。操作与验收见 [#154 交接](../../../../docs/student-agent-implementation/wp02-hybrid-deployment.md)。

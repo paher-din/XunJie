@@ -58,7 +58,6 @@ import { executionRecordEventSchema } from '@xunjie/contracts/execution-records'
 import { agentSessionSchema, createAgentSessionSchema, updateAgentSessionSchema, markAgentSessionReadySchema } from '@xunjie/contracts/agent-sessions';
 import { agentDispatchPermitSchema, type AgentDispatchPermit } from '@xunjie/contracts/agent-runtime';
 import { sameAgentSubject, type AgentSessionPort } from '@xunjie/contracts/agent-service';
-import { createWorkspaceToolModule } from '@xunjie/agents/workspace-assistant/index';
 import { createLearningQuery, type LearningQuerySource } from '@xunjie/learning-space/learning-data/learning-query';
 import { routeAgentSessions, type SessionHttpPort } from './learning-http/sessions-http.js';
 import type { AgentSessionDirectory } from './agent-sessions.js';
@@ -349,7 +348,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
         method: body === undefined ? 'GET' : 'POST', redirect: 'error', signal: AbortSignal.timeout(
           /^study-transfer(?:\/ack)?$/.test(route) ? 120000
             : route.startsWith('pdf/') ? 45000 : 10000),
-        headers: { 'content-type': 'application/json', ...(/^(?:agent-sessions(?:\/|$)|agent-sources$)/.test(route) ? { 'x-xj-agent-contract': '2' } : {}), ...(authorized ? { authorization: `Bearer ${connection.grant!.token}` } : {}) },
+        headers: { 'content-type': 'application/json', ...(/^(?:agent-sessions(?:\/|$)|agent-sources$)/.test(route) ? { 'x-xj-agent-contract': '3' } : {}), ...(authorized ? { authorization: `Bearer ${connection.grant!.token}` } : {}) },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       });
     } catch { throw new StorageError('unavailable'); }
@@ -500,21 +499,21 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       if (!sameAgentSubject(request.identity, identity) || request.sessionId !== sessionId) throw new StorageError('identity-conflict');
       // These operations require service audience and a separate host grant. A user HTTP
       // proxy cannot become an initialization or dispatch capability.
-      if (['initialize', 'resolveWait', 'assertDispatch'].includes(request.operation)) throw new StorageError('forbidden');
+      if (['initialize', 'assertDispatch'].includes(request.operation)) throw new StorageError('forbidden');
       const connection = await identityConnection(identity), current = await directory.read(identity, sessionId);
       if (connection.requestId !== originalConnection.requestId || connection.schoolEndpoint !== originalConnection.schoolEndpoint
         || JSON.stringify(canonicalValue(current.owner)) !== JSON.stringify(canonicalValue(original.owner))) throw new StorageError('identity-conflict');
       const prefix = `agent-sessions/${sessionId}`;
       switch (request.operation) {
-        case 'accept': return call(connection, prefix + '/inputs', request.args.input, true);
+        case 'submit': return call(connection, prefix + '/inputs', request.args.input, true);
         case 'conversation': return call(connection, prefix + '/conversation?after=' + request.args.after, undefined, true);
         case 'events': return call(connection, prefix + '/events?after=' + request.args.after, undefined, true);
-        case 'run': return call(connection, prefix + '/runs/' + request.args.runId, undefined, true);
-        case 'snapshot': return call(connection, prefix + '/snapshots/' + request.args.runId, undefined, true);
+        case 'turn': return call(connection, prefix + '/runs/' + request.args.turnId, undefined, true);
+        case 'sessionSnapshot': return call(connection, prefix + '/snapshots/' + sessionId, undefined, true);
         case 'request': return call(connection, prefix + '/requests/' + request.args.requestId, undefined, true);
-        case 'stop': case 'continueRun': return call(connection, prefix + '/runs/' + request.args.runId
-          + (request.operation === 'stop' ? '/stop' : '/continue'), { requestId: request.args.requestId }, true);
-        case 'respond': return call(connection, prefix + '/waits/' + request.args.response.waitId + '/responses', request.args.response, true);
+        case 'stop': return call(connection, prefix + '/runs/' + request.args.turnId + '/stop', { requestId: request.args.requestId }, true);
+        case 'continueSession': return call(connection, prefix + '/runs/' + sessionId + '/continue', { requestId: request.args.requestId }, true);
+        case 'answerQuestion': return call(connection, prefix + '/waits/' + request.args.response.questionId + '/responses', request.args.response, true);
         case 'inputControl': return call(connection, prefix + '/inputs/' + request.args.inputId + '/control', request.args.control, true);
         default: throw new StorageError('forbidden');
       }
@@ -624,8 +623,8 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
         return createLearningModelService(local.models, async who => { await identityConnection(who); })(request);
       }),
       query: createLearningQuery({ sources: async () => [await querySource(identity)] }),
-      tools: async () => session.scenario === 'workspace-assistant' ? [createWorkspaceToolModule({ workspace, learning, courses,
-        environment: () => executionEnvironmentFor(identity) })] : [],
+      // The remote kernel keeps its own Step tools; this projection only exposes data reads.
+      tools: async () => [],
     };
   }
   async function querySource(identity: SpaceIdentity): Promise<LearningQuerySource> {
@@ -1615,7 +1614,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
   }
   async function forward(connectionId: string, route: string, body?: unknown, expectedSubject?: string, search = '', contractVersion?: unknown) {
     if (/^(agent|skills)(\/|$)/.test(route)) throw new StorageError('incompatible');
-    if ((/^agent-sessions(\/|$)/.test(route) || route === 'agent-sources') && contractVersion !== '2') throw new StorageError('incompatible');
+    if ((/^agent-sessions(\/|$)/.test(route) || route === 'agent-sources') && contractVersion !== '3') throw new StorageError('incompatible');
     if (route === 'agent-sources' && body !== undefined) throw new StorageError('missing');
     const id = '[0-9a-f-]{36}';
     const key = '[a-z][a-z0-9-]{0,47}';
@@ -1655,7 +1654,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       const identity = await modelAccess(connection);
       if (local?.sessions) {
         if (connection.localBinding) await checkLocal(connection, connection.localBinding.runtimeConnectionId);
-        return routeAgentSessions(local.sessions, identity, route, body === undefined ? 'GET' : 'POST', body, search, '2');
+        return routeAgentSessions(local.sessions, identity, route, body === undefined ? 'GET' : 'POST', body, search, '3');
       }
       if (localStudyMode(connection) || connection.localBinding) throw new StorageError('unavailable');
       const checked = (value: unknown) => {
@@ -1671,7 +1670,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
         update: async (_who, input) => checked(await call(connection, 'agent-sessions/update', input, true)),
         workspace: async (_who, activityId, target) => checked(await call(connection, 'agent-sessions/workspace', { activityId, target }, true)),
       }, agent: async (_who, sessionId) => sessionAgent(identity, sessionId), skills: async (_who, sessionId) => sessionSkills(identity, sessionId) };
-      return routeAgentSessions(remote, identity, route, body === undefined ? 'GET' : 'POST', body, search, '2');
+      return routeAgentSessions(remote, identity, route, body === undefined ? 'GET' : 'POST', body, search, '3');
     }
     const legacyQuestion = /^intents\/([0-9a-f-]{36})\/([0-9a-f-]{36})\/(dispatch|cancel)$/.exec(route);
     if (legacyQuestion && body !== undefined) {

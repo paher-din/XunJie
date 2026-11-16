@@ -67,7 +67,7 @@ export function useAgentSession(client: AgentSessionsClient, sessionId: string |
     })().finally(() => { if (reading.current?.promise === pending) reading.current = null })
     reading.current = { scope, promise: pending }; return pending
   }, [client, sessionId])
-  const active = !!conversation?.runs.some(run => ['received', 'running', 'waiting'].includes(run.state) && !run.stopRequested)
+  const active = !!conversation?.turns.some(turn => turn.state === 'active')
   useViewPolling(refresh, scope, active ? 1000 : 5000, !!sessionId && viewActive)
   const perform = useCallback(async (operation: () => Promise<unknown>) => {
     const expected = scope
@@ -123,22 +123,22 @@ export function useAgentSession(client: AgentSessionsClient, sessionId: string |
     return retryMutation()
   }
   return { client, sessionId, conversation, busy, error, active, refresh, replay, outbox,
-    send: (text: string, mode: AgentInput['mode'], context: AgentInput['context'] = {}) => perform(async () => {
+    send: (text: string, context: AgentInput['context'] = {}) => perform(async () => {
       if (!sessionId) throw new Error('会话尚未准备。')
       const pending = outbox.pending(sessionId)
       if (pending.length) {
         let receipt
         for (const input of pending) receipt = await outbox.send(input)
         const original = pending.at(-1)!
-        if (pending.length === 1 && original.text === text && original.mode === mode && JSON.stringify(original.context) === JSON.stringify(context)) return receipt
+        if (pending.length === 1 && original.text === text && JSON.stringify(original.context) === JSON.stringify(context)) return receipt
         throw new Error('原问题已核对并保留，请再次确认发送当前内容。')
       }
-      return outbox.send({ sessionId, requestId: crypto.randomUUID(), text, mode, context })
+      return outbox.send({ sessionId, requestId: crypto.randomUUID(), text, context })
     }),
-    control: (runId: string, operation: 'stop' | 'continue') => perform(() => durable(operation + ':' + runId, {})),
-    respond: (waitId: string, expectedVersion: number, answer: Record<string, any>) => perform(() => durable('response:' + waitId,
+    control: (turnId: string, operation: 'stop' | 'continue') => perform(() => durable(operation + ':' + turnId, {})),
+    respond: (questionId: string, expectedVersion: number, answer: Record<string, any>) => perform(() => durable('response:' + questionId,
       { expectedVersion, answer })),
-    inputControl: (inputId: string, expectedVersion: number, operation: 'edit' | 'remove' | 'move', patch: { text?: string; mode?: 'steering' | 'queue' } = {}) => perform(() => durable('input:' + inputId,
+    inputControl: (inputId: string, expectedVersion: number, operation: 'edit' | 'remove', patch: { text?: string } = {}) => perform(() => durable('input:' + inputId,
       { expectedVersion, operation, ...patch })),
   }
 }

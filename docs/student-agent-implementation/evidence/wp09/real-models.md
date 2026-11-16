@@ -1,6 +1,6 @@
 # WP09 真实模型验收
 
-本文保留旧版本的验收历史；旧 Agent 探针已退休，文中脚本名仅标识原证据来源。当前 session v2 工程入口为 [teaching-artifact-generation.runtime.test.mjs](../../../../apps/server/tests/teaching-artifact-generation.runtime.test.mjs)、[teaching-artifact-stop-adopt.runtime.test.mjs](../../../../apps/server/tests/teaching-artifact-stop-adopt.runtime.test.mjs)、[workspace-assistant.runtime.test.mjs](../../../../packages/agents/test/workspace-assistant.runtime.test.mjs)。这些测试不继承本页的历史通过结论，真实供应商、桌面与跨机结果须另行验收。
+本文保留旧版本的验收历史；旧 Agent 探针已退休，文中脚本名仅标识原证据来源。当前 session v2 工程入口为 [teaching-artifact-generation.runtime.test.mjs](../../../../apps/server/tests/teaching-artifact-generation.runtime.test.mjs)、teaching-artifact-stop-adopt.runtime.test.mjs、workspace-assistant.runtime.test.mjs。这些测试不继承本页的历史通过结论，真实供应商、桌面与跨机结果须另行验收。
 
 源生产入口的本轮验收通过，累计 **20/24 次 generation，剩余 4 次**。完整事实见 `real-models.json`。每次供应商调用最多 8192 output tokens、绝对截止 60 秒、SDK retry=0；限制只属于 probe。
 

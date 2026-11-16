@@ -13,7 +13,8 @@ test('school client rejects old Agent routes and mixed session versions before t
   await assert.rejects(school.forward(randomUUID(), 'skills/import', {}), { code: 'incompatible' });
   await assert.rejects(school.forward(randomUUID(), 'agent-sessions', {}, undefined, '', '1'), { code: 'incompatible' });
   await assert.rejects(school.forward(randomUUID(), 'agent-sources', undefined, undefined, '', '1'), { code: 'incompatible' });
-  await assert.rejects(school.forward(randomUUID(), 'agent-sources', {}, undefined, '', '2'), { code: 'missing' });
+  await assert.rejects(school.forward(randomUUID(), 'agent-sources', {}, undefined, '', '2'), { code: 'incompatible' });
+  await assert.rejects(school.forward(randomUUID(), 'agent-sources', {}, undefined, '', '3'), { code: 'missing' });
 });
 
 test('legacy Agent HTTP paths fail incompatible rather than producing an old-engine call', () => {

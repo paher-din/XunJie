@@ -58,14 +58,14 @@ test('native v2 pairing issues fixed grants to the actual dependency service and
   const deviceEnvironment = randomUUID();
   const module = (unit, capabilities = []) => ({ environmentId: deviceEnvironment, serviceId: randomUUID(), unit,
     endpoint: 'http://127.0.0.1:1', protocolVersion: 1, capabilities });
-  const deviceModules = [module('space-course'), module('teaching-agent', ['agent.sessions.v2']), module('model-connection'), module('tool-execution')];
+  const deviceModules = [module('space-course'), module('teaching-agent', ['agent.sessions.v3']), module('model-connection'), module('tool-execution')];
   const input = { version: 2, connectionId, installationId: randomUUID(), deviceModules };
   const setup = createSchoolDeviceSetup({ root, target: service, spaces, bindings, authority, assertWritable: async () => {} });
   const result = await setup(identity, input);
   assert.equal(result.version, 2); assert.deepEqual(result.target.capabilities, ['agent.dependencies.v2']);
   assert.deepEqual(await setup({ ...identity, name: 'Changed display name' }, input), result);
   const original = await bindings.read(identity);
-  assert.deepEqual(original.target.capabilities, ['agent.sessions.v2']);
+  assert.deepEqual(original.target.capabilities, ['agent.sessions.v3']);
   const agent = deviceModules.find(item => item.unit === 'teaching-agent');
   const transport = createOutboundConnection({ connection: { connectionId: randomUUID(), sourceEnvironmentId: agent.environmentId,
     sourceServiceId: agent.serviceId, target: service, requiredCapabilities: ['agent.dependencies.v2'], optionalCapabilities: [], credentialRef: 'fixture' },

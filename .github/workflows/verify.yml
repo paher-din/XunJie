@@ -11,6 +11,54 @@ permissions:
   contents: read
 
 jobs:
+  agent-runtime-native:
+    needs: prepare
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.21.0
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci --include=dev --no-audit --no-fund
+      - run: node scripts/build.mjs product-runtime:test
+      - name: Prepare pinned PostgreSQL
+        run: |
+          node --input-type=module <<'NODE'
+          import { appendFile, readFile } from 'node:fs/promises';
+          import { join } from 'node:path';
+          import { cachedArchive, unpackArchive } from './scripts/package-product.mjs';
+          const catalog = JSON.parse(await readFile('scripts/product-resources.json', 'utf8'));
+          const platform = `${process.platform}-${process.arch}`;
+          const resource = catalog.postgres.platforms[platform];
+          if (!resource) throw new Error(`Unsupported PostgreSQL platform: ${platform}`);
+          const destination = join(process.env.RUNNER_TEMP, 'agent-postgres');
+          const archive = await cachedArchive(join(process.env.RUNNER_TEMP, 'postgres-cache'), resource);
+          await unpackArchive(archive, resource, destination);
+          await appendFile(process.env.GITHUB_ENV, `XUNJIE_PRODUCT_POSTGRES_BIN=${join(destination, 'bin')}\n`);
+          NODE
+      - name: Verify Agent ownership, timeouts and task cancellation on real PostgreSQL
+        run: >-
+          node --test --test-concurrency=2
+          packages/agent-runtime/test/loop.runtime.test.mjs
+          packages/product-runtime/test/workspace-agent-tasks.runtime.test.mjs
+          scripts/switch-agent-runtime-data.runtime.test.mjs
+          apps/server/tests/native-channel-cancellation.runtime.test.mjs
+          apps/server/tests/channel-executions.runtime.test.mjs
+          scripts/pr226-regressions/repro-core-runtime.mjs
+          scripts/pr226-regressions/repro-tool-timeout.mjs
+          scripts/pr226-regressions/repro-call-cancellation.mjs
+          scripts/pr226-regressions/repro-workspace-authority.mjs
+          scripts/pr226-regressions/repro-capability-boundaries.mjs
+          scripts/pr226-regressions/repro-model-context.mjs
+          scripts/pr226-regressions/repro-real-gateway-boundaries.mjs
+          scripts/pr226-regressions/repro-task-boundaries.mjs
+          scripts/pr226-regressions/repro-cancellation-late.mjs
+          scripts/pr226-regressions/repro-native-operation.mjs
+          scripts/pr226-regressions/repro-migration-and-answer.mjs
+          scripts/pr226-regressions/repro-capability-regressions.mjs
   prepare:
     runs-on: ubuntu-24.04
     timeout-minutes: 15

@@ -230,7 +230,7 @@ export type ExecutionAcceptance = z.infer<typeof executionAcceptanceSchema>;
 
 /** Durable Agent association shared by the execution owner and its browser broker. */
 export const agentExecutionAssociationSchema = z.object({ runId: z.uuid(), stepId: z.uuid(),
-  commandId: z.uuid(), snapshotId: z.uuid() }).strict();
+  commandId: z.uuid(), snapshotId: z.uuid(), sessionId: z.uuid().optional() }).strict();
 export type AgentExecutionAssociation = z.infer<typeof agentExecutionAssociationSchema>;
 export const agentBrowserIdSchema = z.uuid();
 export const agentBrowserClaimInputSchema = z.object({ browserId: agentBrowserIdSchema }).strict();
@@ -288,7 +288,7 @@ export const executionQuerySchema = z.object({ requestId: z.uuid(), inputDigest:
 export type ExecutionQuery = z.infer<typeof executionQuerySchema>;
 export const executionControlReceiptSchema = z.object({ controlId: z.uuid(), requestId: z.uuid(), executionRef: z.uuid(),
   inputDigest: digest,
-  effect: sessionControlEffectSchema, status: z.enum(['dispatching', 'applied', 'unknown', 'rejected']),
+  effect: sessionControlEffectSchema, status: z.enum(['dispatching', 'applied', 'unknown', 'rejected', 'cancelled']),
   seq: z.number().int().positive(), query: executionQuerySchema }).strict();
 export type ExecutionControlReceipt = z.infer<typeof executionControlReceiptSchema>;
 

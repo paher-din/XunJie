@@ -1,6 +1,6 @@
 # #212 Mac 与真实跨机的学习对话恢复验收（已有环境）
 
-本文保留旧版本的验收历史；旧 Agent 探针已退休，文中脚本名仅标识原证据来源。当前 session v2 工程入口为 [recovery-agent-sessions.runtime.test.mjs](../../packages/product-runtime/test/recovery-agent-sessions.runtime.test.mjs)、[teaching-agent.independent-recovery.runtime.test.mjs](../../apps/server/tests/teaching-agent.independent-recovery.runtime.test.mjs)、[teaching-agent.recovery.runtime.test.mjs](../../apps/server/tests/teaching-agent.recovery.runtime.test.mjs)。这些测试不继承本页的历史通过结论，真实供应商、桌面与跨机结果须另行验收。
+本文保留旧版本的验收历史；旧 Agent 探针已退休，文中脚本名仅标识原证据来源。当前 session v2 工程入口为 [recovery-agent-sessions.runtime.test.mjs](../../packages/product-runtime/test/recovery-agent-sessions.runtime.test.mjs)、teaching-agent.independent-recovery.runtime.test.mjs、teaching-agent.recovery.runtime.test.mjs。这些测试不继承本页的历史通过结论，真实供应商、桌面与跨机结果须另行验收。
 
 本票在既有 `wp07` 分支实施，不新开或合并 PR。验收基线为 `087e7f9c7df5fdd593cd8f581537094ac0724858`，另含本票发现的接收端兼容修复。来源为 [#212](https://github.com/paher-din/XunJie/issues/212)，父票为 [#204](https://github.com/paher-din/XunJie/issues/204)。
 

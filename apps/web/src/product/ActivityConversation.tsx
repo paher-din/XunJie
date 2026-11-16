@@ -4,7 +4,7 @@ import { useActivitySession } from './ActivitySession'
 import { SessionConversation } from './SessionConversation'
 import type { AgentEvent } from '@xunjie/contracts/agent-runtime'
 import { useViewPolling } from './useViewPolling'
-import { workspaceConversation } from './workspace-conversation'
+import { workspaceConversation, toolDetail, toolFailed } from './workspace-conversation'
 import { TeachingToolRecords } from './TeachingToolRecords'
 import { ArtifactCard, ArtifactPreview } from '../teaching-artifacts/ArtifactCard'
 import type { TeachingToolLocator } from './TeachingToolRecords'
@@ -36,14 +36,14 @@ export function ActivityConversation(props: { activity: LearningActivity; spaceK
   useEffect(() => { props.onActiveChange?.(!!agent?.active); return () => props.onActiveChange?.(false) }, [agent?.active, props.onActiveChange])
   useEffect(() => {
     if (!props.focusQuestionId) return
-    const target = root.current?.querySelector<HTMLElement>(`[data-wait-id="${CSS.escape(props.focusQuestionId)}"]`)
+    const target = root.current?.querySelector<HTMLElement>(`[data-question-id="${CSS.escape(props.focusQuestionId)}"]`)
     if (target) { target.focus(); target.scrollIntoView?.({ block: 'nearest' }); props.onQuestionFocused?.() }
   }, [props.focusQuestionId, agent?.conversation, props.onQuestionFocused])
   return <div ref={root}>
     {agent ? <SessionConversation controller={agent} readOnly={workspace.isReadOnly() || props.activity.status !== 'open'} renderTool={tool => {
-      if (presentation.generatingPage(tool.name)) return tool.state === 'failed'
-        ? <p role="alert" className="learning-error">这次页面未能完成，原内容和输入仍保留。{tool.feedback?.text}</p> : null
-      const record = presentation.records.get(tool.operationId)
+      if (presentation.generatingPage(tool.name)) return toolFailed(tool)
+        ? <p role="alert" className="learning-error">这次页面未能完成，原内容和输入仍保留。{toolDetail(tool)}</p> : null
+      const record = presentation.records.get(tool.toolCallId)
       return record ? <TeachingToolRecords records={[record]} onLocate={props.onLocateTool} /> : null
     }} /> : <p role="status" aria-label="正在打开工作区对话" />}
     {presentation.previews.map(preview => <ArtifactPreview key={preview.key} preview={preview} />)}

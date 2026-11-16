@@ -101,8 +101,8 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
   const pdf = usePdfMaterials({ activity, spaceKey, namespace, authorized, reveal: revealPdf })
   const revealPersonal = useCallback(async () => { await workspace.leave(); setTool(PERSONAL_TOOL) }, [workspace])
   const personal = usePersonalMaterials({ activity, spaceKey, namespace, authorized, reveal: revealPersonal })
-  const pendingWait = agent?.conversation?.waits.find(wait => wait.kind === 'user' && wait.state === 'pending' && agent.conversation?.runs.some(run => run.runId === wait.runId && !run.stopRequested && run.state === 'waiting'))
-  const waitText = typeof pendingWait?.presentation.question === 'string' ? pendingWait.presentation.question : 'Agent 有一个问题想与你确认。'
+  const pendingQuestion = agent?.conversation?.questions.find(question => question.state === 'pending')
+  const waitText = typeof pendingQuestion?.presentation.question === 'string' ? pendingQuestion.presentation.question : 'Agent 有一个问题想与你确认。'
   const [focusQuestionId, setFocusQuestionId] = useState<string | null>(null)
   const questionFocused = useCallback(() => setFocusQuestionId(null), [])
   useImperativeHandle(workspaceRef, () => ({ leave: async () => {
@@ -306,8 +306,8 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
       </aside>
     </div>
     <SelectionToolbar />
-    {!references.open && pendingWait && <GuidancePresentation item={{ id: pendingWait.waitId, content: { kind: 'text', text: waitText }, target: () => ask.current,
-      actions: [{ id: 'respond', label: '回应 Agent', primary: true }] }} onAction={() => { references.setOpen(true); setFocusQuestionId(pendingWait.waitId) }} />}
+    {!references.open && pendingQuestion && <GuidancePresentation item={{ id: pendingQuestion.questionId, content: { kind: 'text', text: waitText }, target: () => ask.current,
+      actions: [{ id: 'respond', label: '回应 Agent', primary: true }] }} onAction={() => { references.setOpen(true); setFocusQuestionId(pendingQuestion.questionId) }} />}
 
 
   </div>

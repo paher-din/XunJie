@@ -1,52 +1,45 @@
 import { z } from 'zod';
-import { modelToolResultSchema } from './model-connections.js';
 import { spaceIdentitySchema, type SpaceIdentity } from './spaces.js';
-import { agentDispatchPermitSchema, agentInputSchema, agentRuntimeSessionSchema, agentWaitResponseSchema, agentRunSchema, agentEventSchema,
-  agentOperationSchema, agentInputReceiptSchema, agentWaitSchema, type AgentInput, type AgentRuntimeSession,
-  type AgentDispatchPermit, type AgentRun, type AgentEvent, type AgentInputReceipt, type AgentWaitResponse } from './agent-runtime.js';
+import { agentInputSchema, agentRuntimeSessionSchema, agentTurnSchema, agentEventSchema, agentInputReceiptSchema,
+  agentQuestionSchema, agentQuestionResponseSchema, agentQuestionReceiptSchema, agentToolCallSchema, agentStepSchema,
+  agentNotificationSchema, agentTurnBudgetSchema, agentDispatchPermitSchema, agentAttemptSchema,
+  type AgentInput, type AgentRuntimeSession, type AgentTurn, type AgentEvent, type AgentInputReceipt,
+  type AgentQuestionResponse, type AgentQuestionReceipt, type AgentDispatchPermit } from './agent-runtime.js';
 
-export const agentSessionsCapability = 'agent.sessions.v2' as const;
+export const agentSessionsCapability = 'agent.sessions.v3' as const;
 export const agentSessionOperationSchema = z.enum([
-  'initialize', 'accept', 'run', 'events', 'stop', 'continueRun', 'snapshot', 'respond', 'resolveWait', 'request', 'conversation',
-  'inputControl', 'assertDispatch',
+  'initialize', 'submit', 'answerQuestion', 'stop', 'continueSession', 'turn', 'events', 'conversation',
+  'sessionSnapshot', 'request', 'inputControl', 'registerNotification', 'recordProgress', 'assertDispatch',
 ]);
 const facts = z.record(z.string(), z.json());
 const inputControlBase = { requestId: z.uuid(), expectedVersion: z.number().int().positive() };
 export const agentInputControlSchema = z.discriminatedUnion('operation', [
   z.object({ ...inputControlBase, operation: z.literal('edit'), text: agentInputSchema.shape.text.optional(),
-    context: facts.optional(), mode: z.enum(['steering', 'queue']).optional() }).strict()
-    .refine(value => value.text !== undefined || value.context !== undefined || value.mode !== undefined),
+    context: facts.optional() }).strict().refine(value => value.text !== undefined || value.context !== undefined),
   z.object({ ...inputControlBase, operation: z.literal('remove') }).strict(),
-  z.object({ ...inputControlBase, operation: z.literal('move'), mode: z.enum(['steering', 'queue']) }).strict(),
 ]);
 export type AgentInputControl = z.infer<typeof agentInputControlSchema>;
 export const agentSessionInputSchema = z.object({
-  inputId: z.uuid(), runId: z.uuid(), version: z.number().int().positive(), mode: z.enum(['steering', 'queue']),
-  state: z.enum(['pending', 'adopted', 'removed']), input: agentInputSchema, createdAt: z.iso.datetime(),
-}).strict().refine(value => value.mode === value.input.mode, 'Input mode must retain its fixed current input.');
+  inputId: z.uuid(), turnId: z.uuid(), version: z.number().int().positive(),
+  state: z.enum(['pending', 'adopted', 'removed', 'deferred']), input: agentInputSchema, createdAt: z.iso.datetime(),
+}).strict();
 export type AgentSessionInput = z.infer<typeof agentSessionInputSchema>;
-export const agentInputControlReceiptSchema = z.object({ requestId: z.uuid(), input: agentSessionInputSchema,
-  previousRunId: z.uuid().optional() }).strict();
+export const agentInputControlReceiptSchema = z.object({ requestId: z.uuid(), input: agentSessionInputSchema }).strict();
 export type AgentInputControlReceipt = z.infer<typeof agentInputControlReceiptSchema>;
-export const agentSessionSnapshotSchema = z.object({ session: agentRuntimeSessionSchema, runs: z.array(agentRunSchema),
-  inputs: z.array(agentSessionInputSchema), waits: z.array(agentWaitSchema) }).strict().refine(value => {
-  const runIds = new Set(value.runs.map(run => run.runId));
-  return value.runs.every(run => run.sessionId === value.session.sessionId)
-    && value.inputs.every(input => input.input.sessionId === value.session.sessionId && runIds.has(input.runId))
-    && value.waits.every(wait => runIds.has(wait.runId));
-}, 'Session projection must retain one owner session.');
+export const agentSessionSnapshotSchema = z.object({ session: agentRuntimeSessionSchema, automaticWakeBlocked: z.string().nullable(),
+  turns: z.array(agentTurnSchema), inputs: z.array(agentSessionInputSchema), steps: z.array(agentStepSchema),
+  attempts: z.array(agentAttemptSchema), toolCalls: z.array(agentToolCallSchema), questions: z.array(agentQuestionSchema),
+  notifications: z.array(agentNotificationSchema) }).strict();
 export type AgentSessionSnapshot = z.infer<typeof agentSessionSnapshotSchema>;
 export interface AgentSessionReadPort {
   sessionSnapshot(identity: SpaceIdentity, sessionId: string): Promise<AgentSessionSnapshot>;
 }
-export const agentRunBudgetSchema = z.object({ maxSteps: z.number().int().positive(), maxDispatches: z.number().int().positive(),
-  deadline: z.iso.datetime().nullable(), steps: z.number().int().nonnegative(), dispatches: z.number().int().nonnegative() }).strict();
-const envelope = z.object({ version: z.literal(2), identity: spaceIdentitySchema, sessionId: z.uuid() }).strict();
-const runArgs = z.object({ runId: z.uuid() }).strict();
-const controlArgs = runArgs.extend({ requestId: z.uuid() }).strict();
-export const agentWaitResolutionSchema = agentWaitResponseSchema.omit({ answer: true })
-  .extend({ result: z.record(z.string(), z.json()) }).strict();
-export type AgentWaitResolution = z.infer<typeof agentWaitResolutionSchema>;
+const envelope = z.object({ version: z.literal(3), identity: spaceIdentitySchema, sessionId: z.uuid() }).strict();
+const turnArgs = z.object({ turnId: z.uuid() }).strict();
+const controlArgs = turnArgs.extend({ requestId: z.uuid() }).strict();
+export const taskTerminalFactSchema = z.object({ taskId: z.string().min(1).max(200), taskVersion: z.string().min(1).max(200),
+  terminalStatus: z.enum(['success', 'failed', 'cancelled']), summary: z.string().max(2000), resultRef: z.string().max(300).nullable() }).strict();
+export type TaskTerminalFact = z.infer<typeof taskTerminalFactSchema>;
 
 /** Names are presentation; these four fields fix the authenticated subject. */
 export function sameAgentSubject(a: SpaceIdentity, b: SpaceIdentity): boolean {
@@ -56,112 +49,85 @@ export function sameAgentSubject(a: SpaceIdentity, b: SpaceIdentity): boolean {
 
 export const agentSessionCallSchema = z.discriminatedUnion('operation', [
   envelope.extend({ operation: z.literal('initialize'), args: z.object({ session: agentRuntimeSessionSchema }).strict() }),
-  envelope.extend({ operation: z.literal('accept'), args: z.object({ input: agentInputSchema }).strict() }),
-  envelope.extend({ operation: z.literal('run'), args: runArgs }),
+  envelope.extend({ operation: z.literal('submit'), args: z.object({ input: agentInputSchema }).strict() }),
+  envelope.extend({ operation: z.literal('answerQuestion'), args: z.object({ response: agentQuestionResponseSchema }).strict() }),
+  envelope.extend({ operation: z.literal('stop'), args: controlArgs }),
+  envelope.extend({ operation: z.literal('continueSession'), args: z.object({ requestId: z.uuid() }).strict() }),
+  envelope.extend({ operation: z.literal('turn'), args: turnArgs }),
   envelope.extend({ operation: z.literal('conversation'), args: z.object({ after: z.number().int().nonnegative().default(0) }).strict() }),
   envelope.extend({ operation: z.literal('events'), args: z.object({ after: z.number().int().nonnegative().default(0) }).strict() }),
-  envelope.extend({ operation: z.literal('stop'), args: controlArgs }),
-  envelope.extend({ operation: z.literal('continueRun'), args: controlArgs }),
-  envelope.extend({ operation: z.literal('snapshot'), args: runArgs }),
-  envelope.extend({ operation: z.literal('respond'), args: z.object({ response: agentWaitResponseSchema }).strict() }),
-  envelope.extend({ operation: z.literal('resolveWait'), args: z.object({ resolution: agentWaitResolutionSchema }).strict() }),
+  envelope.extend({ operation: z.literal('sessionSnapshot'), args: z.object({}).strict() }),
   envelope.extend({ operation: z.literal('request'), args: z.object({ requestId: z.uuid() }).strict() }),
   envelope.extend({ operation: z.literal('inputControl'), args: z.object({ inputId: z.uuid(), control: agentInputControlSchema }).strict() }),
-  envelope.extend({ operation: z.literal('assertDispatch'), args: z.object({ permit: agentDispatchPermitSchema, attemptId: z.uuid() }).strict() }),
+  envelope.extend({ operation: z.literal('registerNotification'), args: z.object({ originTurnId: z.uuid(), fact: taskTerminalFactSchema }).strict() }),
+  envelope.extend({ operation: z.literal('recordProgress'), args: z.object({ attemptId: z.uuid(), progress: z.object({ revision: z.number().int().positive(), text: z.string().max(1_000_000), tools: z.array(z.json()).max(128).optional() }).strict() }).strict() }),
+  envelope.extend({ operation: z.literal('assertDispatch'), args: z.object({ permit: agentDispatchPermitSchema }).strict() }),
 ]).superRefine((call, context) => {
-  if (call.operation === 'accept' && call.args.input.sessionId !== call.sessionId) {
+  if (call.operation === 'submit' && call.args.input.sessionId !== call.sessionId)
     context.addIssue({ code: 'custom', path: ['args', 'input', 'sessionId'], message: 'Input belongs to another session.' });
-  }
-  if (call.operation === 'initialize' && (call.args.session.sessionId !== call.sessionId
-    || !sameAgentSubject(call.args.session.identity, call.identity))) {
+  if (call.operation === 'assertDispatch' && call.args.permit.sessionId !== call.sessionId)
+    context.addIssue({ code: 'custom', path: ['args', 'permit', 'sessionId'], message: 'Permit belongs to another session.' });
+  if (call.operation === 'initialize' && (call.args.session.sessionId !== call.sessionId || !sameAgentSubject(call.args.session.identity, call.identity)))
     context.addIssue({ code: 'custom', path: ['args', 'session'], message: 'Initialization must preserve the authenticated session scope.' });
-  }
-  if (call.operation === 'assertDispatch' && (call.args.permit.sessionId !== call.sessionId
-    || call.args.permit.operationId !== call.args.attemptId)) {
-    context.addIssue({ code: 'custom', path: ['args', 'permit'], message: 'Dispatch must retain the original session and attempt.' });
-  }
 });
 export type AgentSessionCall = z.infer<typeof agentSessionCallSchema>;
-export type BrowserAgentSessionCall = Exclude<AgentSessionCall, { operation: 'initialize' | 'resolveWait' | 'assertDispatch' }>;
+export type BrowserAgentSessionCall = Exclude<AgentSessionCall, { operation: 'initialize' | 'registerNotification' | 'recordProgress' | 'assertDispatch' }>;
 
-export const agentOperationResultSchema = z.object({
-  state: z.enum(['completed', 'accepted', 'failed', 'unknown', 'not-dispatched']), value: facts,
-  retryAfterMs: z.number().int().nonnegative().optional(),
-}).strict();
-export const agentSnapshotSchema = z.object({
-  session: agentRuntimeSessionSchema, run: agentRunSchema, revision: z.number().int().nonnegative(),
-  state: facts, sessionState: facts, budget: agentRunBudgetSchema,
-  inputs: z.array(z.object({ inputId: z.uuid(), version: z.number().int().positive(), sequence: z.number().int().positive(),
-    input: agentInputSchema }).strict()),
-  steps: z.array(z.object({ stepId: z.uuid(), number: z.number().int().positive(), operation: agentOperationSchema,
-    snapshot: facts, state: z.enum(['prepared', 'dispatching', 'waiting', 'unknown', 'completed']),
-    result: agentOperationResultSchema.nullable(), continuationOpen: z.boolean() }).strict()),
-  waits: z.array(agentWaitSchema),
-}).strict().refine(value => value.run.sessionId === value.session.sessionId
-  && value.inputs.every(input => input.input.sessionId === value.session.sessionId)
-  && value.waits.every(wait => wait.runId === value.run.runId), 'Snapshot must retain one session and run scope.');
-export type AgentSnapshot = z.infer<typeof agentSnapshotSchema>;
 export const agentAcceptedRequestSchema = z.object({ receipt: agentInputReceiptSchema, input: agentInputSchema }).strict()
-  .refine(value => value.receipt.sessionId === value.input.sessionId && value.receipt.requestId === value.input.requestId,
-    'Original input and receipt must retain the same request scope.');
+  .refine(value => value.receipt.sessionId === value.input.sessionId && value.receipt.requestId === value.input.requestId);
 export type AgentAcceptedRequest = z.infer<typeof agentAcceptedRequestSchema>;
-export const agentWaitReceiptSchema = z.object({ runId: z.uuid(), waitId: z.uuid() }).strict();
-export type AgentWaitReceipt = z.infer<typeof agentWaitReceiptSchema>;
 
 export const agentConversationMessageSchema = z.object({
-  messageId: z.string().min(1).max(300), runId: z.uuid(), inputId: z.uuid().optional(),
+  messageId: z.string().min(1).max(300), turnId: z.uuid(), inputId: z.uuid().optional(),
   role: z.enum(['user', 'assistant']), text: z.string(), createdAt: z.iso.datetime(),
   state: z.enum(['streaming', 'settled', 'failed', 'stopped']),
 }).strict();
 export const agentConversationInputSchema = z.object({
-  inputId: z.uuid(), runId: z.uuid(), version: z.number().int().positive(), mode: z.enum(['steering', 'queue']),
-  state: z.enum(['pending', 'adopted', 'removed']), text: z.string(), createdAt: z.iso.datetime(),
+  inputId: z.uuid(), turnId: z.uuid(), version: z.number().int().positive(),
+  state: z.enum(['pending', 'adopted', 'removed', 'deferred']), text: z.string(), createdAt: z.iso.datetime(),
 }).strict();
 export const agentConversationToolSchema = z.object({
-  operationId: z.uuid(), runId: z.uuid(), name: z.string().min(1).max(200),
-  state: z.enum(['prepared', 'dispatching', 'waiting', 'accepted', 'completed', 'failed', 'unknown', 'not-dispatched', 'stopped']),
-  feedback: modelToolResultSchema.omit({ callId: true }).optional(),
+  toolCallId: z.uuid(), turnId: z.uuid(), stepId: z.uuid(), name: z.string().min(1).max(200),
+  state: z.enum(['pending', 'started', 'closed']), result: z.json().nullable(),
 }).strict();
 /** Product projection, independent of debug snapshots and provider SDK response shapes. */
 export const agentConversationSchema = z.object({
   sessionId: z.uuid(), lastSeq: z.number().int().nonnegative(), messages: z.array(agentConversationMessageSchema),
-  runs: z.array(agentRunSchema), inputs: z.array(agentConversationInputSchema), waits: z.array(agentWaitSchema),
+  turns: z.array(agentTurnSchema), inputs: z.array(agentConversationInputSchema), questions: z.array(agentQuestionSchema),
   tools: z.array(agentConversationToolSchema),
-  workspaces: z.array(z.object({ operationId: z.uuid(), runId: z.uuid(), workspace: facts }).strict()),
-}).strict().refine(value => {
-  const runIds = new Set(value.runs.map(run => run.runId));
-  return value.runs.every(run => run.sessionId === value.sessionId)
-    && [...value.messages, ...value.inputs, ...value.waits, ...value.tools, ...value.workspaces].every(item => runIds.has(item.runId));
-}, 'Conversation facts must belong to the projected session and its runs.');
+  workspaces: z.array(z.object({ toolCallId: z.uuid(), turnId: z.uuid(), workspace: facts }).strict()),
+}).strict();
 export type AgentConversation = z.infer<typeof agentConversationSchema>;
 
 /** Public wire port, independent of the core implementation and Node host types. */
 export interface AgentSessionPort {
   initialize(session: AgentRuntimeSession): Promise<AgentRuntimeSession>;
-  accept(identity: SpaceIdentity, input: AgentInput): Promise<AgentInputReceipt>;
-  run(identity: SpaceIdentity, sessionId: string, runId: string): Promise<AgentRun>;
+  submit(identity: SpaceIdentity, input: AgentInput): Promise<AgentInputReceipt>;
+  answerQuestion(identity: SpaceIdentity, sessionId: string, response: AgentQuestionResponse): Promise<AgentQuestionReceipt>;
+  stop(identity: SpaceIdentity, sessionId: string, turnId: string, requestId: string): Promise<AgentTurn>;
+  continueSession(identity: SpaceIdentity, sessionId: string, requestId: string): Promise<AgentTurn>;
+  turn(identity: SpaceIdentity, sessionId: string, turnId: string): Promise<AgentTurn>;
   conversation(identity: SpaceIdentity, sessionId: string, after?: number): Promise<AgentConversation>;
   events(identity: SpaceIdentity, sessionId: string, after?: number): Promise<AgentEvent[]>;
-  stop(identity: SpaceIdentity, sessionId: string, runId: string, requestId: string): Promise<AgentRun>;
-  continueRun(identity: SpaceIdentity, sessionId: string, runId: string, requestId: string): Promise<AgentRun>;
-  snapshot(identity: SpaceIdentity, sessionId: string, runId: string): Promise<AgentSnapshot>;
-  respond(identity: SpaceIdentity, sessionId: string, response: AgentWaitResponse): Promise<AgentWaitReceipt>;
-  resolveWait(identity: SpaceIdentity, sessionId: string, resolution: AgentWaitResolution): Promise<AgentWaitReceipt>;
+  sessionSnapshot(identity: SpaceIdentity, sessionId: string): Promise<AgentSessionSnapshot>;
   request(identity: SpaceIdentity, sessionId: string, requestId: string): Promise<AgentAcceptedRequest | null>;
   inputControl(identity: SpaceIdentity, sessionId: string, inputId: string, control: AgentInputControl): Promise<AgentInputControlReceipt>;
-  assertDispatch(identity: SpaceIdentity, permit: AgentDispatchPermit): Promise<void>;
+  registerNotification(identity: SpaceIdentity, sessionId: string, originTurnId: string, fact: TaskTerminalFact): Promise<{ notificationId: string; turnId: string | null }>;
+  recordProgress(identity: SpaceIdentity, sessionId: string, attemptId: string, progress: { revision: number; text: string; tools?: readonly unknown[] }): Promise<boolean>;
+  /** Live-Step check for a cross-machine adapter; not a loop phase and not a browser operation. */
+  assertDispatch(identity: SpaceIdentity, permit: AgentDispatchPermit): Promise<null>;
 }
-/** A host may add original receipt lookup when its core supports it; no fallback may invent a receipt. */
 export type AgentSessionBackend = Omit<AgentSessionPort, 'request' | 'conversation' | 'inputControl' | 'assertDispatch'>
   & Partial<Pick<AgentSessionPort, 'request' | 'conversation' | 'inputControl' | 'assertDispatch'>>;
 
 export const agentSessionResultSchemas = {
-  initialize: agentRuntimeSessionSchema, accept: agentInputReceiptSchema,
-  run: agentRunSchema, conversation: agentConversationSchema, events: z.array(agentEventSchema), stop: agentRunSchema, continueRun: agentRunSchema,
-  snapshot: agentSnapshotSchema, respond: agentWaitReceiptSchema, resolveWait: agentWaitReceiptSchema,
-  request: agentAcceptedRequestSchema.nullable(),
-  inputControl: agentInputControlReceiptSchema,
-  assertDispatch: agentDispatchPermitSchema,
+  initialize: agentRuntimeSessionSchema, submit: agentInputReceiptSchema, answerQuestion: agentQuestionReceiptSchema,
+  stop: agentTurnSchema, continueSession: agentTurnSchema, turn: agentTurnSchema,
+  conversation: agentConversationSchema, events: z.array(agentEventSchema), sessionSnapshot: agentSessionSnapshotSchema,
+  request: agentAcceptedRequestSchema.nullable(), inputControl: agentInputControlReceiptSchema,
+  registerNotification: z.object({ notificationId: z.uuid(), turnId: z.uuid().nullable() }).strict(),
+  recordProgress: z.boolean(),
+  assertDispatch: z.null(),
 };
 export type AgentSessionResults = { [K in keyof typeof agentSessionResultSchemas]: z.infer<(typeof agentSessionResultSchemas)[K]> };
 
@@ -174,7 +140,7 @@ export function parseAgentSessionResult<C extends AgentSessionCall>(call: C, val
       const session = agentRuntimeSessionSchema.parse(result);
       matches = session.sessionId === call.sessionId && sameAgentSubject(session.identity, call.identity); break;
     }
-    case 'accept': {
+    case 'submit': {
       const receipt = agentInputReceiptSchema.parse(result);
       matches = receipt.sessionId === call.sessionId && receipt.requestId === call.args.input.requestId; break;
     }
@@ -185,33 +151,22 @@ export function parseAgentSessionResult<C extends AgentSessionCall>(call: C, val
     case 'inputControl': {
       const receipt = agentInputControlReceiptSchema.parse(result);
       matches = receipt.requestId === call.args.control.requestId && receipt.input.inputId === call.args.inputId
-        && receipt.input.input.sessionId === call.sessionId && receipt.input.version === call.args.control.expectedVersion + 1
-        && receipt.input.state === (call.args.control.operation === 'remove' ? 'removed' : 'pending'); break;
+        && receipt.input.input.sessionId === call.sessionId && receipt.input.version === call.args.control.expectedVersion + 1; break;
     }
-    case 'assertDispatch': {
-      const permit = agentDispatchPermitSchema.parse(result);
-      matches = (['sessionId', 'runId', 'stepId', 'operationId', 'generation'] as const)
-        .every(key => permit[key] === call.args.permit[key]); break;
+    case 'stop': case 'turn': {
+      const turn = agentTurnSchema.parse(result);
+      matches = turn.sessionId === call.sessionId && turn.turnId === call.args.turnId; break;
     }
-    case 'run': case 'stop': case 'continueRun': {
-      const run = agentRunSchema.parse(result);
-      matches = run.sessionId === call.sessionId && run.runId === call.args.runId; break;
+    case 'answerQuestion': {
+      const receipt = agentQuestionReceiptSchema.parse(result);
+      matches = receipt.questionId === call.args.response.questionId; break;
     }
-    case 'conversation': {
-      matches = agentConversationSchema.parse(result).sessionId === call.sessionId; break;
-    }
+    case 'assertDispatch': matches = call.args.permit.sessionId === call.sessionId; break;
+    case 'conversation': matches = agentConversationSchema.parse(result).sessionId === call.sessionId; break;
+    case 'sessionSnapshot': matches = agentSessionSnapshotSchema.parse(result).session.sessionId === call.sessionId; break;
     case 'events': {
       const events = z.array(agentEventSchema).parse(result);
       matches = events.every((event, index) => event.sessionId === call.sessionId && event.seq > (events[index - 1]?.seq ?? call.args.after)); break;
-    }
-    case 'snapshot': {
-      const snapshot = agentSnapshotSchema.parse(result);
-      matches = snapshot.session.sessionId === call.sessionId && sameAgentSubject(snapshot.session.identity, call.identity)
-        && snapshot.run.runId === call.args.runId; break;
-    }
-    case 'respond': case 'resolveWait': {
-      const receipt = agentWaitReceiptSchema.parse(result);
-      matches = receipt.waitId === (call.operation === 'respond' ? call.args.response.waitId : call.args.resolution.waitId); break;
     }
   }
   z.custom<boolean>(value => value === true, 'Result does not match the requested session operation.').parse(matches);

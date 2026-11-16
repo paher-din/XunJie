@@ -1,6 +1,6 @@
 # 现有学习对话接入版本化能力装配：验收证据
 
-本文保留旧版本的验收历史；旧 Agent 探针已退休，文中脚本名仅标识原证据来源。当前 session v2 工程入口为 [conversation-native.runtime.test.mjs](../../../../packages/agents/test/conversation-native.runtime.test.mjs)、[tool-discovery.runtime.test.mjs](../../../../packages/agents/test/tool-discovery.runtime.test.mjs)。这些测试不继承本页的历史通过结论，真实供应商、桌面与跨机结果须另行验收。
+本文保留旧版本的验收历史；旧 Agent 探针已退休，文中脚本名仅标识原证据来源。当前 session v2 工程入口为 conversation-native.runtime.test.mjs、tool-discovery.runtime.test.mjs。这些测试不继承本页的历史通过结论，真实供应商、桌面与跨机结果须另行验收。
 
 本目录对应[现有学习对话接入版本化能力装配](https://github.com/paher-din/XunJie/issues/215)，保留公开 ID、摘要、状态与必要截图，不包含凭据或完整私有模型正文。时间均为报告中的 UTC。
 

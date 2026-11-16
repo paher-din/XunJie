@@ -18,11 +18,11 @@ it('the protected workspace question reaches v2 directly with original works and
   const client = new AgentSessionsClient({ identity, spaceKey: 'personal', namespace: 'session-queue' })
   vi.stubGlobal('fetch', vi.fn(async (url: string, options: RequestInit = {}) => {
     expect(url).toContain('/agent-sessions/' + session.sessionId + '/')
-    expect(new Headers(options.headers).get('x-xj-agent-contract')).toBe('2')
+    expect(new Headers(options.headers).get('x-xj-agent-contract')).toBe('3')
     if (options.body) {
       const input = JSON.parse(String(options.body))
       expect(input.context.action.works).toEqual(work.files)
-      accepted = { input, receipt: { sessionId: session.sessionId, requestId: input.requestId, inputId: id(), runId: id(), inputDigest: 'a'.repeat(64) } }
+      accepted = { input, receipt: { sessionId: session.sessionId, requestId: input.requestId, inputId: id(), turnId: id(), inputDigest: 'a'.repeat(64) } }
       return new Response(JSON.stringify(accepted.receipt))
     }
     return new Response(JSON.stringify(accepted ?? null))

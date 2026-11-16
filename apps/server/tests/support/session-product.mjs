@@ -61,7 +61,7 @@ export async function fixture(answer = (_payload, response) => reply(response, {
   let state = await runtime.start(), endpoint = state.endpoint;
   const raw = async (route, body, headers = { 'x-xj-space': 'personal' }) => {
     const response = await fetch(new URL('/api/learning/' + route, endpoint), { headers: {
-      'content-type': 'application/json', 'x-xj-agent-contract': '2', ...headers },
+      'content-type': 'application/json', 'x-xj-agent-contract': '3', ...headers },
       ...(body === undefined ? {} : { method: 'POST', body: JSON.stringify(body) }) });
     return { status: response.status, body: await response.json() };
   };
@@ -110,7 +110,7 @@ export async function fixture(answer = (_payload, response) => reply(response, {
       const modelStorage = await reopen('model-connection', modelMigrations);
       let agent, authority;
       const models = await createModelGateway(modelStorage, { holder: 'device', authorize: spaces.authorize,
-        authorizePermit: (who, permit) => agent.assertDispatch(who, permit) });
+        authorizePermit: (who, permit) => agent.local.assertDispatch(who, permit) });
       modelServices.push(models); await configure(models, activity.identity);
       const { credentialRef, ...connection } = await runtime.database();
       const binding = await provisionStorage({ admin: { ...connection, password: await resolveCredential(root, credentialRef) },
@@ -120,12 +120,12 @@ export async function fixture(answer = (_payload, response) => reply(response, {
       const learning = createLearningData(data, spaces, courses, {}, undefined, undefined,
         (...args) => authority.assertArtifactAdoption(...args)); learningServices.push(learning);
       const owner = { version: 1, connectionId: storage.owner.serviceId, installationId: env.installationId,
-        target: { ...storage.owner, unit: 'teaching-agent', endpoint, protocolVersion: 1, capabilities: ['agent.sessions.v2'] } };
+        target: { ...storage.owner, unit: 'teaching-agent', endpoint, protocolVersion: 1, capabilities: ['agent.sessions.v3'] } };
       const directory = createAgentSessions(data, { authorize: spaces.authorize, openActivity: learning.open, resolveOwner: async () => owner });
       const materials = createSessionMaterials(data, { courses, openScope: (who, scope) => scope.kind === 'session'
         ? directory.read(who, scope.sessionId) : learning.open(who, scope.activityId) });
-      agent = createProductAgent({ storage, directory, models, authorize: spaces.authorize, materials: async () => materials,
-        workspace: async session => ({ workspace: () => learning.open(session.identity, session.workspace.activityId), learning, courses }) });
+      agent = createProductAgent({ storage, directory, models, authorize: spaces.authorize,
+        scene: async () => ({ tools: async () => [] }) });
       agents.push(agent);
       authority = createWorkspaceAgentAuthority({ sessions: directory.list, agent: async () => agent.local, activity: learning.open });
       const session = await agent.sessions.workspace(activity.identity, activity.activityId, activity.target);

@@ -19,7 +19,7 @@ test('project material handoff resumes its original copies and survives deletion
   const learning = createLearningData(storage, { resolveBinding: async () => target });
   const directory = createAgentSessions(storage, { authorize: async () => {}, openActivity: learning.open, resolveOwner: async () => ({
     version: 1, connectionId: randomUUID(), installationId: randomUUID(), target: { environmentId: randomUUID(), serviceId: randomUUID(),
-      unit: 'teaching-agent', endpoint: 'http://127.0.0.1:3444', protocolVersion: 1, capabilities: ['agent.sessions.v2'] } }) });
+      unit: 'teaching-agent', endpoint: 'http://127.0.0.1:3444', protocolVersion: 1, capabilities: ['agent.sessions.v3'] } }) });
   const session = await directory.create(identity, { requestId: randomUUID(), sessionId: randomUUID(), scenario: 'student-assistant' });
   const materials = createSessionMaterials(storage, { openScope: (who, scope) => scope.kind === 'session'
     ? directory.read(who, scope.sessionId) : learning.open(who, scope.activityId) });

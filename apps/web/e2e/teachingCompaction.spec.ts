@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import { randomUUID } from 'node:crypto'
 import type { ModelConnection } from '@xunjie/contracts/model-connections'
 import type { AgentConversation } from '@xunjie/contracts/agent-service'
-import type { AgentEvent, AgentInputReceipt, AgentRun } from '@xunjie/contracts/agent-runtime'
+import type { AgentEvent, AgentInputReceipt, AgentTurn } from '@xunjie/contracts/agent-runtime'
 import type { AgentSession } from '@xunjie/contracts/agent-sessions'
 import { fixture, reply, replyStudentPolicy, until } from '../../server/tests/support/session-product.mjs'
 import { REAL_URL } from './env'
@@ -20,7 +20,7 @@ test('real session v2 compaction preserves complete visible history, draft and c
       const source = JSON.parse(typeof content === 'string' ? content : content.map((part: any) => part.text ?? '').join(''))
       summaries++; await summaryGate
       reply(response, { text: JSON.stringify({ version: 1, sourceDigest: source.sourceDigest, retainedDigest: source.retainedDigest,
-        retainedIds: source.retained.map((item: any) => item.id), facts: [{ text: '原观测是 37，原因仍未知。', sources: [source.messages[0].eventId] }],
+        retainedIds: source.sourceVersions.retainedIds, facts: [{ text: '原观测是 37，原因仍未知。', sources: [source.messages[0].id] }],
         inferences: [], contradictions: [], unknowns: [], unfinished: [] }) })
       return
     }
@@ -39,9 +39,9 @@ test('real session v2 compaction preserves complete visible history, draft and c
     const base = `agent-sessions/${session.sessionId}`, read = () => f.api<AgentConversation>(base + '/conversation')
     const open = () => page.goto(`${REAL_URL}/?view=agent&space=personal&session=${session.sessionId}`)
     for (let index = 0; index < 7; index++) {
-      const accepted = await f.api<AgentInputReceipt>(base + '/inputs', { requestId: randomUUID(), sessionId: session.sessionId, mode: 'steering', context: {},
+      const accepted = await f.api<AgentInputReceipt>(base + '/inputs', { requestId: randomUUID(), sessionId: session.sessionId, context: {},
         text: `历史记录 ${index + 1}：` + 'observation 37; cause unconfirmed. '.repeat(280) })
-      await until(async () => (await f.api<AgentRun>(base + '/runs/' + accepted.runId)).state === 'completed', 'The original historical Run finishes.')
+      await until(async () => (await f.api<AgentTurn>(base + '/runs/' + accepted.turnId)).state === 'completed', 'The original historical Turn finishes.')
     }
     expect(answers).toBe(7); expect(summaries).toBe(0)
     await open()
@@ -88,10 +88,10 @@ test('real session v2 compaction preserves complete visible history, draft and c
     await until(() => answers === 9, 'The selected native route receives the actual answer request.')
     expect(f.payloads.at(-1)?.model).toBe('fixture-compaction-successor')
     expect(JSON.stringify(f.payloads.at(-1))).toContain('原观测是 37')
-    const running = (await read()).runs.find((run: any) => run.state === 'running')
+    const running = (await read()).turns.find((turn: any) => turn.state === 'active')
     await expect(composer).toHaveValue(''); await composer.fill('停止期间保留的新草稿')
     await page.getByRole('button', { name: '停止回答', exact: true }).click(); releaseLast()
-    await expect.poll(async () => (await f.api<AgentRun>(base + '/runs/' + running!.runId)).state).toBe('stopped')
+    await expect.poll(async () => (await f.api<AgentTurn>(base + '/runs/' + running!.turnId)).state).toBe('stopped')
     await expect(composer).toHaveValue('停止期间保留的新草稿')
     await expect(page.getByRole('button', { name: '停止回答', exact: true })).not.toBeVisible()
     expect(summaries).toBe(1); expect(f.failures).toEqual([])

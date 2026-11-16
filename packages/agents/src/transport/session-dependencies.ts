@@ -7,7 +7,6 @@ import { storageErrorCodes } from '@xunjie/contracts/storage';
 import { agentDependencyCallSchema, parseAgentDependencyResult, requiresAgentDependencyDispatch,
   agentWorkspaceDataMethodSchema, agentWorkspaceCourseMethodSchema, agentDependencyDataResultSchemas, agentDependencyModelMethodSchema,
   agentDependencyMaterialResultSchemas, agentDependencyMaterialSelectionSchema, isAgentDependencyRead,
-  agentDependencyToolOfferSchema, agentDependencyPreparedToolSchema,
   agentDependencyToolContextSchema,
   type AgentDependencyCall, type AgentDependencyResults } from '@xunjie/contracts/agent-dependencies';
 import { agentDispatchPermitSchema, type AgentDispatchPermit } from '@xunjie/contracts/agent-runtime';
@@ -30,21 +29,22 @@ import { materialScopeSchema, type MaterialScopeInput, type SessionMaterialPort 
 import { personalMaterialReadSchema, materialSearchInputSchema } from '@xunjie/contracts/personal-materials';
 import { pdfReadInputSchema, pdfFindInputSchema } from '@xunjie/contracts/pdf-materials';
 import { activitySchema } from '@xunjie/contracts/learning-data';
-import type { ConversationToolModule, ConversationToolContext, ConversationToolOutcome } from '../conversation/tools.js';
-import { requireConversationModelStep } from '../conversation/basis.ts';
+import { AgentError, type AgentTool, type ToolCall, type ToolContext, type ToolEffectReference } from '@xunjie/agent-runtime';
+import { validateTeachingAnswer } from '../capabilities/user-questions/index.js';
 
 type Json = z.infer<ReturnType<typeof z.json>>;
-function toolContext(value: z.infer<typeof agentDependencyToolContextSchema>): ConversationToolContext {
-  return { ...value, snapshot: { ...value.snapshot, steps: value.snapshot.steps.map(step => ({ ...step,
-    result: step.result ? { state: step.result.state, value: step.result.value,
-      ...(step.result.retryAfterMs === undefined ? {} : { retryAfterMs: step.result.retryAfterMs }) } : null })) } };
-}
-function toolOutcome(value: AgentDependencyResults['tools.dispatch']): ConversationToolOutcome {
-  const { wait, continuation, nextCommand, ...outcome } = value;
-  return { ...outcome, ...(continuation === undefined ? {} : { continuation }),
-    ...(nextCommand === undefined ? {} : { nextCommand }),
-    ...(wait ? { wait: { kind: wait.kind, presentation: wait.presentation, deadline: wait.deadline,
-      ...(wait.interruptible === undefined ? {} : { interruptible: wait.interruptible }) } } : {}) };
+export type WireToolContext = z.infer<typeof agentDependencyToolContextSchema>;
+/** Remote data-owner tools never save questions; the session owner kernel handles student_ask locally. */
+function remoteToolContext(identity: SpaceIdentity, value: WireToolContext, signal: AbortSignal,
+  guard: () => Promise<void>, reportEffect: (ref: ToolEffectReference) => Promise<void>): ToolContext {
+  return { identity, sessionId: value.sessionId, turnId: value.turnId, stepId: value.stepId, toolCallId: value.toolCallId,
+    ...(value.deadline ? { deadline: value.deadline } : {}), ...(value.segmentId ? { segmentId: value.segmentId } : {}),
+    signal, inputIds: value.inputIds, originInputId: value.originInputId ?? null, visibleAnswerInputIds: value.visibleAnswerInputIds ?? [], reportEffect,
+    async assertActive() {
+      if (signal.aborted) throw new StorageError('forbidden');
+      await guard();
+      if (signal.aborted) throw new StorageError('forbidden');
+    }, ask: async () => { throw new StorageError('forbidden'); } };
 }
 export interface AgentMaterialReadPort {
   personal: Pick<SessionMaterialPort['personal'], 'list' | 'material' | 'original' | 'versionContent' | 'readRange'>;
@@ -55,9 +55,8 @@ export interface AgentDocumentMaterialsPort extends AgentMaterialReadPort {
   search: SessionMaterialPort['search'];
 }
 export interface AgentSessionDependencies {
-  /** The same client scope used by model/domain RPCs, including implicit-effect permits. */
   withAuthority<T>(permit: AgentDispatchPermit, work: () => Promise<T>): Promise<T>;
-  tools(): Promise<ConversationToolModule[]>;
+  tools(context: WireToolContext): Promise<AgentTool[]>;
   materials: AgentDocumentMaterialsPort;
   models: LearningModelPort;
   query: ReturnType<typeof createLearningQuery>;
@@ -82,26 +81,28 @@ export interface AgentDependencyClient {
 
 type TrustedExecutionSource = Parameters<ReturnType<typeof createLearningData>['executionRecords']['sync']>[3];
 export interface AgentDependencyServiceOptions {
-  /** Authenticated executor publication is independent of an Agent session or live dispatch permit. */
   executionRecordSource?(identity: SpaceIdentity, activityId: string, event: Readonly<ExecutionRecordEvent>,
     source: Readonly<ChunkConnectionSource>): Promise<TrustedExecutionSource>;
   tools?(identity: SpaceIdentity, session: AgentSession, source: Readonly<ChunkConnectionSource>,
-    call: Readonly<AgentDependencyCall>): readonly ConversationToolModule[] | Promise<readonly ConversationToolModule[]>;
+    call: Readonly<AgentDependencyCall>): readonly AgentTool[] | Promise<readonly AgentTool[]>;
   materials?: AgentDocumentMaterialsPort;
   models?: LearningModelPort;
-  /** Resolve paired/native routing from this fixed session and the current authenticated peer. */
   modelsForSession?(identity: SpaceIdentity, session: AgentSession, source: Readonly<ChunkConnectionSource>,
     call: Readonly<Extract<AgentDependencyCall, { operation: 'model' }>>): LearningModelPort | Promise<LearningModelPort>;
-  /** Host resolves actual data/course owners and current identity; a grant target is not a course owner. */
   source?(identity: SpaceIdentity): Promise<LearningQuerySource>;
   sessions: Pick<ReturnType<typeof createAgentSessions>, 'create' | 'read' | 'list' | 'update' | 'markReady'>;
   learning: ReturnType<typeof createLearningData>;
   courses: Parameters<typeof createWorkspaceDataService>[0]['courses'];
   authorize(identity: SpaceIdentity, source: Readonly<ChunkConnectionSource>): Promise<void>;
   resolveOwner?(identity: SpaceIdentity, scenario: CreateAgentSession['scenario'], workspace?: CreateAgentSession['workspace']): Promise<AgentSession['owner']>;
-  /** Authenticated host proof for a restored installation; environment and service must still match. */
   isOwnerSuccessor?(owner: AgentSession['owner'], source: Readonly<ChunkConnectionSource>): Promise<boolean>;
   assertDispatch(identity: SpaceIdentity, permit: AgentDispatchPermit): Promise<void>;
+  /** Real authenticated task-owner operations; never read from a different business ledger. */
+  tasks?: {
+    read(identity: SpaceIdentity, sessionId: string, taskId: string): Promise<z.infer<typeof import('@xunjie/contracts/agent-dependencies').agentTaskRecordSchema> | null>;
+    list(identity: SpaceIdentity, sessionId: string, turnId: string): Promise<z.infer<typeof import('@xunjie/contracts/agent-dependencies').agentTaskRecordSchema>[]>;
+    cancel(identity: SpaceIdentity, sessionId: string, taskId: string): Promise<void>;
+  };
 }
 async function executionSource(options: AgentDependencyServiceOptions,
   call: Extract<AgentDependencyCall, { operation: 'execution.record' }>, source: Readonly<ChunkConnectionSource>) {
@@ -196,8 +197,6 @@ export function createAgentDependencyChannel(storage: OwnedStorage, options: Age
       }
       await assertOwner(options, session, call.identity, source);
       if (session.deleted) throw new StorageError('forbidden');
-      // Retained bytes do not retain the original member's course permission. These are
-      // current owner reads only; no dispatch/reconcile/cancellation handler is replayed.
       if (session.workspace && !call.operation.startsWith('sessions.') && call.operation !== 'authorize') {
         const activity = await options.learning.open(call.identity, session.workspace.activityId);
         if (canonicalDigest(activity.target) !== canonicalDigest(session.workspace.target)) throw new StorageError('forbidden');
@@ -224,6 +223,13 @@ export function createAgentDependencyChannel(storage: OwnedStorage, options: Age
 
 /** Version 2 is checked before authorization, owner lookup or any domain mutation. */
 export function createAgentDependencyService(options: AgentDependencyServiceOptions) {
+  // Transport-local signals/receipts only. Durable cancellation and task delivery stay in agent_controls/the owner ledger.
+  const toolCalls = new Map<string, { controller: AbortController; reference: ToolEffectReference; expires: number; started: boolean }>();
+  function toolKey(identity: SpaceIdentity, sessionId: string, ids: { turnId: string; stepId: string; toolCallId: string }) {
+    for (const [key, entry] of toolCalls) if (entry.expires <= Date.now()) toolCalls.delete(key);
+    return canonicalDigest({ identity: [identity.kind, identity.environmentId, identity.spaceId, identity.principalId], sessionId,
+      turnId: ids.turnId, stepId: ids.stepId, toolCallId: ids.toolCallId });
+  }
   async function sourceOf(identity: SpaceIdentity) {
     if (!options.source) throw new StorageError('unavailable');
     const source = await options.source(identity);
@@ -276,70 +282,76 @@ export function createAgentDependencyService(options: AgentDependencyServiceOpti
       await assertOwner(options, created, call.identity, source); return created;
     }
     const session = await options.sessions.read(call.identity, call.sessionId);
+    if (session.sessionId !== call.sessionId) throw new StorageError('forbidden');
     await assertOwner(options, session, call.identity, source);
     const guard = async () => {
       if (!('permit' in call) || !call.permit || call.permit.sessionId !== call.sessionId || session.state !== 'ready' || session.deleted) throw new StorageError('forbidden');
       await source.assertAuthorized!(); await options.authorize(call.identity, source);
       const current = await options.sessions.read(call.identity, call.sessionId);
       await assertOwner(options, current, call.identity, source);
-      if (current.deleted || current.state !== 'ready') throw new StorageError('forbidden');
+      if (current.sessionId !== call.sessionId || current.deleted || current.state !== 'ready') throw new StorageError('forbidden');
       await options.assertDispatch(call.identity, call.permit);
     };
     if (requiresAgentDependencyDispatch(call)) await guard();
     if (call.operation.startsWith('tools.')) {
+      if (call.operation === 'tools.control') {
+        const key = toolKey(call.identity, session.sessionId, call.args);
+        let entry = toolCalls.get(key);
+        if (!entry && call.args.action === 'cancel') {
+          entry = { controller: new AbortController(), reference: {}, started: false,
+            expires: Date.now() + 86_400_000 };
+          toolCalls.set(key, entry); // Handles cancellation arriving before the execution request.
+        }
+        if (call.args.action === 'cancel') entry?.controller.abort(new StorageError('forbidden'));
+        return { found: !!entry?.started, cancelled: entry?.controller.signal.aborted ?? false, reference: entry?.reference ?? {} };
+      }
       if (session.deleted || !options.tools) throw new StorageError('forbidden');
-      const modules = await options.tools(call.identity, session, source, call);
-      if (new Set(modules.map(module => module.id)).size !== modules.length) throw new StorageError('identity-conflict');
-      if (call.operation === 'tools.describe') return modules.map(({ id, version }) => ({ id, version }));
+      const tools = await options.tools(call.identity, session, source, call);
+      const descriptorOf = (tool: AgentTool) => ({ id: tool.definition.name, version: 1 });
+      if (call.operation === 'tools.describe') return tools.map(descriptorOf);
       if (!('module' in call.args)) throw new StorageError('invalid');
-      const { module: descriptor } = call.args, context = toolContext(call.args.context);
-      if (call.operation !== 'tools.list' || context.basisStepId !== null) requireConversationModelStep(context);
-      const module = modules.find(module => module.id === descriptor.id && module.version === descriptor.version);
-      if (!module) throw new StorageError('incompatible');
-      if (context.snapshot.session.scenario !== session.scenario || context.snapshot.run.sessionId !== session.sessionId
-        || context.snapshot.inputs.some(input => input.input.sessionId !== session.sessionId)
-        || context.inputIds.some(id => !context.snapshot.inputs.some(input => input.inputId === id)))
-        throw new StorageError('forbidden');
+      const { module: descriptor } = call.args;
+      const tool = tools.find(item => item.definition.name === descriptor.id);
+      if (!tool) throw new StorageError('incompatible');
+      if (call.operation === 'tools.list')
+        return [{ definition: tool.definition, supportsBackground: tool.supportsBackground,
+          ...(tool.timeoutPolicy ? { timeoutPolicy: tool.timeoutPolicy } : {}), scope: {} }];
+      if (call.operation === 'tools.validateAnswer') {
+        validateTeachingAnswer(call.args.presentation, call.args.answer); return null;
+      }
+      if (call.operation !== 'tools.execute' || !call.permit || call.permit.sessionId !== call.sessionId) throw new StorageError('forbidden');
+      const wire = call.args.context;
+      if (wire.sessionId !== session.sessionId) throw new StorageError('forbidden');
       if (session.scenario === 'workspace-assistant') {
-        const actual = await workspace(call.identity, session), fixed = activitySchema.parse(context.context.facts.workspace);
+        const actual = await workspace(call.identity, session), fixed = activitySchema.parse(wire.context.facts.workspace);
         if (actual.activityId !== fixed.activityId || !sameAgentSubject(fixed.identity, call.identity)
           || canonicalDigest(actual.target) !== canonicalDigest(fixed.target)
           || canonicalDigest(actual.course ?? null) !== canonicalDigest(fixed.course ?? null)) throw new StorageError('forbidden');
       }
-      if (call.operation === 'tools.list') return module.list(context);
-      if (call.operation === 'tools.validateResponse') {
-        if (!module.validateResponse) throw new StorageError('forbidden');
-        await module.validateResponse(context, call.args.wait, call.args.answer); return null;
+      const toolCall: ToolCall = { toolCallId: call.args.call.toolCallId, nativeCallId: call.args.call.nativeCallId,
+        callIndex: call.args.call.callIndex, name: call.args.call.name, input: call.args.call.input, executionMode: call.args.call.executionMode };
+      if (wire.turnId !== call.permit.runId || wire.stepId !== call.permit.stepId || wire.toolCallId !== call.permit.operationId
+        || toolCall.toolCallId !== wire.toolCallId || toolCall.name !== tool.definition.name) throw new StorageError('identity-conflict');
+      const key = toolKey(call.identity, session.sessionId, wire);
+      const entry = toolCalls.get(key) ?? { controller: new AbortController(), reference: {}, started: false,
+        expires: Date.now() + 86_400_000 };
+      entry.started = true; toolCalls.set(key, entry);
+      const expire = () => entry.controller.abort(new AgentError('deadline-exceeded'));
+      // A cancellation tombstone must survive the execution deadline (including delayed delivery).
+      const deadline = Math.min(entry.expires, wire.deadline ? Date.parse(wire.deadline) : Number.POSITIVE_INFINITY);
+      const timer = setTimeout(expire, Math.max(0, deadline - Date.now())); timer.unref();
+      if (deadline <= Date.now()) expire();
+      const context = remoteToolContext(call.identity, wire, entry.controller.signal, guard,
+        async ref => { entry.reference = { ...entry.reference, ...ref }; });
+      try {
+        await context.assertActive();
+        const result = await tool.execute(toolCall, context);
+        if (result.kind === 'accepted' || result.kind === 'outcome_unknown') entry.reference = { ...entry.reference,
+          ...(result.taskId ? { taskId: result.taskId } : {}),
+          ...(result.kind === 'outcome_unknown' && result.requestRef ? { requestRef: result.requestRef } : {}) };
+        return result;
       }
-      if (call.operation === 'tools.prepare') {
-        const { offer, intent, commandId } = call.args;
-        if (intent.name !== offer.definition.name || !(await module.list(context)).some(current => canonicalDigest(current) === canonicalDigest(offer)))
-          throw new StorageError('incompatible');
-        const command = agentDependencyPreparedToolSchema.parse(await module.prepare(context, offer, intent, commandId));
-        if (command.commandId !== commandId || command.name !== intent.name || command.effect !== offer.effect) throw new StorageError('identity-conflict');
-        return { ...command, input: { version: 2, module: descriptor, offer, prepared: command } };
-      }
-      if (!('command' in call.args)) throw new StorageError('invalid');
-      const { command } = call.args;
-      const fixed = z.object({ version: z.literal(2), module: z.object({ id: z.string(), version: z.number().int().positive() }).strict(),
-        offer: agentDependencyToolOfferSchema, prepared: agentDependencyPreparedToolSchema }).strict().parse(command.input);
-      if (canonicalDigest(fixed.module) !== canonicalDigest(descriptor) || command.commandId !== fixed.prepared.commandId
-        || command.name !== fixed.prepared.name || command.effect !== fixed.prepared.effect) throw new StorageError('identity-conflict');
-      const routed = (outcome: ConversationToolOutcome | null): ConversationToolOutcome | null => {
-        if (!outcome?.nextCommand) return outcome;
-        const next = agentDependencyPreparedToolSchema.parse(outcome.nextCommand);
-        if (next.commandId === command.commandId || next.name !== fixed.prepared.name || next.effect !== fixed.prepared.effect)
-          throw new StorageError('identity-conflict');
-        // A continuation remains at this fixed data owner/module/offer. No new model preparation grants it authority.
-        return { ...outcome, nextCommand: agentDependencyPreparedToolSchema.parse({ ...next, input: { ...fixed, prepared: next } }) };
-      };
-      if (call.operation === 'tools.reconcile') return routed(await module.reconcile(context, fixed.prepared));
-      if (call.operation === 'tools.stop') return module.stop ? module.stop(context, fixed.prepared) : null;
-      if (call.operation !== 'tools.dispatch' || !call.permit || call.permit.runId !== context.snapshot.run.runId
-        || call.permit.operationId !== command.commandId || !context.snapshot.steps.some(step => step.stepId === call.permit!.stepId
-          && step.operation.kind === 'tool.call' && step.operation.operationId === command.commandId)) throw new StorageError('forbidden');
-      if (!(await module.list(context)).some(current => canonicalDigest(current) === canonicalDigest(fixed.offer))) throw new StorageError('incompatible');
-      return routed(await module.dispatch(context, fixed.prepared, call.permit, guard));
+      finally { clearTimeout(timer); }
     }
     switch (call.operation) {
       case 'sessions.read': return session;
@@ -434,6 +446,17 @@ export function createAgentDependencyService(options: AgentDependencyServiceOpti
         if (call.operation === 'query.search') return query.searchLearning(call.args);
         return query.readLearning(call.args);
       }
+      case 'tasks': {
+        if (!options.tasks) throw new StorageError('unavailable');
+        if (call.args.method === 'cancel') { await options.tasks.cancel(call.identity, call.sessionId, call.args.taskId); return null; }
+        if (call.args.method === 'list') {
+          const records = await options.tasks.list(call.identity, call.sessionId, call.args.turnId);
+          if (!records.every(record => record.sessionId === call.sessionId && sameAgentSubject(record.identity, call.identity)))
+            throw new StorageError('identity-conflict');
+          return records;
+        }
+        return options.tasks.read(call.identity, call.sessionId, call.args.taskId);
+      }
       case 'workspace.activity': return workspace(call.identity, session);
       case 'workspace.course': {
         const activity = await workspace(call.identity, session), course = activity.course;
@@ -462,6 +485,7 @@ export function createAgentDependencyService(options: AgentDependencyServiceOpti
           if (method === 'executions.artifact') return options.learning.executions.artifact(call.identity, activity.activityId, id.parse(args[1]));
           if (method === 'executions.controlReceipt') return options.learning.executions.controlReceipt(call.identity, activity.activityId, id.parse(args[1]), id.parse(args[2]));
           const association = agentExecutionAssociationSchema.parse(args[1]);
+          if (association.sessionId !== call.sessionId) throw new StorageError('identity-conflict');
           if (requiresAgentDependencyDispatch(call) && (association.runId !== call.permit!.runId || association.commandId !== call.permit!.operationId))
             throw new StorageError('identity-conflict');
           const context = { ...association, origin: { grantId: source.grantId, sourceEnvironmentId: source.sourceEnvironmentId,
@@ -531,7 +555,7 @@ export function createAgentDependencyClient(send: (call: AgentDependencyCall) =>
       return agentDependencyDataResultSchemas[method].parse(value) as z.infer<(typeof agentDependencyDataResultSchemas)[M]>;
     }
     const association = (context: Parameters<TeachingToolData['executions']['agent']['read']>[2]) => agentExecutionAssociationSchema.parse({
-      runId: context.runId, stepId: context.stepId, snapshotId: context.snapshotId, commandId: context.commandId });
+      sessionId: context.sessionId ?? sessionId, runId: context.runId, stepId: context.stepId, snapshotId: context.snapshotId, commandId: context.commandId });
     async function material<M extends keyof typeof agentDependencyMaterialResultSchemas>(method: M, who: SpaceIdentity, scope: MaterialScopeInput, args: unknown[]): Promise<z.infer<(typeof agentDependencyMaterialResultSchemas)[M]>> {
       actor(who);
       const value = await invoke({ version: 2, operation: 'materials.read', identity, sessionId,
@@ -589,31 +613,86 @@ export function createAgentDependencyClient(send: (call: AgentDependencyCall) =>
     };
     return {
     withAuthority,
-    async tools() {
-      const installed = await invoke({ version: 2, operation: 'tools.describe', identity, sessionId, args: {} });
-      return installed.map<ConversationToolModule>(module => ({ ...module,
-        list: context => invoke({ version: 2, operation: 'tools.list', identity, sessionId, args: { module, context } }),
-        prepare: (context, offer, intent, commandId) => invoke({ version: 2, operation: 'tools.prepare', identity, sessionId,
-          args: { module, context, offer: { definition: offer.definition, effect: offer.effect, scope: offer.scope }, intent, commandId } }),
-        dispatch: async (context, command, permit, assertDispatch) => {
-          await assertDispatch();
-          return toolOutcome(await invoke({ version: 2, operation: 'tools.dispatch', identity, sessionId, permit, args: { module, context, command } }));
-        },
-        reconcile: async (context, command) => {
-          const outcome = await invoke({ version: 2, operation: 'tools.reconcile', identity, sessionId, args: { module, context, command } });
-          return outcome ? toolOutcome(outcome) : null;
-        },
-        stop: async (context, command) => {
-          const outcome = await invoke({ version: 2, operation: 'tools.stop', identity, sessionId, args: { module, context, command } });
-          return outcome ? toolOutcome(outcome) : null;
-        },
-        validateResponse: async (context, wait, answer) => { await invoke({ version: 2, operation: 'tools.validateResponse', identity, sessionId, args: { module, context, wait, answer } }); },
-      }));
+    async tools(context: WireToolContext) {
+      const installed = await invoke({ version: 2, operation: 'tools.describe', identity, sessionId, args: { context } });
+      const tools: AgentTool[] = [];
+      for (const module of installed) {
+        const offers = await invoke({ version: 2, operation: 'tools.list', identity, sessionId, args: { module, context } });
+        for (const offer of offers) {
+          tools.push({ definition: offer.definition, supportsBackground: offer.supportsBackground,
+            ...(offer.timeoutPolicy ? { timeoutPolicy: offer.timeoutPolicy } : {}),
+            async execute(call, ctx) {
+              await ctx.assertActive();
+              const ids = { turnId: ctx.turnId, stepId: ctx.stepId, toolCallId: ctx.toolCallId,
+                ...(ctx.deadline ? { deadline: ctx.deadline } : {}) };
+              let done = false, timer: ReturnType<typeof setTimeout> | undefined, wake: (() => void) | undefined;
+              let delivered = '';
+              let reference: ToolEffectReference = {};
+              async function report(value: { taskId?: string | undefined; requestRef?: string | undefined }) {
+                reference = { ...reference, ...(value.taskId ? { taskId: value.taskId } : {}),
+                  ...(value.requestRef ? { requestRef: value.requestRef } : {}) };
+                if (!reference.taskId && !reference.requestRef) return;
+                const digest = canonicalDigest(reference);
+                if (digest !== delivered) { await ctx.reportEffect?.(reference); delivered = digest; }
+              }
+              const control = (action: 'read' | 'cancel') => invoke({ version: 2, operation: 'tools.control', identity, sessionId, args: { ...ids, action } });
+              let interruptWait: (result: import('@xunjie/contracts/agent-runtime').AgentToolResult) => void = () => {};
+              const interrupted = new Promise<import('@xunjie/contracts/agent-runtime').AgentToolResult>(resolve => { interruptWait = resolve; });
+              const onAbort = () => {
+                // Losing a host ends this wait; an independently accepted task remains owned by its ledger.
+                if ((ctx.signal.reason as { code?: string } | undefined)?.code === 'host-interrupted')
+                  interruptWait({ kind: 'interrupted', reason: 'host-interrupted' });
+                else void control('cancel').then(receipt => report(receipt.reference)).catch(() => {});
+                wake?.();
+              };
+              ctx.signal.addEventListener('abort', onAbort, { once: true });
+              const running = invoke({ version: 2, operation: 'tools.execute', identity, sessionId,
+              permit: { sessionId: ctx.sessionId, runId: ctx.turnId, stepId: ctx.stepId, operationId: ctx.toolCallId, generation: 1 },
+              args: { module, context: { sessionId: ctx.sessionId, turnId: ctx.turnId, stepId: ctx.stepId, toolCallId: ctx.toolCallId,
+                ...(ctx.deadline ? { deadline: ctx.deadline } : {}), ...(ctx.segmentId ? { segmentId: ctx.segmentId } : {}),
+                originInputId: ctx.originInputId, visibleAnswerInputIds: [...ctx.visibleAnswerInputIds],
+                // Forward the verified Step context unchanged; the owner re-checks its fixed workspace facts.
+                context: context.context, inputIds: [...ctx.inputIds], ...(context.sessionState ? { sessionState: context.sessionState } : {}) },
+                call: { toolCallId: call.toolCallId, nativeCallId: call.nativeCallId, callIndex: call.callIndex,
+                  name: call.name, input: call.input, executionMode: call.executionMode } } });
+              if (ctx.signal.aborted) onAbort();
+              // Only in-flight reference observation; task ownership/retry remains in the durable owner ledger.
+              const observing = (async () => {
+                let delayMs = 100;
+                while (!done && !ctx.signal.aborted) {
+                  await control('read').then(receipt => report(receipt.reference)).catch(() => {});
+                  if (delivered) break; // A trusted owner handle is sufficient; never poll an entire task lifetime.
+                  if (!done && !ctx.signal.aborted) await new Promise<void>(resolve => { wake = resolve; timer = setTimeout(resolve, delayMs); timer.unref(); });
+                  delayMs = Math.min(10_000, delayMs * 2);
+                }
+              })();
+              try {
+                const result = await Promise.race([running, interrupted]);
+                if (result.kind === 'accepted') await report({ taskId: result.taskId });
+                else if (result.kind === 'outcome_unknown') await report({
+                  ...(result.taskId ? { taskId: result.taskId } : {}), ...(result.requestRef ? { requestRef: result.requestRef } : {}) });
+                return result;
+              } finally {
+                done = true; ctx.signal.removeEventListener('abort', onAbort);
+                if (timer) clearTimeout(timer); wake?.(); void observing.catch(() => {});
+              }
+            } });
+        }
+      }
+      return tools;
     },
     materials,
     models: createLearningModelClient(request => {
       actor(request.identity);
-      return invoke({ version: 2, operation: 'model', identity, sessionId,
+      // The kernel adapter mints the live attempt permit; the dependency transport forwards it unchanged.
+      const permit = (() => {
+        try {
+          if (request.operation === 'checks.receive') return modelLearningInputSchema.parse(request.args[0]).authority?.permit;
+          if (request.operation === 'checks.dispatch') return modelSessionAuthoritySchema.parse(request.args[1]).permit;
+        } catch { return undefined; }
+        return undefined;
+      })();
+      return invoke({ version: 2, operation: 'model', identity, sessionId, ...(permit ? { permit } : {}),
         args: { method: agentDependencyModelMethodSchema.parse(request.operation), args: jsonArgs(request.args) } });
     }),
     query: {

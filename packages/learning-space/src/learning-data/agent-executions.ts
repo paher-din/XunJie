@@ -43,8 +43,8 @@ export interface AgentExecutionContext extends AgentExecutionAssociation {
   /** Set by the trusted service host, never taken from a student or model payload. */
   origin?: AgentExecutionOrigin;
 }
-const association = ({ runId, stepId, commandId, snapshotId }: AgentExecutionContext) =>
-  associationSchema.parse({ runId, stepId, commandId, snapshotId });
+const association = ({ runId, stepId, commandId, snapshotId, sessionId }: AgentExecutionContext) =>
+  associationSchema.parse({ runId, stepId, commandId, snapshotId, ...(sessionId ? { sessionId } : {}) });
 const actionScope = (identity: SpaceIdentity, activityId: string) => ({ environmentId: identity.environmentId,
   spaceId: identity.spaceId, principalId: identity.principalId, activityId });
 const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(canonicalValue(value))).digest('hex');
@@ -94,8 +94,8 @@ export function createAgentExecutions(storage: OwnedStorage, options: {
       WHERE activity_id=$1 AND command_id=$2 AND kind='submit'`, [activityId, requestId]);
     if (!row) return null;
     const action = executionActionSchema.parse(JSON.parse(String(row.body_text)));
-    if (associationSchema.parse(row.association).runId !== context.runId
-      || hash(action.scope) !== hash(actionScope(identity, activityId)) || action.execution.initiator.kind !== 'agent') fail('forbidden');
+    // Origin Turn is tracking only: cross-Turn query is allowed when identity/scope/ownership match.
+    if (hash(action.scope) !== hash(actionScope(identity, activityId)) || action.execution.initiator.kind !== 'agent') fail('forbidden');
     if (hash(action) !== row.input_digest) fail('corrupt');
     return { row, action };
   }
@@ -422,7 +422,10 @@ export async function validateAgentExecutionCommands(storage: OwnedStorage) {
     if (row.kind === 'control') {
       const { rows: [parent] } = await storage.read(`SELECT association,activity_id FROM agent_execution_commands
         WHERE command_id=$1 AND kind='submit'`, [row.request_id]);
-      if (!parent || parent.activity_id !== row.activity_id || associationSchema.parse(parent.association).runId !== a.runId) fail('corrupt');
+      // A control belongs to its parent command; it is issued by a possibly newer Turn, so comparing the
+      // parent's origin runId to the control's run would reject every valid cross-Turn control.
+      if (!parent || parent.activity_id !== row.activity_id
+        || associationSchema.parse(parent.association).commandId !== row.request_id) fail('corrupt');
       continue;
     }
     const action = parsed as ExecutionAction;

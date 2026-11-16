@@ -208,9 +208,9 @@ export function createChannelExecutions(storage: OwnedStorage, options: {
     const row = await find(activityId, requestId);
     await authorize(identity, activityId, row ?? undefined);
     if (!row) return null;
-    await dispatch(identity, activityId, row, guard);
-    // An unqueued intent has no channel fact yet. Ordinary reads preserve its queued
-    // execution; only a trusted caller with the original permit can deliver that intent.
+    // Read only observes already-dispatched facts; it never re-dispatches an unqueued intent.
+    // Delivering pending intents is an explicit write path (accept/control/stop), not a read side effect.
+    void guard;
     const { rows: intents } = await storage.read('SELECT command_id FROM channel_execution_intents WHERE request_id=$1 AND dispatched=true ORDER BY position', [requestId]);
     const facts: Awaited<ReturnType<typeof options.channel.query>>[] = [];
     for (const intent of intents) {
@@ -306,9 +306,13 @@ export function createChannelExecutions(storage: OwnedStorage, options: {
       if (operation === 'control' && (!['running', 'paused'].includes(latest.state) || latest.statusKnowledge !== 'confirmed'
         || latest.stopRequested || executionControlSchema.parse(payload).expectedSeq !== latest.session?.appliedSeq)) fail('invalid');
       if (operation === 'control') {
-        const { rows: pending } = await tx.query(`SELECT command_id FROM channel_execution_intents
-          WHERE request_id=$1 AND command#>>'{operation}'='control'
-          AND (command#>>'{payload,control,expectedSeq}')::integer=$2`, [requestId, latest.session!.appliedSeq]);
+        // Only the channel owner's durable cancellation proves that the old input was
+        // never dispatched. A cancel intent or an unknown report still owns this sequence.
+        const { rows: pending } = await tx.query(`SELECT i.command_id FROM channel_execution_intents i
+          WHERE i.request_id=$1 AND i.command#>>'{operation}'='control'
+          AND (i.command#>>'{payload,control,expectedSeq}')::integer=$2
+          AND NOT EXISTS(SELECT 1 FROM native_channel_commands n
+            WHERE n.command_id=i.command_id AND n.state='cancelled')`, [requestId, latest.session!.appliedSeq]);
         if (pending.length) fail('identity-conflict');
       }
       await tx.query('INSERT INTO channel_execution_intents(command_id,request_id,command,command_text) VALUES($1,$2,$3,$4)', [commandId, requestId, JSON.stringify(command), JSON.stringify(command)]);
@@ -351,7 +355,7 @@ export function createChannelExecutions(storage: OwnedStorage, options: {
       && originalReply.data.session.appliedSeq === seq;
     return executionControlReceiptSchema.parse({ controlId, requestId, executionRef: query.executionRef,
       inputDigest: canonicalHash(control), effect: control.effect, seq,
-      status: applied ? 'applied' : fact.state === 'cancelled' ? 'rejected' : fact.state === 'reported' ? 'unknown' : 'dispatching', query });
+      status: applied ? 'applied' : fact.state === 'cancelled' && fact.statusKnowledge === 'confirmed' ? 'cancelled' : fact.state === 'reported' ? 'unknown' : 'dispatching', query });
   }
   async function reclaimOriginal(action: ExecutionAction, value: unknown) {
     const stop = executionStopSchema.parse(value);

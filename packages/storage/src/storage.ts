@@ -7,7 +7,7 @@ import type { BlobBackend } from './blobs.js';
 import { BlobError } from './blobs.js';
 import { identifier, migrationPlan, verifyBinding } from './database.js';
 import { StorageError, storageFailure } from './errors.js';
-import type { Migration, OwnedStorage, OwnedTransaction, QueryResult, StorageBinding } from './types.js';
+import type { HostLock, Migration, OwnedStorage, OwnedTransaction, QueryResult, StorageBinding } from './types.js';
 
 const hash = (bytes: Uint8Array): string => createHash('sha256').update(bytes).digest('hex');
 const resourceHeader = (reference: ResourceReference): Buffer => Buffer.from(`xunjie-resource/1 ${reference.locator.writeId}\n`, 'ascii');
@@ -428,6 +428,34 @@ async function open(options: OpenOptions, restoring: boolean): Promise<OwnedStor
         if (json(actual) !== json(resourceReferenceSchema.parse(reference))) throw new StorageError('corrupt');
         await verifiedBytes(actual);
       }
+    },
+    async tryHostLock(key): Promise<HostLock | null> {
+      validId(key);
+      // One dedicated connection per host, outside the transaction pool, holding a stable advisory key.
+      const client = new pg.Client({ ...binding.connection, connectionTimeoutMillis: 5000,
+        keepAlive: true, application_name: 'xunjie-agent-host-lock' });
+      let signalLost: () => void = () => {};
+      const lost = new Promise<void>(resolve => { signalLost = resolve; });
+      client.on('error', () => signalLost());
+      client.on('end', () => signalLost());
+      let acquired = false;
+      try {
+        await client.connect();
+        const { rows: [row] } = await client.query('SELECT pg_try_advisory_lock(hashtextextended($1,0)) AS locked', [key]);
+        if (!row?.locked) { await client.end().catch(() => {}); return null; }
+        acquired = true;
+      } catch (error) {
+        await client.end().catch(() => {});
+        throw storageFailure(error);
+      }
+      return {
+        lost,
+        async release() {
+          if (acquired) await client.query('SELECT pg_advisory_unlock(hashtextextended($1,0))', [key]).catch(() => {});
+          acquired = false;
+          await client.end().catch(() => {});
+        },
+      };
     },
     async close() { await pool.end(); },
   };

@@ -7,6 +7,7 @@ import { createNativeChannel, createSpaces, learningMigrations, spaceMigrations,
 import { createNativeChannelWorker, nativeChannelNode } from '@xunjie/product-runtime';
 import { canonicalValue, courseExecutionPlanBasis, executionActionSchema } from '@xunjie/contracts/execution';
 import { activitySchema } from '@xunjie/contracts/learning-data';
+import { createLearningSpaceTaskOwner } from '../../../packages/product-runtime/dist/workspace-agent-tasks.js';
 import { createExecutions } from '../../../packages/learning-space/dist/learning-data/executions.js';
 import { createWorks } from '../../../packages/learning-space/dist/learning-data/works.js';
 import { accumulatorPackage } from '../../../components/state-accumulator/package.mjs';
@@ -174,6 +175,25 @@ test('cancelling an unclaimed Agent input preserves an independent student proce
       assert.equal(children.length, 2);
       assert.ok(children.every(child => child.pid > 0));
       assert.notEqual(children[0].pid, children[1].pid);
+      // A cancelled control must release its sequence only after the real channel owner
+      // confirms that it was never claimed. The independent native parent stays live.
+      const abandoned = { controlId: randomUUID(), operationId: 'advance', effect: 'input', expectedSeq: 0, parameters: { value: 99 } };
+      await executions.agent.control(identity, activityId, contextFor(abandoned.controlId), agent.requestId, abandoned);
+      const conflict = () => {
+        const next = { ...abandoned, controlId: randomUUID(), parameters: { value: 4 } };
+        return executions.agent.control(identity, activityId, contextFor(next.controlId), agent.requestId, next);
+      };
+      await assert.rejects(conflict, { code: 'identity-conflict' }, 'pending control still owns the sequence');
+      const sessionId = randomUUID();
+      const taskOwner = createLearningSpaceTaskOwner({ storage: data, executions, sessionIdOfTurn: async () => sessionId });
+      await taskOwner.cancel(abandoned.controlId, { sessionId });
+      await assert.rejects(conflict, { code: 'identity-conflict' }, 'cancel intent alone cannot release the sequence');
+      await worker.tick();
+      const abandonedReceipt = await executions.controlReceipt(identity, activityId, agent.requestId, abandoned.controlId);
+      assert.equal(abandonedReceipt.status, 'cancelled');
+      assert.equal(abandonedReceipt.query.state, 'running');
+      assert.equal(abandonedReceipt.query.session.appliedSeq, 0);
+      assert.equal((await data.read('SELECT claim_id FROM native_channel_commands WHERE command_id=$1', [abandoned.controlId])).rows[0].claim_id, null);
       const input = { controlId: randomUUID(), operationId: 'advance', effect: 'input', expectedSeq: 0, parameters: { value: 2 } };
       await executions.agent.control(identity, activityId, contextFor(input.controlId), agent.requestId, input);
       assert.equal((await channel.query(identity, input.controlId)).state, 'pending');
@@ -186,7 +206,7 @@ test('cancelling an unclaimed Agent input preserves an independent student proce
       assert.equal(cancelled.statusKnowledge, 'confirmed');
       assert.deepEqual(cancelled.result, { statusKnowledge: 'confirmed', reason: 'agent-command-cancelled-before-dispatch' });
       const receipt = await executions.controlReceipt(identity, activityId, agent.requestId, input.controlId);
-      assert.equal(receipt.status, 'rejected', 'an input cancelled before claim has a final rejection, not a pending or applied receipt');
+      assert.equal(receipt.status, 'cancelled', 'an input cancelled before claim has a confirmed cancellation receipt');
       assert.equal(receipt.query.session.appliedSeq, 0);
       assert.equal(receipt.query.session.lastControlId, null);
       assert.equal((await executions.read(identity, activityId, agent.requestId)).state, 'running',
