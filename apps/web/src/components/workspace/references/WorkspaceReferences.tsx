@@ -1,7 +1,9 @@
+import { ReferenceAttachment } from '@xunjie/ui/chat'
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useId, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { useToastFeedback } from '@xunjie/ui/feedback'
 import { QUESTION_TEXT_MAX_LENGTH } from '@xunjie/contracts/question-drafts'
 import type { QuestionSkill } from '@xunjie/contracts/question-drafts'
+import type { PromptInputProps } from '@xunjie/ui/chat'
 import { submissionReference, referenceKey, snapshotReference, type ReferenceSelection, type ReferenceSource,
   type ReferenceSubmission, type WorkspaceReference } from './model'
 import './references.css'
@@ -41,6 +43,7 @@ export interface DraftSkillsController {
   defaults?: QuestionSkill[]; explicit?: boolean
   options: { skillId: string; version: number; name: string; description: string; unavailable?: string; fixed?: boolean }[]
   loading: boolean; error: string; reload(): void; choose(skills?: QuestionSkill[]): void
+  consumeVisible?(): void; restoreVisible?(): void
   isCurrent?(): boolean
 }
 export interface DraftReferenceContent { question: string; references: readonly WorkspaceReference[]; skills?: QuestionSkill[] }
@@ -153,7 +156,7 @@ function ReferencesSession({ workspaceKey, onSubmit, children }: WorkspaceRefere
     if (inFlight.current || !state.current.question.trim()) return
     inFlight.current = true
     setBusy(true)
-    setNotice('')
+    setNotice('正在交给接收方…')
     const version = revision.current
     const submission: ReferenceSubmission = Object.freeze({ workspaceKey, question: state.current.question,
       references: Object.freeze(state.current.references.map(submissionReference)) })
@@ -185,10 +188,9 @@ export function WorkspaceReferenceList() {
   return <section className="wr-references" aria-label="上下文引用">
     {references.length === 0 ? <p className="wr-hint">选择材料或代码，可将片段加入问题。</p> :
       <ol>{references.map((ref, index) => <li key={ref.id}>
-        <div className="wr-reference-heading"><button type="button" onClick={() => locate(ref)}
-          aria-label={`定位引用 ${index + 1}：${ref.sourceName}`}>{ref.sourceName}</button>
-          <button type="button" aria-label={`移除引用 ${index + 1}`} disabled={readOnly} onClick={() => remove(ref.id)}>移除</button></div>
-        <pre data-kind={ref.kind}>{ref.text}</pre>
+        <ReferenceAttachment name={ref.sourceName} excerpt={ref.text} kind={ref.kind} readOnly={readOnly}
+          locateLabel={`定位引用 ${index + 1}：${ref.sourceName}`} removeLabel={`移除引用 ${index + 1}`}
+          onLocate={() => { void locate(ref) }} onRemove={() => remove(ref.id)} />
       </li>)}</ol>}
   </section>
 }
@@ -221,7 +223,7 @@ function WorkspaceDraftSkills({ inputRef }: { inputRef: RefObject<HTMLTextAreaEl
       if ((event.target as Element).closest('input,button,summary')) pointerInput.current = null
     }}>
     <summary>本次问题的 Skills{pinned.length ? ` · 已固定 ${pinned.length} 个版本` : ' · 使用已启用技能'}</summary>
-    {skills.loading && <p className="wr-hint" role="status" aria-label="正在读取 Skills" />}
+    {skills.loading && <p className="wr-hint" role="status">正在读取 Skills…</p>}
     {skills.error && <p className="wr-notice" role="alert">{skills.error}</p>}
     {!skills.loading && !skills.options.length && !unknown.length && <p className="wr-hint">尚无可用 Skill，可在 Agent 个性化中导入并启用。</p>}
     {skills.options.length > 0 && <p className="wr-hint">勾选可固定本次使用的版本，其他已启用技能仍可按需使用。</p>}
@@ -245,10 +247,13 @@ function WorkspaceDraftSkills({ inputRef }: { inputRef: RefObject<HTMLTextAreaEl
     {skills.explicit && <button type="button" disabled={readOnly || !draftReady || skills.loading || !!skills.error} onClick={() => skills.choose()}>取消版本固定</button>}
   </details>
 }
-/** Optional composer; callers can also compose the controller and reference list with their own input. */
-export function WorkspaceReferenceComposer({ closeFocusRef, sendBlocked = false, blockedHint, blockedLabel, submitLabel, modelPicker }: {
+type ComposerInputProps = Pick<PromptInputProps, 'value' | 'onChange' | 'onSend' | 'canSend' | 'inputRef' | 'textareaProps' | 'sendLabel'>
+
+/** The standalone conversation supplies its own input; both views use the same draft and caret. */
+export function WorkspaceReferenceComposer({ closeFocusRef, sendBlocked = false, blockedHint, blockedLabel, submitLabel, renderInput, modelPicker }: {
   closeFocusRef?: RefObject<HTMLElement | null>; sendBlocked?: boolean
   blockedHint?: string; blockedLabel?: string; submitLabel?: string; modelPicker?: ReactNode
+  renderInput?: (props: ComposerInputProps) => ReactNode
 } = {}) {
   const { open, setOpen, question, setQuestion, submit, busy, notice, sendAvailable, draftReady, draftError,
     draftConflict, draftConflictReady, resolveDraftConflict, readOnly, skills, workspaceKey, viewActive = true } = useWorkspaceReferences()
@@ -256,7 +261,7 @@ export function WorkspaceReferenceComposer({ closeFocusRef, sendBlocked = false,
   const input = useRef<HTMLTextAreaElement>(null)
   const composing = useRef(false)
   const questionId = useId()
-  useToastFeedback(viewActive && !busy ? notice : '', 'info')
+  useToastFeedback(!renderInput && viewActive && !busy ? notice : '', 'info')
   useLayoutEffect(() => {
     if (!open || !viewActive || !input.current || !draftReady) return
     const element = input.current, saved = composerView(workspaceKey)
@@ -282,10 +287,32 @@ export function WorkspaceReferenceComposer({ closeFocusRef, sendBlocked = false,
     }
   }, [open, workspaceKey, draftReady])
   if (!open) return <button className="wr-button" type="button" onClick={() => setOpen(true)}>打开对话</button>
-  return <section className="wr-composer" aria-label="Agent 问题草稿" data-reference-ui onFocusCapture={event => {
+  const onQuestionChange = (value: string) => {
+    setQuestion(value)
+    if (input.current) rememberComposerCaret(workspaceKey, input.current)
+  }
+  const textareaProps: NonNullable<PromptInputProps['textareaProps']> = {
+    disabled: !draftReady, readOnly, maxLength: QUESTION_TEXT_MAX_LENGTH,
+    onFocus: event => rememberComposerCaret(workspaceKey, event.currentTarget, true),
+    onBlur: event => rememberComposerCaret(workspaceKey, event.currentTarget),
+    onSelect: event => { if (draftReady) rememberComposerCaret(workspaceKey, event.currentTarget) },
+    onCompositionStart: () => { composing.current = true; beginComposerComposition(workspaceKey) },
+    onCompositionEnd: event => {
+      if (event.currentTarget.value !== question) setQuestion(event.currentTarget.value)
+      rememberComposerCaret(workspaceKey, event.currentTarget)
+      composing.current = false; endComposerComposition(workspaceKey)
+    },
+  }
+  const sendLabel = sendBlocked ? blockedLabel ?? '等待当前回答' : sendAvailable
+    ? busy ? '发送中…' : submitLabel ?? '发送问题' : '发送问题（尚未接入）'
+  const sendHint = sendBlocked ? blockedHint ?? '当前回答结束后再发送；问题会先保存在草稿中。'
+    : readOnly ? '还原校验环境中的问题与引用只读，接管后可继续编辑。'
+      : sendAvailable ? '' : '真实 Agent 尚未接入；问题与引用会自动保存在原工作区，暂不能发送。'
+  return <section className={renderInput ? 'wr-inline-composer' : 'wr-composer'} aria-label="Agent 问题草稿" data-reference-ui onFocusCapture={event => {
     if (event.target !== input.current) rememberComposerView(workspaceKey, { focused: false })
   }}>
-    <header><h2>询问 Agent</h2><button type="button" onClick={() => { setOpen(false); closeFocusRef?.current?.focus() }}>收起对话</button></header>
+    {!renderInput && <header><h2>询问 Agent</h2><button type="button" onClick={() => { setOpen(false); closeFocusRef?.current?.focus() }}>收起对话</button></header>}
+    <div className="wr-composer-context">
     {draftConflict && <div className="wr-conflict" role="alert">
       <h3>问题草稿存在分歧</h3>
       <p>本页与另一版本均保留，请比较后明确选择。</p>
@@ -306,30 +333,27 @@ export function WorkspaceReferenceComposer({ closeFocusRef, sendBlocked = false,
     </div>}
     {draftError && <p role="alert" className="wr-notice">{draftError}</p>}
     <WorkspaceReferenceList />
-    <WorkspaceDraftSkills inputRef={input} />
-    <form onSubmit={event => { event.preventDefault(); if (canSend) void submit() }}>
-      <label htmlFor={questionId}>你的问题</label>
-      <textarea ref={input} id={questionId} value={question} disabled={!draftReady} readOnly={readOnly} maxLength={QUESTION_TEXT_MAX_LENGTH}
-        onChange={event => { setQuestion(event.target.value); rememberComposerCaret(workspaceKey, event.currentTarget) }} placeholder="写下想讨论的问题…"
-        onFocus={event => rememberComposerCaret(workspaceKey, event.currentTarget, true)}
-        onBlur={event => rememberComposerCaret(workspaceKey, event.currentTarget)}
-        onSelect={event => { if (draftReady) rememberComposerCaret(workspaceKey, event.currentTarget) }}
-        onCompositionStart={() => { composing.current = true; beginComposerComposition(workspaceKey) }} onCompositionEnd={event => {
-          if (event.currentTarget.value !== question) setQuestion(event.currentTarget.value)
-          rememberComposerCaret(workspaceKey, event.currentTarget)
-          composing.current = false; endComposerComposition(workspaceKey)
-        }}
-        onKeyDown={event => {
-          if (canSend && event.key === 'Enter' && !event.shiftKey && !composing.current && !event.nativeEvent.isComposing && event.keyCode !== 229) {
-            event.preventDefault(); void submit()
-          }
-        }} />
-      <div className="wr-send">{modelPicker}<span className="wr-hint">{sendBlocked ? blockedHint ?? '当前回答结束后再发送；问题会先保存在草稿中。'
-        : sendAvailable ? 'Enter 发送 · Shift + Enter 换行'
-          : readOnly ? '还原校验环境中的问题与引用只读，接管后可继续编辑。'
-            : '真实 Agent 尚未接入；问题与引用会自动保存在原工作区，暂不能发送。'}</span>
-        <button className="wr-primary" type="submit" disabled={!canSend || busy || !question.trim()}>
-          {sendBlocked ? blockedLabel ?? '等待当前回答' : sendAvailable ? submitLabel ?? '发送问题' : '发送问题（尚未接入）'}</button></div>
-    </form>
+    </div>
+    {renderInput ? <>
+      {sendHint && <p className="wr-hint" role="status">{sendHint}</p>}
+      {renderInput({ value: question, onChange: onQuestionChange, onSend: submit,
+        canSend: canSend && draftReady && !readOnly && !busy && !!question.trim(), inputRef: input,
+        textareaProps: { ...textareaProps, 'aria-label': '你的问题' }, sendLabel })}
+    </> : <>
+      <WorkspaceDraftSkills inputRef={input} />
+      <form onSubmit={event => { event.preventDefault(); if (canSend) void submit() }}>
+        <label htmlFor={questionId}>你的问题</label>
+        <textarea {...textareaProps} ref={input} id={questionId} value={question}
+          onChange={event => onQuestionChange(event.currentTarget.value)} placeholder="写下想讨论的问题…"
+          onKeyDown={event => {
+            if (canSend && event.key === 'Enter' && !event.shiftKey && !composing.current && !event.nativeEvent.isComposing && event.keyCode !== 229) {
+              event.preventDefault(); void submit()
+            }
+          }} />
+        <div className="wr-send">{modelPicker}<span className="wr-hint">{sendHint || 'Enter 发送 · Shift + Enter 换行'}</span>
+          <button className="wr-primary" type="submit" disabled={!canSend || busy || !question.trim()}>{sendLabel}</button></div>
+      </form>
+    </>}
+    {!renderInput && <p role="status" className="wr-notice">{notice}</p>}
   </section>
 }

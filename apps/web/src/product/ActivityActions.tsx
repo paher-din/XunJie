@@ -17,7 +17,8 @@ export function ActivityActions() {
     try { await operation() }
     catch { toast.error('操作尚未完成，原动作与当前草稿仍保留。请稍后重试或复制原内容。') }
   }
-  if (!state.items.length && !state.previous.length && !state.error) return null
+  const visibleItems = state.items.filter(item => isExecutionAction(item.input) || item.phase !== 'accepted')
+  if (!visibleItems.length && !state.previous.length && !state.error) return null
   const question = (item: LocalAction) => !isExecutionAction(item.input)
   const record = (item: LocalAction) => {
     const run = runs.find(candidate => candidate.requestId === item.input.requestId)
@@ -71,7 +72,7 @@ export function ActivityActions() {
   return <section aria-label="待发与接收记录" className="learning-action-records">
     <h3>待发与接收记录</h3>
     {state.error && <p role="alert" className="learning-error">{state.error}</p>}
-    {state.items.map(record)}
+    {visibleItems.map(record)}
     {!!state.previous.length && <details><summary>旧环境中保留的动作（{state.previous.length}）</summary>
       <p className="detail">这些动作不会自动发送。接回前会核对原空间、接收方和原请求；不会重新运行实验。</p>
       {state.previous.map(item => <div key={item.key}><pre>{isExecutionAction(item.input)

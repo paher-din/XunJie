@@ -2,6 +2,8 @@ import { ReliableRecordStore } from './record-store'
 
 export interface PendingAgentOperation {
   requestId: string; route: string; queryRoute: string; input: Record<string, unknown>
+  target?: string
+  next?: PendingAgentOperation
 }
 export interface LocalAgentControl {
   key: string; scope: string; draft?: { text: string; expectedVersion: number; editing: boolean }
@@ -36,10 +38,12 @@ export async function protectAgentOperation(key: string, scope: string, pending:
     return { ...saved, key, scope, pending: saved?.pending ?? structuredClone(pending) }
   })
 }
-export async function confirmAgentOperation(key: string, pending: PendingAgentOperation, receipt: unknown) {
+export async function confirmAgentOperation(key: string, pending: PendingAgentOperation, receipt: unknown,
+  update: (record: LocalAgentControl) => LocalAgentControl = record => record) {
   return agentControlStore.change(key, saved => {
     if (!saved) throw new Error('原操作保护记录不可用。')
     if (saved.pending?.requestId !== pending.requestId) return saved
-    return { ...saved, pending: undefined, receipt }
+    const accepted = (receipt as { status?: unknown } | null)?.status === 'accepted'
+    return update({ ...saved, pending: accepted ? pending.next : undefined, receipt })
   })
 }

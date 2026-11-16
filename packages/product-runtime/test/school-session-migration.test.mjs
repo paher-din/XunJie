@@ -4,8 +4,39 @@ import { test } from 'node:test';
 import { teachingAgentHttpCall } from '../dist/learning-http/agent-http.js';
 import { routeExecutionHttp } from '../dist/learning-http/execution-http.js';
 import { createSchoolClient } from '../dist/school-client.js';
+import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 const identity = { environmentId: randomUUID(), spaceId: randomUUID(), principalId: randomUUID(), kind: 'school', name: 'Current student' };
+
+test('downloaded school study resolves its local data and course owner without a school Agent API, and still checks the imported identity', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'xj-local-school-source-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const environment = { environmentId: randomUUID(), installationId: randomUUID(), clientNamespace: randomUUID(), services: [] };
+  const connectionId = randomUUID(), remoteTarget = { environmentId: identity.environmentId, serviceId: randomUUID(), version: 1 };
+  const target = { environmentId: environment.environmentId, serviceId: randomUUID(), version: 1 };
+  const account = { accountName: 'student', schoolName: 'School' };
+  await mkdir(join(root, 'credentials'));
+  await writeFile(join(root, 'credentials', 'school-client-' + connectionId), JSON.stringify({
+    requestId: connectionId, schoolEndpoint: 'http://127.0.0.1:9', verifier: 'synthetic-verifier',
+    clientId: environment.installationId, clientNamespace: environment.clientNamespace,
+    localStudy: { version: 1, imported: true },
+    grant: { token: randomUUID() + randomUUID(), identity, target: remoteTarget, connectionId,
+      capabilities: ['activity:read', 'activity:write'], account,
+      profile: { version: 1, localStudy: true, connectionId, identity, target: remoteTarget, account } },
+  }));
+  const client = createSchoolClient(root, environment, { target,
+    studyCopies: { hasIdentity: async who => { assert.deepEqual(who, identity); return true; } },
+    create: authority => ({ list: async who => { assert.deepEqual(await authority.resolveBinding(who), target); return []; } }),
+  });
+  const source = await client.querySource(identity);
+  assert.deepEqual(source.target, target);
+  assert.deepEqual(source.courses.owner, target);
+  assert.deepEqual(await source.learning.list(identity), []);
+  assert.deepEqual((await client.learningSources())[0].learningTarget, target);
+  await assert.rejects(client.querySource({ ...identity, principalId: randomUUID() }), { code: 'forbidden' });
+});
 
 test('school client rejects old Agent routes and mixed session versions before touching the installation', async () => {
   const school = createSchoolClient('/absent', { services: [] });

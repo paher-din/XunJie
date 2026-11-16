@@ -1,4 +1,5 @@
 import { createJsonToolProgress } from './json-tool-progress.js';
+import { createThinkingProgress } from './thinking-progress.js';
 import type { ModelToolProgress } from '@xunjie/contracts/model-connections';
 import OpenAI from 'openai';
 import { StorageError } from '@xunjie/storage';
@@ -25,7 +26,8 @@ class MalformedResponse extends Error {}
 export async function runResponses(configuration: ModelConfiguration, apiKey: string, payload: ResponsesPayload,
   signal: AbortSignal, timeoutMs: number, nativeTools?: ModelTool[], applicationSchema?: Record<string, unknown>,
   requestFetch: typeof fetch = fetch, onText?: (text: string) => void, onTools?: (tools: ModelToolProgress[]) => void,
-  requestHeaders?: Record<string, string>) {
+  requestHeaders?: Record<string, string>, onThinking?: (text: string) => void) {
+  const thinking = createThinkingProgress(apiKey, onThinking);
   const sensitive = createSensitiveOutput(apiKey), { clean } = sensitive;
   const progress = onText ? createProgressPublisher(apiKey, onText) : null;
   const toolProgress = onTools ? createJsonToolProgress(nativeTools ?? [], apiKey, onTools) : null;
@@ -68,6 +70,7 @@ export async function runResponses(configuration: ModelConfiguration, apiKey: st
         assembler.add(value);
         toolProgress?.(assembler.toolArguments);
         progress?.(assembler.partialText);
+        if (value.type === 'response.reasoning_summary_text.delta') thinking.append(value.delta);
       } catch { throw new MalformedResponse(); }
     }
     text = assembler.partialText;
@@ -170,6 +173,7 @@ export async function runResponses(configuration: ModelConfiguration, apiKey: st
   }
   if (['malformed-response', 'invalid-native-result'].includes(reason))
     native = { ...native, events: [], response: null, output: [], upstreamError: null, redacted: true };
+  thinking.finish();
   return { state, reason, text: clean(text), usage, toolIntents: state === 'completed' ? toolIntents : [],
     native, ...(upstream ? { upstream } : {}) };
 }

@@ -3,8 +3,9 @@ import { modelDeviceBindingSchema, deviceModelChoiceSchema, deviceRawChoiceSchem
 import { createHash } from 'node:crypto';
 import { StorageError, type OwnedStorage } from '@xunjie/storage';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
-import { modelGrantInputSchema, modelGrantSchema, revokeModelGrantSchema, selectModelSchema, modelSelectionSchema, modelSelectionSourceSchema, modelAttemptSchema } from '@xunjie/contracts/model-connections';
-import type { ModelAttempt, ModelConnection, ModelCheckPolicy } from '@xunjie/contracts/model-connections';
+import { modelGrantInputSchema, modelGrantSchema, revokeModelGrantSchema, selectModelSchema, modelSelectionSchema, modelSelectionSourceSchema,
+  modelAttemptSchema, modelReasoningEffortSchema, modelReasoningError } from '@xunjie/contracts/model-connections';
+import type { ModelAttempt, ModelConnection, ModelCheckPolicy, ModelReasoningEffort } from '@xunjie/contracts/model-connections';
 
 export const selectionMigrations = [{ version: 5, name: 'explicit-model-use-and-selection', sql: `
   CREATE TABLE model_use_grants(id uuid PRIMARY KEY,owner_scope text NOT NULL,recipient_scope text NOT NULL,body jsonb NOT NULL);
@@ -14,11 +15,18 @@ export const selectionMigrations = [{ version: 5, name: 'explicit-model-use-and-
 export const modelScopeOf = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId].join('.');
 const fingerprint = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const personalPolicy: ModelCheckPolicy = { checksAllowed: true, maxChecksPerHour: 6, maxOutputTokens: 2048, timeoutMs: 30000 };
-type School = { kind: 'school'; connection: ModelConnection; policy: ModelCheckPolicy };
-type Personal = { kind: 'personal'; connection: ModelConnection; policy: ModelCheckPolicy; origin: 'self' | 'device' | 'grant'; grantId?: string | undefined };
+type Choice = z.infer<typeof modelSelectionSchema>['options'][number];
+type School = Extract<Choice, { kind: 'school' }>;
+type Personal = Extract<Choice, { kind: 'personal' }>;
 type Source = z.infer<typeof selectModelSchema>['source'];
 const savedSelectionSchema = selectModelSchema.omit({ requestId: true, expectedVersion: true }).extend({
-  version: z.number().int().nonnegative(), device: modelDeviceBindingSchema.optional() });
+  version: z.number().int().nonnegative(), device: modelDeviceBindingSchema.optional(),
+  efforts: z.record(z.string(), modelReasoningEffortSchema).optional() });
+const effortKey = (source: Source) => source.kind + ':' + source.connectionId;
+function withEffort<T extends Choice>(choice: T, effort: ModelReasoningEffort | undefined): T {
+  return effort && !modelReasoningError({ ...choice.connection, reasoningEffort: effort })
+    ? { ...choice, connection: { ...choice.connection, reasoningEffort: effort }, reasoningEffort: effort } : choice;
+}
 export function createModelSelections(storage: OwnedStorage, owner: {
   authorize(identity: SpaceIdentity): Promise<void>;
   school(identity: SpaceIdentity): Promise<School | null>;
@@ -38,7 +46,7 @@ export function createModelSelections(storage: OwnedStorage, owner: {
     if (!source || source.kind === 'school') {
       const choice = await owner.school(identity);
       if (!choice || source && choice.connection.connectionId !== source.connectionId) return null;
-      return { choice, source: { kind: 'school' as const, ownerScope: 'school:' + identity.environmentId + ':' + identity.spaceId,
+      return { choice: withEffort(choice, source?.reasoningEffort), source: { kind: 'school' as const, ownerScope: 'school:' + identity.environmentId + ':' + identity.spaceId,
         feeSource: 'school:' + identity.environmentId + ':' + identity.spaceId } };
     }
     if (!source.grantId) {
@@ -46,7 +54,7 @@ export function createModelSelections(storage: OwnedStorage, owner: {
       if (!actor) throw new StorageError('forbidden');
       await owner.authorize(actor);
       const ownerScope = modelScopeOf(actor), connection = await owner.connection(ownerScope, source.connectionId);
-      return { choice: { kind: 'personal' as const, connection, policy: personalPolicy, origin: source.owner ?? 'self' },
+      return { choice: withEffort<Personal>({ kind: 'personal', connection, policy: personalPolicy, origin: source.owner ?? 'self' }, source.reasoningEffort),
         source: { kind: 'personal' as const, ownerScope, feeSource: ownerScope } };
     }
     const authorization = await grant(source.grantId);
@@ -55,12 +63,15 @@ export function createModelSelections(storage: OwnedStorage, owner: {
     await owner.authorize(authorization.owner);
     const ownerScope = modelScopeOf(authorization.owner);
     const connection = await owner.connection(ownerScope, authorization.connectionId);
-    return { choice: { kind: 'personal' as const, connection, policy: personalPolicy, origin: 'grant' as const, grantId: authorization.grantId },
+    return { choice: withEffort<Personal>({ kind: 'personal', connection, policy: personalPolicy, origin: 'grant', grantId: authorization.grantId }, source.reasoningEffort),
       source: { kind: 'personal' as const, ownerScope, feeSource: ownerScope, grantId: authorization.grantId, grantVersion: authorization.version } };
   }
   async function current(identity: SpaceIdentity) {
     const { rows: [row] } = await storage.read('SELECT body FROM model_selections WHERE scope=$1', [modelScopeOf(identity)]);
-    return row ? savedSelectionSchema.parse(row.body) : undefined;
+    if (!row) return undefined;
+    const saved = savedSelectionSchema.parse(row.body);
+    const reasoningEffort = saved.efforts?.[effortKey(saved.source)];
+    return reasoningEffort ? { ...saved, source: { ...saved.source, reasoningEffort } } : saved;
   }
   async function deviceChoice(identity: SpaceIdentity, source: Source, binding: z.infer<typeof modelDeviceBindingSchema>) {
     if (source.kind !== 'personal') throw new StorageError('corrupt');
@@ -70,7 +81,7 @@ export function createModelSelections(storage: OwnedStorage, owner: {
       if (!row) throw new StorageError('forbidden');
       const item = deviceRawChoiceSchema.parse(row.body);
       if (!item.active || fingerprint(item.binding) !== fingerprint(binding)) throw new StorageError('forbidden');
-      return item.choice;
+      return withEffort(item.choice, source.reasoningEffort);
     }
     const { rows: [row] } = await storage.read('SELECT body FROM model_device_choices WHERE scope=$1 AND grant_id=$2 AND binding_version=$3',
       [modelScopeOf(identity), source.grantId, binding.version]);
@@ -78,7 +89,7 @@ export function createModelSelections(storage: OwnedStorage, owner: {
     const item = deviceModelChoiceSchema.parse(row.body);
     await assertDeviceGrantActive(identity, source.grantId);
     if (fingerprint(item.binding) !== fingerprint(binding) || !item.active || item.choice.connection.connectionId !== source.connectionId) throw new StorageError('forbidden');
-    return item.choice;
+    return withEffort(item.choice, source.reasoningEffort);
   }
   /** Trusted owner receipt import. Metadata never grants local SDK access or changes the Root pointer. */
   async function importDeviceChoices(identity: SpaceIdentity, value: z.infer<typeof modelDeviceBindingSchema>, projection: unknown, operationId: string) {
@@ -156,10 +167,11 @@ export function createModelSelections(storage: OwnedStorage, owner: {
     owner.assertWritable(); await owner.authorize(identity);
     const input = selectModelSchema.parse(value), scope = modelScopeOf(identity), hash = fingerprint({ scope, input });
     const prior = await storage.receipt('model-selection:' + input.requestId, hash); if (prior) return prior.result;
+    const { reasoningEffort, ...source } = input.source;
     let device: z.infer<typeof modelDeviceBindingSchema> | undefined;
-    if (input.source.kind === 'personal' && input.source.grantId) {
+    if (source.kind === 'personal' && source.grantId) {
       const { rows: [row] } = await storage.read(`SELECT body FROM model_device_choices WHERE scope=$1 AND grant_id=$2 AND binding_version=
-        (SELECT max(version) FROM model_member_devices WHERE scope=$1)`, [scope, input.source.grantId]);
+        (SELECT max(version) FROM model_member_devices WHERE scope=$1)`, [scope, source.grantId]);
       if (row) device = deviceModelChoiceSchema.parse(row.body).binding;
     }
     if (input.source.kind === 'personal' && !input.source.grantId && input.source.owner === 'device') {
@@ -169,6 +181,7 @@ export function createModelSelections(storage: OwnedStorage, owner: {
     }
     const resolved = device ? { choice: await deviceChoice(identity, input.source, device) } : await resolve(identity, input.source);
     if (!resolved || !resolved.choice.connection.enabled) throw new StorageError('unavailable');
+    if (reasoningEffort && modelReasoningError({ ...resolved.choice.connection, reasoningEffort })) throw new StorageError('invalid');
     const projection = await read(identity);
     return (await storage.request({ requestId: 'model-selection:' + input.requestId, fingerprint: hash }, async tx => {
       if ('source' in resolved) {
@@ -187,11 +200,13 @@ export function createModelSelections(storage: OwnedStorage, owner: {
       }
       await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', ['model-selection:' + scope]);
       const { rows: [row] } = await tx.query('SELECT body FROM model_selections WHERE scope=$1 FOR UPDATE', [scope]);
-      const old = row?.body as { version: number } | undefined;
+      const old = row ? savedSelectionSchema.parse(row.body) : undefined;
       if ((old?.version ?? 0) !== input.expectedVersion) throw new StorageError('conflict');
-      const saved = { version: input.expectedVersion + 1, source: input.source, ...(device ? { device } : {}) };
+      const key = effortKey(source);
+      const efforts = reasoningEffort ? { ...old?.efforts, [key]: reasoningEffort } : old?.efforts;
+      const saved = { version: input.expectedVersion + 1, source, ...(device ? { device } : {}), ...(efforts ? { efforts } : {}) };
       await tx.query('INSERT INTO model_selections VALUES($1,$2) ON CONFLICT(scope) DO UPDATE SET body=EXCLUDED.body', [scope, saved]);
-      return { ...projection, version: saved.version, selected: resolved.choice };
+      return { ...projection, version: saved.version, selected: withEffort(resolved.choice, efforts?.[key]) };
     })).result;
   }
   async function createGrant(identity: SpaceIdentity, grantOwner: SpaceIdentity, value: unknown) {

@@ -9,13 +9,17 @@ import { collectLearningSources, validateLearningSources } from '../dist/learnin
 import { createAgentSessions } from '../dist/learning-data/agent-sessions.js';
 import { createSkills, validateSkills, collectSkillSources, validateSkillSources } from '../dist/learning-data/skills.js';
 
-test('ordinary sessions discover personal skill metadata and choose fixed versions without manufacturing an activity', { timeout: 60000 }, async t => {
+test('ordinary sessions expose personal metadata without implicitly selecting it and choose fixed versions without manufacturing an activity', { timeout: 60000 }, async t => {
   const f = await skillFixture(t), input = packageInput('sorting'), imported = await f.skills.import(f.identity, input);
   const state = await f.skills.resolveSession(f.identity, f.session.sessionId);
   assert.equal(state.catalog[0].skillId, imported.skillId);
-  assert.equal(state.catalog[0].selected, true);
+  assert.equal(state.catalog[0].selected, false);
   assert.equal('files' in state.catalog[0], false);
   assert.deepEqual(state.loaded, []);
+  await f.skills.selectSession(f.identity, f.session.sessionId, { requestId: randomUUID(), skills: [{ skillId: imported.skillId, version: 1 }] });
+  assert.equal((await f.skills.resolveSession(f.identity, f.session.sessionId)).catalog[0].selected, true);
+  const other = await f.sessions.create(f.identity, { requestId: randomUUID(), sessionId: randomUUID(), scenario: 'student-assistant' });
+  assert.equal((await f.skills.resolveSession(f.identity, other.sessionId)).catalog[0].selected, false);
   await f.skills.selectSession(f.identity, f.session.sessionId, { requestId: randomUUID(), skills: [] });
   assert.equal((await f.skills.resolveSession(f.identity, f.session.sessionId)).catalog[0].selected, false);
   assert.deepEqual(await f.data.list(f.identity), []);
@@ -23,6 +27,7 @@ test('ordinary sessions discover personal skill metadata and choose fixed versio
 
 test('session loads pin selection, module, package and exact original bytes; recovery never falls back to a same-name skill', { timeout: 60000 }, async t => {
   const f = await skillFixture(t), input = packageInput('sorting'), imported = await f.skills.import(f.identity, input);
+  await f.skills.selectSession(f.identity, f.session.sessionId, { requestId: randomUUID(), skills: [{ skillId: imported.skillId, version: 1 }] });
   const state = await f.skills.resolveSession(f.identity, f.session.sessionId);
   const command = { skillId: imported.skillId, version: 1, commandId: randomUUID(), runId: randomUUID(), stepId: randomUUID(),
     selectionDigest: state.selectionDigest, packageDigest: imported.digest, moduleId: 'skills', moduleVersion: 1 };
@@ -95,6 +100,7 @@ test('a session can keep an enabled historical package version after a personal 
 
 test('skill maintenance verifies fixed original bytes and session scope without a live member or remote course call', { timeout: 60000 }, async t => {
   const f = await skillFixture(t), imported = await f.skills.import(f.identity, packageInput('maintenance'));
+  await f.skills.selectSession(f.identity, f.session.sessionId, { requestId: randomUUID(), skills: [{ skillId: imported.skillId, version: 1 }] });
   const state = await f.skills.resolveSession(f.identity, f.session.sessionId);
   const input = { skillId: imported.skillId, version: 1, commandId: randomUUID(), runId: randomUUID(), stepId: randomUUID(),
     selectionDigest: state.selectionDigest, packageDigest: imported.digest, moduleId: 'skills', moduleVersion: 1, offset: 3, length: 17 };

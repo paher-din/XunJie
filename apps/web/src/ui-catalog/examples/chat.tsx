@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { lexer, type Tokens } from 'marked'
 import {
+  AgentTrace, AgentTraceItem, AgentRunStatus, AgentSkillRead, AgentThinking, ReferenceAttachment, AgentQuestion,
   ActionBar, AgentEmptyState, AgentMessage, AttachmentTile, BackToBottom, Block, Chars,
   ChatComposerDock, ChatError, ChatViewport, CodeBlock, ConceptBlock, ConceptCard, FailureCard,
   GenCard, GenFailCard, GenLiveCard, Inline, ListBlock, Markdown, MessageRail, MessageTaskCard,
@@ -23,6 +24,17 @@ const wave = { rows: [{ name: 'CLK', clk: true }, { name: 'reset', segs: [[140, 
 const concept: ConceptCardData = { title: '示例：同步复位', points: ['先确认采样边沿。', '比较边沿前后的复位信号。'], note: '示例图中的高亮表示观察区间。', wave }
 const quiz = { title: '示例单选', topic: '采样边沿', stem: '同步复位在什么时候被采样？', options: [{ key: 'A', text: '有效时钟边沿' }, { key: 'B', text: '任意时刻' }], answer: 'A', explain: '本示例约定同步复位只在有效边沿被采样。' }
 const sampleText = '这是本地示例回复。\n\n**先描述输入**，再用空输入与重复词验证边界。\n\n```c\nint count = 0;\n```\n\n最后比较预期与实际输出。'
+function AstryxProseDemo({ streaming = false }: { streaming?: boolean }) {
+  const content = sampleText + '\n\n| 输入 | 预期 |\n| --- | ---: |\n| 空文本 | 0 |\n| a a | 2 |'
+  const [length, setLength] = useState(streaming ? 0 : content.length)
+  useEffect(() => {
+    if (!streaming) return
+    const timer = setInterval(() => setLength(value => Math.min(content.length, value + 3)), 60)
+    return () => clearInterval(timer)
+  }, [streaming, content.length])
+  return <Frame><Markdown variant="astryx" text={content.slice(0, length)} live={length < content.length} />
+    {streaming && <Button variant="outline" onClick={() => setLength(0)}>重新播放流式示例</Button>}</Frame>
+}
 const code = lexer('```verilog\nassign sum = a + b;\n```').find(token => token.type === 'code') as Tokens.Code
 const list = lexer('1. 确认输入\n2. 写出预期\n3. 比较结果\n').find(token => token.type === 'list') as Tokens.List
 const table = lexer('| 输入 | 预期 |\n| --- | --- |\n| 空文本 | 0 |\n| a a | 2 |').find(token => token.type === 'table') as Tokens.Table
@@ -71,20 +83,27 @@ function ModelPickerDemo({ disabled = false, empty = false }: { disabled?: boole
   return <div style={{ padding: '180px 24px 24px' }}><PromptModelPicker model={models.find(model => model.id === selected)!}
     models={empty ? [] : models} onChange={setSelected} disabled={disabled || empty} /></div>
 }
-function InputDemo({ mode = 'ready', embedded = false, value: controlled, onValueChange }: { mode?: 'ready' | 'attachments' | 'disabled' | 'busy' | 'error'; embedded?: boolean; value?: string; onValueChange?: (text: string) => void }) {
+
+function InputDemo({ mode = 'ready', embedded = false, value: controlled, onValueChange, selectedSkill = false }: { mode?: 'ready' | 'attachments' | 'add' | 'disabled' | 'busy' | 'error'; embedded?: boolean; value?: string; onValueChange?: (text: string) => void; selectedSkill?: boolean }) {
   const [draft, setDraft] = useState(''), [modelId, setModel] = useState('sample-one'), [effort, setEffort] = useState('高')
   const [busy, setBusy] = useState(mode === 'busy'), [blocked, setBlocked] = useState(mode === 'disabled'), [error, setError] = useState(mode === 'error')
   const [attachments, setAttachments] = useState<PromptAttachment[]>(mode === 'attachments' ? [
     { id: 'image', name: '示例图片.svg', kind: 'image', src: image, size: 512 }, { id: 'code', name: '示例代码.c', kind: 'code', size: 32 },
   ] : [])
   const [notice, setNotice] = useState(''), nextId = useRef(0)
+  const [addView, setAddView] = useState<'add' | 'skills' | null>(null), [skill, setSkill] = useState(selectedSkill)
   const models = [{ id: 'sample-one', name: '示例模型一', note: '纯内存选项', icon: 'model' as const }, { id: 'sample-two', name: '示例模型二', note: '不会发起模型请求', icon: 'model' as const }]
   const text = controlled ?? draft, change = onValueChange ?? setDraft
-  const content = <><PromptInput value={text} onChange={change} onSend={() => { setNotice(`示例接纳：${text.trim() || '仅附件'} · ${attachments.length} 个附件`); change(''); setAttachments([]) }}
+  const content = <><PromptInput value={text} onChange={value => { change(value); if (mode === 'add' && value === '/') setAddView('skills') }}
+    onSend={() => { setNotice(`示例接纳：${text.trim() || '仅附件'} · ${attachments.length} 个附件`); change(''); setAttachments([]); setSkill(false) }}
     canSend={!blocked && !error && (!!text.trim() || attachments.length > 0)} submitting={blocked} busy={busy} onStop={() => { setBusy(false); setNotice('已停止本地示例') }}
     attachments={attachments} onAddFiles={files => setAttachments(previous => [...previous, ...files.map(file => ({ id: `selected-${++nextId.current}`, name: file.name, size: file.size,
       kind: file.type.startsWith('image/') ? 'image' as const : 'document' as const, src: file.type.startsWith('image/') ? image : undefined }))])}
     onRemoveAttachment={id => setAttachments(previous => previous.filter(attachment => attachment.id !== id))} attachmentTitle="添加本地示例附件（不会上传）"
+    additions={mode === 'add' ? { view: addView, onView: setAddView, focusSkills: text !== '/',
+      skills: [{ id: 'sample-skill', label: '分析思路', description: '先核对已有依据，再组织下一步。', selected: skill }],
+      onSkill: () => { setSkill(!skill); if (text === '/') change(''); setAddView(null) } } : undefined}
+    contextItems={mode === 'add' && skill ? [{ id: 'sample-skill', kind: 'skill', label: '分析思路', remove: () => setSkill(false) }] : undefined}
     model={models.find(model => model.id === modelId)!} models={models} onModelChange={setModel} modelDisabled={blocked}
     effort={effort} efforts={['低', '高', '最高']} onEffortChange={(_id, next) => setEffort(next)} effortDisabled={blocked}
     status={error ? { role: 'alert', text: '示例：模型选择未确认' } : blocked ? { role: 'status', text: '示例：输入暂时禁用' } : undefined}
@@ -221,12 +240,42 @@ function GeneratedDemo({ part = 'card', mode = 'live' }: { part?: 'card' | 'live
 }
 function GenFailureDemo() { const [count, setCount] = useState(0); return <Frame><GenFailCard code="EXAMPLE_GENERATION_FAILED" onRetry={() => setCount(value => value + 1)} /><output>本地重试回调 {count} 次</output></Frame> }
 
+function ActivityUiDemo({ kind = 'trace' }: { kind?: 'trace' | 'status' | 'reference' | 'question' }) {
+  const [notice, setNotice] = useState(''), [mode, setMode] = useState<'choice' | 'text'>('choice')
+  const [optionId, setOption] = useState(''), [text, setText] = useState(''), [submitted, setSubmitted] = useState(false)
+  return <Frame>{kind === 'trace' ? <AgentTrace aria-label="工具记录">
+    <AgentTraceItem title="读取材料 · 项目说明.md" status="已完成" tone="done"><p>本地示例的固定材料片段。参数和结果由宿主提供。</p></AgentTraceItem>
+    <AgentTraceItem title="检查作品" status="执行失败" tone="error"><p>示例：检查器暂不可用，已有内容保留。</p><Button variant="outline" onClick={() => setNotice('示例重试回调')}>重试检查</Button></AgentTraceItem>
+    <AgentTraceItem title="正在读取代码" status="进行中" tone="running" icon="code-square"><p>目录示例：读取过程由宿主提供。</p></AgentTraceItem>
+    <AgentTraceItem title="读取实验结果" status="等待核对结果" tone="waiting"><p>示例：尚未收到确认结果。</p></AgentTraceItem>
+  </AgentTrace> : kind === 'status' ? <AgentRunStatus phase={submitted ? 'stopped' : 'generating'} label={submitted ? '已停止本地示例' : '正在整理已有材料…'}><Button variant="outline" disabled={submitted} onClick={() => setSubmitted(true)}>停止</Button></AgentRunStatus>
+    : kind === 'reference' ? <ReferenceAttachment name="项目说明.md" kind="text" excerpt="示例固定原文：先确认输入，再比较预期与实际输出。" locateLabel="定位示例引用" removeLabel="移除示例引用" readOnly={submitted}
+      onLocate={() => setNotice('示例定位回调')} onRemove={() => { setSubmitted(true); setNotice('示例移除回调，当前显示只读状态') }} />
+    : <AgentQuestion prompt="你想先检查哪一种输入？" options={[{ id: 'empty', label: '空输入：确认没有内容时的结果' }, { id: 'repeat', label: '重复内容：比较计数方式' }]} allowText mode={mode} optionId={optionId} text={text}
+      disabled={submitted} valid={mode === 'choice' ? !!optionId : !!text.trim()} pending={false} skippable
+      onMode={(value, option) => { setMode(value); setOption(option || '') }} onText={setText}
+      onSubmit={skip => { setSubmitted(true); setNotice(skip ? '示例：明确跳过' : '示例：回应已接收') }} />}
+    <output aria-live="polite">{notice}</output></Frame>
+}
+
 export const chatEntries: CatalogEntry[] = [
+  { id: 'agent-thinking', name: 'AgentThinking', description: '实时思考文字与完成后自动折叠。', importPath,
+    source: 'packages/ui/src/chat/AgentThinking.tsx', exampleSource, props: ['text', 'active', 'truncated'], dependencies: ['Markdown', 'Collapsible', 'Spinner'],
+    states: [{ id: 'active', name: '正在思考', component: () => <Frame><AgentThinking text="先核对问题中的已知条件，再比较可行的解法。" active /></Frame>, height: 350 },
+      { id: 'settled', name: '已完成，可重新展开', component: () => <Frame><AgentThinking text="已核对问题中的条件，下面给出解释。" active={false} /></Frame>, height: 350 }] },
   { id: 'prompt-model-picker', name: 'PromptModelPicker', description: '复用输入框的模型菜单；型号、供应商和选用由调用方提供。', importPath,
     source: 'packages/ui/src/chat/PromptModelPicker.tsx', exampleSource, props: ['model/models/onChange/disabled', 'open/onOpenChange'], dependencies: ['Icon'], states: [
       { id: 'ready', name: '选用模型／键盘操作', component: ModelPickerDemo }, { id: 'disabled', name: '不可切换', component: () => <ModelPickerDemo disabled /> },
       { id: 'empty', name: '暂无模型', component: () => <ModelPickerDemo empty /> },
     ] },
+
+  { id: 'agent-skill-read', name: 'AgentSkillRead', description: '直接展示 Skill 的原始 description，隐藏内部版本、字节范围和指令正文。', importPath, source: 'packages/ui/src/chat/AgentSkillRead.tsx', exampleSource,
+    props: ['document', 'title/status/tone', 'open/onOpenChange'], dependencies: ['AgentTraceItem'], states: [{ id: 'fixed', name: '原始说明／展开', component: () => <Frame><AgentTrace><AgentSkillRead document={{ source: '目录示例', path: 'SKILL.md', version: 1, packageVersion: '1.0', encoding: 'utf8', content: '---\nname: boundary-check\ndescription: Check expected and actual inputs before explaining the result.\n---\nPRIVATE INSTRUCTIONS', offset: 0, byteLength: 124, totalByteLength: 124, complete: true }} /></AgentTrace></Frame>, height: 600 }] },
+  { id: 'agent-trace', name: 'AgentTrace', description: '工具调用的紧凑摘要与按需展开。', importPath, source: 'packages/ui/src/chat/AgentActivity.tsx', exampleSource, props: ['受控内容与操作回调'], dependencies: ['Icon', 'XunJie tokens'], states: [{ id: 'interactive', name: '交互与状态', component: () => <ActivityUiDemo kind="trace" />, height: 560 }] },
+  { id: 'agent-trace-item', name: 'AgentTraceItem', description: '可展开的单条工具记录，保留完成、失败和等待状态。', importPath, source: 'packages/ui/src/chat/AgentActivity.tsx', exampleSource, props: ['受控内容与操作回调'], dependencies: ['Icon', 'XunJie tokens'], states: [{ id: 'interactive', name: '交互与状态', component: () => <ActivityUiDemo kind="trace" />, height: 560 }] },
+  { id: 'agent-run-status', name: 'AgentRunStatus', description: '运行状态与停止操作。', importPath, source: 'packages/ui/src/chat/AgentActivity.tsx', exampleSource, props: ['受控内容与操作回调'], dependencies: ['Icon', 'XunJie tokens'], states: [{ id: 'interactive', name: '交互与状态', component: () => <ActivityUiDemo kind="status" />, height: 560 }] },
+  { id: 'reference-attachment', name: 'ReferenceAttachment', description: '紧凑引用、固定片段、定位和移除。', importPath, source: 'packages/ui/src/chat/AgentActivity.tsx', exampleSource, props: ['受控内容与操作回调'], dependencies: ['Icon', 'XunJie tokens'], states: [{ id: 'interactive', name: '交互与状态', component: () => <ActivityUiDemo kind="reference" />, height: 560 }] },
+  { id: 'agent-question', name: 'AgentQuestion', description: '受控内联提问、单选、文字回应和明确跳过。', importPath, source: 'packages/ui/src/chat/AgentActivity.tsx', exampleSource, props: ['受控内容与操作回调'], dependencies: ['Icon', 'XunJie tokens'], states: [{ id: 'interactive', name: '交互与状态', component: () => <ActivityUiDemo kind="question" />, height: 560 }] },
   { id: 'action-bar', name: 'ActionBar', description: '复制反馈、时间戳与本地重新生成回调。', importPath, source: agentSource, exampleSource, props: ['text/at/onRetry'], dependencies: ['浏览器剪贴板'], states: [{ id: 'interactive', name: '复制／重新生成', component: ActionsDemo }] },
   { id: 'agent-empty-state', name: 'AgentEmptyState', description: '角色与可选说明，不自行判断首次使用。', importPath, source: sectionSource, exampleSource, props: ['title/description'], dependencies: ['MascotSvg'], states: [
     { id: 'first', name: '首次使用示例', component: () => <AgentEmptyState title="你好，我是循阶教学助手" description="目录示例：解答课程难点，梳理实验思路。" /> },
@@ -284,6 +333,8 @@ export const chatEntries: CatalogEntry[] = [
     { id: 'ordered', name: '有序步骤', component: () => <MarkdownPart part="list" /> }, { id: 'tail', name: '尾项输出中', component: () => <MarkdownPart part="list" pending /> },
   ] },
   { id: 'markdown', name: 'Markdown', description: '完整正文及纯本地逐字输入。', importPath, source: markdownSource, exampleSource, props: ['text/live/truncated/insert/insertAfterPara'], dependencies: ['marked', 'remend'], states: [
+    { id: 'astryx', name: 'Astryx 正文与圆角表格', component: () => <AstryxProseDemo />, height: 720 },
+    { id: 'astryx-streaming', name: 'Astryx 流式正文', component: () => <AstryxProseDemo streaming />, height: 720 },
     { id: 'settled', name: '完成正文', component: () => <MarkdownDemo /> }, { id: 'streaming', name: '本地逐字输入', component: () => <MarkdownDemo streaming /> },
     { id: 'truncated', name: '截断语法修复', component: () => <Frame><Markdown text="示例：尚未闭合的 **强调与 `代码" truncated /></Frame> },
   ] },
@@ -295,6 +346,8 @@ export const chatEntries: CatalogEntry[] = [
   ] },
   { id: 'prompt-input', name: 'PromptInput', description: '真实受控输入、附件与模型／强度菜单，选择文件也不会上传。', importPath, source: 'packages/ui/src/chat/PromptInput.tsx', exampleSource, props: ['value/onChange/onSend/canSend/submitting/busy', 'attachments/onAddFiles/onRemoveAttachment', 'model/models/effort/efforts/选择回调/status'], dependencies: ['AttachmentTile', 'ContextRing', 'ResizeObserver'], states: [
     { id: 'ready', name: '输入／菜单／发送', component: () => <InputDemo />, height: 680 }, { id: 'attachments', name: '附件／移除／文件选择', component: () => <InputDemo mode="attachments" />, height: 700 },
+    { id: 'add', name: '加号菜单／附件与技能', component: () => <InputDemo mode="add" />, height: 680 },
+    { id: 'skill-token', name: 'Astryx 内联技能标签', component: () => <InputDemo mode="add" selectedSkill />, height: 680 },
     { id: 'disabled', name: '禁用／恢复', component: () => <InputDemo mode="disabled" />, height: 680 }, { id: 'busy', name: '生成中／停止', component: () => <InputDemo mode="busy" />, height: 680 },
     { id: 'error', name: '错误／恢复', component: () => <InputDemo mode="error" />, height: 680 },
   ] },

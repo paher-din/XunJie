@@ -19,6 +19,7 @@ export interface ProductAgentScene {
   tools?(input: ScenarioInput): Promise<readonly AgentTool[]>;
   documents?: readonly AgentTool[];
   skills?: readonly AgentTool[];
+  contextExtension?(input: ScenarioInput): Promise<string | undefined>;
   project?(identity: SpaceIdentity, activityId: string): Promise<PersonalProject | null>;
 }
 export interface ProductAgentOptions {
@@ -48,11 +49,13 @@ export function createProductAgent(options: ProductAgentOptions) {
           if (!parts.student && !parts.tools) throw new Error('missing-student-scene');
           return createStudentAssistant({ ...(parts.student ? { learning: parts.student } : {}),
             ...(parts.tools ? { tools: parts.tools } : {}),
-            ...(parts.documents ? { documents: parts.documents } : {}), ...(parts.skills ? { skills: parts.skills } : {}) });
+            ...(parts.documents ? { documents: parts.documents } : {}), ...(parts.skills ? { skills: parts.skills } : {}),
+            ...(parts.contextExtension ? { contextExtension: parts.contextExtension } : {}) });
         }
         if (!parts.workspace) throw new Error('missing-workspace-scene');
         return createWorkspaceAssistant({ ...parts.workspace, ...(parts.tools ? { tools: parts.tools } : {}),
           ...(parts.documents ? { documents: parts.documents } : {}), ...(parts.skills ? { skills: parts.skills } : {}),
+          ...(parts.contextExtension ? { contextExtension: parts.contextExtension } : {}),
           ...(parts.project ? { project: parts.project } : {}) });
       })();
       scenes.set(session.sessionId, pending);

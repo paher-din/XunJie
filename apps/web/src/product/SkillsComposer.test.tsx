@@ -9,7 +9,7 @@ import { ReliableQuestionDraft } from '../reliable-workspace/draft'
 import type { ReliableActions } from '../reliable-workspace/actions'
 import type { SpaceIdentity } from '@xunjie/contracts/spaces'
 import { useSkillCatalog, draftSkillOption, type SkillCatalogEntry } from './skills'
-import { TeachingToolRecords } from './TeachingToolRecords'
+import { isStudentVisibleTool, TeachingToolRecords } from './TeachingToolRecords'
 import type { TeachingToolRecord } from '@xunjie/contracts/teaching-agent'
 import { composerView, waitForComposerComposition } from '../components/workspace/references/composer-view'
 import { DraftStore } from '../reliable-workspace/draft-store'
@@ -191,7 +191,7 @@ it('ignores a late catalog from the previous identity and sends the new expected
     'x-xj-expected-subject': [next.environmentId, next.spaceId, next.principalId].join('.') })
 })
 
-it.each(['skill_load', 'skill_read'])('opens %s fixed source bytes locally without treating the Skill as a work object', async name => {
+it.each(['skill_load', 'skill_read'])('explains %s in student language without exposing internal Skill data', async name => {
   const onLocate = vi.fn()
   const loaded = { skillId: crypto.randomUUID(), version: 3, source: 'package-source', packageVersion: '2.0',
     packageDigest: 'a'.repeat(64), path: name === 'skill_load' ? 'SKILL.md' : 'references/example.md', encoding: 'utf8',
@@ -200,15 +200,56 @@ it.each(['skill_load', 'skill_read'])('opens %s fixed source bytes locally witho
   const record = { commandId: crypto.randomUUID(), runId: crypto.randomUUID(), name, arguments: {}, basis: {}, state: 'settled', outcome: 'completed',
     result: { loaded, sourceState: 'fixed-current' }, source: { label: 'package-source · v3', contentId: loaded.skillId } } as unknown as TeachingToolRecord
   await act(async () => { root.render(createElement(TeachingToolRecords, { records: [record], onLocate })); await settle() })
-  expect(host.textContent).toContain(name === 'skill_load' ? '加载 Skill' : '读取 Skill 文件')
-  const original = host.querySelector<HTMLDetailsElement>('.teaching-skill-source')!
-  original.scrollIntoView = vi.fn()
-  await act(async () => { Array.from(host.querySelectorAll('button')).find(item => item.textContent === '查看固定 Skill 来源')!.click(); await settle() })
-  expect(original.open).toBe(true)
-  expect(original.textContent).toContain('固定的原内容')
-  expect(original.textContent).toContain('6–18 / 40')
-  expect(document.activeElement).toBe(original.querySelector('summary'))
+  expect(host.textContent).toContain(name === 'skill_load' ? '使用技能' : '查看技能资料')
+  expect(host.querySelector('.agent-trace-description')).toBeNull()
+  await act(async () => { host.querySelector<HTMLButtonElement>('.teaching-tool-record > .agent-trace-trigger')!.click(); await settle() })
+  const detail = host.querySelector<HTMLElement>('.teaching-tool-body')!
+  expect(detail.textContent).toContain('已根据这项技能整理本次回答')
+  expect(host.textContent).not.toContain('固定的原内容')
+  expect(host.textContent).not.toContain('6–18 / 40')
+  expect(host.textContent).not.toContain('固定 Skill 来源')
   expect(onLocate).not.toHaveBeenCalled()
+})
+
+it('shows saved learning preferences as readable statements without exposing activity metadata', async () => {
+  const record = { commandId: crypto.randomUUID(), runId: crypto.randomUUID(), name: 'read_student_facts',
+    arguments: {}, basis: {}, state: 'settled', outcome: 'completed', feedback: '', source: null,
+    result: { facts: [{ factId: crypto.randomUUID(), kind: 'preference', topic: '讲解方式',
+      statement: '希望先看具体例子，再理解概念。', source: { eventId: crypto.randomUUID(), seq: 1,
+        activityId: crypto.randomUUID(), createdAt: new Date().toISOString() }, contentVersion: 1,
+      scope: { kind: 'global' }, reviewStatus: 'confirmed', supersedes: null, retractedBy: null }],
+      activity: { activityId: crypto.randomUUID(), goal: '学习 Python', courseId: null },
+      continuation: { state: 'same-activity', detail: '只读取当前活动的明确偏好。' }, unknown: [] } } as unknown as TeachingToolRecord
+  await act(async () => { root.render(createElement(TeachingToolRecords, { records: [record] })); await settle() })
+  await act(async () => { host.querySelector<HTMLButtonElement>('.teaching-tool-record > .agent-trace-trigger')!.click(); await settle() })
+  expect(host.querySelector('.agent-trace-description')).toBeNull()
+  expect(host.textContent).toContain('希望先看具体例子，再理解概念。')
+  expect(host.textContent).not.toContain('same-activity')
+  expect(host.textContent).not.toContain('contentVersion')
+})
+
+it('summarizes material search in student language and hides source internals', async () => {
+  const record = { commandId: crypto.randomUUID(), runId: crypto.randomUUID(), name: 'search_materials',
+    arguments: { query: 'Python' }, basis: {}, state: 'settled', outcome: 'completed', feedback: '', source: null,
+    result: { search: { query: 'Python', scope: { courseMaterials: true, skillAttachments: true }, matches: [],
+      sources: [{ state: 'searched', source: { kind: 'skill-attachment', id: 'private-source-id', version: '1',
+        path: 'SKILL.md' }, searchedChars: 400 }],
+      coverage: { sourceCount: 1, searchedSourceCount: 1, excludedSourceCount: 0, searchedChars: 400,
+        kinds: ['skill-attachment'] }, truncated: false } } } as unknown as TeachingToolRecord
+  await act(async () => { root.render(createElement(TeachingToolRecords, { records: [record] })); await settle() })
+  await act(async () => { host.querySelector<HTMLButtonElement>('.teaching-tool-record > .agent-trace-trigger')!.click(); await settle() })
+  expect(host.querySelector('.agent-trace-description')).toBeNull()
+  expect(host.textContent).toContain('查找学习材料 · Python')
+  expect(host.textContent).toContain('检查了 1 份可用资料')
+  expect(host.textContent).not.toContain('private-source-id')
+  expect(host.textContent).not.toContain('searchedChars')
+})
+
+it('keeps discovery, loading and polling calls visible in the student execution history', () => {
+  expect(['discover_tools', 'load_tools', 'read_tool_result', 'execution_query', 'skill_load', 'skill_read', 'student_ask']
+    .every(name => isStudentVisibleTool(name))).toBe(true)
+  expect(['read_student_facts', 'search_materials', 'read_work', 'course_operation']
+    .every(name => isStudentVisibleTool(name))).toBe(true)
 })
 
 it('restores the caret/open/focus at the visible-view boundary and never steals focus on later responses', async () => {

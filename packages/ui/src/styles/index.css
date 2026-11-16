@@ -2,3 +2,5 @@
 @import './fonts.css';
 @import './app.css';
 @import '../icons/icons.css';
+@import '../chat/agent-activity.css';
+@import '../chat/message-bubble.css';

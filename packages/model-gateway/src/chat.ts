@@ -1,4 +1,5 @@
 import { createJsonToolProgress } from './json-tool-progress.js';
+import { createThinkingProgress } from './thinking-progress.js';
 import type { ModelToolProgress } from '@xunjie/contracts/model-connections';
 import OpenAI from 'openai';
 import { StorageError } from '@xunjie/storage';
@@ -29,7 +30,8 @@ export function checkPayload(configuration: ModelConfiguration, maxOutputTokens:
 export async function runChat(configuration: ModelConfiguration, apiKey: string, payload: ChatPayload,
   signal: AbortSignal, timeoutMs: number, nativeTools?: ModelTool[], applicationSchema?: Record<string, unknown>,
   requestFetch: typeof fetch = fetch, onText?: (text: string) => void, onTools?: (tools: ModelToolProgress[]) => void,
-  requestHeaders?: Record<string, string>) {
+  requestHeaders?: Record<string, string>, onThinking?: (text: string) => void) {
+  const thinking = createThinkingProgress(apiKey, onThinking);
   const sensitive = createSensitiveOutput(apiKey), { clean } = sensitive;
   const progress = onText ? createProgressPublisher(apiKey, onText) : null;
   const toolProgress = onTools ? createJsonToolProgress(nativeTools ?? [], apiKey, onTools) : null;
@@ -63,6 +65,8 @@ export async function runChat(configuration: ModelConfiguration, apiKey: string,
       try { assembler.add(value); toolProgress?.(assembler.toolArguments); } catch { throw new MalformedResponse(); }
       if (!Array.isArray(value.choices)) throw new MalformedResponse();
       const choice = value.choices.find(item => item.index === 0);
+      const delta = choice?.delta as Record<string, unknown> | undefined;
+      thinking.append(delta?.reasoning_content);
       if (choice && (!choice.delta || choice.delta.content != null && typeof choice.delta.content !== 'string'
         || choice.finish_reason != null && typeof choice.finish_reason !== 'string')) throw new MalformedResponse();
       if (choice?.delta.content) { text += choice.delta.content; progress?.(text); }
@@ -151,6 +155,7 @@ export async function runChat(configuration: ModelConfiguration, apiKey: string,
     // Rejected protocol data has no trustworthy replay interpretation. Retain facts, not raw bytes.
     native = { ...native, chunks: [], assistant: null, choices: [], finishReason: null, upstreamError: null, redacted: true };
   }
+  thinking.finish();
   return { state, reason, text: clean(text), usage, toolIntents: state === 'completed' ? assembled.intents : [],
     native, ...(upstream ? { upstream } : {}) };
 }

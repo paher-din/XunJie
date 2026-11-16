@@ -1,0 +1,6 @@
+.product-conversation .teaching-conversation-header,
+.product-conversation .teaching-conversation > h3,
+.product-conversation .teaching-conversation > h3 + p.detail,
+.product-conversation .teaching-conversation:not(:has(.chat-message, .teaching-message, [data-message-id])) > .teaching-conversation-header + p.detail {
+  display: none;
+}

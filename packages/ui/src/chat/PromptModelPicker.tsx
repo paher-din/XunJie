@@ -4,9 +4,9 @@ import { Icon, type IconName } from '../icons'
 export interface PromptModelOption { id: string; name: string; note: string; icon: IconName }
 
 /** Shared model picker; the caller supplies available models and persists selection. */
-export function PromptModelPicker({ model, models, onChange, disabled = false, open: controlledOpen, onOpenChange }: {
+export function PromptModelPicker({ model, models, onChange, disabled = false, open: controlledOpen, onOpenChange, onSettings }: {
   model: PromptModelOption; models: readonly PromptModelOption[]; onChange(id: string): void
-  disabled?: boolean; open?: boolean; onOpenChange?(open: boolean): void
+  onSettings?(): void; disabled?: boolean; open?: boolean; onOpenChange?(open: boolean): void
 }) {
   const [localOpen, setLocalOpen] = useState(false)
   const open = controlledOpen ?? localOpen
@@ -46,6 +46,8 @@ export function PromptModelPicker({ model, models, onChange, disabled = false, o
         <span className="mi-copy"><span className="mi-name">{option.name}</span><span className="mi-note">{option.note}</span></span>
         <span className="mi-check">{option.id === model.id && <Icon name="check" size={14} />}</span>
       </div>)}
+      {onSettings && <button type="button" role="menuitem" className="prompt-model-item" onClick={() => { setOpen(false); onSettings() }}>
+        <Icon className="mi-icon" name="settings" size={20} /><span className="mi-name">模型设置</span></button>}
     </div>}
   </div>
 }

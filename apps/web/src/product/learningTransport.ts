@@ -9,16 +9,16 @@ export function workspaceScope(namespace: string, activity: Pick<LearningActivit
 
 /** Same-origin production endpoint; the server derives identity and checks the expected subject. */
 export async function learningRequest(activity: LearningActivity, spaceKey: string, namespace: string,
-  route: string, body?: unknown): Promise<unknown> {
-  return learningSubjectRequest(activity.identity, spaceKey, namespace, route, body)
+  route: string, body?: unknown, signal?: AbortSignal): Promise<unknown> {
+  return learningSubjectRequest(activity.identity, spaceKey, namespace, route, body, 30000, signal)
 }
 export async function learningSubjectRequest(identity: SpaceIdentity, spaceKey: string, namespace: string,
-  route: string, body?: unknown, timeoutMs = 30000): Promise<unknown> {
+  route: string, body?: unknown, timeoutMs = 30000, signal?: AbortSignal): Promise<unknown> {
   const response = await fetch('/api/learning/' + route, { method: body === undefined ? 'GET' : 'POST',
     credentials: 'same-origin', redirect: 'error', cache: 'no-store',
     headers: { 'content-type': 'application/json', 'x-xj-space': spaceKey, 'x-xj-namespace': namespace,
       'x-xj-expected-subject': [identity.environmentId, identity.spaceId, identity.principalId].join('.') },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(timeoutMs) })
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(timeoutMs)]) : AbortSignal.timeout(timeoutMs) })
   let value: unknown
   try { value = await response.json() }
   catch { throw Object.assign(new Error('原服务返回了不完整响应。'), { code: response.ok ? 'corrupt' : 'unavailable' }) }

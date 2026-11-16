@@ -86,6 +86,7 @@ export interface GeneratedResponse {
   attemptId: string; requestRef: string; responseRef: string | null;
   text: string; toolIntents: readonly ModelToolIntent[]; usage: ModelUsage;
   segmentId: string; segmentSequence: number;
+  contextUsage?: { model: { connectionId: string; version: number }; tokens: number; lowerBound: boolean };
 }
 export interface GenerateInput {
   identity: SpaceIdentity; sessionId: string; turnId: string; stepId: string;
@@ -96,7 +97,7 @@ export interface GenerateInput {
   budget: AgentTurnBudget;
   spent: { inputTokens: number; outputTokens: number; inputReserved: number; outputReserved: number };
   signal: AbortSignal;
-  onProgress?(progress: { attemptId: string; text: string; revision: number; tools?: readonly Json[] }): Promise<void>;
+  onProgress?(progress: { attemptId: string; text: string; revision: number; thinking?: string; tools?: readonly Json[] }): Promise<void>;
 }
 /** Wraps the existing Gateway communication steps for one logical generate; no second loop. */
 export interface ModelPort {
@@ -107,7 +108,7 @@ export interface ModelPort {
 
 export interface AgentProgressPort {
   recordProgress(identity: SpaceIdentity, sessionId: string, turnId: string, stepId: string, attemptId: string,
-    progress: { revision: number; text: string; tools?: readonly Json[] }): Promise<boolean>;
+    progress: { revision: number; text: string; thinking?: string; tools?: readonly Json[] }): Promise<boolean>;
 }
 export interface AgentCancellationTimers {
   setTimeout(callback: () => void, delayMs: number): unknown;

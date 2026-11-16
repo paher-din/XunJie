@@ -45,6 +45,10 @@ export interface GenCardSlots {
  * children 用于消息内卡片槽（如任务卡），由父级按数据渲染。
  */
 export interface AgentMessageProps {
+  markdownVariant?: 'legacy' | 'astryx'
+  /** The host marks answers arriving in this viewing session; restored history never replays. */
+  reveal?: boolean
+  showStopActions?: boolean
   message: ChatMessage
   /** 默认使用正式品牌角色；宿主可覆盖状态图形。 */
   statusIcon?: ReactNode
@@ -69,6 +73,9 @@ export interface AgentMessageProps {
 }
 
 export function AgentMessage({
+  markdownVariant,
+  reveal,
+  showStopActions = true,
   message,
   onResume,
   onRetry,
@@ -87,7 +94,8 @@ export function AgentMessage({
   const streaming = phase === 'streaming'
   // 到达节奏 ≠ 上屏节奏：适配层按 token 吐字（一次 1–4 字、间隔带抖动），
   // 这一层按帧把缓冲匀出去，正文才是一条匀速的流而不是一顿一顿。
-  const shown = useSmoothStreamText(message.text, streaming)
+  const shown = useSmoothStreamText(message.text, streaming, { drainOnComplete: phase === 'settled', animateOnMount: reveal ?? streaming })
+  const revealing = streaming || shown !== message.text
   return (
     <div className="chat-message agent">
       {sourceLabel && <div className="agentmark"><IconText name="assistant-mark">{sourceLabel}</IconText></div>}
@@ -106,8 +114,9 @@ export function AgentMessage({
           正文留着半截，卡片没理由不见，只是动作还不给 */}
       {message.text && (
         <Markdown
+          variant={markdownVariant}
           text={shown}
-          live={streaming}
+          live={revealing}
           truncated={phase === 'stopped' || phase === 'failed'}
           insert={
             message.concept && phase !== 'failed' ? (
@@ -126,19 +135,19 @@ export function AgentMessage({
       {message.steps && message.steps.length > 0 && (
         <StepsBlock steps={message.steps} running={phase === 'streaming'} />
       )}
-      {phase === 'settled' && message.quiz && (
+      {phase === 'settled' && !revealing && message.quiz && (
         <QuizCard quiz={message.quiz} onSubmitAnswer={onQuizAnswer} recordLabel={quizRecordLabel?.(message.quiz)} />
       )}
-      {phase === 'settled' && message.genCard && (
+      {phase === 'settled' && !revealing && message.genCard && (
         renderGeneratedCard?.(message.genCard, genCardSlots)
       )}
-      {phase === 'stopped' && (
+      {phase === 'stopped' && showStopActions && (
         <StopLine empty={!message.text} onResume={onResume} onRetry={onRetry} />
       )}
       {phase === 'failed' && message.failure && (
         <FailureCard message={message} onRetry={onRetry} onSwitchModel={onSwitchModel} failureCopy={failureCopy} />
       )}
-      {phase === 'settled' && (
+      {phase === 'settled' && !revealing && (
         <ActionBar text={message.text} at={message.at} onRetry={onRetry} />
       )}
     </div>
@@ -337,15 +346,15 @@ export function FailureCard({
 }
 
 /** 落定操作条：图标键，无障碍名与提示承载文案（复制、重新生成——重新生成只挂在会话最后一条 agent 消息上，由父级控制）。 */
-export interface ActionBarProps { text: string; at?: string; onRetry?: () => void }
+export interface ActionBarProps { text: string; at?: string; onRetry?: () => void; copyLabel?: string }
 
-export function ActionBar({ text, at, onRetry }: ActionBarProps) {
+export function ActionBar({ text, at, onRetry, copyLabel = '复制回复' }: ActionBarProps) {
   const [copied, setCopied] = useState(false)
   const [copyError, setCopyError] = useState(false)
   return (
     <div className="turn-actions">
       <button
-        aria-label={copied ? '已复制' : '复制回复'}
+        aria-label={copied ? '已复制' : copyLabel}
         title={copied ? '已复制' : '复制'}
         onClick={async () => {
           setCopied(false);setCopyError(false)

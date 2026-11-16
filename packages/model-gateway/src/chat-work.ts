@@ -275,7 +275,10 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
       ...(segment.prefix.tools.length ? { tools: segment.prefix.tools.map(tool => ({ name: tool.name, description: tool.description,
         input_schema: tool.inputSchema as Anthropic.Tool.InputSchema, ...(tool.strict === undefined ? {} : { strict: tool.strict }) })), tool_choice: { type: 'auto' as const } } : {}),
       ...(options?.toolChoice ? { tool_choice: typeof options.toolChoice === 'string' ? { type: options.toolChoice } : { type: 'tool' as const, name: options.toolChoice.name } } : {}),
-      ...(options?.responseFormat?.kind === 'json-schema' ? { output_config: { format: { type: 'json_schema' as const, schema: options.responseFormat.schema } } } : {}),
+      ...(options?.responseFormat?.kind === 'json-schema' ? { output_config: {
+        ...messagesCheckPayload(segment.snapshot.connection, input.limits.maxOutputTokens).output_config,
+        format: { type: 'json_schema' as const, schema: options.responseFormat.schema },
+      } } : {}),
     } satisfies MessagesPayload : responses ? {
       ...responsesCheckPayload(segment.snapshot.connection, input.limits.maxOutputTokens), instructions: segment.prefix.system, input: items,
       ...(segment.prefix.tools.length ? { tools: segment.prefix.tools.map(tool => ({ type: 'function' as const,

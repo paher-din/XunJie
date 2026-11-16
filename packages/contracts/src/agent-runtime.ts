@@ -141,7 +141,7 @@ export const agentTurnBudgetSchema = z.object({
 }).strict();
 export type AgentTurnBudget = z.infer<typeof agentTurnBudgetSchema>;
 export const defaultAgentTurnBudget = Object.freeze({ maxSteps: 16, maxToolCalls: 64,
-  maxInputTokens: 1_048_576, maxOutputTokens: 65_536, maxCallMs: 600_000, hardDeadlineMs: 86_400_000 });
+  maxInputTokens: 4_194_304, maxOutputTokens: 65_536, maxCallMs: 600_000, hardDeadlineMs: 86_400_000 });
 
 export const agentQuestionResponseSchema = z.object({
   requestId: z.uuid(), questionId: z.uuid(), expectedVersion: z.number().int().positive(),

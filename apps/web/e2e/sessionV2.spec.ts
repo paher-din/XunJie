@@ -29,6 +29,7 @@ test('formal sessions recover original inputs and open an independent real works
     if (path === `activities/${activity.activityId}/project`) return respond({ projectId: id(), activityId: activity.activityId, workspaceSessionId: [...sessions.values()].find(value => value.workspace)?.sessionId ?? id(), operationId: id(), sourceSessionId: [...sessions.keys()][0], inputId: id(), identity: actor, target: activity.target, createdAt: now, content: { title: '递归练习', goal: '理解递归和基例', stages: [{ title: '找出基例', goal: '写出最小输入时的结果' }, { title: '实现递归', goal: '用更小输入验证递归步骤' }], materialRefs: [] } })
     if (path === 'agent-settings') return respond({ version: 0, busyInputMode: 'steering' })
     if (path === 'skills') return respond({ skills: [], selections: [] })
+    if (path.endsWith('/skills/select')) return respond({ catalog: [], loaded: [], selectionDigest: 'a'.repeat(64) })
     if (path.endsWith('/skills')) return respond({ catalog: [], loaded: [], selectionDigest: 'a'.repeat(64) })
     if (path.startsWith('workspaces/')) return respond({ revision: 0, files: [] })
     if (path.startsWith('drafts/')) return respond(body ? { draftId: body.draftId, revision: body.baseRevision + 1, revisionId: id(), question: body.question, references: body.references }
@@ -82,7 +83,7 @@ test('formal sessions recover original inputs and open an independent real works
   if (process.env.XUNJIE_E2E_SCREENSHOT) await page.screenshot({ path: process.env.XUNJIE_E2E_SCREENSHOT + '.workspace.png', fullPage: true })
   await page.getByRole('button', { name: '打开对话', exact: true }).click()
   const composer = page.getByRole('complementary', { name: '问题与引用' })
-  await composer.locator('textarea').fill('结合当前作品解释递归'); await composer.getByRole('button', { name: '发送问题', exact: true }).click()
+  await composer.locator('textarea').fill('结合当前作品解释递归'); await composer.getByRole('button', { name: '发送消息', exact: true }).click()
   await expect(page.getByText('已结合你的作品继续讨论。', { exact: true })).toBeVisible()
   expect(writes.find(write => write.body?.context?.action)?.body.context.action).toMatchObject({ scope: { activityId: activity.activityId }, receiver: { receiverId: 'teaching-agent:' + owner.target.serviceId, kind: 'question', location: 'local' }, draft: { question: '结合当前作品解释递归' }, works: [] })
   expect(new Set(writes.filter(write => /\/inputs$/.test(write.path)).map(write => write.body.sessionId)).size).toBe(2)

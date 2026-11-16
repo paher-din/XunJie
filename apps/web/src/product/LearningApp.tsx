@@ -46,8 +46,10 @@ type Context = { clientNamespace: string; profile: string; readOnly?: boolean; i
 // Explicit null means unbound. Older servers fall back to one school identity,
 // never the requested route, so a deep link cannot select a different account.
 function normalizeContext(value: Context): Context {
-  const school = value.identities.find(item => item.identity.kind === 'school')
-  const account = value.account === undefined ? school ? { key: school.key, accountName: school.identity.name, schoolName: school.identity.name } : null : value.account
+  const schools = value.identities.filter(item => item.identity.kind === 'school')
+  const school = schools[0]
+  const inferSchool = !!school && (value.account === undefined || value.account === null && schools.length === 1)
+  const account = inferSchool ? { key: school!.key, accountName: school!.identity.name, schoolName: school!.identity.name } : value.account
   return { ...value, account, identities: value.identities.filter(item => item.identity.kind === 'personal' || item.key === account?.key) }
 }
 function knownSpaceKey(context: Context, requested: string | null, activityId: string | null) {

@@ -50,7 +50,7 @@ export function limitPayload(configuration: ModelConfiguration, payload: NativeP
 export async function runModel(configuration: ModelConfiguration, apiKey: string, payload: NativePayload,
   signal: AbortSignal, timeoutMs: number, segment: boolean, applicationSchema?: Record<string, unknown>,
   requestFetch: typeof fetch = fetch, onText?: (text: string) => void, applicationTools?: ModelTool[], onTools?: (tools: ModelToolProgress[]) => void,
-  sessionIdentity?: string) {
+  sessionIdentity?: string, onThinking?: (text: string) => void) {
   // Native payloads intentionally contain no application preview metadata.
   const definitions = (tools: ModelTool[] | undefined) => tools?.map(tool => {
     const progress = applicationTools?.find(item => item.name === tool.name)?.progress;
@@ -63,7 +63,7 @@ export async function runModel(configuration: ModelConfiguration, apiKey: string
       if (tool.type !== 'function') throw new StorageError('corrupt');
       return { name: tool.name, description: tool.description ?? '', inputSchema: tool.parameters ?? {} };
     }) ?? [] : undefined;
-    return runResponses(configuration, apiKey, request, signal, timeoutMs, definitions(tools), applicationSchema, requestFetch, onText, onTools, requestHeaders);
+    return runResponses(configuration, apiKey, request, signal, timeoutMs, definitions(tools), applicationSchema, requestFetch, onText, onTools, requestHeaders, onThinking);
   }
   if (configuration.protocol === 'messages') {
     const request = payload as MessagesPayload;
@@ -71,7 +71,7 @@ export async function runModel(configuration: ModelConfiguration, apiKey: string
       if (!('input_schema' in tool)) throw new StorageError('corrupt');
       return { name: tool.name, description: tool.description ?? '', inputSchema: tool.input_schema };
     }) ?? [] : [];
-    return runMessages(configuration, apiKey, request, signal, timeoutMs, definitions(tools) ?? [], applicationSchema, requestFetch, onText, onTools, requestHeaders);
+    return runMessages(configuration, apiKey, request, signal, timeoutMs, definitions(tools) ?? [], applicationSchema, requestFetch, onText, onTools, requestHeaders, onThinking);
   }
   if (configuration.protocol !== 'chat-completions') throw new StorageError('unavailable');
   const request = payload as ChatPayload;
@@ -79,5 +79,5 @@ export async function runModel(configuration: ModelConfiguration, apiKey: string
     if (tool.type !== 'function') throw new StorageError('corrupt');
     return { name: tool.function.name, description: tool.function.description ?? '', inputSchema: tool.function.parameters ?? {} };
   }) ?? [] : undefined;
-  return runChat(configuration, apiKey, request, signal, timeoutMs, definitions(tools), applicationSchema, requestFetch, onText, onTools, requestHeaders);
+  return runChat(configuration, apiKey, request, signal, timeoutMs, definitions(tools), applicationSchema, requestFetch, onText, onTools, requestHeaders, onThinking);
 }
