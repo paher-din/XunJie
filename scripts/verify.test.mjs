@@ -147,7 +147,9 @@ test('raw stdout/stderr reach logs before exit; no arguments prepare and run eve
   assert.match(f.output(), /PASSED tools .*exit 0/);
   assert.match(readFileSync(summary.logFile, 'utf8'), /raw stderr: tools-other/);
   assert.deepEqual(f.events().slice(0, 5).map(event => event.stage), ['typecheck', 'all', 'check:contracts:browser', 'check:docs', 'test']);
-  assert.deepEqual(f.events().slice(5).map(event => event.stage).sort(), ['checks', 'storage', 'product-runtime', 'server-a', 'server-b', 'web', 'tools-integration', 'tools-other'].sort());
+  assert.deepEqual(f.events().slice(5).map(event => event.stage).sort(), ['checks', 'storage', 'product-runtime', 'server-a', 'server-b', 'web', 'web', 'web', 'web', 'tools-integration', 'tools-other'].sort());
+  assert.deepEqual(f.events().filter(event => event.stage === 'web').map(event => event.args.at(-1)).sort(),
+    ['--shard=1/4', '--shard=2/4', '--shard=3/4', '--shard=4/4']);
 });
 
 test('failed prepare preserves exit code/diagnostics and leaves tests pending', { timeout: 10_000 }, async t => {
@@ -280,6 +282,7 @@ for (const target of ['checks', 'contracts', 'storage', 'product-runtime', 'serv
     cpSync(entry, join(f.root, 'scripts/test.mjs'));
     cpSync(join(source, 'test-discovery.mjs'), join(f.root, 'scripts/test-discovery.mjs'));
     cpSync(join(source, 'server-test-weights.json'), join(f.root, 'scripts/server-test-weights.json'));
+    cpSync(join(source, 'test-task-weights.json'), join(f.root, 'scripts/test-task-weights.json'));
     cpSync(join(source, 'test-scheduler.mjs'), join(f.root, 'scripts/test-scheduler.mjs'));
     const child = spawn(process.execPath, [join(f.root, 'scripts/test.mjs'), target, '--report-dir', '.verification'], { cwd: tmpdir(),
       env: { ...process.env, EVENTS: join(f.root, 'events.jsonl') }, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -315,7 +318,7 @@ test('unified verification executes Agent local behavior and leaves native sessi
 test('explicit native entry prepares fresh dependencies and propagates the actual native test failure', { timeout: 10_000 }, async t => {
   const f = fixture(t, { AGENT_WORKSPACES: '1' }, ['--group', 'prepare', '--list']);
   await f.exit;
-  for (const path of ['test.mjs', 'test-discovery.mjs', 'server-test-weights.json', 'test-scheduler.mjs']) cpSync(join(source, path), join(f.root, 'scripts', path));
+  for (const path of ['test.mjs', 'test-discovery.mjs', 'server-test-weights.json', 'test-task-weights.json', 'test-scheduler.mjs']) cpSync(join(source, path), join(f.root, 'scripts', path));
   const entry = join(f.root, 'scripts/test.mjs');
   const invoke = async (target, args = [], env = {}) => {
     const child = spawn(process.execPath, [entry, target, ...args], { cwd: tmpdir(),

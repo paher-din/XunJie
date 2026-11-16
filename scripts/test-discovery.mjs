@@ -1,6 +1,7 @@
 import { existsSync, globSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import serverTimings from './server-test-weights.json' with { type: 'json' };
+import taskTimings from './test-task-weights.json' with { type: 'json' };
 
 export const targetDirectories = {
   server: 'apps/server', contracts: 'packages/contracts', storage: 'packages/storage',
@@ -10,7 +11,7 @@ export const targetDirectories = {
 export const groups = ['prepare', 'unit', 'server', 'tools', 'tests'];
 export const verifyUsage = 'Usage: npm run verify [-- --group prepare|unit|server|tools|tests] [--shard i/n] [--jobs N] [--report-dir DIR] [--list | --help]\n'
   + 'No arguments: prepare, then all local tests. tests: unit + server + tools. Tests always run; only builds are cached.\n'
-  + 'Jobs: 1..4 (default 4). Shards: server --shard uses measured-weight LPT, longest first; unsharded server stays lexical; tools has four fixed shards.\n'
+  + 'Jobs: 1..4 (default 4). Unit shards partition Node tests and Vitest files; server shards use measured-weight LPT; tools has four fixed shards.\n'
   + 'Results go to the console. --report-dir explicitly saves raw logs and a latest.json summary for diagnosis.';
 export const testUsage = `Usage: node scripts/test.mjs <${Object.keys(targetDirectories).join('|')}> [--external] [--shard i/n] [--jobs N] [--report-dir DIR] [--list | --help]`;
 
@@ -51,7 +52,7 @@ export function parseOptions(args, mode = 'verify') {
   }
   if (options.help && options.list) fail();
   if (mode === 'test' && !options.target && !options.help) fail();
-  if (mode === 'verify' && options.shard && !['server', 'tools'].includes(options.group)) fail();
+  if (mode === 'verify' && options.shard && !['unit', 'server', 'tools'].includes(options.group)) fail();
   if ((options.group ?? options.target) === 'tools' && options.shard && options.shard.count !== 4) fail();
   return options;
 }
@@ -155,8 +156,14 @@ function npmCli() {
 function workspaceTasks(root, workspace, options) {
   const target = Object.keys(targetDirectories).find(target => targetDirectories[target] === workspace.directory);
   if (target) return targetTasks(root, target, discoverTests(root, target, target === 'server' ? options : {}));
-  if (workspace.directory === 'apps/web') return [{ name: 'web', group: 'unit', cwd: join(root, 'apps/web'), command: process.execPath,
-    args: [join(root, 'node_modules/vitest/vitest.mjs'), 'run', '--maxWorkers=1', '--minWorkers=1', '--no-file-parallelism'] }];
+  if (workspace.directory === 'apps/web') {
+    const count = options.shard?.count ?? options.jobs ?? 4;
+    const shards = options.shard ? [options.shard] : Array.from({ length: count }, (_, index) => ({ index: index + 1, count }));
+    return shards.map(({ index, count }) => ({
+      name: count === 1 ? 'web' : `web:${index}/${count}`, group: 'unit', cwd: join(root, 'apps/web'), command: process.execPath,
+      args: [join(root, 'node_modules/vitest/vitest.mjs'), 'run', '--maxWorkers=1', '--minWorkers=1', '--no-file-parallelism', `--shard=${index}/${count}`],
+    }));
+  }
   // Preserve npm's automatic apps/packages workspace coverage. Unknown runners
   // and their lifecycle hooks own their concurrency, so reserve the whole pool.
   return [{ name: `workspace:${workspace.directory}`, group: 'unit', cwd: root,
@@ -169,6 +176,12 @@ function interleaveGroups(tasks) {
     if (!queues.has(task.group)) queues.set(task.group, []);
     queues.get(task.group).push(task);
   }
+  // Keep long test files out of the tail when local groups share four workers.
+  // Weights affect scheduling only; discovery and coverage are independent.
+  const weight = task => task.group === 'server' ? serverTestWeight(task.name)
+    : taskTimings.durationMs[task.name] ?? (task.name.startsWith('web:')
+      ? taskTimings.durationMs.web / Number(task.name.split('/').at(-1)) : taskTimings.defaultDurationMs);
+  for (const queue of queues.values()) queue.sort((a, b) => weight(b) - weight(a));
   const result = [];
   for (let index = 0; result.length < tasks.length; index++) {
     for (const queue of queues.values()) if (queue[index]) result.push(queue[index]);
@@ -208,6 +221,14 @@ export function verificationPlan(root, options) {
   if (['full', 'tests', 'tools'].includes(selected)) {
     tasks.push(...targetTasks(root, 'tools', discoverTests(root, 'tools', options)));
   }
-  phases.push(...scheduleTestPhases(tasks));
+  // Partition the complete Node/npm unit task set once, including future
+  // workspace fallbacks. Each CI shard also owns its matching Vitest shard.
+  let selectedTasks = tasks;
+  if (options.shard && selected === 'unit') {
+    const unit = tasks.filter(task => task.name !== 'web' && !task.name.startsWith('web:'));
+    const selectedUnit = new Set(unit.filter((_, index) => index % options.shard.count === options.shard.index - 1));
+    selectedTasks = tasks.filter(task => !unit.includes(task) || selectedUnit.has(task));
+  }
+  phases.push(...scheduleTestPhases(selectedTasks));
   return phases;
 }

@@ -46,17 +46,18 @@ npm run verify
 
 构建准备共用内容缓存 `.cache/xunjie-build/`：源码、配置、依赖、工具链或相关环境变化，以及产物缺失、篡改或多出陈旧文件，都会触发重建；未提交的文件变化也计入。测试结果不缓存。`npm run build -- --force` 可强制重建。根测试会准备普通 Web 与 runtime Web 两套产物，不依赖上次构建残留。
 
-CI 的 `prepare` 分组构建并检查一次，再将绑定本次提交、Git tree、Node 与平台的产物分发到独立 Ubuntu runner。server 按 [hosted 耗时权重](../../scripts/server-test-weights.json)用稳定的 LPT 分为四片：按估计耗时降序，将每个文件分给累计权重最小的一片；同权重按路径排序，同负载选编号最小的一片。未知文件估计为 10 秒，仅显式传入 `--shard` 时启用加权分片及片内最长优先；未分片的本地 server 保留路径字典序，避免多个重负载文件集中启动。权重仅影响调度，不决定测试发现范围。tools 按恢复、生命周期、状态与证书、其余测试分为四组；全部通过后，main 的发布流程复用同一产物。纯 Markdown／文档图片变更不启动 CI，文档目录中的代码仍触发；当前没有必需检查，未来设置分支保护时不能将被路径过滤跳过的工作流设为必需检查。
+CI 的 `prepare` 分组构建并检查一次，再将绑定本次提交、Git tree、Node 与平台的产物分发到独立 Ubuntu runner。Linux 准备与 macOS 原生回归同时启动，各自缓存必要构建产物，命中后仍校验源码、工具链与输出内容；原生回归使用 Node 的两份文件分片，各在独立 macOS runner 上以两个 worker 执行，仅构建后端依赖。unit 将 Node/npm 任务均分四片，各片使用对应的 Vitest 文件分片；新增 workspace 回退任务自动参与。server 按 [hosted 耗时权重](../../scripts/server-test-weights.json)用稳定的 LPT 分为四片：按估计耗时降序，将每个文件分给累计权重最小的一片；同权重按路径排序，同负载选编号最小的一片，未知文件估计为 10 秒。tools 按恢复、生命周期、状态与证书、其余测试分为四组。全部通过后，main 的发布流程复用同一产物。纯 Markdown／文档图片变更不启动 CI，文档目录中的代码仍触发；当前没有必需检查，未来设置分支保护时不能将被路径过滤跳过的工作流设为必需检查。
 
 ```sh
 npm run verify -- --group prepare
 npm run verify -- --group unit
+npm run verify -- --group unit --shard 1/4
 npm run verify -- --group server --shard 1/4
 npm run verify -- --group tools --shard 1/4
 npm run verify -- --group tests --jobs 4
 ```
 
-不传分组仍运行完整门禁，`tests` 包含全部本地测试；构建准备完成后，unit/server/tools 测试先交错排队，共用 1–4 个 worker；未分片的本地 server 保持字典序。恢复工作树使用独立输出，contracts 在 staging 中实际编译，字节一致时保留现有 dist，因此六个生命周期文件可与其他独立测试并行。有界协议时序测试 `packages/product-runtime/test/connections.test.ts` 及未知 workspace 的 npm 测试回退仍在最后阶段逐个独占执行；协议时序断言和期限保持不变。单文件内部仍串行；分片只改变调度，不改变 local/external 分类。`cloud-release` 的手动入口同样先运行完整验证；`publish=false` 只装配并上传产物证据，不创建 Release 或清理旧发布。
+不传分组仍运行完整门禁，`tests` 包含全部本地测试；构建准备完成后，unit/server/tools 测试交错排队，共用 1–4 个 worker，各组先启动耗时较长的文件。server 使用上述权重，其他任务使用[本地实测权重](../../scripts/test-task-weights.json)，未知文件仍自动发现并执行。未显式指定分片时，Vitest 按 worker 数拆成独立分片，每片只占一个 worker。权重只影响启动顺序，不缓存或筛掉测试。恢复工作树使用独立输出，contracts 在 staging 中实际编译，字节一致时保留现有 dist，因此六个生命周期文件可与其他独立测试并行。有界协议时序测试 `packages/product-runtime/test/connections.test.ts` 及未知 workspace 的 npm 测试回退仍在最后阶段逐个独占执行；协议时序断言和期限保持不变。单文件内部仍串行；分片不改变 local/external 分类。`cloud-release` 的手动入口同样先运行完整验证；`publish=false` 只装配并上传产物证据，不创建 Release 或清理旧发布。
 
 根类型检查、构建和测试按 workspace 依赖准备公共包与产物，同一输入复用已核对的构建；产品运行和存储测试仍从公开 package 消费。保留 Web 的 TypeScript 5.9 与 server 的 TypeScript 7，各 workspace 使用自己的编译器和配置。页面开发使用 `npm run dev:prep -w @xunjie/web`（合成数据）或 `npm run dev -w @xunjie/web`；构建后 `npm start -w @xunjie/server` 启动后端，真实课程仍需相应宿主配置。
 
@@ -86,7 +87,7 @@ npm run test:external:tools -- --list
 
 `node scripts/test.mjs <target>` 和常规 typecheck/build 会准备并写 workspace dist。共享 checkout 有主构建占用时先协调统一构建，避免清理另一测试正在读取的产物；等待期间可用各包编译器直接 `tsc --noEmit -p <tsconfig>`，或对已准备且不变的 dist 执行 `node --test <文件>`。这些操作不证明浏览器、真实供应商或跨机验收通过。
 
-工具组会启动真实 CLI 并重建同一 checkout 的公共契约产物，因此按文件串行，避免另一文件在编译写入期间导入同一产物；其他 Node 分组仍按 4 个文件并行。单个文件内刻意验证的并发、竞争和多进程场景保持原样。
+工具组会启动真实 CLI；公共契约构建受跨进程锁保护，并保留字节相同的现有产物，因此可在上述全局 worker 预算内按文件并行。单个文件内刻意验证的并发、竞争和多进程场景保持原样。
 
 | 分组 | 文件与环境 |
 | --- | --- |
