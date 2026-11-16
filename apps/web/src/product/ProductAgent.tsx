@@ -40,7 +40,11 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
   const controls = sessionComposerActions(controller, !writable)
   const pendingQuestion = controller.conversation?.questions.find(question => question.state === 'pending')
   const selectSkills = useCallback(async (id: string, input: { requestId: string; context: Record<string, unknown> }) => {
-    if (Array.isArray(input.context.skills)) sessionSkillStateSchema.parse(await client.request(id + '/skills/select', { requestId: input.requestId, skills: input.context.skills }))
+    if (!Array.isArray(input.context.skills) || input.context.skills.length === 0) return
+    sessionSkillStateSchema.parse(await client.request(id + '/skills/select', { requestId: input.requestId, skills: input.context.skills }))
+  }, [client])
+  const clearSkills = useCallback(async (id: string, input: { requestId: string }) => {
+    sessionSkillStateSchema.parse(await client.request(id + '/skills/select', { requestId: input.requestId, skills: [] }))
   }, [client])
   const draftKey = 'xj.agent-draft.' + scope + '.' + (sessionId ?? 'new')
   const composer = useSessionDraft(client.scope, sessionId, 'composer', { text: '', editing: true, expectedVersion: 1 }, draftKey)
@@ -82,7 +86,7 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
     const turn = controller.conversation?.turns.find(item => item.turnId === pending.turnId)
     if (!turn || turn.state === 'active' || resettingSkills.current === raw) return
     resettingSkills.current = raw
-    void selectSkills(sessionId, { requestId: pending.requestId, context: { skills: [] } }).then(() => {
+    void clearSkills(sessionId, { requestId: pending.requestId }).then(() => {
       if (localStorage.getItem(key) === raw) localStorage.removeItem(key)
       skills.reload()
     }).catch(cause => {
@@ -90,7 +94,7 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
     }).finally(() => {
       if (resettingSkills.current === raw) resettingSkills.current = null
     })
-  }, [sessionId, controller.conversation?.turns, client.scope, selectSkills, skills.reload, viewKey])
+  }, [sessionId, controller.conversation?.turns, client.scope, clearSkills, skills.reload, viewKey])
   useEffect(() => { if (directorySession && directorySession.sessionId === sessionId) setMetadata(directorySession) }, [directorySession, sessionId])
   const completeStart = useCallback(async () => {
     setBusy(true)

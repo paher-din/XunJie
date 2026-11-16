@@ -17,7 +17,7 @@ test('a home message needs only its own session and current text', () => {
 test('Turn budget defaults are the fixed plan limits', () => {
   assert.equal(defaultAgentTurnBudget.maxSteps, 16);
   assert.equal(defaultAgentTurnBudget.maxToolCalls, 64);
-  assert.equal(defaultAgentTurnBudget.maxInputTokens, 1_048_576);
+  assert.equal(defaultAgentTurnBudget.maxInputTokens, 4_194_304);
   assert.equal(defaultAgentTurnBudget.maxOutputTokens, 65_536);
   assert.equal(defaultAgentTurnBudget.maxCallMs, 600_000);
   assert.equal(defaultAgentTurnBudget.hardDeadlineMs, 86_400_000);

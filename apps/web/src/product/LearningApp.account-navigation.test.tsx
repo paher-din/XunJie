@@ -50,11 +50,27 @@ const clickSelector = async (selector: string) => act(async () => { host.querySe
 const mount = async () => act(async () => { root.render(<LearningApp />); await settle(); await settle() })
 const remount = async () => { await act(async () => root.unmount()); root = createRoot(host); await mount() }
 const accountLabel = () => host.querySelector('.account-pill .account-name')?.textContent
-const fill = async (text: string) => act(async () => {
-  const input = host.querySelector<HTMLTextAreaElement>('textarea[aria-label="向 Agent 提问"]')!
-  Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(input, text)
-  input.dispatchEvent(new Event('input', { bubbles: true })); await settle()
-})
+const fill = async (text: string) => {
+  let input: HTMLTextAreaElement | null = null
+  for (let attempt = 0; attempt < 40; attempt++) {
+    await act(settle)
+    input = host.querySelector<HTMLTextAreaElement>('textarea[aria-label="向 Agent 提问"]')
+    if (input) break
+  }
+  expect(input).not.toBeNull()
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(input, text)
+    input!.dispatchEvent(new Event('input', { bubbles: true })); await settle()
+  })
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const field = host.querySelector<HTMLTextAreaElement>('textarea[aria-label="向 Agent 提问"]')
+    const send = host.querySelector<HTMLButtonElement>('[aria-label="发送消息"]')
+    if (field?.value === text && send && !send.disabled) return
+    await act(settle)
+  }
+  expect(host.querySelector<HTMLTextAreaElement>('textarea[aria-label="向 Agent 提问"]')?.value).toBe(text)
+  expect(host.querySelector<HTMLButtonElement>('[aria-label="发送消息"]')?.disabled).toBe(false)
+}
 
 beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
@@ -94,6 +110,7 @@ beforeEach(() => {
       if (suffix === 'inputs') return response({ sessionId, requestId: JSON.parse(String(options.body)).requestId, inputId: crypto.randomUUID(), runId: crypto.randomUUID(), inputDigest: 'a'.repeat(64) })
       return response(sessionItems.find(item => item.sessionId === sessionId) ?? { error: 'missing' }, sessionItems.some(item => item.sessionId === sessionId) ? 200 : 404)
     }
+    if (route === 'skills') return response({ skills: [] })
     if (route === 'activities' && options.method === 'POST') {
       creates.push(space!); return response({ ...personalActivity, question: JSON.parse(options.body as string).question })
     }
@@ -287,10 +304,10 @@ it('does not reuse an old activity link for a different school principal', async
   expect(reads.some(item => item.route === 'activities/' + schoolActivity.activityId)).toBe(false)
 })
 
-it('uses a legacy school name only when account is omitted; explicit null hides stale school identities', async () => {
+it('keeps a single bound school available for legacy context and falls back to local after disconnecting', async () => {
   legacyContext = true
   await mount(); expect(accountLabel()).toBe('学校学习空间')
-  legacyContext = false; explicitUnbound = true; reads = []
+  legacyContext = false; explicitUnbound = true; connected = false; reads = []
   await remount(); expect(accountLabel()).toBe('本地学习空间')
   expect(reads.some(item => item.space === schoolKey)).toBe(false)
   await click('学校'); expect(host.textContent).toContain('尚未绑定学校')
