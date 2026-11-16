@@ -185,15 +185,17 @@ test('unit CI shards cover every Node/npm task once and own disjoint Vitest shar
   assert.equal(singleWorker.filter(task => task.name === 'web').length, 1);
 });
 
-test('local scheduling starts measured slow server files first without losing interleaving or exclusivity', () => {
+test('local scheduling starts measured slow files first without losing interleaving or exclusivity', () => {
   const tasks = [
     { name: 'unit', group: 'unit' },
     { name: 'apps/server/runner/alu-check.test.ts', group: 'server' },
     { name: 'tools', group: 'tools' },
     { name: 'apps/server/tests/review.test.ts', group: 'server' },
     { name: 'exclusive', group: 'unit', exclusive: true },
+    { name: 'tools/xj-dev/tests/repro-e2e.test.mjs', group: 'tools' },
+    { name: 'web:1/4', group: 'unit' },
   ];
   const phases = scheduleTestPhases(tasks);
-  assert.deepEqual(phases[0].map(task => task.name), ['unit', 'apps/server/tests/review.test.ts', 'tools', 'apps/server/runner/alu-check.test.ts']);
+  assert.deepEqual(phases[0].map(task => task.name), ['web:1/4', 'apps/server/tests/review.test.ts', 'tools/xj-dev/tests/repro-e2e.test.mjs', 'unit', 'apps/server/runner/alu-check.test.ts', 'tools']);
   assert.deepEqual(phases[1], [tasks[4]]);
 });

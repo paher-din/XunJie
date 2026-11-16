@@ -1,6 +1,7 @@
 import { existsSync, globSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import serverTimings from './server-test-weights.json' with { type: 'json' };
+import taskTimings from './test-task-weights.json' with { type: 'json' };
 
 export const targetDirectories = {
   server: 'apps/server', contracts: 'packages/contracts', storage: 'packages/storage',
@@ -175,9 +176,12 @@ function interleaveGroups(tasks) {
     if (!queues.has(task.group)) queues.set(task.group, []);
     queues.get(task.group).push(task);
   }
-  // Starting the measured slow server files early also avoids a long tail in
-  // local verification, where all groups share the same worker budget.
-  queues.get('server')?.sort((a, b) => serverTestWeight(b.name) - serverTestWeight(a.name));
+  // Keep long test files out of the tail when local groups share four workers.
+  // Weights affect scheduling only; discovery and coverage are independent.
+  const weight = task => task.group === 'server' ? serverTestWeight(task.name)
+    : taskTimings.durationMs[task.name] ?? (task.name.startsWith('web:')
+      ? taskTimings.durationMs.web / Number(task.name.split('/').at(-1)) : taskTimings.defaultDurationMs);
+  for (const queue of queues.values()) queue.sort((a, b) => weight(b) - weight(a));
   const result = [];
   for (let index = 0; result.length < tasks.length; index++) {
     for (const queue of queues.values()) if (queue[index]) result.push(queue[index]);
