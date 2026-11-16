@@ -1,8 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
 import { hostname } from 'node:os';
-import { mkdir, open, readdir, readFile, rename, rm, stat, lstat, readlink, writeFile } from 'node:fs/promises';
-import { readFileSync } from 'node:fs';
+import { mkdir, open, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { lstatSync, readdirSync, readFileSync, readlinkSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
@@ -14,11 +14,14 @@ export const digest = value => createHash('sha256').update(value).digest('hex');
 // are observable. Neither checkout paths nor mtimes enter persisted identities.
 export async function contentManifest(root, paths, { exclude = () => false, required = false } = {}) {
   const entries = [];
-  async function visit(path) {
+  // These are many small local reads. Avoid a thread-pool round trip for every
+  // stat/read while still checking actual bytes on every invocation and again
+  // after a build; mtimes never stand in for content identity.
+  function visit(path) {
     const name = slash(relative(root, path)) || '.';
     if (exclude(name)) return;
     let info;
-    try { info = await lstat(path); }
+    try { info = lstatSync(path); }
     catch (error) {
       if (error.code !== 'ENOENT') throw error;
       if (required) throw new Error(`Missing build output: ${name}`);
@@ -26,19 +29,19 @@ export async function contentManifest(root, paths, { exclude = () => false, requ
       return;
     }
     if (info.isSymbolicLink()) {
-      entries.push([name, 'link', await readlink(path)]);
+      entries.push([name, 'link', readlinkSync(path)]);
       // Include the referent too; editing linked source must invalidate it.
-      const target = await stat(path);
-      if (target.isFile()) entries.push([name, digest(await readFile(path))]);
+      const target = statSync(path);
+      if (target.isFile()) entries.push([name, digest(readFileSync(path))]);
       else throw new Error(`Directory symlink is not a supported build input: ${name}`);
     } else if (info.isDirectory()) {
       entries.push([name, 'directory']);
-      for (const child of (await readdir(path)).sort()) await visit(join(path, child));
+      for (const child of readdirSync(path).sort()) visit(join(path, child));
     } else if (info.isFile()) {
-      entries.push([name, digest(await readFile(path)), info.mode & 0o111]);
+      entries.push([name, digest(readFileSync(path)), info.mode & 0o111]);
     } else throw new Error(`Unsupported build file: ${name}`);
   }
-  for (const path of [...new Set(paths)].sort()) await visit(resolve(root, path));
+  for (const path of [...new Set(paths)].sort()) visit(resolve(root, path));
   return entries;
 }
 

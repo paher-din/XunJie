@@ -12,7 +12,6 @@ permissions:
 
 jobs:
   agent-runtime-native:
-    needs: prepare
     runs-on: macos-15
     timeout-minutes: 15
     steps:
@@ -22,8 +21,19 @@ jobs:
           node-version: 24.21.0
           cache: npm
           cache-dependency-path: package-lock.json
-      - run: npm ci --include=dev --no-audit --no-fund
-      - run: node scripts/build.mjs product-runtime:test
+      - run: npm ci --include=dev --prefer-offline --no-audit --no-fund
+      - uses: actions/cache@v4
+        with:
+          path: |
+            .cache/xunjie-build
+            packages/*/dist
+            apps/server/dist
+          key: native-build-v1-${{ runner.os }}-${{ runner.arch }}-node24.21.0-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
+          restore-keys: native-build-v1-${{ runner.os }}-${{ runner.arch }}-node24.21.0-${{ hashFiles('package-lock.json') }}-
+      - name: Build native test dependencies
+        run: >-
+          node --input-type=module -e
+          "import { ensureBuild } from './scripts/build.mjs'; await ensureBuild(['server', 'product-runtime']);"
       - name: Prepare pinned PostgreSQL
         run: |
           node --input-type=module <<'NODE'
@@ -71,7 +81,18 @@ jobs:
           node-version: 24.21.0
           cache: npm
           cache-dependency-path: package-lock.json
-      - run: npm ci --include=dev --no-audit --no-fund
+      - run: npm ci --include=dev --prefer-offline --no-audit --no-fund
+      # Restored outputs are only hints: the build graph checks input, compiler
+      # and output bytes before reuse. Test results are never cached.
+      - uses: actions/cache@v4
+        with:
+          path: |
+            .cache/xunjie-build
+            packages/*/dist
+            apps/*/dist
+            apps/web/dist-runtime
+          key: build-v1-${{ runner.os }}-${{ runner.arch }}-node24.21.0-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
+          restore-keys: build-v1-${{ runner.os }}-${{ runner.arch }}-node24.21.0-${{ hashFiles('package-lock.json') }}-
       - run: npm run verify -- --group prepare
       - run: node scripts/ci-build-artifact.mjs pack "$RUNNER_TEMP/build"
       - uses: actions/upload-artifact@v4
@@ -87,7 +108,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { group: unit, shard: '1/1' }
+          - { group: unit, shard: '1/4' }
+          - { group: unit, shard: '2/4' }
+          - { group: unit, shard: '3/4' }
+          - { group: unit, shard: '4/4' }
           - { group: server, shard: '1/4' }
           - { group: server, shard: '2/4' }
           - { group: server, shard: '3/4' }
@@ -103,7 +127,7 @@ jobs:
           node-version: 24.21.0
           cache: npm
           cache-dependency-path: package-lock.json
-      - run: npm ci --include=dev --no-audit --no-fund
+      - run: npm ci --include=dev --prefer-offline --no-audit --no-fund
       - uses: actions/download-artifact@v4
         with:
           name: ${{ needs.prepare.outputs.build-artifact }}
@@ -114,11 +138,9 @@ jobs:
           TEST_GROUP: ${{ matrix.group }}
           TEST_SHARD: ${{ matrix.shard }}
         run: |
-          args=(--group "$TEST_GROUP")
-          if test "$TEST_GROUP" != unit; then args+=(--shard "$TEST_SHARD"); fi
-          npm run verify -- "${args[@]}"
+          npm run verify -- --group "$TEST_GROUP" --shard "$TEST_SHARD"
       - name: Check legacy HDL node ledger
-        if: matrix.group == 'unit'
+        if: matrix.group == 'unit' && matrix.shard == '1/4'
         run: |
           sudo install -d -m 0700 -o "$(id -un)" -g "$(id -gn)" /run/xunjie-dlc
           node --test apps/server/runner/alu-node.runtime.test.ts

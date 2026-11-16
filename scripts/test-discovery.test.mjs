@@ -3,7 +3,7 @@ import { globSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
-import { discoverTests, discoverTestWorkspaces, parseOptions, sensitiveTools, serverTestWeight, shardTests, targetDirectories, targetTasks, verificationPlan } from './test-discovery.mjs';
+import { discoverTests, discoverTestWorkspaces, parseOptions, scheduleTestPhases, sensitiveTools, serverTestWeight, shardTests, targetDirectories, targetTasks, verificationPlan } from './test-discovery.mjs';
 
 function fixture(t) {
   const root = mkdtempSync(join(tmpdir(), 'xunjie-discovery-'));
@@ -151,4 +151,49 @@ test('new apps/packages test scripts are discovered automatically and run via an
   assert(plan.at(-1).every(task => task.exclusive));
   assert(plan.slice(1, -1).flat().every(task => !task.exclusive));
   assert.deepEqual(fallback.map(task => task.args.slice(1)), [['test', '--workspace', 'apps/new-app'], ['test', '--workspace', 'packages/new-package']]);
+});
+
+test('unit CI shards cover every Node/npm task once and own disjoint Vitest shards', t => {
+  const { root, write } = fixture(t);
+  write('package.json', JSON.stringify({ workspaces: ['apps/*', 'packages/*'] }));
+  write('scripts/check.test.mjs');
+  for (const path of ['apps/web', 'packages/storage', 'packages/new-workspace', 'packages/product-runtime']) {
+    write(`${path}/package.json`, JSON.stringify({ scripts: { test: 'fixture' } }));
+  }
+  for (const name of ['a', 'b', 'c', 'd', 'e']) write(`packages/storage/${name}.test.mjs`);
+  write('packages/product-runtime/test/connections.test.ts');
+  const unitTasks = options => verificationPlan(root, options).flat().filter(task => task.group === 'unit');
+  for (const checkout of [root, dirname(import.meta.dirname)]) {
+    const full = verificationPlan(checkout, parseOptions(['--group', 'unit'])).flat().filter(task => task.group === 'unit');
+    for (const count of [1, 2, 4, 7]) {
+      const shards = Array.from({ length: count }, (_, index) => verificationPlan(checkout,
+        parseOptions(['--group', 'unit', '--shard', `${index + 1}/${count}`])).flat().filter(task => task.group === 'unit'));
+      const isWeb = task => task.name === 'web' || task.name.startsWith('web:');
+      const nodeNames = tasks => tasks.filter(task => !isWeb(task)).map(task => task.name).sort();
+      const actual = nodeNames(shards.flat());
+      assert.deepEqual(actual, nodeNames(full));
+      assert.equal(new Set(actual).size, actual.length);
+      for (const [index, shard] of shards.entries()) {
+        const web = shard.filter(isWeb);
+        assert.equal(web.length, 1);
+        assert(web[0].args.includes(`--shard=${index + 1}/${count}`));
+        assert(web[0].args.includes('--maxWorkers=1'));
+      }
+    }
+  }
+  const singleWorker = unitTasks(parseOptions(['--group', 'unit', '--jobs', '1']));
+  assert.equal(singleWorker.filter(task => task.name === 'web').length, 1);
+});
+
+test('local scheduling starts measured slow server files first without losing interleaving or exclusivity', () => {
+  const tasks = [
+    { name: 'unit', group: 'unit' },
+    { name: 'apps/server/runner/alu-check.test.ts', group: 'server' },
+    { name: 'tools', group: 'tools' },
+    { name: 'apps/server/tests/review.test.ts', group: 'server' },
+    { name: 'exclusive', group: 'unit', exclusive: true },
+  ];
+  const phases = scheduleTestPhases(tasks);
+  assert.deepEqual(phases[0].map(task => task.name), ['unit', 'apps/server/tests/review.test.ts', 'tools', 'apps/server/runner/alu-check.test.ts']);
+  assert.deepEqual(phases[1], [tasks[4]]);
 });

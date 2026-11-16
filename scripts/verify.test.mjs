@@ -147,7 +147,9 @@ test('raw stdout/stderr reach logs before exit; no arguments prepare and run eve
   assert.match(f.output(), /PASSED tools .*exit 0/);
   assert.match(readFileSync(summary.logFile, 'utf8'), /raw stderr: tools-other/);
   assert.deepEqual(f.events().slice(0, 5).map(event => event.stage), ['typecheck', 'all', 'check:contracts:browser', 'check:docs', 'test']);
-  assert.deepEqual(f.events().slice(5).map(event => event.stage).sort(), ['checks', 'storage', 'product-runtime', 'server-a', 'server-b', 'web', 'tools-integration', 'tools-other'].sort());
+  assert.deepEqual(f.events().slice(5).map(event => event.stage).sort(), ['checks', 'storage', 'product-runtime', 'server-a', 'server-b', 'web', 'web', 'web', 'web', 'tools-integration', 'tools-other'].sort());
+  assert.deepEqual(f.events().filter(event => event.stage === 'web').map(event => event.args.at(-1)).sort(),
+    ['--shard=1/4', '--shard=2/4', '--shard=3/4', '--shard=4/4']);
 });
 
 test('failed prepare preserves exit code/diagnostics and leaves tests pending', { timeout: 10_000 }, async t => {
