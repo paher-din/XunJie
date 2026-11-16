@@ -46,7 +46,7 @@ npm run verify
 
 构建准备共用内容缓存 `.cache/xunjie-build/`：源码、配置、依赖、工具链或相关环境变化，以及产物缺失、篡改或多出陈旧文件，都会触发重建；未提交的文件变化也计入。测试结果不缓存。`npm run build -- --force` 可强制重建。根测试会准备普通 Web 与 runtime Web 两套产物，不依赖上次构建残留。
 
-CI 的 `prepare` 分组构建并检查一次，再将绑定本次提交、Git tree、Node 与平台的产物分发到独立 Ubuntu runner。Linux 准备与独立 macOS 原生回归同时启动，各自缓存必要构建产物，命中后仍校验源码、工具链与输出内容；macOS 仅构建原生回归使用的后端依赖。unit 将 Node/npm 任务均分四片，各片使用对应的 Vitest 文件分片；新增 workspace 回退任务自动参与。server 按 [hosted 耗时权重](../../scripts/server-test-weights.json)用稳定的 LPT 分为四片：按估计耗时降序，将每个文件分给累计权重最小的一片；同权重按路径排序，同负载选编号最小的一片，未知文件估计为 10 秒。tools 按恢复、生命周期、状态与证书、其余测试分为四组。全部通过后，main 的发布流程复用同一产物。纯 Markdown／文档图片变更不启动 CI，文档目录中的代码仍触发；当前没有必需检查，未来设置分支保护时不能将被路径过滤跳过的工作流设为必需检查。
+CI 的 `prepare` 分组构建并检查一次，再将绑定本次提交、Git tree、Node 与平台的产物分发到独立 Ubuntu runner。Linux 准备与 macOS 原生回归同时启动，各自缓存必要构建产物，命中后仍校验源码、工具链与输出内容；原生回归使用 Node 的两份文件分片，各在独立 macOS runner 上以两个 worker 执行，仅构建后端依赖。unit 将 Node/npm 任务均分四片，各片使用对应的 Vitest 文件分片；新增 workspace 回退任务自动参与。server 按 [hosted 耗时权重](../../scripts/server-test-weights.json)用稳定的 LPT 分为四片：按估计耗时降序，将每个文件分给累计权重最小的一片；同权重按路径排序，同负载选编号最小的一片，未知文件估计为 10 秒。tools 按恢复、生命周期、状态与证书、其余测试分为四组。全部通过后，main 的发布流程复用同一产物。纯 Markdown／文档图片变更不启动 CI，文档目录中的代码仍触发；当前没有必需检查，未来设置分支保护时不能将被路径过滤跳过的工作流设为必需检查。
 
 ```sh
 npm run verify -- --group prepare

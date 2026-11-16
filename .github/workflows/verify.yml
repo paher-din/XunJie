@@ -14,6 +14,10 @@ jobs:
   agent-runtime-native:
     runs-on: macos-15
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ['1/2', '2/2']
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -51,7 +55,7 @@ jobs:
           NODE
       - name: Verify Agent ownership, timeouts and task cancellation on real PostgreSQL
         run: >-
-          node --test --test-concurrency=2
+          node --test --test-concurrency=2 --test-shard=${{ matrix.shard }}
           packages/agent-runtime/test/loop.runtime.test.mjs
           packages/product-runtime/test/workspace-agent-tasks.runtime.test.mjs
           scripts/switch-agent-runtime-data.runtime.test.mjs
