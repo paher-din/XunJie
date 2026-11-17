@@ -12,6 +12,7 @@ import { ReliableWorkspace } from '../reliable-workspace/index'
 import { ReliableQuestionDraft } from '../reliable-workspace/draft'
 import { sessionInputProtection } from '../reliable-workspace/input-protection'
 import { agentControlStore } from '../reliable-workspace/agent-controls'
+import { sessionDraftKey, sessionDraftStore } from './session-drafts'
 
 let root: Root, host: HTMLDivElement, controller: AgentSessionController
 let environments: Awaited<ReturnType<typeof fixture>>[] = []
@@ -47,7 +48,7 @@ async function fixture() {
     turnId, sessionId, requestId, trigger: 'user' as const, originNotificationId: null, state: 'active' as const, reason: '',
     ownerInstanceId: 'test', createdAt: now, updatedAt: now, completedAt: null }
   const question = { questionId, sessionId, turnId, stepId: id(), toolCallId: id(), version: 1, state: 'pending' as 'pending' | 'answered',
-    presentation: { question: '观察到了什么？', source: '原实验', options: [], allowText: true, skippable: false },
+    presentation: { question: '观察到了什么？', source: '原实验', options: [{ id: 'first', label: '第一项' }, { id: 'second', label: '第二项' }], allowText: true, skippable: false },
     answer: null, answerRequestId: null, deadline: null, createdAt: now, updatedAt: now }
   const projection = { sessionId, lastSeq: 1, messages: [{ messageId: 'input:' + inputId, inputId, turnId, role: 'user', text: original, state: 'settled', createdAt: now }],
     turns: [turn], inputs: [input], questions: [question], tools: [], workspaces: [] }
@@ -103,6 +104,18 @@ async function click(label: string) {
   }
   throw new Error('Ready control not found: ' + label)
 }
+async function chooseSecondOption() {
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const option = host.querySelectorAll<HTMLInputElement>('.agent-question-option input')[1]
+    if (option && !option.matches(':disabled')) {
+      await act(async () => { option.click(); await settle() })
+      expect(host.querySelectorAll<HTMLInputElement>('.agent-question-option input')[1]!.checked).toBe(true)
+      return
+    }
+    await act(settle)
+  }
+  throw new Error('Question options did not become ready')
+}
 
 function failSessionWrites(sessionId: string) {
   const put = IDBObjectStore.prototype.put
@@ -116,6 +129,45 @@ function beforeUnloadPrevented() { const event = new Event('beforeunload', { can
 async function activityLeave(env: Awaited<ReturnType<typeof fixture>>) { await env.workspace.leave(); await env.draft.leave(); await env.actions.leave() }
 
 describe('session drafts use the actual public input protection contract', () => {
+  it.each([false, true])('persists the selected option and restores it from storage (standalone=%s)', async standalone => {
+    const env = await fixture(); environments.push(env); await mount(env, true, standalone)
+    await chooseSecondOption()
+    await (standalone ? sessionInputProtection.leave() : activityLeave(env))
+    const key = sessionDraftKey(env.client.scope, env.sessionId, 'question:' + env.questionId + ':1')
+    expect((await sessionDraftStore.read(key))?.value.optionId).toBe('second')
+    await mount(env, false, standalone)
+    // A reload has no in-memory retained input and must restore the IndexedDB record.
+    const protection = standalone ? sessionInputProtection : env.workspace
+    const retained = vi.spyOn(protection, 'retainedInput').mockReturnValue(undefined)
+    await mount(env, true, standalone)
+    for (let attempt = 0; attempt < 40 && !host.querySelectorAll<HTMLInputElement>('.agent-question-option input')[1]?.checked; attempt++) await act(settle)
+    expect(host.querySelectorAll<HTMLInputElement>('.agent-question-option input')[1]!.checked).toBe(true)
+    expect(host.querySelector('textarea')).toBeNull()
+    retained.mockRestore()
+    await click('提交回应')
+    expect(env.writes).toHaveLength(1)
+    expect(env.writes[0]!.body).toMatchObject({ expectedVersion: 1, answer: { kind: 'choice', optionId: 'second' } })
+  })
+
+  it('protects an unsaved choice, blocks submission on quota failure and retries the same choice', async () => {
+    const env = await fixture(); environments.push(env); await mount(env, true, true)
+    const fault = failSessionWrites(env.sessionId)
+    await chooseSecondOption()
+    expect(host.textContent).toContain('输入尚未在本机可靠保留')
+    expect(beforeUnloadPrevented()).toBe(true)
+    await click('提交回应')
+    expect(env.writes).toHaveLength(0)
+    await act(async () => { await expect(sessionInputProtection.leave()).rejects.toThrow('Review-injected IndexedDB quota failure') })
+    await mount(env, false, true); await mount(env, true, true)
+    expect(host.querySelectorAll<HTMLInputElement>('.agent-question-option input')[1]!.checked).toBe(true)
+    fault.restore()
+    await click('重试保留输入')
+    expect(beforeUnloadPrevented()).toBe(false)
+    await click('提交回应')
+    expect(env.writes).toHaveLength(1)
+    expect(env.writes[0]!.body.answer).toEqual({ kind: 'choice', optionId: 'second' })
+  })
+
   it.each(['response', 'queued revision'] as const)('retains a %s through quota failure, remount, blocked leave and recovery retry', async kind => {
     const env = await fixture(); environments.push(env); await mount(env)
     if (kind === 'queued revision') { await click('编辑这条消息'); expect(host.querySelector('[aria-label="修改这条消息"]')).not.toBeNull() }

@@ -22,11 +22,11 @@ export function SessionQuestionBox({ question, controller, readOnly }: {
   const parsed = presentationOf(question)
   const draft = useSessionDraft(controller.client.scope, controller.sessionId, 'question:' + question.questionId + ':' + question.version,
     { text: '', editing: true, expectedVersion: question.version })
-  const [choice, setChoice] = useState('')
   if (!parsed.success) return <section className="session-question-box" aria-label="Agent 的问题">
     <p role="status" className="session-question-status">正在等待原问题结果，请稍候。</p>
   </section>
   const prompt = parsed.data
+  const choice = prompt.options.find(option => option.id === draft.value.optionId)?.id ?? ''
   const answer = (value: Record<string, string>) => void draft.protect()
     .then(() => controller.respond(question.questionId, question.version, value)).catch(() => {})
   return <section className="session-question-box" data-question-id={question.questionId} aria-label="Agent 的问题">
@@ -39,8 +39,8 @@ export function SessionQuestionBox({ question, controller, readOnly }: {
       disabled={readOnly || controller.busy || !draft.ready}
       valid={!!choice || prompt.allowText && !!draft.value.text.trim()}
       pending={controller.busy} skippable={prompt.skippable}
-      onMode={(mode, id) => setChoice(mode === 'choice' ? id ?? '' : '')}
-      onText={text => { setChoice(''); void draft.change({ ...draft.value, text }).catch(() => {}) }}
+      onMode={(mode, id) => { void draft.change({ ...draft.value, optionId: mode === 'choice' ? id ?? '' : '' }).catch(() => {}) }}
+      onText={text => { void draft.change({ ...draft.value, text, optionId: '' }).catch(() => {}) }}
       onSubmit={skip => answer(skip ? { kind: 'skip' } : choice ? { kind: 'choice', optionId: choice } : { kind: 'text', text: draft.value.text })} />
     <DraftProtectionFeedback error={draft.error} retry={draft.protect} />
   </section>

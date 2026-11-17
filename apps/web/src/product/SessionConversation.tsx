@@ -93,9 +93,10 @@ function SessionTrace({ controller, runId, inputId, renderTool }: { controller: 
   const thinking = (conversation.thinking ?? []).filter(item => item.turnId === runId && (!item.inputId || item.inputId === inputId))
     .map(item => ({ ...item, active: item.active && !conversation.messages.some(message =>
       message.turnId === runId && message.role === 'assistant' && message.createdAt >= item.createdAt) }))
-  const tools = conversation.tools.filter(item => item.turnId === runId && (!item.inputId || item.inputId === inputId))
-  const ordered = orderedAgentTrace(thinking, tools)
   const questionsByTool = new Map(conversation.questions.map(question => [question.toolCallId, question]))
+  const tools = conversation.tools.filter(item => item.turnId === runId && (!item.inputId || item.inputId === inputId)
+    && questionsByTool.get(item.toolCallId)?.state !== 'pending')
+  const ordered = orderedAgentTrace(thinking, tools)
   const lastInput = conversation.inputs.filter(input => input.turnId === runId && input.state !== 'removed').at(-1)
   const active = (!inputId || lastInput?.inputId === inputId) && !!run && run.state === 'active'
   const failure = run?.state === 'failed' ? ['budget_exhausted', 'budget-exhausted', 'input-budget-exhausted', 'output-budget-exhausted'].includes(run.reason)

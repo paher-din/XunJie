@@ -153,6 +153,9 @@ it.each([
   projection.questions = [{ questionId, sessionId, turnId: turn.turnId, stepId: id(), toolCallId: id(), version: 7, state: 'pending',
     presentation: { questionId, question: '接下来想怎样比较？', source: '原实验结果', options: [{ id: 'yes', label: '比较结果' }], allowText: true, skippable: true },
     answer: null, answerRequestId: null, deadline: null, createdAt: now, updatedAt: now }]
+  const pending = projection.questions[0]!
+  projection.tools = [{ toolCallId: pending.toolCallId, turnId: turn.turnId, stepId: pending.stepId,
+    name: 'student_ask', state: 'pending', result: {}, stepNo: 1, createdAt: now }]
   const writes: { route: string; body: unknown }[] = []
   vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener() {}, removeEventListener() {} }))
   vi.stubGlobal('fetch', vi.fn(async (url: string, options: RequestInit = {}) => {
@@ -166,6 +169,9 @@ it.each([
   const question = host.querySelector('[aria-label="Agent 的问题"]')
   for (let i = 0; i < 40 && question?.querySelector<HTMLButtonElement>('button')?.disabled; i++) await act(async () => { await settle() })
   expect(question?.textContent).toContain('接下来想怎样比较？')
+  expect(host.querySelector('.agent-question-record')).toBeNull()
+  expect(host.querySelector('[data-tool-name="student_ask"]')).toBeNull()
+  expect(host.textContent?.match(/接下来想怎样比较？/g)).toHaveLength(1)
   expect(question?.querySelector('textarea')).not.toBeNull()
   expect([...question!.querySelectorAll('button')].map(button => button.textContent)).toEqual(['提交回应', '跳过这次提问'])
   if (kind === 'text') {
