@@ -133,10 +133,12 @@ F01–F04 不包含教师提交/收件、审阅、反馈修订或学习画像。
 
 ## 4. 既有验收证据的读法
 
+以下历史交付与实施记录链接固定到本文的源码阅读基线，供追溯当时的交付范围；不代表当前实现或验收结果。
+
 - Windows 桌面 Chrome 是本轮实际使用主路径；历史 Mac/跨机结果不能替代本次体验。需要对照历史时，关联已关闭补验票：#179/#181/#185/#188（组件）；#205/#206/#211（ALU）；#208/#209/#210/#212（Agent）。
 - #154 自身明确注明其历史 Windows 同机证据不是 Windows 真实跨机证据；关闭不把未执行项变为通过。
-- [#202 交付](wp07-202-alu-tutoring.md)有真实模型、ALU 与四条桌面路径证据，但均属于其候选版本；不能作为当前 session v2 迁移后的自动通过。
-- [WP09 实施记录](wp09-implementation.md)开头明确旧探针退休，新 session v2 不继承历史供应商、桌面与跨机结论。
+- [#202 交付](https://github.com/paher-din/XunJie/blob/4edc6fab911190bfe627b458d1b63d48e0a82fd7/docs/student-agent-implementation/wp07-202-alu-tutoring.md)有真实模型、ALU 与四条桌面路径证据，但均属于其候选版本；不能作为当前 session v2 迁移后的自动通过。
+- [WP09 实施记录](https://github.com/paher-din/XunJie/blob/4edc6fab911190bfe627b458d1b63d48e0a82fd7/docs/student-agent-implementation/wp09-implementation.md)开头明确旧探针退休，新 session v2 不继承历史供应商、桌面与跨机结论。
 - #224 已关闭且有实现记录；正文“规范发布不表示实现”不是认定未做的证据，也不能仅用 closed 认定现在通过。
 - issue 中未勾选的旧验收框与 closed 也可能并存。以交付版本、关联证据和未执行说明判断，不单凭勾选数量。
 
@@ -145,12 +147,12 @@ F01–F04 不包含教师提交/收件、审阅、反馈修订或学习画像。
 | 关注点 | 仓库文件 |
 | --- | --- |
 | 总范围 | [实施总览](student-agent-implementation-overview.md) |
-| 首页/课程/任务与正式 UI | [Web 接入说明](../../apps/web/README.md)、[WP02 UI 整合](wp02-product-ui.md) |
-| 编辑、引用、待发恢复 | [可靠工作区](../../apps/web/src/reliable-workspace/README.md)、[固定动作](wp02-action-intents.md) |
+| 首页/课程/任务与正式 UI | [Web 接入说明](../../apps/web/README.md)、[WP02 UI 整合](https://github.com/paher-din/XunJie/blob/4edc6fab911190bfe627b458d1b63d48e0a82fd7/docs/student-agent-implementation/wp02-product-ui.md) |
+| 编辑、引用、待发恢复 | [可靠工作区](../../apps/web/src/reliable-workspace/README.md)、[固定动作](https://github.com/paher-din/XunJie/blob/4edc6fab911190bfe627b458d1b63d48e0a82fd7/docs/student-agent-implementation/wp02-action-intents.md) |
 | ALU 实际操作规则 | [学生说明](../../components/alu-experiment/learning.md)、[课程组件包](../../components/alu-experiment/README.md) |
-| ALU 求助与帮助限制 | [#202 交付](wp07-202-alu-tutoring.md)、[实施规范](specs/wp07-alu-tutoring.md) |
+| ALU 求助与帮助限制 | [#202 交付](https://github.com/paher-din/XunJie/blob/4edc6fab911190bfe627b458d1b63d48e0a82fd7/docs/student-agent-implementation/wp07-202-alu-tutoring.md)、[实施规范](specs/wp07-alu-tutoring.md) |
 | 当前 Agent 接线 | [通用内核](../../packages/agent-runtime/README.md)、[场景装配](../../packages/agents/README.md) |
-| 生成卡片/页面 | [WP09 实施记录](wp09-implementation.md) |
+| 生成卡片/页面 | [WP09 实施记录](https://github.com/paher-din/XunJie/blob/4edc6fab911190bfe627b458d1b63d48e0a82fd7/docs/student-agent-implementation/wp09-implementation.md) |
 
 ## 6. 体验记录模板
 
