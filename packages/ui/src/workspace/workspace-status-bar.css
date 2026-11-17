@@ -1,0 +1,6 @@
+.ui-workspace-status { display: flex; align-items: center; gap: 8px 16px; flex-wrap: wrap; padding: 8px 20px; border-bottom: 1px solid var(--line); background: var(--shell-bg); color: var(--ink-soft); font-size: 12px; flex: none; }
+.ui-workspace-activity, .ui-workspace-execution { white-space: nowrap; }
+.ui-workspace-status .ui-workspace-work { font-size: 12px; color: var(--muted); }
+.ui-workspace-status .ui-workspace-work.attention { color: var(--danger-deep); }
+.ui-workspace-status-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+@media (max-width: 1100px) { .ui-workspace-status { padding: 8px 12px; gap: 8px; } }

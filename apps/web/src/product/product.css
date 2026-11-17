@@ -143,3 +143,7 @@
 .product-task-details .course-section-body button { font: inherit; }
 .product-task-details .course-objectives > p { margin: 0; }
 .product-task-details .course-objectives > p + p { margin-top: 8px; }
+
+.product-workspace-intro { position: absolute; inset: 0; pointer-events: none; }
+.product-workspace-intro .guidance-scope { inset: 0; }
+.product-workspace [data-workspace-entry="tools"] { flex: none; }

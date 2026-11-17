@@ -5,6 +5,7 @@
  */
 export * from './TaskPresentation'
 export * from './FileTabs'
+export * from './WorkspaceStatusBar'
 export * from './ConfirmationCluster'
 export * from './WorkspacePopover'
 export * from './RunPanel'

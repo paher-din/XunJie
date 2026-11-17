@@ -376,6 +376,7 @@ function MaterialPickerDemo({ empty = false, error = false, loading = false }: {
 }
 
 export const workspaceEntries: CatalogEntry[] = [
+  entry('WorkspaceStatusBar', 'WorkspaceStatusBar', '真实活动、作品及运行状态，导航回调由调用方提供。', ['closed/workLabel/attention/executionLabel', 'onWorks/onTools/onGuide'], ['IconText'], [state('ready', '作品已保存', () => <Stage><W.WorkspaceStatusBar closed={false} workLabel="作品已保存 · v2" executionLabel="运行中 1" onWorks={() => {}} onTools={() => {}} onGuide={() => {}} /></Stage>), state('pending', '待确认与异常', () => <Stage><W.WorkspaceStatusBar closed workLabel="作品保存待核对" attention executionLabel="运行状态待确认" onWorks={() => {}} onGuide={() => {}} /></Stage>)]),
   entry('FileStripView', 'FileStripView', '自动保存作品的旧版文件栏布局：行内命名、改名、删除确认与关闭标签。', ['files/openFiles/activeId', 'onCreate/onRename/onDelete/onOpen/onClose/onExport'], ['FileTabs', 'ConfirmationDialog'], [state('interactive', '文件菜单与操作', ManagedFilesDemo)]),
   entry('FileStripFrame', 'FileStripView', '新旧文件栏共用的布局容器。', ['children'], [], [state('frame', '文件条布局', () => <Stage><W.FileStripFrame>文件栏内容插槽</W.FileStripFrame></Stage>)]),
   entry('MaterialPicker', 'MaterialPicker', '阅读工具的真实材料选择列表。', ['groups/title/loading/error/busy', 'onAdd/onRefresh'], ['Icon'], [state('list', '有材料', () => <MaterialPickerDemo />), state('empty', '无材料', () => <MaterialPickerDemo empty />), state('error', '读取失败', () => <MaterialPickerDemo error />), state('loading', '加载中', () => <MaterialPickerDemo loading empty />)]),

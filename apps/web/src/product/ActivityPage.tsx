@@ -28,6 +28,8 @@ import { panes, type LayoutNode } from '../lib/wsLayout'
 import { useTeachingArtifacts } from '../teaching-artifacts/useTeachingArtifacts'
 import { ArtifactCard } from '../teaching-artifacts/ArtifactCard'
 import { PersonalProjectPlan, usePersonalProject } from './PersonalProjectPlan'
+import { WorkspaceOnboarding, type WorkspaceOnboardingHandle } from './WorkspaceOnboarding'
+import { WorkspaceStatus } from './WorkspaceStatus'
 import { ActivitySubmission } from './ActivitySubmission'
 
 // The center already supports injected named tool bodies; PDF shares its existing tab/layout lifecycle.
@@ -75,6 +77,7 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
   const project = usePersonalProject(activity, spaceKey, namespace, authorized)
   const [materialsOpen, setMaterialsOpen] = useState(!!activity.course)
   const [addingNote, setAddingNote] = useState(false)
+  const intro = useRef<WorkspaceOnboardingHandle>(null)
   useEffect(() => { if (project.project) setMaterialsOpen(true) }, [project.project])
   const [conversationActive, setConversationActive] = useState(false)
   const [tabsSlot, setTabsSlot] = useState<HTMLDivElement | null>(null)
@@ -242,23 +245,36 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
       await workspace.leave(); artifacts.setOpened(null); center.current?.closeGenTab(entry.artifact.artifactId); setTool('design')
     }} />
   const title = activity.course?.taskTitle || project.project?.content.title || activity.goal || activity.question || '资料学习'
+  const hasTools = !!activity.course?.components?.length
+  const revealIntro = async (id: string) => {
+    if (id === 'goals') { setMaterialsOpen(true); return }
+    if (id === 'help') { references.setOpen(true); return }
+    await waitForComposerComposition(scope)
+    await workspace.leave()
+    setTool(id === 'tools' && hasTools ? `component:${activity.course!.components![0].key}` : 'design')
+  }
+  const startIntro = () => {
+    if (pendingQuestion) { toast.info('请先回应当前待答问题，再重看使用引导。'); return }
+    intro.current?.start()
+  }
   return <div ref={root} className={'ws ws-organized product-workspace' + (references.open ? ' discussion-open' : '')}>
     <PdfUploadInput pdf={pdf} />
     <header className="ws-head">
       <button type="button" className="ws-navbtn" aria-label="返回活动列表" onClick={onBack}><Icon name="arrow-left" size={18} /></button>
-      <div className="product-activity-title"><span>{activity.course?.courseName ?? '自主学习'}</span><h1 id="activity-title">{title}</h1></div>
+      <div className="product-activity-title"><span>{activity.course?.courseName ?? '自主学习'}</span><h1 id="activity-title" tabIndex={-1}>{title}</h1></div>
       <div className="ws-head-utilities">
         <ActivitySubmission activity={activity} spaceKey={spaceKey} namespace={namespace} authorized={authorized}
           workspace={workspace} artifacts={artifacts.entries} beforeFreeze={() => waitForComposerComposition(scope)}
           isComposing={() => [...artifacts.guards.values()].some(guard => guard.composing)} />
-        <button type="button" className="ws-btn ghost" aria-expanded={materialsOpen} onClick={() => {
+        <button type="button" className="ws-btn ghost" data-workspace-entry="materials" aria-expanded={materialsOpen} onClick={() => {
           if (window.matchMedia('(width < 1024px)').matches && references.open) { references.setOpen(false); setMaterialsOpen(true) }
           else setMaterialsOpen(value => !value)
         }}>
           <IconText name="clipboard-text">目标与材料</IconText></button>
-        <button ref={ask} type="button" className="ws-btn ghost" aria-label={references.open ? '问题与引用' : '打开对话'}
+        <button ref={ask} data-workspace-entry="help" type="button" className="ws-btn ghost" aria-label={references.open ? '问题与引用' : '打开对话'}
           aria-expanded={references.open} onClick={() => references.setOpen(!references.open)}><IconText name="chat-round-dots">询问 Agent</IconText></button>
         <WorkspacePopover label="活动" icon="menu-dots">
+          <button type="button" className="ws-btn ghost" onClick={startIntro}>工作区使用引导</button>
           <p>{activity.status === 'closed' ? '活动已关闭，可随时重新开始。' : '继续围绕这个目标学习。'}</p>
           <button type="button" className="ws-btn ghost" disabled={busy || readOnly} onClick={onStatus}>{activity.status === 'closed' ? '重新开始活动' : '关闭活动'}</button>
           {artifacts.entries.some(entry => entry.artifact.shelved) && <div className="teaching-artifact-shelf" aria-label="收纳的学习页面">
@@ -271,6 +287,9 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
     {readOnly && <div role="status" className="product-workspace-notice">这是还原校验副本，作品与学习对话只读，不会启动 Agent 或实验；请由维护者完成接管后继续。</div>}
     <div className="ws-commandbar"><div className="ws-head-tabs" ref={setTabsSlot} />
       <span className="product-workspace-caption">当前作品{activity.status === 'closed' ? ' · 活动已关闭' : ''}</span></div>
+    <div data-workspace-entry="tools"><WorkspaceStatus closed={activity.status === 'closed'} hasTools={hasTools}
+      onWorks={() => void revealIntro('works').catch(() => toast.error('当前输入尚未保护，请保留页面后继续。'))}
+      onTools={() => void revealIntro('tools').catch(() => toast.error('当前输入尚未保护，请保留页面后继续。'))} onGuide={startIntro} /></div>
     <div className="ws-body">
       {materialsOpen && <aside className="product-task-details" aria-label="目标与材料">
         <header className="product-materials-heading"><h2>目标与材料</h2><button type="button" className="ws-btn ghost"
@@ -312,6 +331,9 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
       </aside>
     </div>
     <SelectionToolbar />
+    {layoutReady && <WorkspaceOnboarding ref={intro} key={scope} root={root} hasTools={hasTools} school={!!activity.course}
+      preferenceKey={'workspace-intro:v1:' + JSON.stringify([namespace, activity.identity.environmentId, activity.identity.spaceId, activity.identity.principalId])}
+      auto={!readOnly} suppressed={!!pendingQuestion} onReveal={id => void revealIntro(id).catch(() => toast.error('当前输入尚未保护，请保留页面后继续。'))} />}
     {!references.open && pendingQuestion && <GuidancePresentation item={{ id: pendingQuestion.questionId, content: { kind: 'text', text: waitText }, target: () => ask.current,
       actions: [{ id: 'respond', label: '回应 Agent', primary: true }] }} onAction={() => { references.setOpen(true); setFocusQuestionId(pendingQuestion.questionId) }} />}
 
