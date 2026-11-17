@@ -3,7 +3,7 @@ import { ReliableRecordStore } from '../reliable-workspace/record-store'
 import { sessionInputProtection } from '../reliable-workspace/input-protection'
 import { ActivitySessionContext } from './ActivitySession'
 
-export interface SessionDraftValue { text: string; editing: boolean; expectedVersion: number }
+export interface SessionDraftValue { text: string; editing: boolean; expectedVersion: number; optionId?: string }
 interface SessionDraftRecord { key: string; scope: string; value: SessionDraftValue }
 export const sessionDraftStore = new ReliableRecordStore<SessionDraftRecord>('agentControls')
 export const sessionDraftKey = (scope: string, sessionId: string | undefined, target: string) => JSON.stringify([scope, sessionId ?? 'new', 'session-draft', target])

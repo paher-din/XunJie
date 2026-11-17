@@ -5,12 +5,14 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { ActivitySessionContext } from './ActivitySession'
 import { SessionConversation } from './SessionConversation'
+import { SessionQuestionBox } from './SessionQuestion'
 import { AgentSessionsClient } from './agent-sessions'
 import { useAgentSession, type AgentSessionController } from './useAgentSession'
 import { ReliableWorkspace } from '../reliable-workspace/index'
 import { ReliableQuestionDraft } from '../reliable-workspace/draft'
 import { sessionInputProtection } from '../reliable-workspace/input-protection'
 import { agentControlStore } from '../reliable-workspace/agent-controls'
+import { sessionDraftKey, sessionDraftStore } from './session-drafts'
 
 let root: Root, host: HTMLDivElement, controller: AgentSessionController
 let environments: Awaited<ReturnType<typeof fixture>>[] = []
@@ -41,10 +43,12 @@ async function fixture() {
   const client = new AgentSessionsClient({ identity, namespace: 'session-protection', spaceKey: 'personal' })
   const now = new Date().toISOString(), original = '原排队问题', requestId = id()
   const input = { inputId, turnId, version: 1, state: 'pending' as 'pending' | 'removed', text: original, createdAt: now }
-  const turn = { turnId, sessionId, requestId, trigger: 'user' as const, originNotificationId: null, state: 'active' as const, reason: '',
+  const turn: { turnId: string; sessionId: string; requestId: string; trigger: 'user'; originNotificationId: null; state: 'active' | 'stopped'; reason: string;
+    ownerInstanceId: string; createdAt: string; updatedAt: string; completedAt: string | null } = {
+    turnId, sessionId, requestId, trigger: 'user' as const, originNotificationId: null, state: 'active' as const, reason: '',
     ownerInstanceId: 'test', createdAt: now, updatedAt: now, completedAt: null }
   const question = { questionId, sessionId, turnId, stepId: id(), toolCallId: id(), version: 1, state: 'pending' as 'pending' | 'answered',
-    presentation: { question: '观察到了什么？', source: '原实验', options: [], allowText: true, skippable: false },
+    presentation: { question: '观察到了什么？', source: '原实验', options: [{ id: 'first', label: '第一项' }, { id: 'second', label: '第二项' }], allowText: true, skippable: false },
     answer: null, answerRequestId: null, deadline: null, createdAt: now, updatedAt: now }
   const projection = { sessionId, lastSeq: 1, messages: [{ messageId: 'input:' + inputId, inputId, turnId, role: 'user', text: original, state: 'settled', createdAt: now }],
     turns: [turn], inputs: [input], questions: [question], tools: [], workspaces: [] }
@@ -52,6 +56,10 @@ async function fixture() {
   vi.stubGlobal('fetch', vi.fn(async (url: string, options: RequestInit = {}) => {
     if (!options.body) return new Response(JSON.stringify(projection))
     const body = JSON.parse(String(options.body)); writes.push({ url, body })
+    if (url.endsWith('/runs/' + turnId + '/stop')) {
+      turn.state = 'stopped'; turn.completedAt = now
+      return new Response(JSON.stringify(turn))
+    }
     if (url.endsWith('/responses')) { question.state = 'answered'; return new Response(JSON.stringify({ requestId: body.requestId,
       questionId, questionVersion: 2, turnId, status: 'accepted', reason: '' })) }
     input.version++; if (body.operation === 'edit') input.text = body.text; if (body.operation === 'remove') input.state = 'removed'
@@ -59,13 +67,18 @@ async function fixture() {
       input: { sessionId, requestId: body.requestId, text: input.text, context: {} }, createdAt: now } }))
   }))
   await Promise.all([workspace.open(), draft.open()]); await actions.open(); await settle()
-  return { activityId, scope, workspace, draft, actions, actionScope: { environmentId, spaceId, principalId, activityId }, client, sessionId, inputId, questionId, original, writes }
+  return { activityId, scope, workspace, draft, actions, actionScope: { environmentId, spaceId, principalId, activityId }, client,
+    sessionId, turnId, inputId, questionId, original, writes }
 }
 function View({ env, standalone = false }: { env: Awaited<ReturnType<typeof fixture>>; standalone?: boolean }) {
   controller = useAgentSession(env.client, env.sessionId, true)
-  if (standalone) return createElement(SessionConversation, { controller })
+  const pendingQuestion = controller.conversation?.questions.find(question => question.state === 'pending')
+  const content = [createElement(SessionConversation, { key: 'conversation', controller }),
+    pendingQuestion ? createElement(SessionQuestionBox, { key: pendingQuestion.questionId + ':' + pendingQuestion.version,
+      question: pendingQuestion, controller, readOnly: false }) : null]
+  if (standalone) return createElement('div', null, ...content)
   return createElement(ActivitySessionContext.Provider, { value: { workspace: env.workspace, draft: env.draft, actions: env.actions, agent: controller } as never },
-    createElement(SessionConversation, { controller }))
+    createElement('div', null, ...content))
 }
 async function mount(env: Awaited<ReturnType<typeof fixture>>, visible = true, standalone = false) {
   await act(async () => { root.render(visible ? createElement(View, { env, standalone }) : null); await settle() })
@@ -91,6 +104,18 @@ async function click(label: string) {
   }
   throw new Error('Ready control not found: ' + label)
 }
+async function chooseSecondOption() {
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const option = host.querySelectorAll<HTMLInputElement>('.agent-question-option input')[1]
+    if (option && !option.matches(':disabled')) {
+      await act(async () => { option.click(); await settle() })
+      expect(host.querySelectorAll<HTMLInputElement>('.agent-question-option input')[1]!.checked).toBe(true)
+      return
+    }
+    await act(settle)
+  }
+  throw new Error('Question options did not become ready')
+}
 
 function failSessionWrites(sessionId: string) {
   const put = IDBObjectStore.prototype.put
@@ -104,6 +129,45 @@ function beforeUnloadPrevented() { const event = new Event('beforeunload', { can
 async function activityLeave(env: Awaited<ReturnType<typeof fixture>>) { await env.workspace.leave(); await env.draft.leave(); await env.actions.leave() }
 
 describe('session drafts use the actual public input protection contract', () => {
+  it.each([false, true])('persists the selected option and restores it from storage (standalone=%s)', async standalone => {
+    const env = await fixture(); environments.push(env); await mount(env, true, standalone)
+    await chooseSecondOption()
+    await (standalone ? sessionInputProtection.leave() : activityLeave(env))
+    const key = sessionDraftKey(env.client.scope, env.sessionId, 'question:' + env.questionId + ':1')
+    expect((await sessionDraftStore.read(key))?.value.optionId).toBe('second')
+    await mount(env, false, standalone)
+    // A reload has no in-memory retained input and must restore the IndexedDB record.
+    const protection = standalone ? sessionInputProtection : env.workspace
+    const retained = vi.spyOn(protection, 'retainedInput').mockReturnValue(undefined)
+    await mount(env, true, standalone)
+    for (let attempt = 0; attempt < 40 && !host.querySelectorAll<HTMLInputElement>('.agent-question-option input')[1]?.checked; attempt++) await act(settle)
+    expect(host.querySelectorAll<HTMLInputElement>('.agent-question-option input')[1]!.checked).toBe(true)
+    expect(host.querySelector('textarea')).toBeNull()
+    retained.mockRestore()
+    await click('提交回应')
+    expect(env.writes).toHaveLength(1)
+    expect(env.writes[0]!.body).toMatchObject({ expectedVersion: 1, answer: { kind: 'choice', optionId: 'second' } })
+  })
+
+  it('protects an unsaved choice, blocks submission on quota failure and retries the same choice', async () => {
+    const env = await fixture(); environments.push(env); await mount(env, true, true)
+    const fault = failSessionWrites(env.sessionId)
+    await chooseSecondOption()
+    expect(host.textContent).toContain('输入尚未在本机可靠保留')
+    expect(beforeUnloadPrevented()).toBe(true)
+    await click('提交回应')
+    expect(env.writes).toHaveLength(0)
+    await act(async () => { await expect(sessionInputProtection.leave()).rejects.toThrow('Review-injected IndexedDB quota failure') })
+    await mount(env, false, true); await mount(env, true, true)
+    expect(host.querySelectorAll<HTMLInputElement>('.agent-question-option input')[1]!.checked).toBe(true)
+    fault.restore()
+    await click('重试保留输入')
+    expect(beforeUnloadPrevented()).toBe(false)
+    await click('提交回应')
+    expect(env.writes).toHaveLength(1)
+    expect(env.writes[0]!.body.answer).toEqual({ kind: 'choice', optionId: 'second' })
+  })
+
   it.each(['response', 'queued revision'] as const)('retains a %s through quota failure, remount, blocked leave and recovery retry', async kind => {
     const env = await fixture(); environments.push(env); await mount(env)
     if (kind === 'queued revision') { await click('编辑这条消息'); expect(host.querySelector('[aria-label="修改这条消息"]')).not.toBeNull() }
@@ -113,7 +177,8 @@ describe('session drafts use the actual public input protection contract', () =>
     expect(beforeUnloadPrevented()).toBe(true)
     await act(async () => { await expect(activityLeave(env)).rejects.toThrow('Review-injected IndexedDB quota failure')
       await expect(env.workspace.flush()).rejects.toThrow('Review-injected IndexedDB quota failure') })
-    expect(env.writes).toHaveLength(0)
+    expect(env.writes).toHaveLength(kind === 'queued revision' ? 1 : 0)
+    if (kind === 'queued revision') expect(env.writes[0]!.url).toContain('/runs/' + env.turnId + '/stop')
     await mount(env, false); await mount(env)
     await expectDraft(text)
     await mount(env, false); expect(beforeUnloadPrevented()).toBe(true)
@@ -122,10 +187,12 @@ describe('session drafts use the actual public input protection contract', () =>
     expect(beforeUnloadPrevented()).toBe(false)
     await mount(env); await expectDraft(text)
     expect(host.querySelector('[role="alert"]')).toBeNull()
-    await click(kind === 'response' ? '发送回应' : '发送')
-    expect(env.writes).toHaveLength(1)
-    expect(env.writes[0]!.body).toMatchObject(kind === 'response' ? { expectedVersion: 1, answer: { kind: 'text', text } } : { expectedVersion: 1, operation: 'edit', text })
-    expect(env.writes[0]!.url).toContain('/agent-sessions/' + env.sessionId + '/')
+    await click(kind === 'response' ? '提交回应' : '发送')
+    const submitted = env.writes.at(-1)!
+    expect(env.writes).toHaveLength(kind === 'response' ? 1 : 2)
+    expect(submitted.body).toMatchObject(kind === 'response' ? { expectedVersion: 1, answer: { kind: 'text', text } }
+      : { expectedVersion: 1, operation: 'edit', text })
+    expect(submitted.url).toContain('/agent-sessions/' + env.sessionId + '/')
   })
 
   it.each(['response', 'queued revision'] as const)('protects an ordinary session %s without an activity workspace', async kind => {
@@ -144,7 +211,8 @@ describe('session drafts use the actual public input protection contract', () =>
     expect(beforeUnloadPrevented()).toBe(false)
     expect(host.querySelector('[role="alert"]')).toBeNull()
     await mount(env, false, true); await mount(env, true, true); await expectDraft(text)
-    expect(env.writes).toHaveLength(0)
+    expect(env.writes).toHaveLength(kind === 'queued revision' ? 1 : 0)
+    if (kind === 'queued revision') expect(env.writes[0]!.url).toContain('/runs/' + env.turnId + '/stop')
   })
 
   it('reloads the original saved response after a local read failure is repaired', async () => {

@@ -43,6 +43,10 @@
     "./origins": {
       "types": "./dist/origins.d.ts",
       "import": "./dist/origins.js"
+    },
+    "./skill-description": {
+      "types": "./dist/skill-description.d.ts",
+      "import": "./dist/skill-description.js"
     }
   },
   "scripts": {

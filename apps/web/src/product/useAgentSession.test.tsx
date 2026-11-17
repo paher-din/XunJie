@@ -5,6 +5,7 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { beforeEach, afterEach, it, expect, vi } from 'vitest'
 import { SessionConversation } from './SessionConversation'
+import { SessionQuestionBox } from './SessionQuestion'
 import { AgentSessionsClient } from './agent-sessions'
 import { useAgentSession, type AgentSessionController } from './useAgentSession'
 const id = () => crypto.randomUUID()
@@ -19,6 +20,12 @@ const empty = (sessionId: string, text: string) => {
 }
 const settle = async () => { for (let i = 0; i < 4; i++) await new Promise(resolve => setTimeout(resolve, 0)) }
 function View({ sessionId }: { sessionId: string }) { controller = useAgentSession(client, sessionId, true); return <div>{controller.conversation?.messages.map(item => item.text)}</div> }
+function ConversationWithQuestion({ sessionId }: { sessionId: string }) {
+  controller = useAgentSession(client, sessionId, true)
+  const question = controller.conversation?.questions.find(item => item.state === 'pending')
+  return <><SessionConversation controller={controller} />
+    {question && <SessionQuestionBox key={question.questionId + ':' + question.version} question={question} controller={controller} readOnly={false} />}</>
+}
 beforeEach(() => { vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true); localStorage.clear(); Object.defineProperty(document, 'hidden', { configurable: true, value: false }); host = document.createElement('div'); document.body.append(host); root = createRoot(host) })
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.unstubAllGlobals() })
 it('opens the next session while the previous read is in flight and ignores its late answer', async () => {
@@ -74,7 +81,7 @@ it('pending input edits survive a lost acknowledgement; remove and question resp
     }
     return new Response(JSON.stringify(result))
   }))
-  function Controls() { controller = useAgentSession(client, sessionId, true); return <SessionConversation controller={controller} /> }
+  function Controls() { return <ConversationWithQuestion sessionId={sessionId} /> }
   await act(async () => { root.render(<Controls />); await settle() })
   await act(async () => { await controller.inputControl(inputId, 1, 'edit', { text: '修改后的原问题' }).catch(() => {}); await settle() })
   await act(async () => root.unmount()); root = createRoot(host)
@@ -90,15 +97,16 @@ it('pending input edits survive a lost acknowledgement; remove and question resp
     }
     throw new Error('Ready control not found: ' + text)
   }
-  await clickText('移除待处理消息'); expect(host.textContent).not.toContain('修改后的原问题')
+  await act(async () => { await controller.inputControl(inputId, input.version, 'remove'); await settle() }); expect(host.textContent).not.toContain('修改后的原问题')
   Object.assign(turn, { state: 'stopped', reason: 'student-stop', completedAt: now })
   await act(async () => { await controller.refresh(); await settle() })
-  expect(host.textContent).toContain('你已停止这次回答')
-  await clickText('继续回答'); expect(turn.state).toBe('active')
-  expect(host.textContent).toContain('停止回答')
-  await clickText('继续练习'); expect(host.textContent).not.toContain('继续练习吗？')
-  await clickText('停止回答'); expect(turn.state).toBe('stopped')
-  expect(host.textContent).toContain('继续回答'); expect(host.textContent).not.toContain('停止回答')
+  expect(host.textContent).not.toContain('你已停止这次回答')
+  await act(async () => { await controller.control(turn.turnId, 'continue'); await settle() }); expect(turn.state).toBe('active')
+  for (let attempt = 0; attempt < 40 && host.querySelector('.agent-question-option input')?.matches(':disabled'); attempt++) await act(async () => { await settle() })
+  await act(async () => { host.querySelector<HTMLInputElement>('.agent-question-option input')!.click(); await settle() })
+  await clickText('提交回应'); expect(host.textContent).not.toContain('继续练习吗？')
+  await act(async () => { await controller.control(turn.turnId, 'stop'); await settle() }); expect(turn.state).toBe('stopped')
+  expect(host.textContent).not.toContain('停止回答')
   expect(calls.filter(call => call.route.includes('/inputs/')).every(call => call.route === `${sessionId}/inputs/${inputId}/control`)).toBe(true)
   expect(calls.filter(call => call.route.includes('/waits/')).map(call => call.route))
     .toEqual([`${sessionId}/waits/${questionId}/responses`])
@@ -112,12 +120,12 @@ it('shows deferred input state and a failed Turn reason from persisted conversat
   vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(projection))))
   function View() { const current = useAgentSession(client, sessionId, true); controller = current; return <SessionConversation controller={current} /> }
   await act(async () => { root.render(<View />); await settle() })
-  expect(host.textContent).toContain('尚未处理，继续时处理。')
+  expect(controller.conversation!.inputs[0]!.state).toBe('deferred')
   expect(host.textContent).toContain('本次回答已达到预算上限')
   expect(host.textContent).not.toContain('回答尚未完成')
   await act(async () => root.unmount()); root = createRoot(host)
   await act(async () => { root.render(<View />); await settle() })
-  expect(host.textContent).toContain('尚未处理，继续时处理。')
+  expect(controller.conversation!.inputs[0]!.state).toBe('deferred')
 })
 
 it('retrying an unconfirmed follow-up queries the original request instead of creating a second question', async () => {
@@ -145,6 +153,9 @@ it.each([
   projection.questions = [{ questionId, sessionId, turnId: turn.turnId, stepId: id(), toolCallId: id(), version: 7, state: 'pending',
     presentation: { questionId, question: '接下来想怎样比较？', source: '原实验结果', options: [{ id: 'yes', label: '比较结果' }], allowText: true, skippable: true },
     answer: null, answerRequestId: null, deadline: null, createdAt: now, updatedAt: now }]
+  const pending = projection.questions[0]!
+  projection.tools = [{ toolCallId: pending.toolCallId, turnId: turn.turnId, stepId: pending.stepId,
+    name: 'student_ask', state: 'pending', result: {}, stepNo: 1, createdAt: now }]
   const writes: { route: string; body: unknown }[] = []
   vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener() {}, removeEventListener() {} }))
   vi.stubGlobal('fetch', vi.fn(async (url: string, options: RequestInit = {}) => {
@@ -153,13 +164,16 @@ it.each([
     projection.questions[0]!.state = 'answered'
     return new Response(JSON.stringify({ requestId: JSON.parse(String(options.body)).requestId, questionId, questionVersion: 8, turnId: turn.turnId, status: 'accepted', reason: '' }))
   }))
-  function Questions() { controller = useAgentSession(client, sessionId, true); return <SessionConversation controller={controller} /> }
+  function Questions() { return <ConversationWithQuestion sessionId={sessionId} /> }
   await act(async () => { root.render(<Questions />); await settle() })
   const question = host.querySelector('[aria-label="Agent 的问题"]')
   for (let i = 0; i < 40 && question?.querySelector<HTMLButtonElement>('button')?.disabled; i++) await act(async () => { await settle() })
   expect(question?.textContent).toContain('接下来想怎样比较？')
+  expect(host.querySelector('.agent-question-record')).toBeNull()
+  expect(host.querySelector('[data-tool-name="student_ask"]')).toBeNull()
+  expect(host.textContent?.match(/接下来想怎样比较？/g)).toHaveLength(1)
   expect(question?.querySelector('textarea')).not.toBeNull()
-  expect([...question!.querySelectorAll('button')].map(button => button.textContent)).toEqual(['比较结果', '发送回应', '跳过'])
+  expect([...question!.querySelectorAll('button')].map(button => button.textContent)).toEqual(['提交回应', '跳过这次提问'])
   if (kind === 'text') {
     await act(async () => {
       const textarea = question!.querySelector('textarea')!
@@ -168,14 +182,34 @@ it.each([
     })
     await act(async () => { question!.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); await settle() })
   } else await act(async () => {
-    const label = kind === 'choice' ? '比较结果' : '跳过'
-    ;[...question!.querySelectorAll('button')].find(button => button.textContent === label)!.click()
+    if (kind === 'choice') question!.querySelector<HTMLInputElement>('.agent-question-option input')!.click()
+    else [...question!.querySelectorAll('button')].find(button => button.textContent === '跳过这次提问')!.click()
     await settle()
   })
+  if (kind === 'choice') await act(async () => { question!.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); await settle() })
   expect(writes).toHaveLength(1)
   expect(writes[0]!.route).toBe(`/api/learning/agent-sessions/${sessionId}/waits/${questionId}/responses`)
   expect(writes[0]!.body).toEqual({ requestId: expect.any(String), questionId, expectedVersion: 7, answer })
   expect(host.querySelector('[aria-label="Agent 的问题"]')).toBeNull()
+})
+
+it('keeps an answered question and the student choice in its execution record', async () => {
+  const sessionId = id(), projection = empty(sessionId, '已根据你的回答继续。') as AgentConversation
+  const turn = projection.turns[0]!, questionId = id(), toolCallId = id(), stepId = id(), now = new Date().toISOString()
+  projection.questions = [{ questionId, sessionId, turnId: turn.turnId, stepId, toolCallId, version: 8, state: 'answered',
+    presentation: { question: '递归最关键的两个条件是什么？', source: '递归练习',
+      options: [{ id: 'both', label: '基准情形与规模缩小' }, { id: 'none', label: '以上都不对' }], allowText: true, skippable: true },
+    answer: { kind: 'choice', optionId: 'both' }, answerRequestId: id(), deadline: null, createdAt: now, updatedAt: now }]
+  projection.tools = [{ toolCallId, turnId: turn.turnId, stepId, name: 'student_ask', state: 'closed', result: {}, stepNo: 1, createdAt: now }]
+  vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(projection))))
+  await act(async () => { root.render(<ConversationWithQuestion sessionId={sessionId} />); await settle() })
+  expect(host.querySelector('[aria-label="Agent 的问题"]')).toBeNull()
+  const group = host.querySelector<HTMLButtonElement>('.agent-trace-group-trigger')!
+  await act(async () => { group.click(); await settle() })
+  const record = host.querySelector('.agent-question-record')!
+  expect(record.textContent).toContain('递归最关键的两个条件是什么？')
+  expect(record.textContent).toContain('你的选择')
+  expect(record.textContent).toContain('基准情形与规模缩小')
 })
 
 it('a definitive stale-version rejection refreshes the session and never blocks or replays over stop, continue and responses', async () => {

@@ -11,6 +11,8 @@ export interface StudentAssistantOptions {
   /** Optional injected capabilities, already assembled as kernel tools. */
   documents?: readonly AgentTool[];
   skills?: readonly AgentTool[];
+  /** Host-owned authorized context for this Step, such as explicit session Skill instructions. */
+  contextExtension?(input: ScenarioInput): Promise<string | undefined>;
   compaction?: CompactionOptions | false;
 }
 
@@ -34,7 +36,10 @@ export function createStudentAssistant(options: StudentAssistantOptions): AgentS
   return {
     id: 'student-assistant', version: 2,
     // Query provenance comes from the injected owner tools, never invented from input context.
-    async context() { return { system, facts: {} as Facts, sources: [] }; },
+    async context(input) {
+      const extension = await options.contextExtension?.(input);
+      return { system: extension ? system + '\n\n' + extension : system, facts: {} as Facts, sources: [] };
+    },
     async tools(input) {
       if (options.tools) {
         // Remote owner tools never include the kernel-local question: merge by unique name, local first-class capability.

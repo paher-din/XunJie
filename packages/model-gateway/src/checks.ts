@@ -11,6 +11,7 @@ import { validateMessagesNative, type MessagesPayload } from './messages.js';
 import { testPreflight, testVerdict } from './test-payload.js';
 import { errorFacts, networkFailureReason } from './upstream-facts.js';
 import { fixedPermit } from './session-permits.js';
+import { createTransportCompletion } from './transport-completion.js';
 
 export const checkMigrations = [{ version: 2, name: 'durable-model-checks', sql: `
   CREATE TABLE model_attempts (id uuid PRIMARY KEY,scope text NOT NULL,body jsonb NOT NULL,input_digest text NOT NULL,
@@ -41,6 +42,11 @@ export function createChecks(storage: OwnedStorage, owner: {
   requestFetch?(identity: SpaceIdentity, attempt: ModelAttempt): Promise<typeof fetch>;
 }) {
   const learningAdmission = createLearningAdmission(storage, owner.learningAdmissionPolicy);
+  const transportCompletion = createTransportCompletion(update, async (identity, attemptId) => {
+    const { rows: [current] } = await storage.read('SELECT physical_ended FROM model_attempts WHERE id=$1 AND scope=$2', [attemptId, scopeOf(identity)]);
+    if (!current) throw new StorageError('missing');
+    return current.physical_ended === true;
+  });
   const active = new Map<string, { controller: AbortController; task: Promise<void>; scope: string }>();
   const unsentClaims = new Map<string, { attemptId: string; identity: SpaceIdentity; requestId: string; fingerprint: string }>();
   const ticketWithdrawals = new Map<string, { attemptId: string; identity: SpaceIdentity }>();
@@ -74,6 +80,7 @@ export function createChecks(storage: OwnedStorage, owner: {
   }
   async function reconcileDispatchers() {
     if (admissionClosed) return;
+    await transportCompletion.reconcile();
     await settleTicketWithdrawals();
     await settleUnsentClaims();
     const { rows: expired } = await storage.read("SELECT id FROM model_attempts WHERE state='accepted' AND body->>'purpose'<>'learning' AND created_at < clock_timestamp()-interval '60 seconds'");
@@ -176,7 +183,7 @@ export function createChecks(storage: OwnedStorage, owner: {
     return row ? progressBodySchema.parse(row.body) : null;
   }
   async function saveProgress(identity: SpaceIdentity, attemptId: string, snapshot: Omit<ModelProgress, 'revision'>) {
-    if (!snapshot.text && !snapshot.tools?.length) return;
+    if (!snapshot.text && !snapshot.thinking && !snapshot.tools?.length) return;
     await storage.request({ requestId: 'model-progress:' + attemptId + ':' + randomUUID(),
       fingerprint: 'model-progress:' + attemptId }, async tx => {
       const { rows: [row] } = await tx.query('SELECT body FROM model_attempt_progress WHERE attempt_id=$1 AND scope=$2 FOR UPDATE',
@@ -184,6 +191,7 @@ export function createChecks(storage: OwnedStorage, owner: {
       const previous = row ? progressBodySchema.safeParse(row.body) : null;
       const prior = previous?.success ? previous.data : { text: '', revision: 0 };
       const text = snapshot.text.length > prior.text.length && snapshot.text.startsWith(prior.text) ? snapshot.text : prior.text;
+      const thinking = snapshot.thinking ?? prior.thinking;
       const tools = new Map((prior.tools ?? []).map(item => [item.callId, item]));
       for (const item of snapshot.tools ?? []) {
         const before = tools.get(item.callId);
@@ -191,8 +199,8 @@ export function createChecks(storage: OwnedStorage, owner: {
           tools.set(item.callId, item);
       }
       const nextTools = [...tools.values()];
-      if (text === prior.text && JSON.stringify(nextTools) === JSON.stringify(prior.tools ?? [])) return null;
-      const body = progressBodySchema.parse({ text, revision: prior.revision + 1, ...(nextTools.length ? { tools: nextTools } : {}) });
+      if (text === prior.text && thinking === prior.thinking && JSON.stringify(nextTools) === JSON.stringify(prior.tools ?? [])) return null;
+      const body = progressBodySchema.parse({ text, revision: prior.revision + 1, ...(thinking ? { thinking } : {}), ...(nextTools.length ? { tools: nextTools } : {}) });
       await tx.query(`INSERT INTO model_attempt_progress(attempt_id,scope,body) VALUES($1,$2,$3)
         ON CONFLICT(attempt_id) DO UPDATE SET body=$3,updated_at=clock_timestamp()`,
         [attemptId, scopeOf(identity), JSON.stringify(body)]);
@@ -435,7 +443,7 @@ export function createChecks(storage: OwnedStorage, owner: {
     const controller = new AbortController();
     const task = deliver(identity, original, found.credential_ref as string, controller, found.input_metadata as { applicationSchema?: Record<string, unknown>; tools?: ModelTool[] } | null);
     active.set(attemptId, { controller, task, scope: scopeOf(identity) });
-    void task.finally(() => active.delete(attemptId)).catch(() => {});
+    void task.finally(() => { active.delete(attemptId); transportCompletion.ended(identity, attemptId); }).catch(() => {});
     return await read(identity, attemptId);
     } catch (error) {
       // A rejected preflight is not cancellation and cannot refund a charged call.
@@ -512,7 +520,9 @@ export function createChecks(storage: OwnedStorage, owner: {
       };
       const scheduleProgress = () => {
         pending = true;
-        const remaining = 500 - (Date.now() - lastSavedAt);
+        // Keep durable previews close to the render cadence. The browser still smooths each
+        // accepted batch by frame, so this interval controls latency without causing token-rate writes.
+        const remaining = 250 - (Date.now() - lastSavedAt);
         if (remaining <= 0) enqueueProgress();
         else if (!progressTimer) { progressTimer = setTimeout(enqueueProgress, remaining); progressTimer.unref(); }
       };
@@ -528,6 +538,9 @@ export function createChecks(storage: OwnedStorage, owner: {
       const onTools = attempt.purpose === 'learning' ? (tools: ModelToolProgress[]) => {
         latest = { ...latest, tools }; scheduleProgress();
       } : undefined;
+      const onThinking = attempt.purpose === 'learning' ? (thinking: string) => {
+        latest = { ...latest, thinking }; scheduleProgress();
+      } : undefined;
       if (owner.assertActive && !controller.signal.aborted) {
         watching = true;
         watch = setInterval(() => { if (!checking) authorizationCheck = checkAuthorization(); }, authorizationPollMs);
@@ -537,7 +550,7 @@ export function createChecks(storage: OwnedStorage, owner: {
         ? { state: 'cancelled' as const, reason: 'cancelled-before-send', text: '', usage: { state: 'unknown' as const }, toolIntents: [], native: { chunks: [] } }
         : await runModel(attempt.connection, credential, payload, controller.signal, attempt.limits.timeoutMs ?? 2_147_483_647,
           !!attempt.segment, metadata?.applicationSchema, trackedFetch, onText, metadata?.tools, onTools,
-          sessionOf(identity, attempt.attemptId, attempt.segment?.segmentId));
+          sessionOf(identity, attempt.attemptId, attempt.segment?.segmentId), onThinking);
       // A local abort, EOF without a terminal, or dispatcher death proves no upstream end.
       // A validated terminal or final usage does. HTTP rejection proves the call was refused.
       upstreamEnded = !openedUpstream || result.state === 'completed' || result.usage.state === 'final'
@@ -651,6 +664,7 @@ export function createChecks(storage: OwnedStorage, owner: {
         await settleUnsentClaims();
         await settleRevocations();
         await settleTicketWithdrawals();
+        await transportCompletion.reconcile();
         if (unsentClaims.size || revocations.size || ticketWithdrawals.size) throw new StorageError('resource-busy');
         await reconcileEndedDispatchers();
         // The local task map cannot account for abandoned claims or another host's dispatcher.

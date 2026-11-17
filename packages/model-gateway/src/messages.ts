@@ -1,4 +1,5 @@
 import { createJsonToolProgress } from './json-tool-progress.js';
+import { createThinkingProgress } from './thinking-progress.js';
 import type { ModelToolProgress } from '@xunjie/contracts/model-connections';
 import Anthropic from '@anthropic-ai/sdk';
 import { StorageError } from '@xunjie/storage';
@@ -30,7 +31,8 @@ export function messagesCheckPayload(configuration: ModelConfiguration, tokens: 
 export async function runMessages(configuration: ModelConfiguration, apiKey: string, payload: MessagesPayload,
   signal: AbortSignal, timeoutMs: number, nativeTools: ModelTool[] = [], applicationSchema?: Record<string, unknown>,
   requestFetch: typeof fetch = fetch, onText?: (text: string) => void, onTools?: (tools: ModelToolProgress[]) => void,
-  requestHeaders?: Record<string, string>) {
+  requestHeaders?: Record<string, string>, onThinking?: (text: string) => void) {
+  const thinking = createThinkingProgress(apiKey, onThinking);
   let limited = false, upstream: ModelUpstream | undefined;
   const sensitive = createSensitiveOutput(apiKey);
   const progress = onText ? createProgressPublisher(apiKey, onText) : null;
@@ -58,7 +60,11 @@ export async function runMessages(configuration: ModelConfiguration, apiKey: str
     // In SDK 1.1.0 MessageStream overwrites each signature_delta; we preserve all fragments.
     const stream = await client.messages.create(payload as Anthropic.MessageCreateParamsStreaming, { signal: requestSignal,
       ...(requestHeaders ? { headers: requestHeaders } : {}) });
-    for await (const event of stream) { events.push(structuredClone(event)); assembler.add(event); toolProgress?.(assembler.toolArguments); progress?.(assembler.text); }
+    for await (const event of stream) {
+      events.push(structuredClone(event)); assembler.add(event); toolProgress?.(assembler.toolArguments); progress?.(assembler.text);
+      if (event.type === 'content_block_start' && event.content_block.type === 'thinking') thinking.append(event.content_block.thinking);
+      if (event.type === 'content_block_delta' && event.delta.type === 'thinking_delta') thinking.append(event.delta.thinking);
+    }
   } catch (error) {
     const status = (error instanceof Anthropic.APIError ? error.status : undefined)
       ?? (upstream?.httpStatus && upstream.httpStatus >= 400 ? upstream.httpStatus : undefined);
@@ -114,5 +120,6 @@ export async function runMessages(configuration: ModelConfiguration, apiKey: str
   catch { state = 'failed'; reason = 'invalid-native-result'; }
   if (['malformed-response', 'invalid-native-result'].includes(reason))
     native = { ...native, events: [], message: null, redacted: true };
+  thinking.finish();
   return { state, reason, text: sensitive.clean(text), usage, toolIntents: state === 'completed' ? toolIntents : [], native, ...(upstream ? { upstream } : {}) };
 }

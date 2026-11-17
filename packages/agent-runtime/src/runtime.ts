@@ -237,7 +237,9 @@ export function createAgentRuntime(storage: OwnedStorage, options: AgentRuntimeO
     },
     async inputControl(identity: AgentRuntimeSession['identity'], sessionId: string, inputId: string, control: { requestId: string; expectedVersion: number; operation: 'edit' | 'remove'; text?: string; context?: Facts }) {
       await authorized(identity, sessionId); writable();
-      return store.inputControl(sessionId, inputId, control);
+      const result = await store.inputControl(sessionId, inputId, control);
+      wake(sessionId);
+      return result;
     },
     /** Trusted host bridge: a task terminal fact becomes a notification; idle may open a new Turn. */
     async registerNotification(identity: AgentRuntimeSession['identity'], sessionId: string, originTurnId: string, fact: TaskTerminalFact) {
@@ -246,7 +248,7 @@ export function createAgentRuntime(storage: OwnedStorage, options: AgentRuntimeO
       if (result.turnId) wake(sessionId);
       return result;
     },
-    async recordProgress(identity: AgentRuntimeSession['identity'], sessionId: string, attemptId: string, progress: { revision: number; text: string; tools?: readonly unknown[] }) {
+    async recordProgress(identity: AgentRuntimeSession['identity'], sessionId: string, attemptId: string, progress: { revision: number; text: string; thinking?: string; tools?: readonly unknown[] }) {
       await authorized(identity, sessionId);
       if (!dispatchOpen()) return false;
       return store.recordProgress(sessionId, attemptId, progress);

@@ -1,71 +1,65 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
-/**
- * 流式匀滑：到达节奏 ≠ 上屏节奏。
- *
- * 模型（这里是适配层）按 token 吐字——一次 1–4 字、间隔有抖动、句末还会停一下。
- * 把每次到达直接当成一次上屏，界面就跟着网络的呼吸一顿一顿。这一层把缓冲里的字
- * 按时间匀出去，token 的抖动被抹平成一条匀速的流。
- *
- * 两个要点：
- * - 用「字数/秒」配时间累加器推进，不是「每帧 N 字」——后者在 60Hz / 120Hz / 掉帧时
- *   速度不一样，屏上的字距会跟着刷新率变；按时间推进在什么屏幕上都是同一条流。
- * - 速度跟着积压走（积压越多走得越快，并有上限），于是突然来一大块（批量到达、
- *   后台标签页被节流后回前台）会自己加速追平，而永远不会越读越 lag。
- * 停止 / 落定 / 文本被截短（改写重发）一律直接对齐全文——半截字留在屏上是错的，不是动画。
- * 减少动效时同样直接对齐（⑦ 全局规则的 JS 侧对应）。
- */
-const MIN_CPS = 22
-/** 积压每字折算成的字数/秒：积压 4 字 ≈ 88 字/秒。 */
-const BACKLOG_GAIN = 22
-const MAX_CPS = 260
+export interface SmoothStreamOptions {
+  /** Normal completion drains the display buffer; stop/failure uses the default immediate flush. */
+  drainOnComplete?: boolean
+  /** Existing history (including a resumed partial answer) starts fully visible. */
+  animateOnMount?: boolean
+}
+const segmenter = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter(undefined, { granularity: 'grapheme' }) : null
+const frameMs = 1000 / 30
+function boundaries(text: string) {
+  const ends = [0]
+  if (segmenter) for (const part of segmenter.segment(text)) ends.push(part.index + part.segment.length)
+  else { let length = 0; for (const point of text) { length += point.length; ends.push(length) } }
+  // A provider may split a surrogate pair or ZWJ sequence between text events.
+  if (/[\uD800-\uDBFF\u200d]$/.test(text)) ends.pop()
+  return ends
+}
+function floorIndex(ends: number[], offset: number) {
+  let low = 0, high = ends.length - 1
+  while (low < high) { const middle = Math.ceil((low + high) / 2); if (ends[middle] <= offset) low = middle; else high = middle - 1 }
+  return low
+}
 
-export function useSmoothStreamText(target: string, streaming: boolean): string {
-  const [shown, setShown] = useState(target)
-  const targetRef = useRef(target)
-  targetRef.current = target
-  const shownLenRef = useRef(target.length)
-  const reduceRef = useRef<boolean | null>(null)
-  if (reduceRef.current === null) {
-    reduceRef.current = typeof window === 'undefined' ||
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+/** Bounded reveal for Astryx prose: segment once per received batch, render at most 30 times/s, sleep when caught up. */
+export function useSmoothStreamText(text: string, live: boolean, options: SmoothStreamOptions = {}) {
+  const animate = useRef(options.animateOnMount ?? live)
+  const initial = (options.animateOnMount ?? live) ? 0 : text.length
+  const [length, setLength] = useState(initial)
+  const shown = useRef(initial), previous = useRef(text), clock = useRef(0)
+  const [reduce, setReduce] = useState(() => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)
+  if (previous.current !== text) {
+    if (!text.startsWith(previous.current.slice(0, shown.current))) { shown.current = 0; setLength(0) }
+    else if (text.length > previous.current.length) animate.current = true
+    previous.current = text
   }
-
-  // 不流式（落定 / 停止 / 翻历史）：直接对齐全文。渲染期改状态 + 这一次返回 target，
-  // 于是半截字不会有一帧出现在屏上。
-  if (!streaming && shown !== target) {
-    shownLenRef.current = target.length
-    setShown(target)
-  }
-
+  const progressive = !reduce && (live || !!options.drainOnComplete && animate.current)
+  const ends = useMemo(() => progressive ? boundaries(text) : [0, text.length], [text, progressive])
   useEffect(() => {
-    if (!streaming || reduceRef.current) return
-    let raf = 0
-    let last = performance.now()
-    let carry = 0
+    const query = window.matchMedia?.('(prefers-reduced-motion: reduce)')
+    const changed = () => setReduce(!!query?.matches)
+    query?.addEventListener?.('change', changed)
+    return () => query?.removeEventListener?.('change', changed)
+  }, [])
+  useEffect(() => {
+    if (!progressive) { shown.current = text.length; setLength(text.length); return }
+    let frame = 0
     const tick = (now: number) => {
-      const dt = Math.min(100, now - last)
-      last = now
-      const full = targetRef.current
-      const n = Math.min(shownLenRef.current, full.length)
-      const backlog = full.length - n
-      if (backlog > 0) {
-        const cps = Math.min(MAX_CPS, Math.max(MIN_CPS, backlog * BACKLOG_GAIN))
-        carry += (dt * cps) / 1000
-        const step = Math.min(backlog, Math.floor(carry))
-        if (step > 0) {
-          carry -= step
-          shownLenRef.current = n + step
-          setShown(full.slice(0, n + step))
-        }
-      } else {
-        carry = 0
+      if (!clock.current) clock.current = now
+      const elapsed = now - clock.current
+      if (elapsed >= frameMs) {
+        clock.current = now
+        const index = floorIndex(ends, shown.current), remaining = ends.length - 1 - index
+        const seconds = Math.min(elapsed, 100) / 1000
+        const count = Math.ceil(Math.max(90 * seconds, remaining * seconds * 2.5))
+        const next = ends[Math.min(ends.length - 1, index + count)]
+        if (next !== shown.current) { shown.current = next; setLength(next) }
       }
-      raf = requestAnimationFrame(tick)
+      if (shown.current < ends[ends.length - 1]) frame = requestAnimationFrame(tick)
     }
-    raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
-  }, [streaming])
-
-  return streaming && !reduceRef.current ? shown : target
+    if (shown.current < ends[ends.length - 1]) frame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frame)
+  }, [text, ends, progressive])
+  return progressive ? text.slice(0, ends[floorIndex(ends, length)]) : text
 }

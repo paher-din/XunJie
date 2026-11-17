@@ -98,12 +98,13 @@ export class SessionOutbox {
       input: { sessionId, requestId: crypto.randomUUID(), text, context } })
     this.storage.setItem(this.key + '.first', JSON.stringify(value)); return value
   }
-  async deliverStart(value = this.start()) {
+  async deliverStart(value = this.start(), prepare?: (session: AgentSession, input: AgentInput) => Promise<void>) {
     if (!value) throw fail('missing', '没有待发送的首问。')
     let session: AgentSession
     try { session = await this.client.read(value.create.sessionId) }
     catch (error) { if ((error as { code?: string }).code !== 'missing') throw error; session = await this.client.create(value.create) }
     if (session.state !== 'ready') session = await this.client.create(value.create)
+    await prepare?.(session, value.input)
     const receipt = await this.send(value.input)
     if (this.start()?.input.requestId === value.input.requestId) this.storage.removeItem(this.key + '.first')
     return { session, receipt }
@@ -120,12 +121,13 @@ export class SessionOutbox {
   }
 }
 export function mergeAgentConversation(previous: AgentConversation | null, next: AgentConversation): AgentConversation {
-  if (!previous || previous.sessionId !== next.sessionId) return next
+  if (!previous || previous.sessionId !== next.sessionId || next.reset) return next
   if (previous.lastSeq > next.lastSeq) return previous
   const messages = new Map(previous.messages.map(message => [message.messageId, message]))
   for (const message of next.messages) {
     const before = messages.get(message.messageId)
-    messages.set(message.messageId, before ? { ...message, createdAt: before.createdAt } : message)
+    messages.set(message.messageId, before ? { ...message, createdAt: before.createdAt,
+      ...(message.editedAt ?? before.editedAt ? { editedAt: message.editedAt ?? before.editedAt } : {}) } : message)
   }
   const turns = new Map(next.turns.map(turn => [turn.turnId, turn]))
   for (const [id, message] of messages) {
@@ -136,6 +138,7 @@ export function mergeAgentConversation(previous: AgentConversation | null, next:
   }
   const merged = <T,>(before: T[], incoming: T[], key: (item: T) => string) => { const values = new Map(before.map(item => [key(item), item])); for (const item of incoming) values.set(key(item), item); return [...values.values()] }
   return replaceEqualDeep(previous, { ...next, messages: [...messages.values()].sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt)),
+    thinking: merged(previous.thinking ?? [], next.thinking ?? [], item => item.messageId), contextUsage: next.contextUsage ?? previous.contextUsage,
     turns: merged(previous.turns, next.turns, item => item.turnId), inputs: merged(previous.inputs, next.inputs, item => item.inputId),
     questions: merged(previous.questions, next.questions, item => item.questionId), tools: merged(previous.tools, next.tools, item => item.toolCallId),
     workspaces: merged(previous.workspaces, next.workspaces, item => item.toolCallId) })

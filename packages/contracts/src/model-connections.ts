@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { spaceIdentitySchema } from './spaces.js';
 import { agentDispatchPermitSchema } from './agent-runtime.js';
 import { storageOwnerSchema } from './storage.js';
-import { modelReasoningEfforts } from './model-reasoning.js';
+import { modelReasoningEfforts, resolveModelProfile } from './model-reasoning.js';
 import { maximumModelTokenCount } from './model-capacity.js';
 import { modelPresetIdSchema } from './model-directory.js';
 import { modelDiagnosticFactsSchema, modelDiagnosticSchema } from './model-diagnostics.js';
@@ -18,7 +18,7 @@ export type { ReasoningEffort, ReasoningRoute } from './model-reasoning.js';
 const reasoningLevelsSchema = z.array(z.enum(['none', 'enabled', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'])).max(8)
   .refine(levels => new Set(levels).size === levels.length, 'Duplicate reasoning level');
 
-/** Model owner wire. SDK objects, credentials and native reasoning never enter public projections. */
+/** Model owner wire. SDK objects, credentials, signatures and encrypted reasoning stay private. */
 export const modelProtocolSchema = z.enum(['chat-completions', 'responses', 'messages']);
 const modelBaseUrlSchema = z.url().max(2000).regex(/^(?:https:\/\/[^\/?#@]+|http:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?)(?:\/[^?#]*)?$/);
 /** Deterministic input errors only; reachability and provider support require a connection check. */
@@ -125,19 +125,26 @@ export const modelProfileSchema = z.object({ modelId: z.string(), dialect: z.enu
 export const modelProfilesSchema = z.object({ profiles: z.array(modelProfileSchema), updatedAt: z.iso.datetime().optional(), stale: z.boolean() }).strict();
 export type ModelProfile = z.infer<typeof modelProfileSchema>;
 
+export const modelReasoningEffortSchema = z.enum(modelReasoningEfforts);
+export type ModelReasoningEffort = z.infer<typeof modelReasoningEffortSchema>;
+export function supportsModelReasoningEffort(connection: ModelConfiguration) {
+  return resolveModelProfile(connection).efforts.some(effort => effort !== 'auto');
+}
+
 export const modelCheckPolicySchema = z.object({ checksAllowed: z.boolean(), maxChecksPerHour: z.number().int().min(1).max(60),
   maxOutputTokens: z.number().int().min(1).max(maximumModelTokenCount), timeoutMs: z.number().int().min(250).max(120000) }).strict();
 export const schoolModelInputSchema = saveModelConnectionSchema.safeExtend({ policy: modelCheckPolicySchema });
 export const schoolModelSchema = z.object({ kind: z.literal('school'), connection: modelConnectionSchema,
-  policy: modelCheckPolicySchema }).strict();
+  policy: modelCheckPolicySchema, reasoningEffort: modelReasoningEffortSchema.optional() }).strict();
 export const personalModelChoiceSchema = z.object({ kind: z.literal('personal'), connection: modelConnectionSchema,
-  policy: modelCheckPolicySchema, origin: z.enum(['self', 'device', 'grant']), grantId: z.uuid().optional() }).strict();
+  policy: modelCheckPolicySchema, origin: z.enum(['self', 'device', 'grant']), grantId: z.uuid().optional(),
+  reasoningEffort: modelReasoningEffortSchema.optional() }).strict();
 export const modelChoiceSchema = z.union([schoolModelSchema, personalModelChoiceSchema]);
 export const modelSelectionSchema = z.object({ version: z.number().int().nonnegative(), selected: modelChoiceSchema.nullable(),
   options: z.array(modelChoiceSchema), unavailableReason: z.string().optional(), restoredInstallation: z.literal(true).optional() }).strict();
 export const modelSelectionSourceSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('school'), connectionId: z.uuid() }).strict(),
-  z.object({ kind: z.literal('personal'), connectionId: z.uuid(), owner: z.enum(['self', 'device']).optional(), grantId: z.uuid().optional() }).strict()
+  z.object({ kind: z.literal('school'), connectionId: z.uuid(), reasoningEffort: modelReasoningEffortSchema.optional() }).strict(),
+  z.object({ kind: z.literal('personal'), connectionId: z.uuid(), reasoningEffort: modelReasoningEffortSchema.optional(), owner: z.enum(['self', 'device']).optional(), grantId: z.uuid().optional() }).strict()
     .refine(value => !!value.owner || !!value.grantId, 'Personal source requires an owner'),
 ]);
 export const selectModelSchema = z.object({ requestId: z.uuid(), expectedVersion: z.number().int().nonnegative(), source: modelSelectionSourceSchema }).strict();
@@ -173,6 +180,7 @@ export const modelToolSchema = z.object({ name: z.string().regex(/^[a-zA-Z0-9_-]
 export const modelToolProgressSchema = z.object({ callId: z.string().min(1).max(200), name: modelToolSchema.shape.name,
   property: z.literal('html'), text: z.string().max(200_000) }).strict();
 export const modelProgressSchema = z.object({ text: z.string().max(1_000_000), revision: z.number().int().positive(),
+  thinking: z.string().max(16000).optional(),
   tools: z.array(modelToolProgressSchema).max(8).optional() }).strict();
 export type ModelToolProgress = z.infer<typeof modelToolProgressSchema>;
 export type ModelProgress = z.infer<typeof modelProgressSchema>;

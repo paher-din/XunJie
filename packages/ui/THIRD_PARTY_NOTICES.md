@@ -10,6 +10,11 @@ https://ui.shadcn.com/docs/components/radix/sonner, inspected using
 instead of Next.js theme integration and Tailwind. Sonner's MIT license is
 distributed with the dependency.
 
+`src/chat/AgentActivity.tsx` adapts Trace, Attachment and Questionnaire from
+https://ui.shadcn.com/docs/components/base/trace,
+https://ui.shadcn.com/docs/components/base/attachment and
+https://ui.shadcn.com/docs/components/base/questionnaire. Trace disclosures use Base UI Collapsible with XunJie tokens; answer controls use native HTML semantics. Running states reuse Astryx Spinner. Business state is supplied by the caller.
+
 MIT License
 
 Copyright (c) 2023 shadcn
@@ -110,6 +115,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 # Astryx
+
+`src/chat/PromptAdditions.tsx` uses the installed Astryx
+`ChatComposerTokenElement` from `@astryxdesign/core@0.7.13` for inline Skill
+command badges, following the ChatLayout example. Colors and typography use
+XunJie tokens; draft state, command lookup and version pins belong to the caller.
+Documentation: https://astryx.atmeta.com/components/ChatLayout
 
 `src/settings/ModelTestFeedback.tsx` wraps the installed Astryx `Banner` for
 persistent test failures and partial results. XunJie tokens, typography and

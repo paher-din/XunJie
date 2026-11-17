@@ -1,8 +1,9 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type ComponentPropsWithoutRef, type RefObject } from 'react'
 import { Icon } from '../icons'
 import { PromptModelPicker, type PromptModelOption } from './PromptModelPicker'
 export type { PromptModelOption } from './PromptModelPicker'
 import { AttachmentTile, type PromptAttachment, type TileRect } from './AttachmentTile'
+import { PromptAdditions, PromptContextChips, type PromptAdditionsProps, type PromptContextItem } from './PromptAdditions'
 
 export interface PromptInputProps<Effort extends string = string> {
   value: string
@@ -12,7 +13,17 @@ export interface PromptInputProps<Effort extends string = string> {
   submitting?: boolean
   busy?: boolean
   onStop?: () => void
+  onResume?: () => void
+  resumeLabel?: string
+  actionDisabled?: boolean
   autoFocus?: boolean
+  inputRef?: RefObject<HTMLTextAreaElement | null>
+  textareaProps?: Pick<ComponentPropsWithoutRef<'textarea'>,
+    'aria-label' | 'role' | 'aria-expanded' | 'aria-controls' | 'aria-activedescendant' | 'aria-haspopup'
+    | 'disabled' | 'readOnly' | 'maxLength' | 'onFocus' | 'onBlur' | 'onSelect' | 'onKeyDown' | 'onCompositionStart' | 'onCompositionEnd'>
+  sendLabel?: string
+  additions?: Omit<PromptAdditionsProps, 'onFiles' | 'restoreFocus'>
+  contextItems?: readonly PromptContextItem[]
   attachments: readonly PromptAttachment[]
   /** 未接入附件的宿主可以移除入口和拖放行为。 */
   showAttachments?: boolean
@@ -24,11 +35,13 @@ export interface PromptInputProps<Effort extends string = string> {
   model: PromptModelOption
   models: readonly PromptModelOption[]
   onModelChange: (id: string) => void
+  onModelSettings?: () => void
   modelDisabled?: boolean
   effort: string
   efforts: readonly Effort[]
   onEffortChange: (modelId: string, effort: Effort) => void
   effortDisabled?: boolean
+  effortTitle?: string
   showEffort?: boolean
   status?: { role: 'alert' | 'status'; text: string }
   /** 仅容纳上下文指示，不替代输入主体或模型菜单。容量事实由宿主提供。 */
@@ -37,9 +50,11 @@ export interface PromptInputProps<Effort extends string = string> {
 
 /** 完整受控输入 UI；不读取模型 store，不上传、读取文件或写入持久状态。 */
 export function PromptInput<Effort extends string = string>({ value, onChange, onSend, canSend,
-  submitting = false, busy = false, onStop, autoFocus, attachments, showAttachments = true, onAddFiles, onRemoveAttachment,
-  accept, attachmentTitle, model, models, onModelChange, modelDisabled, effort, efforts,
-  onEffortChange, effortDisabled, showEffort = true, status, contextIndicator }: PromptInputProps<Effort>) {
+  submitting = false, busy = false, onStop, onResume, resumeLabel = '继续生成', actionDisabled = false,
+  autoFocus, inputRef, textareaProps, sendLabel = '发送消息', additions, contextItems,
+  attachments, showAttachments = true, onAddFiles, onRemoveAttachment,
+  accept, attachmentTitle, model, models, onModelChange, onModelSettings, modelDisabled, effort, efforts,
+  onEffortChange, effortDisabled, effortTitle, showEffort = true, status, contextIndicator }: PromptInputProps<Effort>) {
   const [leaving, setLeaving] = useState<Record<string, TileRect>>({})
   const [dragging, setDragging] = useState(false)
   const [modelOpen, setModelOpen] = useState(false)
@@ -47,7 +62,9 @@ export function PromptInput<Effort extends string = string>({ value, onChange, o
   const [effortClosing, setEffortClosing] = useState(false)
   /** 附件区内容实测高度（px）：容器高度过渡到这个值，长/缩才不是直接切换。 */
   const [attachHeight, setAttachHeight] = useState(0)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const defaultTextareaRef = useRef<HTMLTextAreaElement>(null)
+  const textareaRef = inputRef ?? defaultTextareaRef
+  const composing = useRef(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const effortRef = useRef<HTMLDivElement>(null)
   const attachRowRef = useRef<HTMLDivElement>(null)
@@ -123,7 +140,25 @@ export function PromptInput<Effort extends string = string>({ value, onChange, o
     void el.offsetHeight // 提交「无过渡 + 旧高度」，下面这次改动才会被过渡接住
     el.style.transition = ''
     el.style.height = next + 'px'
-  }, [value])
+  }, [value, contextItems?.length])
+
+  // Inline tokens and a resized workspace can change the text column without changing its value.
+  useLayoutEffect(() => {
+    const el = textareaRef.current
+    if (!el) return
+    let width = el.clientWidth
+    const observer = new ResizeObserver(() => {
+      if (el.clientWidth === width) return
+      width = el.clientWidth
+      const transition = el.style.transition
+      el.style.transition = 'none'; el.style.height = '0px'
+      el.style.height = Math.min(el.scrollHeight, 200) + 'px'
+      void el.offsetHeight
+      el.style.transition = transition
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [textareaRef])
 
   // 附件区：外层容器高度 = 内层内容实测高度，增减瓦片（含换行、窗口变窄重排）都过渡过去。
   // 用 ResizeObserver 而不是按瓦片数量算：内容高度由 flex-wrap 决定，量出来最稳。
@@ -151,11 +186,11 @@ export function PromptInput<Effort extends string = string>({ value, onChange, o
     removeTimers.current.push(timer)
   }
 
-  const submit = () => { if (canSend) void onSend() }
+  const submit = () => { if (canSend && !composing.current) void onSend() }
   const activeId = attachments.find(a => a.progress !== undefined)?.id ?? null
   const visible = attachments.filter(a => a.progress === undefined || a.id === activeId || leaving[a.id] !== undefined)
   const inFlowCount = visible.filter(a => leaving[a.id] === undefined).length
-  useEffect(() => { if (autoFocus) textareaRef.current?.focus() }, [autoFocus])
+  useEffect(() => { if (autoFocus) textareaRef.current?.focus({ preventScroll: true }) }, [autoFocus, textareaRef])
   // 发送或宿主移除后丢弃对应退场标记；不持有附件资源或上传状态。
   useEffect(() => {
     setLeaving(previous => {
@@ -205,23 +240,37 @@ export function PromptInput<Effort extends string = string>({ value, onChange, o
           ))}
         </div>
       </div>
+      <div className="prompt-editor">
+      {contextItems && <PromptContextChips items={contextItems} restoreFocus={() => textareaRef.current?.focus({ preventScroll: true })} />}
       <textarea
         ref={textareaRef}
-        disabled={submitting}
         rows={1}
         aria-label="向 Agent 提问"
         placeholder="输入问题或探讨任务思路…"
+        {...textareaProps}
+        disabled={submitting || textareaProps?.disabled}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onCompositionStart={event => { composing.current = true; textareaProps?.onCompositionStart?.(event) }}
+        onCompositionEnd={event => { composing.current = false; textareaProps?.onCompositionEnd?.(event) }}
         onKeyDown={(e) => {
-          if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+          if (composing.current || e.nativeEvent.isComposing || e.keyCode === 229) return
+          textareaProps?.onKeyDown?.(e)
+          if (e.defaultPrevented) return
+          const last = contextItems?.at(-1)
+          if (e.key === 'Backspace' && e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0 && last?.remove) {
+            e.preventDefault(); last.remove(); return
+          }
+          if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault()
             submit()
           }
         }}
       />
+      </div>
       <div className="prompt-toolbar">
-        {showAttachments && <button
+        {additions ? <PromptAdditions {...additions} onFiles={() => fileRef.current?.click()}
+          restoreFocus={() => textareaRef.current?.focus({ preventScroll: true })} /> : showAttachments && <button
           type="button"
           className="prompt-attach"
           aria-label="添加附件"
@@ -234,7 +283,7 @@ export function PromptInput<Effort extends string = string>({ value, onChange, o
         <div className="prompt-actions">
           {contextIndicator}
           {status && <span role={status.role}>{status.text}</span>}
-          <PromptModelPicker model={model} models={models} onChange={onModelChange} disabled={modelDisabled}
+          <PromptModelPicker model={model} models={models} onChange={onModelChange} disabled={modelDisabled} onSettings={onModelSettings}
             open={modelOpen} onOpenChange={value => { setModelOpen(value); if (value) closeEffort() }} />
           {showEffort && <div className="prompt-effort" ref={effortRef}>
             <button
@@ -242,6 +291,7 @@ export function PromptInput<Effort extends string = string>({ value, onChange, o
               className={effortOpen ? 'prompt-model-btn open' : 'prompt-model-btn'}
               aria-label="切换思考强度"
               disabled={effortDisabled}
+              title={effortTitle}
               aria-expanded={effortOpen}
               aria-haspopup="menu"
               onClick={() => toggleEffort()}
@@ -259,6 +309,7 @@ export function PromptInput<Effort extends string = string>({ value, onChange, o
                   effortClosing ? 'prompt-model-menu effort closing' : 'prompt-model-menu effort'
                 }
                 role="menu"
+                aria-label="思考强度"
               >
                 <span className="mi-effort-title">思考强度</span>
                 {efforts.map((level) => (
@@ -269,11 +320,12 @@ export function PromptInput<Effort extends string = string>({ value, onChange, o
                     aria-checked={level === effort}
                     className={level === effort ? 'mi-effort-option on' : 'mi-effort-option'}
                     onClick={() => {
+                      if (effortDisabled || effortClosing) return
                       onEffortChange(model.id, level)
                       closeEffort()
                     }}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
+                      if (!effortDisabled && !effortClosing && (e.key === 'Enter' || e.key === ' ')) {
                         e.preventDefault()
                         onEffortChange(model.id, level)
                         closeEffort()
@@ -293,12 +345,16 @@ export function PromptInput<Effort extends string = string>({ value, onChange, o
               className="prompt-send stop"
               aria-label="停止生成"
               title="停止生成"
+              disabled={actionDisabled}
               onClick={onStop}
             >
               <Icon name="stop" size={18} />
             </button>
+          ) : onResume ? (
+            <button type="button" className="prompt-send" aria-label={resumeLabel} title={resumeLabel}
+              disabled={actionDisabled} onClick={onResume}><Icon name="play" size={18} /></button>
           ) : (
-            <button type="submit" className="prompt-send" aria-label="发送消息" disabled={!canSend}>
+            <button type="submit" className="prompt-send" aria-label={sendLabel} title={sendLabel} disabled={!canSend}>
               <Icon name="arrow-up" size={20} />
             </button>
           )}

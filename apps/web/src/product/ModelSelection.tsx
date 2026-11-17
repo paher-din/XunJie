@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { SpaceIdentity } from '@xunjie/contracts/spaces'
-import { modelSelectionSchema, selectModelSchema } from '@xunjie/contracts/model-connections'
+import { modelSelectionSchema, selectModelSchema, type ModelReasoningEffort } from '@xunjie/contracts/model-connections'
 import type { z } from 'zod'
 
 export type Selection = z.infer<typeof modelSelectionSchema>
@@ -9,6 +9,7 @@ const errors: Record<string, string> = { forbidden: '当前空间或模型连接
   unavailable: '原模型服务暂时不可用，请稍后重新读取。', maintenance: '模型服务正在维护，请稍后重试。' }
 const failure = (error: unknown) => error instanceof Error ? error.message : '选用结果尚未确认，请重新读取。'
 const choiceKey = (choice: Choice) => choice.kind + ':' + choice.connection.connectionId
+
 export function useModelSelection(identity: SpaceIdentity | undefined, spaceKey: string, namespace: string) {
   const scope = identity ? [namespace, spaceKey, identity.environmentId, identity.spaceId, identity.principalId].join('.') : ''
   const [state, setState] = useState<{ scope: string; selection: Selection | null; error: string; busy: boolean; stale: boolean }>({ scope: '', selection: null, error: '', busy: false, stale: false })
@@ -47,12 +48,12 @@ export function useModelSelection(identity: SpaceIdentity | undefined, spaceKey:
     catch (error) { if (current.current === scope) setState(previous => ({ ...previous, error: failure(error) })) }
     finally { if (current.current === scope) setState(previous => ({ ...previous, busy: false })) }
   }
-  const choose = async (choice: Choice, onSaved?: (selection: Selection) => void | Promise<void>) => { await act(async () => {
-    const operationKey = scope + ':' + choiceKey(choice)
+  const choose = async (choice: Choice, onSaved?: (selection: Selection) => void | Promise<void>, reasoningEffort?: ModelReasoningEffort) => { await act(async () => {
+    const operationKey = [scope, choiceKey(choice), reasoningEffort].join(':')
     const operation = pending.current.get(operationKey) ?? {
       requestId: crypto.randomUUID(), expectedVersion: state.selection!.version,
-      source: choice.kind === 'school' ? { kind: 'school' as const, connectionId: choice.connection.connectionId }
-        : { kind: 'personal' as const, connectionId: choice.connection.connectionId, owner: choice.origin === 'device' ? 'device' as const : 'self' as const },
+      source: choice.kind === 'school' ? { kind: 'school' as const, connectionId: choice.connection.connectionId, ...(reasoningEffort ? { reasoningEffort } : {}) }
+        : { kind: 'personal' as const, connectionId: choice.connection.connectionId, owner: choice.origin === 'device' ? 'device' as const : 'self' as const, ...(reasoningEffort ? { reasoningEffort } : {}) },
     }
     pending.current.set(operationKey, operation)
     let saved: Selection

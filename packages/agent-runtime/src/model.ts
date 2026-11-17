@@ -131,7 +131,7 @@ export function createModelAdapter(source: ModelGatewaySource, store: AgentStore
           if (input.onProgress) {
             const progress = await raceAbort(gateway.checks.progress(input.identity, attemptId), input.signal);
             if (progress && progress.revision > progressRevision) {
-              await input.onProgress({ attemptId, text: progress.text, revision: progress.revision, ...(progress.tools ? { tools: progress.tools as unknown as Json[] } : {}) });
+              await input.onProgress({ attemptId, text: progress.text, revision: progress.revision, ...(progress.thinking ? { thinking: progress.thinking } : {}), ...(progress.tools ? { tools: progress.tools as unknown as Json[] } : {}) });
               progressRevision = progress.revision;
             }
           }
@@ -160,7 +160,11 @@ export function createModelAdapter(source: ModelGatewaySource, store: AgentStore
         const current = await gateway.segments.read(input.identity, segment.segmentId);
         await store.setSessionState(input.sessionId, { ...(await store.sessionState(input.sessionId)), segment: { segmentId: current.segmentId, sequence: current.sequence, closed: current.closed } }, input.turnId);
         return { attemptId, requestRef: fact.requestRef, responseRef: fact.resultRef, text: fact.text,
-          toolIntents: fact.toolIntents ?? [], usage: fact.usage, segmentId: segment.segmentId, segmentSequence: current.sequence };
+          toolIntents: fact.toolIntents ?? [], usage: fact.usage, segmentId: segment.segmentId, segmentSequence: current.sequence,
+          ...(connection.connectionId && fact.usage.inputTokens !== undefined ? { contextUsage: {
+            model: { connectionId: connection.connectionId, version: connection.version }, tokens: fact.usage.inputTokens,
+            lowerBound: fact.usage.state !== 'final',
+          } } : {}) };
       }
       await store.finishAttempt(input.stepId, attemptId, { state: 'failed', usage: fact.usage, responseRef: fact.resultRef, error: fact.reason || fact.state });
       lastError = fact.reason || fact.state;

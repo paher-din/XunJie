@@ -68,7 +68,7 @@ export function useAgentSession(client: AgentSessionsClient, sessionId: string |
     reading.current = { scope, promise: pending }; return pending
   }, [client, sessionId])
   const active = !!conversation?.turns.some(turn => turn.state === 'active')
-  useViewPolling(refresh, scope, active ? 1000 : 5000, !!sessionId && viewActive)
+  useViewPolling(refresh, scope, active ? 200 : 5000, !!sessionId && viewActive)
   const perform = useCallback(async (operation: () => Promise<unknown>) => {
     const expected = scope
     if (!writable) throw new Error('当前会话只读。')

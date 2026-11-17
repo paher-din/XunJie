@@ -413,6 +413,14 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
   }
   async function sourceDescription(connection: Connection) {
     if (!connection.grant) throw new StorageError('forbidden');
+    if (localStudyMode(connection)) {
+      await ensureStudy(connection);
+      await assertStudyIdentity(connection);
+      // Downloaded course bytes and learning state are owned by this device. The school
+      // authenticates the member and delivers releases; it need not host an Agent API.
+      return { identity: connection.grant.identity, learningTarget: local!.target,
+        courseTarget: local!.courseTarget ?? local!.target };
+    }
     const parsed = agentSourceDescriptionSchema.safeParse(await call(connection, 'agent-sources', undefined, true));
     if (!parsed.success) throw new StorageError('incompatible');
     const source = parsed.data;

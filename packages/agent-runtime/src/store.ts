@@ -10,7 +10,7 @@ import {
   type AgentStep, type AgentAttempt, type AgentToolCall, type AgentQuestion, type AgentNotification,
   type AgentToolResult, type AgentTurnBudget, type AgentQuestionResponse, type AgentDispatchPermit,
 } from '@xunjie/contracts/agent-runtime';
-import type { Facts, HistoryEntry, TaskTerminalFact, ToolEffectReference } from './ports.js';
+import type { Facts, HistoryEntry, TaskTerminalFact, ToolEffectReference, GeneratedResponse } from './ports.js';
 import { AgentError } from './errors.js';
 
 export const agentRuntimeMigrations: readonly Migration[] = [{ version: 1, name: 'independent-agent-sessions', sql: `
@@ -322,14 +322,43 @@ export function createAgentStore(storage: OwnedStorage, options: StoreOptions) {
       await tx.query('SELECT session_id FROM agent_runtime_sessions WHERE session_id=$1 FOR UPDATE', [sessionId]);
       const { rows: [row] } = await tx.query('SELECT * FROM agent_inputs WHERE session_id=$1 AND input_id=$2 FOR UPDATE', [sessionId, inputId]);
       if (!row) throw new StorageError('missing');
-      if (row.state !== 'pending' || Number(row.version) !== control.expectedVersion) throw new StorageError('conflict');
+      if (row.state === 'removed' || Number(row.version) !== control.expectedVersion) throw new StorageError('conflict');
+      const { rows: [turnRow] } = await tx.query('SELECT * FROM agent_turns WHERE session_id=$1 AND turn_id=$2', [sessionId, row.turn_id]);
+      if (!turnRow) throw new StorageError('corrupt');
+      const currentTurn = turnFromRow(turnRow);
+      const replacing = control.operation === 'edit' && (row.state !== 'pending' || currentTurn.state !== 'active');
+      let turnId = String(row.turn_id);
+      const retiredTurnIds: string[] = [];
+      if (replacing) {
+        if (await activeTurn(tx, sessionId)) throw new StorageError('conflict');
+        const { rows: [latest] } = await tx.query(`SELECT input_id FROM agent_inputs WHERE session_id=$1 AND state<>'removed'
+          AND NOT (body->'context' ? 'questionId') ORDER BY seq DESC LIMIT 1`, [sessionId]);
+        if (latest?.input_id !== inputId) throw new StorageError('conflict');
+        const { rows: retired } = await tx.query('SELECT turn_id FROM agent_turns WHERE session_id=$1 AND created_at >= $2', [sessionId, currentTurn.createdAt]);
+        retiredTurnIds.push(...retired.map(item => String(item.turn_id)));
+        const { rows: [saved] } = await tx.query('SELECT state FROM agent_runtime_sessions WHERE session_id=$1', [sessionId]);
+        const state = facts(saved!.state), history = (state.history ?? []) as unknown as HistoryEntry[];
+        const index = history.findIndex(entry => entry.role === 'user' && entry.id === inputId);
+        state.history = JSON.parse(JSON.stringify(index < 0 ? (row.state === 'pending' ? history : []) : history.slice(0, index)));
+        const { rows: answers } = await tx.query(`UPDATE agent_inputs SET state='removed',adopted_step_id=NULL
+          WHERE session_id=$1 AND seq>$2 AND body->'context' ? 'questionId' RETURNING input_id`, [sessionId, row.seq]);
+        const retiredAnswers = new Set(answers.map(answer => String(answer.input_id)));
+        if (Array.isArray(state.answerInbox)) state.answerInbox = state.answerInbox.filter(answer =>
+          !answer || typeof answer !== 'object' || Array.isArray(answer) || !retiredAnswers.has(String(answer.inputId)));
+        delete state.segment; delete state.prefixDigest; delete state.compactionAdoption;
+        turnId = await insertTurn(tx, sessionId, control.requestId, 'user', null);
+        await tx.query('UPDATE agent_runtime_sessions SET state=$2,automatic_wake_blocked=NULL WHERE session_id=$1', [sessionId, state]);
+        await appendEvent(tx, sessionId, 'turn-started', { turnId, trigger: 'user' });
+      } else if (row.state !== 'pending') throw new StorageError('conflict');
       const original = agentInputSchema.parse(row.body);
       const input = control.operation === 'remove' ? original : agentInputSchema.parse({ ...original,
         ...(control.text !== undefined ? { text: control.text } : {}), ...(control.context !== undefined ? { context: control.context } : {}) });
-      const { rows: [updated] } = await tx.query(`UPDATE agent_inputs SET body=$2, version=version+1,
-        state=CASE WHEN $3 THEN 'removed' ELSE state END WHERE input_id=$1 RETURNING *`, [inputId, input, control.operation === 'remove']);
+      const { rows: [updated] } = await tx.query(`UPDATE agent_inputs SET body=$2, version=version+1,turn_id=$4,
+        state=CASE WHEN $3 THEN 'removed' WHEN $5 THEN 'pending' ELSE state END,
+        adopted_step_id=CASE WHEN $5 THEN NULL ELSE adopted_step_id END WHERE input_id=$1 RETURNING *`, [inputId, input, control.operation === 'remove', turnId, replacing]);
       await appendEvent(tx, sessionId, 'input-' + (control.operation === 'remove' ? 'removed' : 'edited'), {
-        turnId: row.turn_id, inputId, version: Number(updated!.version), requestId: control.requestId });
+        turnId, inputId, version: Number(updated!.version), requestId: control.requestId,
+        ...(replacing ? { retiredTurnIds } : {}) });
       return { requestId: control.requestId, input: inputFromRow(updated!) };
     });
     return receipt.result as { requestId: string; input: AgentSessionInput };
@@ -554,7 +583,7 @@ export function createAgentStore(storage: OwnedStorage, options: StoreOptions) {
     });
   }
   /** Save the unique selected response and its whole tool batch (≤8). >8 is a protocol error handled by the loop. */
-  async function saveResponse(stepId: string, attemptId: string, response: { text: string; toolIntents: readonly { callId: string; name: string; arguments: Facts }[]; resultRef: string | null }, toolCalls: { toolCallId: string; nativeCallId: string; name: string; input: Facts; executionMode: 'foreground' | 'background' }[]) {
+  async function saveResponse(stepId: string, attemptId: string, response: { text: string; toolIntents: readonly { callId: string; name: string; arguments: Facts }[]; resultRef: string | null; contextUsage?: GeneratedResponse['contextUsage'] }, toolCalls: { toolCallId: string; nativeCallId: string; name: string; input: Facts; executionMode: 'foreground' | 'background' }[]) {
     const sessionId = (await storage.read('SELECT t.session_id FROM agent_steps s JOIN agent_turns t USING(turn_id) WHERE s.step_id=$1', [stepId])).rows[0]?.session_id as string;
     return transition(sessionId, async tx => {
       const { rows: [step] } = await tx.query('SELECT * FROM agent_steps WHERE step_id=$1 FOR UPDATE', [stepId]);
@@ -569,7 +598,8 @@ export function createAgentStore(storage: OwnedStorage, options: StoreOptions) {
           VALUES($1,$2,$3,$4,$5,$6,$7,'pending') ON CONFLICT(tool_call_id) DO NOTHING`,
           [call.toolCallId, stepId, index, call.nativeCallId, call.name, call.input, call.executionMode]);
       }
-      await appendEvent(tx, sessionId, 'assistant', { turnId: step.turn_id, stepId, attemptId, text: response.text, resultRef: response.resultRef });
+      await appendEvent(tx, sessionId, 'assistant', { turnId: step.turn_id, stepId, attemptId, text: response.text, resultRef: response.resultRef,
+        ...(response.contextUsage ? { contextUsage: response.contextUsage } : {}) });
       for (const call of toolCalls) await appendEvent(tx, sessionId, 'tool-prepared', { turnId: step.turn_id, stepId, toolCallId: call.toolCallId, name: call.name, callId: call.nativeCallId });
     });
   }
@@ -730,7 +760,7 @@ export function createAgentStore(storage: OwnedStorage, options: StoreOptions) {
       await tx.query('UPDATE agent_runtime_sessions SET state=$2 WHERE session_id=$1', [sessionId, state]);
     });
   }
-  async function recordProgress(sessionId: string, attemptId: string, progress: { revision: number; text: string; tools?: readonly unknown[] | undefined }) {
+  async function recordProgress(sessionId: string, attemptId: string, progress: { revision: number; text: string; thinking?: string; tools?: readonly unknown[] | undefined }) {
     return transition(sessionId, async tx => {
       const { rows: [step] } = await tx.query('SELECT s.step_id, s.turn_id FROM agent_attempts a JOIN agent_steps s USING(step_id) WHERE a.attempt_id=$1', [attemptId]);
       if (!step) throw new StorageError('missing');

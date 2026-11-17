@@ -22,7 +22,7 @@ export interface LoopDependencies {
   ask(turnId: string, stepId: string, toolCallId: string, input: AskInput): Promise<AskOutcome>;
   onLateAcceptance?(turnId: string): void;
   onCallTimeout?(turnId: string, call: AgentToolCall, reference: ToolEffectReference): Promise<void>;
-  onProgress(sessionId: string, turnId: string, stepId: string, attemptId: string, progress: { revision: number; text: string; tools?: readonly Json[] | undefined }): Promise<void>;
+  onProgress(sessionId: string, turnId: string, stepId: string, attemptId: string, progress: { revision: number; text: string; thinking?: string; tools?: readonly Json[] | undefined }): Promise<void>;
 }
 const MAX_TOOLS_PER_RESPONSE = 8;
 const asJson = (value: unknown): Json => JSON.parse(JSON.stringify(value)) as Json;
@@ -96,7 +96,7 @@ async function runStep(deps: LoopDependencies, turn: AgentTurn, step: AgentStep,
   });
   const intents = response.toolIntents;
   if (intents.length > MAX_TOOLS_PER_RESPONSE) {
-    await store.saveResponse(step.stepId, response.attemptId, { text: response.text, toolIntents: [], resultRef: response.responseRef }, []);
+    await store.saveResponse(step.stepId, response.attemptId, { text: response.text, toolIntents: [], resultRef: response.responseRef, ...(response.contextUsage ? { contextUsage: response.contextUsage } : {}) }, []);
     throw new AgentError('protocol-error'); // whole response rejected; zero dispatch
   }
   const toolCalls: { toolCallId: string; nativeCallId: string; name: string; input: Facts; executionMode: 'foreground' | 'background' }[] = [];
@@ -109,12 +109,12 @@ async function runStep(deps: LoopDependencies, turn: AgentTurn, step: AgentStep,
       nativeCallId: intent.callId, name: intent.name, input, executionMode: mode });
   }
   if (counts.toolCalls + toolCalls.length > budget.maxToolCalls) {
-    await store.saveResponse(step.stepId, response.attemptId, { text: response.text, toolIntents: asJson(intents) as never, resultRef: response.responseRef }, toolCalls);
+    await store.saveResponse(step.stepId, response.attemptId, { text: response.text, toolIntents: asJson(intents) as never, resultRef: response.responseRef, ...(response.contextUsage ? { contextUsage: response.contextUsage } : {}) }, toolCalls);
     for (const call of toolCalls) await store.saveToolResult(call.toolCallId, { kind: 'not_started', reason: 'budget_exhausted' }, null);
     await store.completeStep(step.stepId);
     throw new AgentError('budget-exhausted');
   }
-  await store.saveResponse(step.stepId, response.attemptId, { text: response.text, toolIntents: asJson(intents) as never, resultRef: response.responseRef }, toolCalls);
+  await store.saveResponse(step.stepId, response.attemptId, { text: response.text, toolIntents: asJson(intents) as never, resultRef: response.responseRef, ...(response.contextUsage ? { contextUsage: response.contextUsage } : {}) }, toolCalls);
   const state = await store.sessionState(sessionId);
   const history = appendHistory(conversationHistory(state), [
     ...inputs.map(i => ({ id: i.inputId, version: i.version, role: 'user' as const, text: i.input.text })),

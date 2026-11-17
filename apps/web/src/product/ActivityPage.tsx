@@ -1,3 +1,5 @@
+import { ChatViewport, BackToBottom } from '@xunjie/ui/chat'
+import { useConversationScroll } from './conversation-scroll'
 import { useCallback, useEffect, useImperativeHandle, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { GuidancePresentation } from '@xunjie/ui/workspace'
 import { toast } from '@xunjie/ui/feedback'
@@ -11,15 +13,14 @@ import type { TeachingToolLocator } from './TeachingToolRecords'
 import { ComponentView } from '../component-host/ComponentView'
 import { useActivitySession } from './ActivitySession'
 import { WorkspacePopover } from '../components/workspace/WorkspacePopover'
-import { SelectionToolbar, WorkspaceReferenceComposer, useWorkspaceReferences } from '../components/workspace/references'
+import { SelectionToolbar, useWorkspaceReferences } from '../components/workspace/references'
 import { ActivityWorkspace, type ActivityWorkspaceHandle } from './ActivityWorkspace'
 import { ActivityActions } from './ActivityActions'
 import { ActivityConversation } from './ActivityConversation'
 import { ExecutionPanel } from './ExecutionPanel'
 import { NativeSessionPanel } from './NativeSessionPanel'
 import { workspaceScope } from './learningTransport'
-import { AgentInputMode } from './AgentInteraction'
-import { AgentModelPicker, useAgentModelPicker } from './AgentModelPicker'
+import { ActivityPromptComposer } from './ActivityPromptComposer'
 import type { ModelSelectionController } from './ModelSelection'
 import { waitForComposerComposition } from '../components/workspace/references/composer-view'
 import { PdfMaterials, PdfMaterialEntries, usePdfMaterials } from './PdfMaterials'
@@ -78,8 +79,9 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
   const [conversationActive, setConversationActive] = useState(false)
   const [tabsSlot, setTabsSlot] = useState<HTMLDivElement | null>(null)
   const references = useWorkspaceReferences()
+  const conversationScroll = useConversationScroll()
   const ask = useRef<HTMLButtonElement>(null)
-  const { workspace, draft, actions, execution, sessions, inputInteraction, agent, agentSessionError, retryAgentSession } = useActivitySession()
+  const { workspace, draft, actions, execution, sessions, agent, agentSessionError, retryAgentSession } = useActivitySession()
   const root = useRef<HTMLDivElement>(null)
   const [tool, setTool] = useState<ToolKey>('design')
   const center = useRef<CenterToolAreaHandle>(null)
@@ -93,7 +95,7 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
   const [workLocation, setWorkLocation] = useState<{ objectId: string }>()
   const [componentLocation, setComponentLocation] = useState<ComponentResultLocation & { key: string }>()
   const readOnly = workspace.isReadOnly()
-  const picker = useAgentModelPicker(selection)
+  const sending = useRef<Promise<void> | null>(null)
   const scope = workspaceScope(namespace, activity)
   const [layoutReady, setLayoutReady] = useState(false)
   useEffect(() => { const taskId = namespace + ':' + activity.activityId; includePdfTab(taskId); includeCenterTab(taskId, PERSONAL_TOOL); setLayoutReady(true) }, [namespace, activity.activityId])
@@ -292,17 +294,19 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
           <ActivityWorkspace activity={activity} spaceKey={spaceKey} namespace={namespace} authorized={authorized} location={workLocation} /></>} />}
       <aside className="product-discussion" aria-label="问题与引用" inert={!references.open}
         style={references.open ? undefined : { display: 'none' }}>
+        <header className="product-discussion-header"><h2>与 Agent 对话</h2><button type="button" onClick={() => { references.setOpen(false); ask.current?.focus() }}>收起对话</button></header>
+        <ChatViewport scrollerRef={conversationScroll.scroller} onScroll={conversationScroll.onScroll} onJump={conversationScroll.onJump}
+          busy={conversationActive} phase={conversationActive ? 'streaming' : undefined} padSuggestions={false} queued={false}>
         <ActivityConversation activity={activity} spaceKey={spaceKey} namespace={namespace} onModels={onModels}
           onActiveChange={setConversationActive} onLocateTool={locateTool}
           focusQuestionId={focusQuestionId} onQuestionFocused={questionFocused} artifacts={artifacts} onOpenArtifact={openArtifact} />
         {agentSessionError && <p role="alert">{agentSessionError}<button type="button" onClick={retryAgentSession}>重新打开对话</button></p>}
-        <AgentInputMode active={conversationActive} />
-        <WorkspaceReferenceComposer closeFocusRef={ask}
-          modelPicker={<AgentModelPicker controller={picker} disabled={!authorized || readOnly} onSettings={onModels} />}
-          sendBlocked={!inputInteraction.ready || !agent?.sessionId || picker.blocked}
-          blockedHint="问题与引用仍保留。"
-          blockedLabel="暂时不能发送"
-          submitLabel={conversationActive ? inputInteraction.mode === 'queue' ? '排队发送' : '补充当前任务' : '发送问题'} /><ActivityActions />
+        </ChatViewport>
+        <div className="product-discussion-input">
+        {!conversationScroll.atBottom && <BackToBottom onClick={conversationScroll.backToBottom} />}
+        <ActivityPromptComposer activity={activity} spaceKey={spaceKey} namespace={namespace} authorized={authorized}
+          selection={selection} onModels={onModels} active={conversationActive} generating={conversationActive}
+          sending={sending} closeFocusRef={ask} /><ActivityActions /></div>
       </aside>
     </div>
     <SelectionToolbar />

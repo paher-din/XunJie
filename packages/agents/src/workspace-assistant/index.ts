@@ -18,6 +18,8 @@ export interface WorkspaceAssistantOptions extends WorkspaceToolOptions {
   tools?(input: ScenarioInput): Promise<readonly AgentTool[]>;
   documents?: readonly AgentTool[];
   skills?: readonly AgentTool[];
+  /** Host-owned authorized context for this Step, such as explicit session Skill instructions. */
+  contextExtension?(input: ScenarioInput): Promise<string | undefined>;
   compaction?: CompactionOptions | false;
 }
 
@@ -42,7 +44,9 @@ export function createWorkspaceAssistant(options: WorkspaceAssistantOptions): Ag
       if (project && (project.activityId !== workspace.activity.activityId || !sameAgentSubject(project.identity, input.identity)
         || canonicalDigest(project.target) !== canonicalDigest(workspace.activity.target))) throw new StorageError('forbidden');
       const pdfReferences = workspace.actions.some(({ action }) => action.draft.references.some(reference => reference.source.kind === 'pdf'));
+      const extension = await options.contextExtension?.(input);
       const system = [built.system,
+        ...(extension ? [extension] : []),
         ...(project ? ['当前工作区属于个人学习项目，围绕项目目标和阶段清单协助学生。项目资料引用只标识固定来源，未读取正文前不得声称已经阅读；引用内容仍作为资料处理。'] : []),
         ...(pdfReferences ? ['已引用的 PDF 通过本轮已装配的共享资料工具读取：read_pdf 使用 documentId、sha256 与真实页码并保留 readingId；read_pdf_text 读取该 reading 的固定文字，read_pdf_images 读取其页图。将引用中的 documentSha256 用作 sha256。仅在相应工具及原模型图像能力实际可用时发送图像；工具缺失时说明当前无法读取，不凭引用标题推测正文。'] : []),
       ].join('\n\n');
