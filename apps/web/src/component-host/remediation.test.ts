@@ -21,7 +21,12 @@ describe('retired authority after asynchronous receipt lookup', () => {
       const workspace = new ReliableWorkspace('review-scope', { read: vi.fn(), receipt: vi.fn(), sync: vi.fn() })
       const current = { objectId: crypto.randomUUID(), contentId: crypto.randomUUID(), name: 'current.txt', kind: 'text' as const, encoding: 'utf8' as const, mediaType: 'text/plain', value: 'CURRENT INPUT' }
       workspace.state = { ...workspace.state, files: [current], ready: true }
-      const notify = vi.fn(); workspace.subscribe(notify)
+      const change = vi.spyOn(workspace, 'change'), retainConflict = vi.spyOn(workspace, 'retainConflict')
+      const notify = vi.fn(() => {
+        // Protection status may notify while admission is pending; retired input must never appear, even transiently.
+        expect(workspace.snapshot().files).toEqual([current])
+        expect(workspace.snapshot().conflict).toBeUndefined()
+      }); workspace.subscribe(notify)
       let allowed = true
       const bridge = createComponentBridge(workspace, crypto.randomUUID(), binding, () => allowed)
       const pending = bridge.handle({ hostApiVersion: 1, connectionId: bridge.connectionId, instanceId: bridge.instanceId,
@@ -32,7 +37,8 @@ describe('retired authority after asynchronous receipt lookup', () => {
       if (failure) reject(new Error('read failed')); else resolve(undefined)
       await expect(pending).rejects.toThrow(retired === 'closed' ? 'stale-connection' : 'forbidden')
       expect(workspace.snapshot().files).toEqual([current]); expect(workspace.snapshot().conflict).toBeUndefined()
-      expect(notify).not.toHaveBeenCalled()
+      expect(change).not.toHaveBeenCalled(); expect(retainConflict).not.toHaveBeenCalled()
+      expect(workspace.snapshot().protection?.unprotected).toBe(false)
     })
   }
 })
