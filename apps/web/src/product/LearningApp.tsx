@@ -50,6 +50,11 @@ const PersonalModelSettings = lazy(() => loadModelSettings().then(module => ({ d
 
 type Account = { key: string; accountName: string; schoolName: string }
 type Context = { clientNamespace: string; profile: string; readOnly?: boolean; identities: { key: string; identity: SpaceIdentity }[]; account?: Account | null }
+
+function activityBelongsTo(activity: LearningActivity, identity: SpaceIdentity) {
+  return activity.identity.kind === identity.kind && activity.identity.environmentId === identity.environmentId
+    && activity.identity.spaceId === identity.spaceId && activity.identity.principalId === identity.principalId
+}
 // Explicit null means unbound. Older servers fall back to one school identity,
 // never the requested route, so a deep link cannot select a different account.
 function normalizeContext(value: Context): Context {
@@ -278,6 +283,7 @@ function LearningView() {
   const [reload, setReload] = useState(0)
   const epoch = useRef(0)
   const authEpoch = useRef(0)
+  const pendingStatus = useRef(new Set<string>())
   const currentView = useRef({ context, key, opened })
   currentView.current = { context, key, opened }
   useEffect(() => {
@@ -377,9 +383,7 @@ function LearningView() {
     ? { identity: personalIdentity, spaceKey: personalKey, namespace: context.clientNamespace } : undefined, contextVerified)
   const coursePendingKey = context && identity?.kind === 'school'
     ? `xj.course-activity-request.${context.clientNamespace}.${identity.environmentId}.${identity.spaceId}.${identity.principalId}` : ''
-  const activityAuthorized = !!opened && !!identity && contextVerified
-    && opened.identity.environmentId === identity.environmentId && opened.identity.spaceId === identity.spaceId
-    && opened.identity.principalId === identity.principalId
+  const activityAuthorized = !!opened && !!identity && contextVerified && activityBelongsTo(opened, identity)
 
   useEffect(() => { setArchiveOpen(false); setHistoryQuery('') }, [pendingKey])
 
@@ -470,16 +474,24 @@ function LearningView() {
   const homeVisible = !agentOpen && !modelsOpen && !new URLSearchParams(route.search).has('activity') && !unavailableRoute
   const homeScope = context ? JSON.stringify([context.clientNamespace, context.identities]) : ''
   const readCache = useMemo(() => new LearningReadCache(), [homeScope, reload, contextVerified])
+  const activityView = useRef({ homeScope, readCache, key, pendingKey })
+  activityView.current = { homeScope, readCache, key, pendingKey }
   const readActivities = (space: string) => readCache.read<LearningActivity[]>(space, 'activities', async () =>
     (await api('activities', undefined, space) as unknown[]).map(item => activitySchema.parse(item)))
   const readCourses = (space: string, refresh: boolean) => readCache.read<Course[]>(space, 'courses', async () =>
     courseCatalogSchema.parse(await api('courses', undefined, space)).courses, { maxAgeMs: refresh ? 0 : undefined })
   function publishActivity(activity: LearningActivity, space = key) {
-    readCache.set(space, 'activities/' + activity.activityId, activity)
-    const previous = readCache.peek<LearningActivity[]>(space, 'activities') ?? []
+    const view = activityView.current
+    if (view.homeScope !== homeScope) return
+    const cache = view.readCache
+    cache.set(space, 'activities/' + activity.activityId, activity)
+    const previous = cache.peek<LearningActivity[]>(space, 'activities') ?? readCache.peek<LearningActivity[]>(space, 'activities') ?? []
     const next = [activity, ...previous.filter(item => item.activityId !== activity.activityId)]
-    readCache.set(space, 'activities', next)
-    setActivities(next); setActivitiesFor(pendingKey)
+    cache.set(space, 'activities', next)
+    if (view.key === space) {
+      setActivities(next)
+      setActivitiesFor(view.pendingKey)
+    }
     setHomeData(previous => previous?.scope === homeScope ? { ...previous,
       ...(space === personalKey ? { personal: next } : { school: next }) } : previous)
   }
@@ -609,7 +621,7 @@ function LearningView() {
     void readCache.read(desiredKey, 'activities/' + activityId, async () =>
       activitySchema.parse(await api('activities/' + activityId, undefined, desiredKey))).then(value => {
       if (applies()) {
-        const activity = activitySchema.parse(value)
+        const activity = readCache.peek<LearningActivity>(desiredKey, 'activities/' + activityId) ?? value
         try { sessionStorage.setItem(`xj.works-activity.${context.clientNamespace}.${desiredKey}.${activity.activityId}`, JSON.stringify(activity)) } catch { /* Optional reopening hint. */ }
         setOpened(activity)
         returnFocus.current ??= { key: desiredKey, activityId: activity.activityId, scrollTop: 0 }
@@ -706,21 +718,43 @@ function LearningView() {
     if (coursePendingKey) localStorage.removeItem(coursePendingKey)
     setCoursePending(null); setError(''); setNotice('')
   }
-  async function openActivity(activityId: string, _asConversation = false, sourceKey = key) {
+  async function openActivity(activityId: string, _asConversation = false, sourceKey = key, courseId?: string) {
     if (!context?.identities.some(item => item.key === sourceKey)) return
     void Promise.all([loadReferences(), loadActivityPage()]).catch(() => {})
     await protectActivity()
     returnFocus.current = { key: sourceKey, activityId, scrollTop: document.querySelector('.main')?.scrollTop ?? 0 }
     const params = new URLSearchParams(currentSearch.current)
-    params.set('activity', activityId); params.set('space', sourceKey); params.delete('course'); params.delete('artifact')
+    params.set('activity', activityId); params.set('space', sourceKey); params.delete('artifact')
+    if (courseId) params.set('course', courseId)
+    else params.delete('course')
     params.delete('view'); params.delete('session')
     navigate({ pathname: route.pathname, search: params.toString() })
   }
-  async function changeStatus(activity: LearningActivity) {
-    const generation = epoch.current
-    const next = activitySchema.parse(await api('activity-status', { requestId: crypto.randomUUID(), activityId: activity.activityId,
-      status: activity.status === 'closed' ? 'open' : 'closed' }, key))
-    if (generation === epoch.current) { setOpened(next); publishActivity(next) }
+  async function changeStatus(activity: LearningActivity, source = key) {
+    const owner = context?.identities.find(item => item.key === source)?.identity
+    if (!context || !contextVerified || context.readOnly || !owner || !activityBelongsTo(activity, owner))
+      throw new Error('当前学习空间无法更新该活动。')
+    const authentication = authEpoch.current
+    const pending = JSON.stringify([homeScope, source, activity.activityId])
+    if (pendingStatus.current.has(pending)) throw new Error('活动状态正在更新，请稍后重试。')
+    pendingStatus.current.add(pending)
+    try {
+      const status = activity.status === 'closed' ? 'open' : 'closed'
+      const next = activitySchema.parse(await api('activity-status', {
+        requestId: crypto.randomUUID(), activityId: activity.activityId, status,
+      }, source))
+      if (next.activityId !== activity.activityId || next.status !== status || !activityBelongsTo(next, owner))
+        throw new Error('活动状态回执不匹配，请刷新列表核对后重试。')
+      if (authentication !== authEpoch.current || activityView.current.homeScope !== homeScope)
+        throw new Error('学习账号已切换，请在原学习空间核对活动状态。')
+      // A navigation can retire the page that sent the write, but not its confirmed receipt.
+      publishActivity(next, source)
+      setOpened(current => currentView.current.key === source && current?.activityId === next.activityId ? next : current)
+      try { sessionStorage.setItem(`xj.works-activity.${context.clientNamespace}.${source}.${next.activityId}`, JSON.stringify(next)) }
+      catch { /* Optional reopening hint. */ }
+    } finally {
+      pendingStatus.current.delete(pending)
+    }
   }
   async function changeCourseProgress(activity: LearningActivity, objectiveIndex: number, completed: boolean) {
     const generation = epoch.current
@@ -1151,7 +1185,9 @@ function LearningView() {
         courses={visibleHome?.courses ?? null} selectedCourseId={selectedCourseId} personalKey={personalKey} schoolKey={schoolKey}
         initialCategory={schoolKey ? 'school' : 'personal'} dashboardKey={(context.clientNamespace + ':home-dashboard')}
         busy={busy || !!selectedCourseId && key !== schoolKey} personalError={visibleHome?.personalError} courseError={visibleHome?.courseError}
-        onOpenActivity={(id, source) => void action(() => openActivity(id, source === personalKey, source))} onOpenCourse={selectCourse}
+        onOpenActivity={(id, source, courseId) => void action(() => openActivity(id, source === personalKey, source, courseId))}
+        onOpenCourse={selectCourse}
+        onActivityStatus={contextVerified && !context.readOnly ? changeStatus : undefined}
         onOpenTask={selection => void viewRelease(selection)} readTaskSubmission={readTaskSubmission}
         onStartConversation={openAgent} onConnectSchool={() => openSettings('school')}
         onRefresh={() => void action(async generation => { await refreshContext(undefined, generation) })} />

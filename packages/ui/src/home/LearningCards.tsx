@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Icon, IconText, type IconName } from '../icons'
+import './activity-card-menu.css'
 
 const icons: IconName[] = ['virtual-board', 'code-square', 'structure']
 
@@ -38,16 +39,17 @@ export function CourseTile({ id, title, summary, tone, onOpen, action = '查看�
 export interface LearningTaskCardProps {
   title: string; goal?: string; badge?: ReactNode; children?: ReactNode; footer?: ReactNode
   action: string; onOpen: () => void; accessibleLabel?: string; activityId?: string
-  opensDialog?: boolean; disabled?: boolean
+  opensDialog?: boolean; disabled?: boolean; menu?: ReactNode
 }
 
 export function LearningTaskCard({ title, goal, badge, children, footer, action, onOpen, accessibleLabel, activityId,
-  opensDialog, disabled }: LearningTaskCardProps) {
-  return <button type="button" aria-label={accessibleLabel} aria-haspopup={opensDialog ? 'dialog' : undefined}
+  opensDialog, disabled, menu }: LearningTaskCardProps) {
+  const card = <button type="button" aria-label={accessibleLabel} aria-haspopup={opensDialog ? 'dialog' : undefined}
     disabled={disabled} data-activity-id={activityId} className={`task-card${children ? '' : ' task-card-without-progress'}`} onClick={onOpen}>
     {badge && <div>{badge}</div>}<h3>{title}</h3>{goal && <p>{goal}</p>}{children}
     <div className="card-foot"><span>{footer}</span><span className="action"><IconText name="arrow-right" position="end">{action}</IconText></span></div>
   </button>
+  return menu ? <div className="task-card-shell">{card}<div className="task-card-menu">{menu}</div></div> : card
 }
 
 export interface LearningCardGridProps { children: ReactNode }

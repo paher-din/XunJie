@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import {
-  ContinueTaskCard, CourseBreadcrumb, CourseTile, CourseTiles, HomeCourseRegion, HomeIntro,
+  ActivityCardMenu, ContinueTaskCard, CourseBreadcrumb, CourseTile, CourseTiles, HomeCourseRegion, HomeIntro,
   HomeSectionHeading, HomeStatus, HomeTaskCard, LearningCardGrid, LearningTaskCard,
   PreparationEntryCard, TaskToolbar,
 } from '@xunjie/ui/home'
@@ -86,7 +86,22 @@ function ToolbarDemo({ initial = '' }: { initial?: string }) {
     <output>示例筛选：{value}；搜索：{query || '空'}</output></div>
 }
 
+function ActivityMenuDemo() {
+  const [closed, setClosed] = useState(false)
+  const [event, setEvent] = useState('')
+  return <div className="demo-stack" style={{ width: 'min(460px, 90vw)' }}>
+    <LearningTaskCard title="示例活动" badge={<span className="status">{closed ? '已关闭' : '进行中'}</span>}
+      footer="示例课程" action="打开活动" onOpen={() => setEvent('打开卡片')}
+      menu={<ActivityCardMenu title="示例活动" closed={closed} onOpen={() => setEvent('菜单打开')}
+        onChangeStatus={() => { setClosed(value => !value); setEvent('状态已更新') }} />} />
+    <output>{event}</output>
+  </div>
+}
+
 export const homeEntries: CatalogEntry[] = [
+  { id: 'activity-card-menu', name: 'ActivityCardMenu', description: '活动卡片的独立管理菜单，确认和状态写入由调用方负责。', importPath,
+    source: 'packages/ui/src/home/ActivityCardMenu.tsx', exampleSource, props: ['title/closed/disabled', 'onOpen/onChangeStatus'],
+    dependencies: ['Base UI Menu', 'Icon'], states: [{ id: 'interactive', name: '活动管理', component: ActivityMenuDemo }] },
   { id: 'continue-task-card', name: 'ContinueTaskCard', description: '继续任务内嵌卡，区分未知完成度与明确示例进度。', importPath, source: primitivesSource, exampleSource, props: ['tag/title/description', 'meta/metaClassName/action/onOpen'], dependencies: ['Button', 'IconText'], states: [
     { id: 'assigned', name: '已分配，无进度', component: () => <ContinueDemo /> }, { id: 'progress', name: '带进度说明', component: () => <ContinueDemo progress /> },
   ] },

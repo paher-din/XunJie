@@ -19,7 +19,8 @@ export interface ProductHomeProps {
   selectedCourseId?: string | null
   dashboardKey: string
   busy: boolean
-  onOpenActivity: (id: string, sourceKey: string) => void
+  onOpenActivity: (id: string, sourceKey: string, courseId?: string) => void
+  onActivityStatus?: (activity: LearningActivity, sourceKey: string) => Promise<void>
   onOpenCourse: (id: string | null) => void
   onOpenTask: (selection: CourseTaskSelection) => void
   readTaskSubmission: (activity: LearningActivity, signal: AbortSignal) => Promise<boolean>
@@ -47,7 +48,8 @@ function readLayout(key: string): DashboardLayout {
 
 export function ProductHome({ projectTitles = {}, accountName, personalActivities: personalData, schoolActivities: schoolData, courses, selectedCourseId = null,
   personalKey, schoolKey, initialCategory = schoolKey ? 'school' : 'personal', dashboardKey,
-  busy, onOpenActivity, onOpenCourse, onOpenTask, readTaskSubmission, onStartConversation, onRefresh, personalError, courseError, onConnectSchool }: ProductHomeProps) {
+  busy, onOpenActivity, onActivityStatus, onOpenCourse, onOpenTask, readTaskSubmission, onStartConversation, onRefresh,
+  personalError, courseError, onConnectSchool }: ProductHomeProps) {
   const [categoryFilter, setCategory] = useState(initialCategory)
   const category = selectedCourseId ? 'school' : categoryFilter
   const [layout, setLayout] = useState(() => readLayout(dashboardKey))
@@ -102,7 +104,9 @@ export function ProductHome({ projectTitles = {}, accountName, personalActivitie
         : error ? <HomeStatus kind="error" message={error} retry={{ disabled: busy, onRetry: onRefresh }} />
         : category === 'school' ? courses === null ? <HomeStatus kind="loading" message="学校课程" />
           : selectedCourseId ? selectedCourse ? <SchoolCourseTasks key={selectedCourse.courseId} course={selectedCourse} activities={schoolActivities}
-              busy={busy} readSubmission={readTaskSubmission} onOpen={onOpenTask} /> : <HomeStatus kind="empty" message="无法找到这门课程。" />
+              busy={busy} readSubmission={readTaskSubmission} onOpen={onOpenTask}
+              onOpenActivity={id => onOpenActivity(id, sourceKey, selectedCourse.courseId)}
+              onStatus={onActivityStatus && (activity => onActivityStatus(activity, sourceKey))} /> : <HomeStatus kind="empty" message="无法找到这门课程。" />
           : courses.length === 0 ? <HomeStatus kind="empty" message="暂无学校课程。" />
             : <CourseTiles courses={courses.map(course => course.courseId)} toneOf={id => coursesById.get(id)!.index}
               titleOf={id => coursesById.get(id)!.course.name}
