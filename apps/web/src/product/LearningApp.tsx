@@ -387,20 +387,6 @@ function LearningView() {
 
   useEffect(() => { setArchiveOpen(false); setHistoryQuery('') }, [pendingKey])
 
-  useEffect(() => {
-    const target = returnFocus.current
-    if (opened || !activities || activitiesFor !== pendingKey || !target || target.key !== key) return
-    const frame = requestAnimationFrame(() => {
-      const button = document.querySelector<HTMLButtonElement>(`[data-activity-id="${CSS.escape(target.activityId)}"]`)
-      if (!button) return
-      button.focus({ preventScroll: true })
-      const main = document.querySelector('.main')
-      if (main) main.scrollTop = target.scrollTop
-      returnFocus.current = null
-    })
-    return () => cancelAnimationFrame(frame)
-  }, [opened, activities, activitiesFor, pendingKey, key])
-
   function rememberMaterial(next: MaterialDownload | null) {
     if (materialUrl.current) URL.revokeObjectURL(materialUrl.current)
     materialUrl.current = next?.url ?? ''
@@ -528,6 +514,20 @@ function LearningView() {
   }, [homeVisible, readCache, selectedCourseId])
   const visibleHome = homeData?.scope === homeScope ? homeData : null
   const projectTitles = usePersonalProjectTitles(visibleHome?.personal ?? null, personalKey, context?.clientNamespace ?? '', contextVerified)
+
+  useEffect(() => {
+    const target = returnFocus.current
+    if (opened || !homeVisible || !visibleHome || !target || target.key !== key) return
+    const frame = requestAnimationFrame(() => {
+      const button = document.querySelector<HTMLButtonElement>(`[data-activity-id="${CSS.escape(target.activityId)}"]`)
+      if (!button) return
+      button.focus({ preventScroll: true })
+      const main = document.querySelector('.main')
+      if (main) main.scrollTop = target.scrollTop
+      returnFocus.current = null
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [opened, homeVisible, visibleHome, key])
 
   useEffect(() => {
     ++epoch.current

@@ -52,6 +52,21 @@ async function newActivity(page: Page, goal = '自主学习-' + randomUUID()) {
   return new URL(page.url()).searchParams.get('activity')!
 }
 
+async function openPersonalActivityFromHome(page: Page) {
+  const goal = '自主学习-' + randomUUID()
+  const response = await page.request.post(endpoint + '/api/learning/activities', {
+    headers: { 'x-xj-space': 'personal' }, data: { requestId: randomUUID(), goal, question: '', references: [] },
+  })
+  expect(response.status()).toBe(200)
+  const { activityId: id } = await response.json() as { activityId: string }
+  await page.goto(endpoint)
+  await selectProductSpace(page, '个人空间')
+  await page.locator(`[data-activity-id="${id}"]`).click()
+  await expect(page.locator('#activity-title')).toHaveText(goal)
+  expect(new URL(page.url()).searchParams.get('activity')).toBe(id)
+  return id
+}
+
 async function fileMenu(page: Page) {
   const trigger = page.getByRole('button', { name: '文件', exact: true })
   if (await trigger.getAttribute('aria-expanded') !== 'true') await trigger.click()
@@ -67,7 +82,7 @@ const readWorks = async (page: Page, id: string) => (await page.request.get(endp
   { headers: { 'x-xj-space': 'personal' } })).json()
 
 test('default product entry uses shared UI and stable file identities through rename, deletion and recreation', async ({ page }) => {
-  const id = await newActivity(page)
+  const id = await openPersonalActivityFromHome(page)
   await expect(page.locator('.shell.immersive')).toBeVisible()
   await newFile(page, '中文.txt')
   await page.keyboard.insertText('第一份原文')
@@ -552,7 +567,7 @@ test('course browser history retires both visible and in-flight release details 
 })
 
 test('an initial activity reopen cannot undo browser back to the list while its read is pending', async ({ page }) => {
-  const id = await newActivity(page)
+  const id = await openPersonalActivityFromHome(page)
   await page.getByRole('button', { name: '返回活动列表', exact: true }).click()
   await expect(page.locator(`[data-activity-id="${id}"]`)).toBeVisible()
   await page.goto(endpoint + '/?space=personal&activity=' + id)
