@@ -13,7 +13,8 @@ import { acknowledgePdfRequest, listPdfRequests, retainCoursePdf, retainPdfUploa
 import { learningRequest, workspaceScope } from './learningTransport'
 import { PdfReaderText, usePdfReaderText, usePdfTextFind } from './PdfReaderText'
 import { PdfPagePreview } from './PdfPagePreview'
-import { pdfPageSize, pdfZoomMax, pdfZoomMin, pdfZoomPercent, pdfZoomStops, type PdfSize, type PdfZoom } from './pdfZoom'
+import { PdfThumbnails } from './PdfThumbnails'
+import { pdfCanSpread, pdfPageSize, pdfSpreadGap, pdfZoomMax, pdfZoomMin, pdfZoomPercent, pdfZoomStops, type PdfSize, type PdfZoom } from './pdfZoom'
 import './PdfMaterials.css'
 
 type PdfSource = ReturnType<typeof pdfReferenceSourceSchema.parse>
@@ -352,22 +353,66 @@ function pdfZoomPosition(percent: number): CSSProperties {
   return { '--pdf-zoom-position': `${100 * (percent - pdfZoomMin) / (pdfZoomMax - pdfZoomMin)}%` } as CSSProperties
 }
 
+const pdfZoomDotSize = 6
+
 function PdfZoomControls({ zoom, percent, viewport, pages, disabled, onChange }: {
   zoom: PdfZoom; percent: number; viewport: PdfSize; pages: readonly (PdfSize | undefined)[]
   disabled: boolean; onChange(zoom: PdfZoom): void
 }) {
+  const slider = useRef<HTMLInputElement>(null)
+  const track = useRef<HTMLDivElement>(null)
+  const [trackWidth, setTrackWidth] = useState(0)
+  const pointer = useRef<{ id: number; x: number; dragging: boolean } | null>(null)
+  useLayoutEffect(() => {
+    const element = track.current
+    if (!element) return
+    setTrackWidth(element.getBoundingClientRect().width)
+    const observer = new ResizeObserver(([entry]) => setTrackWidth(entry.contentRect.width))
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [])
+  const stops = pdfZoomStops.map(stop => ({ ...stop, percent: pdfZoomPercent(stop.value, viewport, pages) }))
+  const distance = Math.abs(stops[0].percent - stops[1].percent) * trackWidth / (pdfZoomMax - pdfZoomMin)
+  const overlap = distance < pdfZoomDotSize
+  const moveStop = (event: PointerEvent<HTMLButtonElement>) => {
+    const active = pointer.current
+    if (!active || active.id !== event.pointerId || !(event.buttons & 1)) return
+    if (!active.dragging) {
+      if (Math.abs(event.clientX - active.x) < 3) return
+      active.dragging = true
+      slider.current?.focus()
+    }
+    const bounds = track.current?.getBoundingClientRect()
+    if (!bounds?.width) return
+    const ratio = Math.max(0, Math.min(1, (event.clientX - bounds.left) / bounds.width))
+    onChange(Math.round(pdfZoomMin + ratio * (pdfZoomMax - pdfZoomMin)))
+  }
   return <div className="pdf-zoom" role="group" aria-label="PDF 缩放">
     <Button type="button" variant="outline" className="pdf-zoom-reset" disabled={disabled}
       aria-pressed={zoom === 'reading'} onClick={() => onChange('reading')}>默认</Button>
     <div className="pdf-zoom-slider">
       <div className="pdf-zoom-scale">
-        <input type="range" min={pdfZoomMin} max={pdfZoomMax} step={1} value={percent} disabled={disabled}
+        <input ref={slider} type="range" min={pdfZoomMin} max={pdfZoomMax} step={1} value={percent} disabled={disabled}
           style={pdfZoomPosition(percent)} aria-label="PDF 缩放比例" aria-valuetext={`${percent}%`}
           onChange={event => onChange(event.currentTarget.valueAsNumber)} />
-        <div className="pdf-zoom-stops">
-          {pdfZoomStops.map(({ value, label, edge }) => <button key={value} type="button" className="pdf-zoom-stop"
-            data-edge={edge} aria-pressed={zoom === value} disabled={disabled}
-            style={pdfZoomPosition(pdfZoomPercent(value, viewport, pages))} onClick={() => onChange(value)}>{label}</button>)}
+        <div ref={track} className="pdf-zoom-stops" data-overlap={overlap || undefined}
+          style={{ '--pdf-zoom-dot-size': `${pdfZoomDotSize}px`, '--pdf-zoom-stop-width': `${overlap ? 20 : Math.min(20, distance)}px` } as CSSProperties}>
+          {stops.map(({ value, label, edge, percent: position }) => <button key={value} type="button" className="pdf-zoom-stop"
+            data-edge={edge} data-current={percent === position || undefined} aria-label={label} aria-pressed={zoom === value} disabled={disabled}
+            style={pdfZoomPosition(position)}
+            onPointerDown={event => {
+              if (!event.isPrimary || event.button !== 0) return
+              pointer.current = { id: event.pointerId, x: event.clientX, dragging: false }
+              event.currentTarget.setPointerCapture(event.pointerId)
+            }}
+            onPointerMove={moveStop} onPointerCancel={() => { pointer.current = null }}
+            onClick={event => {
+              const dragged = event.detail > 0 && pointer.current?.dragging
+              pointer.current = null
+              if (!dragged) onChange(value)
+            }}>
+            <span className="pdf-zoom-stop-tip" aria-hidden="true">{label}</span>
+          </button>)}
         </div>
       </div>
     </div>
@@ -430,6 +475,7 @@ export function PdfMaterials({ pdf, onBackToList }: {
   const ready = doc?.state === 'ready'
   const selecting = selectionMode === 'region'
   const twoPages = reading?.requestedPages.length === 2
+  const spread = pdfCanSpread(viewportSize, pageSizes)
   const canNavigate = !pdf.busy && pdf.writable
   const hasNativeText = reading?.pages.some(item => item.state === 'ready' && item.image && item.text.trim())
   const quoteLabel = selecting ? '引用所选区域' : reading?.region ? '引用此区域' : twoPages ? '引用这两页' : '引用此页'
@@ -550,19 +596,24 @@ export function PdfMaterials({ pdf, onBackToList }: {
                   : reading.pages.every(item => item.state === 'ready') ? '当前阅读页无原生文字' : '当前阅读页文字未能完整读取'}
             </p>}
           </form>
+          {doc.pageCount > 1 && <PdfThumbnails key={doc.documentId} open={openText} pageCount={doc.pageCount}
+            page={page} visible={sidebarOpen} enabled={canNavigate}
+            onNavigate={next => navigate(next, twoPages && next < doc.pageCount)} />}
         </aside>
         <div className="pdf-reading" data-pdf-reading-id={reading?.readingId} ref={viewport} tabIndex={0} aria-label="PDF 页图">
-          {reading?.pages.map((item, index) => <article className="pdf-page" data-pdf-page={item.page} tabIndex={-1} key={item.page}
-            style={pageSizes[index] ? { width: pageSizes[index].width * percent / 100 } : undefined}>
-            <h3>第 {item.page} 页{item.label && item.label !== String(item.page) && <span title={item.label}>页标签 {item.label}</span>}</h3>
-            {item.state !== 'ready' || !item.image ? <p className="pdf-error" role="status">{item.state === 'out-of-range' ? '此页超出 PDF 实际页数。'
-              : item.state === 'limit' ? '此页图超出处理尺寸或体积限制，无法显示。'
-                : item.state === 'timeout' ? '此页处理超时，未生成可引用页图。' : '此页图未完整生成，无法引用。'}{item.detail ? ` ${item.detail}` : ''}</p>
-              : <PdfPageImage key={reading.readingId + ':' + item.page} item={item} image={item.image}
-                openText={reading.documentSha256 === doc.sha256 ? openText : undefined}
-                sharpen={!reading.region && reading.readingId !== pdf.referenceReadingId} onTextLayout={textChanged}
-                selecting={selecting && !pdf.busy} region={region} onRegion={setRegion} />}
-          </article>)}
+          <div className="pdf-pages" data-spread={spread} style={spread ? { gap: pdfSpreadGap } : undefined}>
+            {reading?.pages.map((item, index) => <article className="pdf-page" data-pdf-page={item.page} tabIndex={-1} key={item.page}
+              style={pageSizes[index] ? { width: pageSizes[index].width * percent / 100 } : undefined}>
+              <h3>第 {item.page} 页{item.label && item.label !== String(item.page) && <span title={item.label}>页标签 {item.label}</span>}</h3>
+              {item.state !== 'ready' || !item.image ? <p className="pdf-error" role="status">{item.state === 'out-of-range' ? '此页超出 PDF 实际页数。'
+                : item.state === 'limit' ? '此页图超出处理尺寸或体积限制，无法显示。'
+                  : item.state === 'timeout' ? '此页处理超时，未生成可引用页图。' : '此页图未完整生成，无法引用。'}{item.detail ? ` ${item.detail}` : ''}</p>
+                : <PdfPageImage key={reading.readingId + ':' + item.page} item={item} image={item.image}
+                  openText={reading.documentSha256 === doc.sha256 ? openText : undefined}
+                  sharpen={!reading.region && reading.readingId !== pdf.referenceReadingId} onTextLayout={textChanged}
+                  selecting={selecting && !pdf.busy} region={region} onRegion={setRegion} />}
+            </article>)}
+          </div>
           {pdf.pendingRead && !pdf.busy && <Button type="button" variant="outline" disabled={!pdf.writable}
             onClick={() => void pdf.retryRead()}>核对并继续本次阅读</Button>}
           {reading?.pages.some(item => item.state === 'failed' || item.state === 'timeout') && <Button type="button" variant="outline"
