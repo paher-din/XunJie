@@ -11,3 +11,4 @@
 .teaching-artifact-center .teaching-artifact-view { flex: 1; }
 .teaching-artifact-center .teaching-artifact-view iframe { height: 100%; }
 .teaching-artifact-shelf { display: grid; gap: 8px; }
+.teaching-artifact-shelf .ws-btn { text-align: start; white-space: normal; overflow-wrap: anywhere; }

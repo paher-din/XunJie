@@ -21,7 +21,7 @@ async function fixture(text='先核对观察，再讨论解释。'){
 }
 describe('fixed course text material cache',()=>{
   it('reads a declared material once, then serves the same verified bytes without the service',async()=>{
-    const f=await fixture(),cache=createMaterialCache({store:f.memory})
+    const f=await fixture('\uFEFF# 阅读材料\r\n先核对观察，再讨论解释。'),cache=createMaterialCache({store:f.memory})
     expect(await cache.text(f.activity,f.course,'school','ns',f.material)).toBe(f.text)
     expect(f.fetch).toHaveBeenCalledTimes(1)
     expect(await cache.text(f.activity,f.course,'school','ns',f.material)).toBe(f.text)

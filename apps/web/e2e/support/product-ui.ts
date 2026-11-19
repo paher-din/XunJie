@@ -1,5 +1,21 @@
 import { expect, type Page } from '@playwright/test'
 
+/** Present the authenticated embedded school account without replacing its course APIs. */
+export async function useEmbeddedSchoolFixture(page: Page, endpoint: string, loginName: string, password: string) {
+  expect((await page.request.post(endpoint + '/api/learning/login', { data: { loginName, password } })).status()).toBe(200)
+  const context = await (await page.request.get(endpoint + '/api/learning/context')).json()
+  const school = context.identities.find((item: { key: string }) => item.key === 'school')
+  expect(school?.identity.kind).toBe('school')
+  await page.route(endpoint + '/api/learning/context', async route => {
+    const response = await route.fetch()
+    if (!response.ok()) { await route.fulfill({ response }); return }
+    const current = await response.json()
+    const session = current.identities.find((item: { key: string }) => item.key === 'school')
+    const account = current.account ?? (session && { key: 'school', accountName: loginName, schoolName: session.identity.name }) ?? null
+    await route.fulfill({ response, json: { ...current, account } })
+  })
+}
+
 /** Exercise the actual disclosure and its Escape/focus contract, including portalled controls. */
 export async function openWorkspacePopover(page: Page, name: '文件' | '活动') {
   const trigger = page.getByRole('button', { name, exact: true })
@@ -62,6 +78,13 @@ export async function selectProductSpace(page: Page, name: string) {
 }
 
 export async function openCourseTasks(page: Page, name: string) {
-  await page.getByRole('button').filter({ has: page.getByRole('heading', { name, exact: true }) }).click()
+  const course = page.locator('.course-region .course-tile').filter({ has: page.getByText(name, { exact: true }) })
+  await expect(course).toBeVisible()
+  await course.click()
   await expect(page.getByRole('button', { name: '全部课程', exact: true })).toBeVisible()
+}
+
+export function courseTaskCard(page: Page, name: string) {
+  return page.locator('[data-course-selected="true"] button[aria-haspopup="dialog"]')
+    .filter({ has: page.getByText(name, { exact: true }) })
 }

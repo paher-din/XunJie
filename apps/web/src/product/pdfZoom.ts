@@ -1,0 +1,34 @@
+import type { PdfPage } from '@xunjie/contracts/pdf-materials'
+
+export const pdfZoomMin = 1
+export const pdfZoomMax = 300
+export const pdfZoomStops = [
+  { value: 'fit-page', label: '适合整页', edge: 'top' },
+  { value: 'fit-width', label: '适合宽度', edge: 'bottom' },
+] as const
+
+export type PdfZoom = 'reading' | (typeof pdfZoomStops)[number]['value'] | number
+export type PdfSize = { width: number; height: number }
+
+export function pdfPageSize(page: PdfPage): PdfSize | undefined {
+  if (!page.image) return
+  // PDF points use 72 per inch, while CSS uses 96. Undo the fixed preview's raster scale.
+  const scale = page.transform.scale > 0 ? 96 / 72 / page.transform.scale : 1
+  return { width: page.image.width * scale, height: page.image.height * scale }
+}
+
+export function pdfZoomPercent(zoom: PdfZoom, viewport: PdfSize, pages: readonly (PdfSize | undefined)[]): number {
+  if (typeof zoom === 'number') return zoom
+  if (!viewport.width || !viewport.height) return 100
+  const width = Math.max(0, ...pages.map(page => page?.width ?? 0))
+  const height = Math.max(0, ...pages.map(page => page?.height ?? 0))
+  if (!width || !height) return 100
+
+  const widthPercent = 100 * viewport.width / width
+  const heightPercent = 100 * Math.max(1, viewport.height - 26) / height // Page label and its bottom margin.
+  // Aim for a page slightly taller than the viewport. Keep small pages at a comfortable magnification.
+  const readingPercent = Math.min(150, Math.max(100, heightPercent * 1.25))
+  const wanted = zoom === 'reading' ? Math.min(widthPercent, readingPercent)
+    : zoom === 'fit-page' ? Math.min(widthPercent, heightPercent) : widthPercent
+  return Math.max(pdfZoomMin, Math.min(pdfZoomMax, Math.floor(wanted)))
+}

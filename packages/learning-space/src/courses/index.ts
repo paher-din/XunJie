@@ -80,6 +80,7 @@ const storedContentSchema = z.object({
   skills: courseReleaseSchema.shape.skills,
   executionPlan: courseExecutionPlanSchema.optional(),
   helpPolicy: courseReleaseSchema.shape.helpPolicy,
+  deadlineAt: courseReleaseSchema.shape.deadlineAt,
 }).strict();
 type StoredContent = z.infer<typeof storedContentSchema>;
 
@@ -216,7 +217,8 @@ function planImport(value: unknown) {
     ...(input.release.components ? { components: input.release.components } : {}),
     ...(input.release.skills ? { skills: input.release.skills } : {}),
     ...(input.release.executionPlan ? { executionPlan: input.release.executionPlan } : {}),
-    helpPolicy: input.release.helpPolicy };
+    helpPolicy: input.release.helpPolicy,
+    ...(input.release.deadlineAt ? { deadlineAt: input.release.deadlineAt } : {}) };
   storedContentSchema.parse(content);
   for (const skill of content.skills ?? []) parseTeachingSkillPackage({ requestId: skill.skillId, skillId: skill.skillId,
     source: skill.source, packageVersion: skill.packageVersion, files: skill.files });
@@ -399,7 +401,8 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
       let task = course.tasks.get(row.task_id as string);
       if (!task) { task = { taskId: row.task_id as string, title: row.title as string, summary: row.summary as string, releases: [] }; course.tasks.set(task.taskId, task); }
       task.releases.push({ releaseId: row.release_id, contentDigest: row.content_digest, objectives: content.objectives,
-        publishedAt: (row.published_at as Date).toISOString() });
+        publishedAt: (row.published_at as Date).toISOString(),
+        ...(content.deadlineAt ? { deadlineAt: content.deadlineAt } : {}) });
     }
     return { courses: [...courses.values()].map(course => ({ courseId: course.courseId, name: course.name,
       tasks: [...course.tasks.values()] })) };
@@ -415,6 +418,7 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
       ...(content.components ? { components: content.components } : {}),
       ...(content.skills ? { skills: content.skills } : {}),
       ...(content.executionPlan ? { executionPlan: content.executionPlan } : {}),
+      ...(content.deadlineAt ? { deadlineAt: content.deadlineAt } : {}),
       publishedAt: row.published_at.toISOString(), courseName: row.course_name,
       taskTitle: row.task_title });
   }

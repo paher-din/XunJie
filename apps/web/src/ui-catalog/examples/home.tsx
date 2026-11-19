@@ -2,9 +2,9 @@ import { useRef, useState } from 'react'
 import {
   ContinueTaskCard, CourseBreadcrumb, CourseTile, CourseTiles, HomeCourseRegion, HomeIntro,
   HomeSectionHeading, HomeStatus, HomeTaskCard, LearningCardGrid, LearningTaskCard,
-  PreparationEntryCard, TaskToolbar, useFluidHover,
+  PreparationEntryCard, TaskToolbar,
 } from '@xunjie/ui/home'
-import { FluidHighlight, StatusChip } from '@xunjie/ui/foundation'
+import { StatusChip } from '@xunjie/ui/foundation'
 import type { CatalogEntry } from '../types'
 
 const importPath = '@xunjie/ui/home'
@@ -28,11 +28,9 @@ function BreadcrumbDemo() {
   return <div className="demo-stack"><CourseBreadcrumb title={courses[1]} onBack={keyboard => setEvent(keyboard ? '键盘返回' : '指针返回')} /><output>{event}</output></div>
 }
 function SingleCourse({ tone = 0 }: { tone?: number }) {
-  const ref = useRef<HTMLDivElement>(null), hover = useFluidHover(ref)
   const [opened, setOpened] = useState('')
-  return <div className="demo-stack" style={{ width: 'min(420px, 90vw)' }}><div className="course-tiles" ref={ref} {...hover.handlers} style={{ width: '100%' }}>
-    <FluidHighlight activeIndex={hover.activeIndex} rects={hover.itemRects} className="card-grid-highlight" />
-    <CourseTile id="sample-course" title={courses[tone]} summary={tone === 2 ? '暂无待完成任务' : '2 个待完成'} tone={tone} index={0} register={hover.registerItem}
+  return <div className="demo-stack" style={{ width: 'min(420px, 90vw)' }}><div className="course-tiles" style={{ width: '100%' }}>
+    <CourseTile id="sample-course" title={courses[tone]} summary={tone === 2 ? '暂无待完成任务' : '2 个待完成'} tone={tone}
       onOpen={keyboard => setOpened(keyboard ? '键盘打开课程' : '指针打开课程')} />
   </div><output>{opened}</output></div>
 }
@@ -63,10 +61,10 @@ function ErrorDemo() {
 }
 function TaskDemo({ mode = 'progress', primitive = false }: { mode?: 'progress' | 'done' | 'unknown' | 'overdue'; primitive?: boolean }) {
   const [opened, setOpened] = useState(false)
-  return <div className="demo-stack" style={{ width: 'min(460px, 90vw)' }}><LearningCardGrid>{register => primitive ? <LearningTaskCard title="示例：文本分析" goal="用清晰的测试描述输入边界。" index={0} register={register}
+  return <div className="demo-stack" style={{ width: 'min(460px, 90vw)' }}><LearningCardGrid>{primitive ? <LearningTaskCard title="示例：文本分析" goal="用清晰的测试描述输入边界。"
     action="打开示例" onOpen={() => setOpened(true)} badge={<StatusChip status="进行中" />} footer="示例课程">
     <p>这是调用方提供的任务内容插槽。</p>
-  </LearningTaskCard> : <HomeTaskCard title="示例：文本分析" goal="分析空输入、重复词与标点。" register={register} index={0}
+  </LearningTaskCard> : <HomeTaskCard title="示例：文本分析" goal="分析空输入、重复词与标点。"
     status={mode === 'done' ? '已完成' : mode === 'unknown' ? '已分配' : '进行中'} overdue={mode === 'overdue'}
     progress={mode === 'unknown' ? undefined : { percent: mode === 'done' ? 100 : 40, done: mode === 'done' }}
     footer={mode === 'overdue' ? '截止 11 月 1 日' : '示例：没有真实截止约束'} action={mode === 'done' ? '查看任务' : '进入任务'} onOpen={() => setOpened(true)} />}</LearningCardGrid>
@@ -74,8 +72,8 @@ function TaskDemo({ mode = 'progress', primitive = false }: { mode?: 'progress' 
 }
 function GridDemo() {
   const [selected, setSelected] = useState('')
-  return <div style={{ width: '100%', padding: 24 }}><LearningCardGrid>{register => <>{courses.map((course, index) => <LearningTaskCard key={course} title={`${course} · 任务`} goal="示例任务内容" index={index} register={register}
-    action="查看示例" onOpen={() => setSelected(course)} footer="本地示例" />)}</>}</LearningCardGrid><output>{selected}</output></div>
+  return <div style={{ width: '100%', padding: 24 }}><LearningCardGrid>{courses.map(course => <LearningTaskCard key={course} title={`${course} · 任务`} goal="示例任务内容"
+    action="查看示例" onOpen={() => setSelected(course)} footer="本地示例" />)}</LearningCardGrid><output>{selected}</output></div>
 }
 function PreparationDemo() {
   const [opened, setOpened] = useState(false)
@@ -93,10 +91,10 @@ export const homeEntries: CatalogEntry[] = [
     { id: 'assigned', name: '已分配，无进度', component: () => <ContinueDemo /> }, { id: 'progress', name: '带进度说明', component: () => <ContinueDemo progress /> },
   ] },
   { id: 'course-breadcrumb', name: 'CourseBreadcrumb', description: '课程返回入口，显示键盘与指针回调差异。', importPath, source: sectionsSource, exampleSource, props: ['title/onBack(keyboard)'], dependencies: ['IconText'], states: [{ id: 'interactive', name: '返回与键盘操作', component: BreadcrumbDemo }] },
-  { id: 'course-tile', name: 'CourseTile', description: '独立课程卡，提供实际注册 ref 与布局。', importPath, source: cardsSource, exampleSource, props: ['id/title/summary/tone', 'index/register/onOpen'], dependencies: ['Icon', 'useFluidHover'], states: [
+  { id: 'course-tile', name: 'CourseTile', description: '独立课程卡，带封面与打开入口。', importPath, source: cardsSource, exampleSource, props: ['id/title/summary/tone', 'onOpen'], dependencies: ['Icon'], states: [
     { id: 'pending', name: '有待完成任务', component: () => <SingleCourse /> }, { id: 'clear', name: '无待完成任务', component: () => <SingleCourse tone={2} /> },
   ] },
-  { id: 'course-tiles', name: 'CourseTiles', description: '多课程卡组与共享悬停高亮。', importPath, source: cardsSource, exampleSource, props: ['courses/toneOf/titleOf/summaryOf/onOpen'], dependencies: ['CourseTile', 'FluidHighlight'], states: [
+  { id: 'course-tiles', name: 'CourseTiles', description: '课程卡片网格。', importPath, source: cardsSource, exampleSource, props: ['courses/toneOf/titleOf/summaryOf/onOpen'], dependencies: ['CourseTile'], states: [
     { id: 'courses', name: '三类封面与打开回调', component: () => <CoursesDemo /> }, { id: 'empty', name: '空数组，由宿主提供空态', component: () => <CoursesDemo empty /> },
   ] },
   { id: 'home-course-region', name: 'HomeCourseRegion', description: '课程选择区域与定位 ref。', importPath, source: sectionsSource, exampleSource, props: ['selected/regionRef/children'], dependencies: ['HomeSectionHeading', 'CourseTiles'], states: [{ id: 'selection', name: '选择／返回课程', component: CourseRegionDemo }] },
@@ -114,8 +112,8 @@ export const homeEntries: CatalogEntry[] = [
     { id: 'progress', name: '进行中', component: () => <TaskDemo /> }, { id: 'done', name: '已完成', component: () => <TaskDemo mode="done" /> },
     { id: 'unknown', name: '未知进度', component: () => <TaskDemo mode="unknown" /> }, { id: 'overdue', name: '逾期', component: () => <TaskDemo mode="overdue" /> },
   ] },
-  { id: 'learning-card-grid', name: 'LearningCardGrid', description: '任务网格与鼠标／键盘高亮注册。', importPath, source: cardsSource, exampleSource, props: ['children(register)'], dependencies: ['FluidHighlight'], states: [{ id: 'interactive', name: '三张任务卡', component: GridDemo }] },
-  { id: 'learning-task-card', name: 'LearningTaskCard', description: '可组合的任务卡内容与打开操作。', importPath, source: cardsSource, exampleSource, props: ['title/goal/badge/children/footer', 'register/index/action/onOpen'], dependencies: ['IconText'], states: [
+  { id: 'learning-card-grid', name: 'LearningCardGrid', description: '响应式任务卡片网格。', importPath, source: cardsSource, exampleSource, props: ['children'], dependencies: [], states: [{ id: 'interactive', name: '三张任务卡', component: GridDemo }] },
+  { id: 'learning-task-card', name: 'LearningTaskCard', description: '可组合的任务卡内容与打开操作。', importPath, source: cardsSource, exampleSource, props: ['title/goal/badge/children/footer', 'action/onOpen'], dependencies: ['IconText'], states: [
     { id: 'slots', name: '状态与内容插槽', component: () => <TaskDemo primitive /> }, { id: 'grid', name: '无进度的简洁卡片', component: GridDemo },
   ] },
   { id: 'preparation-entry-card', name: 'PreparationEntryCard', description: '准备入口的明确示例文案与本地回调。', importPath, source: sectionsSource, exampleSource, props: ['flag/title/description/note/action/onOpen'], dependencies: ['Icon', 'IconText'], states: [{ id: 'interactive', name: '打开回调', component: PreparationDemo }] },

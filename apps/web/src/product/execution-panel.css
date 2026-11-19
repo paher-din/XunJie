@@ -13,7 +13,13 @@
 .execution-actions .ws-btn { font-size: 12px; }
 .runtime-tool-full { height: 100%; max-height: none; overflow: auto; }
 .runtime-tool-compact { flex: none; max-height: none; overflow: visible; }
-.runtime-tool .execution-panel { max-height: none; margin-top: 16px; }
+/* The runtime tool scrolls the complete report, including its execution records. */
+.runtime-tool .execution-panel {
+  flex: none;
+  max-height: none;
+  margin-top: 16px;
+  overflow: visible;
+}
 .runtime-tool label { display: grid; gap: 4px; color: var(--ink-soft); font-size: 13px; }
 .runtime-tool .ui-select-trigger { height: 32px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--paper); color: var(--ink); font: inherit; padding: 0 8px; }
 .runtime-tool .execution-actions { align-items: end; }

@@ -86,11 +86,18 @@ function HistoryDemo({ kind = 'available' }: { kind?: 'available' | 'redacted' |
     onRead={() => setEvent('本地读取历史')} onReturn={() => setEvent('返回示例运行')} onDownload={(side, id) => setEvent(`下载回调：${side === 0 ? 'A' : 'B'} / ${id}（不创建文件）`)}
     onHelp={target => setEvent(`明确原结果：${target.runId} / ${target.snapshotId}`)} /></Stage>
 }
-function DockDemo({ empty = false }: { empty?: boolean }) {
+function DockDemo({ empty = false, taskOnly = false, shelf = false }: { empty?: boolean; taskOnly?: boolean; shelf?: boolean }) {
   const [stash, setStash] = useState<W.StashItem[]>(empty ? [] : [{ key: 'plain', title: '旧版教学卡' }, { key: 'generated', title: '生成卡示例', gen: { claimSim: true, version: 2 } }])
   const [event, setEvent] = useEvent()
-  return <Stage event={event} height={560}><div className="ws-body" style={{ height: 400 }}><W.SideDock taskInfo={<W.TaskInfo name="示例任务" status={<StatusChip status="进行中" />} goal="比较两种实现。" percent={20} done={false}
-    currentProgress="阅读任务" stage="1 / 5" deadline="无" course="示例课程" />} stash={stash} onPin={key => { setStash(items => items.filter(item => item.key !== key)); setEvent(`本地钉住 ${key}`) }}
+  return <Stage event={event} height={560}><div className="ws-body" style={{ height: 400 }}><W.SideDock taskInfo={<W.TaskInfo name="示例任务" status={<StatusChip status="进行中" />} goal={shelf ? undefined : '比较两种实现。'} percent={20} done={false}
+    currentProgress={shelf ? undefined : '阅读任务'} stage={shelf ? undefined : '1 / 5'} deadline="无截止时间" course="示例课程" />}
+    stash={taskOnly || shelf ? undefined : stash}
+    stashPanel={shelf ? { count: stash.length, content: <section className="ws-dock-content">
+      <h2>卡片收纳</h2>
+      {stash.length ? stash.map(item => <button key={item.key} type="button" className="ws-btn ghost" onClick={() => setEvent(`本地打开 ${item.key}`)}>{item.title}</button>)
+        : <p>在学习页面点「收纳」后，卡片会显示在这里。</p>}
+    </section> } : undefined}
+    onPin={key => { setStash(items => items.filter(item => item.key !== key)); setEvent(`本地钉住 ${key}`) }}
     onOpen={key => setEvent(`本地打开 ${key}`)} onToast={setEvent} /></div></Stage>
 }
 
@@ -363,7 +370,11 @@ export const workspaceEntries: CatalogEntry[] = [
   entry('CoreRunEntry', 'RunPanel', '顶栏运行入口。', ['onOpen'], [], [state('interactive', '本地回调', () => { const [event, setEvent] = useEvent(); return <Stage event={event}><W.CoreRunEntry onOpen={() => setEvent('打开本地运行面板')} /></Stage> })]),
   entry('RunPanel', 'RunPanel', '参数选择与只读结果；所有运行均为明确的本地样本。', ['snapshots/selection/result', 'busy/canRun/synthetic/control', 'onSelect/onRun/onRead/onReturn/onHelp'], [], [state('stats', '统计与结果', () => <RunDemo />), state('find', '查找输入', () => <RunDemo operation="find" />), state('top', '词频数量', () => <RunDemo operation="top" />), state('busy', '提交／停止状态', () => <RunDemo busy />), state('unavailable', '结果不可回取', () => <RunDemo unavailable />)]),
   entry('RunHistoryPanel', 'RunHistoryPanel', '双列历史身份、诊断和产物状态。', ['options/sides/busy/notice/synthetic', 'onSelect/onRead/onReturn/onDownload/onHelp'], [], [state('files', '完整／不完整产物', () => <HistoryDemo />), state('redacted', '裁剪产物', () => <HistoryDemo kind="redacted" />), state('unavailable', '不可回取', () => <HistoryDemo kind="unavailable" />), state('empty', '无历史运行', () => <HistoryDemo kind="empty" />)]),
-  entry('SideDock', 'SideDock', '任务胶囊与卡片收纳；WAAPI 和 reduced-motion 维持原行为。', ['taskInfo/stash', 'onPin/onOpen/onToast'], ['浏览器几何', 'Web Animations', '定位祖先'], [state('cards', '信息／收纳／钉住', () => <DockDemo />), state('empty', '空收纳提示', () => <DockDemo empty />)]),
+  entry('SideDock', 'SideDock', '任务胶囊与卡片收纳，支持减少动效。', ['taskInfo/stash/stashPanel', 'taskButtonRef/openPanel/onOpenPanelChange', 'onPin/onOpen/onToast'], ['浏览器几何', 'Web Animations', '定位祖先'], [
+    state('cards', '信息／收纳／钉住', () => <DockDemo />), state('empty', '空收纳提示', () => <DockDemo empty />),
+    state('task', '单个任务信息入口', () => <DockDemo taskOnly />),
+    state('shelf', '基本信息／学习卡片', () => <DockDemo shelf />), state('shelf-empty', '学习卡片为空', () => <DockDemo shelf empty />),
+  ]),
   entry('CenterToolArea', 'CenterToolArea', '受控布局树、工具标签、拖放分屏与双顶栏 Portal。', ['layout/onLayoutChange/tool/onToolChange', 'variant/tools/tabsSlot/runSlot', 'designBody/boardBody/waveBody/runCluster'], ['布局 helper', 'Portal 目标', '本地状态；无布局存储'], [state('demo', '旧版数字逻辑演示', () => <CenterDemo />, 760), state('hdl', '真实 HDL 响应形状样本', () => <CenterDemo variant="digital-logic-real" />, 760), state('c', 'C 工具边界', () => <CenterDemo variant="textscope-c" />, 760)]),
   entry('Seg7', 'CenterToolArea', '数值译码演示七段管；不作为真实 HDL 信号解码器。', ['n/tone'], [], [state('board', '仪器材质', () => <DigitDemo />), state('card', '教学卡材质', () => <DigitDemo tone="card" />)]),
   entry('EditorPane', 'CenterToolArea', '旧版静态演示代码，不可编辑。', [], [], [state('static', '静态代码', () => <Stage><W.EditorPane /></Stage>)]),
