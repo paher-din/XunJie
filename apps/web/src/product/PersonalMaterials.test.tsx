@@ -7,7 +7,7 @@ import type { LearningActivity } from '@xunjie/contracts/learning-data'
 import type { PersonalMaterial, PersonalMaterialMediaType, PersonalMaterialSave } from '@xunjie/contracts/personal-materials'
 import type { SpaceIdentity } from '@xunjie/contracts/spaces'
 import { SelectionToolbar, WorkspaceReferencesProvider, useWorkspaceReferences } from '../components/workspace/references'
-import { PersonalMaterialEntries, PersonalMaterials, usePersonalMaterials } from './PersonalMaterials'
+import { PersonalMaterials, usePersonalMaterials } from './PersonalMaterials'
 import { Toaster, toast } from '@xunjie/ui/feedback'
 
 vi.mock('./learningTransport', async importOriginal => {
@@ -18,6 +18,7 @@ import { learningRequest } from './learningTransport'
 
 const request = vi.mocked(learningRequest)
 let root: Root, host: HTMLDivElement
+const noteRows = () => host.querySelectorAll('ul[aria-label="个人笔记列表"] > li')
 const settle = async () => { await new Promise(resolve => setTimeout(resolve, 0)); await new Promise(resolve => setTimeout(resolve, 0)) }
 const waitFor = async (check: () => void) => {
   for (let attempt = 0; attempt < 200; attempt++) {
@@ -64,8 +65,7 @@ function Probe({ activity, probe, probeRange, reveal }: { activity: LearningActi
   const [located, setLocated] = useState('')
   return <div>
     <Toaster />
-    <PersonalMaterialEntries personal={personal} />
-    <PersonalMaterials personal={personal} onBack={() => {}} />
+    <PersonalMaterials personal={personal} />
     <button type="button" onClick={() => { void personal.locate(probe, probeRange).then(result => setLocated(JSON.stringify(result))) }}>probe-locate</button>
     <button type="button" onClick={() => references.locate(references.references[0]!)}>probe-reference-locate</button>
     <output data-testid="locate">{located}</output>
@@ -148,7 +148,7 @@ it('retains an add request and verifies the original requestId after an unknown 
   expect(posts).toHaveLength(1)
   await click('核对并继续原请求')
   await waitFor(() => {
-    expect(host.querySelectorAll('.personal-material-list li')).toHaveLength(1)
+    expect(noteRows()).toHaveLength(1)
     expect(host.querySelector('[data-sonner-toast][data-type="success"]')?.textContent).toContain('已保存「我的笔记」')
   })
   expect(posts).toHaveLength(1)
@@ -178,7 +178,7 @@ it('appends a new version and keeps the reading content visible', async () => {
     throw new Error('unexpected route ' + route)
   })
   await mount(activity)
-  await waitFor(() => expect(host.querySelectorAll('.personal-material-list li')).toHaveLength(1))
+  await waitFor(() => expect(noteRows()).toHaveLength(1))
   await click('打开')
   await waitFor(() => expect(host.querySelector('.personal-material-reading .wr-text-source')?.textContent).toBe('第一版内容'))
   await click('更新为当前文本')
@@ -209,7 +209,7 @@ it('locates an older fixed-version reference after the material gets a new versi
     throw new Error('unexpected route ' + route)
   })
   await mount(activity)
-  await waitFor(() => expect(host.querySelectorAll('.personal-material-list li')).toHaveLength(1))
+  await waitFor(() => expect(noteRows()).toHaveLength(1))
   await click('打开')
   const source = await (async () => { let found: HTMLElement | null = null
     await waitFor(() => { found = host.querySelector<HTMLElement>('.personal-material-reading .wr-text-source'); expect(found).not.toBeNull() })
@@ -246,9 +246,9 @@ it('removes a personal material with its expected version', async () => {
     throw new Error('unexpected route ' + route)
   })
   await mount(activity)
-  await waitFor(() => expect(host.querySelectorAll('.personal-material-list li')).toHaveLength(1))
+  await waitFor(() => expect(noteRows()).toHaveLength(1))
   await click('移除')
-  await waitFor(() => expect(host.querySelectorAll('.personal-material-list li')).toHaveLength(0))
+  await waitFor(() => expect(noteRows()).toHaveLength(0))
   expect(removes).toHaveLength(1)
   expect(removes[0]).toMatchObject({ materialId: material.materialId, expectedVersion: 1 })
 })
@@ -264,7 +264,7 @@ it('creates a personal-material text reference from a selection', async () => {
     throw Object.assign(new Error('missing'), { code: 'missing' })
   })
   await mount(activity)
-  await waitFor(() => expect(host.querySelectorAll('.personal-material-list li')).toHaveLength(1))
+  await waitFor(() => expect(noteRows()).toHaveLength(1))
   await click('打开')
   const source = await (async () => { let found: HTMLElement | null = null
     await waitFor(() => { found = host.querySelector<HTMLElement>('.personal-material-reading .wr-text-source'); expect(found).not.toBeNull() })

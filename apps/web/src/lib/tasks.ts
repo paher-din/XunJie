@@ -4,7 +4,7 @@ import type { ProjectTask, TaskStatus } from '../bridge/types'
 export const isPending = (t: ProjectTask) => t.status !== '已完成'
 
 /** 单任务进度：任务完成百分比，不是知识掌握率。 */
-export function progressPercent(t: ProjectTask): number {
+export function progressPercent(t: Pick<ProjectTask, 'stepsDone' | 'stepsTotal'>): number {
   return t.stepsTotal > 0 ? Math.round((t.stepsDone / t.stepsTotal) * 100) : 0
 }
 

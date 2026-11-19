@@ -234,6 +234,8 @@ async function chromeJob() {
     result.source = { documentId: document.documentId, documentSha256: document.sha256,
       readingId, page: 2, label: '7', imageSha256: reading.pages[0].image.sha256, retainedReadingSha256: digest(reading) };
     result.checks.push('formal-upload-page2-label7');
+    const pdfTools = page.getByRole('button', { name: 'PDF 工具侧栏', exact: true });
+    if (await pdfTools.count()) await pdfTools.click();
     await page.getByRole('button', { name: '引用此页', exact: true }).click(); await openConversation();
     const question = page.locator('textarea:visible').last();
     await question.fill('请先且仅调用一次 read_reference 实际读取我引用的 PDF 页图，然后简短说明电压数值、实际页序和印刷标签。读取后直接回答，不调用其他工具。');
@@ -259,7 +261,7 @@ async function chromeJob() {
       answerSha256: sha(firstAnswer), voltage37: true };
     result.checks.push('real-read-reference-and-voltage-answer');
     phase = 'source-button';
-    await page.getByRole('button', { name: '返回作品', exact: true }).click(); await locate(readingId);
+    await page.getByRole('tab', { name: '作品', exact: true }).click(); await locate(readingId);
     result.checks.push('tool-record-source-opens-original-page'); await save();
     phase = 'followup';
     await question.fill('不要再调用任何工具，仅依据刚才已经读取的固定页，用一句话重述电压数值和实际页序。');

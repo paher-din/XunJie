@@ -15,7 +15,7 @@ import { chunkChannelMigrationSql, createChunkChannel } from '@xunjie/storage/ch
 import { z } from 'zod';
 import { StorageError } from '@xunjie/storage';
 import type { OwnedStorage, Migration } from '@xunjie/storage';
-import { createActivitySchema, activitySchema, courseActivityResultSchema } from '@xunjie/contracts/learning-data';
+import { createActivitySchema, activitySchema, courseActivityResultSchema, courseProgressInputSchema } from '@xunjie/contracts/learning-data';
 import type { CreateActivity, LearningActivity, CourseActivityResult } from '@xunjie/contracts/learning-data';
 import { teachingDependencyCallSchema } from '@xunjie/contracts/teaching-agent';
 import { isTeachingDependencyRead } from './dependency-semantics.js';
@@ -64,7 +64,7 @@ nativeChannelCancellationMigration, nativeChannelCleanupMigration, channelCheckp
 agentSessionMigration, sessionMaterialMigration, personalProjectMigration, learningSkillsMigration];
 const fingerprint = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const scope = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId];
-const fail = (code: 'missing' | 'forbidden' | 'identity-conflict'): never => { throw new StorageError(code); };
+const fail = (code: 'missing' | 'forbidden' | 'identity-conflict' | 'invalid'): never => { throw new StorageError(code); };
 const definitive = (error: unknown) => error instanceof StorageError
   && ['forbidden', 'missing', 'corrupt', 'invalid'].includes(error.code);
 
@@ -312,6 +312,28 @@ export function createLearningData(storage: OwnedStorage, authority: SpaceAuthor
     if (activity.status === 'closed') await executions.closeActivity(identity, activity.activityId);
     return activity;
   }
+  async function setCourseProgress(identity: SpaceIdentity, value: unknown) {
+    const input = courseProgressInputSchema.parse(value);
+    const before = await open(identity, input.activityId);
+    const course = before.course;
+    if (!course || before.purpose === 'preview') return fail('forbidden');
+    if (input.objectiveIndex >= course.objectives.length) return fail('invalid');
+    await storage.request({ requestId: input.requestId, fingerprint: fingerprint({ identity, input }) }, async tx => {
+      const { rows: [row] } = await tx.query(`SELECT body FROM activities WHERE space_environment_id=$1
+        AND space_id=$2 AND principal_id=$3 AND id=$4 FOR UPDATE`, [...scope(identity), input.activityId]);
+      if (!row) return fail('missing');
+      const existing = activitySchema.parse(row.body);
+      if (existing.status !== 'open' || existing.course?.releaseId !== course.releaseId) return fail('forbidden');
+      const completed = new Set(existing.completedObjectives);
+      if (input.completed) completed.add(input.objectiveIndex);
+      else completed.delete(input.objectiveIndex);
+      const activity = activitySchema.parse({ ...existing, completedObjectives: [...completed].sort((a, b) => a - b) });
+      await tx.query('UPDATE activities SET body=$2 WHERE id=$1', [activity.activityId, JSON.stringify(activity)]);
+      await tx.query('INSERT INTO activity_requests VALUES ($1,$2,$3,$4)', [input.requestId, ...scope(identity)]);
+      return activity;
+    });
+    return open(identity, input.activityId);
+  }
   const works = createWorks(storage, open);
   const pdf = createPdfMaterials(storage, open, courses);
   const materials = createPersonalMaterials(storage, open);
@@ -326,7 +348,7 @@ export function createLearningData(storage: OwnedStorage, authority: SpaceAuthor
         await courses.verifyComponentReference(identity, { releaseId: activity.course.releaseId,
           key: action.execution.instance.key, definitionDigest: action.execution.instance.definitionDigest });
       } } } : {}) });
-  return { create, createCourse, courseResult, list, open, receipt, setStatus, artifacts: createTeachingArtifacts(storage, open, assertArtifactAdoption), works, pdf, materials, search, drafts, intents, executions, executionRecords,
+  return { create, createCourse, courseResult, list, open, receipt, setStatus, setCourseProgress, artifacts: createTeachingArtifacts(storage, open, assertArtifactAdoption), works, pdf, materials, search, drafts, intents, executions, executionRecords,
     studyCopies: createStudyCopies(storage), schoolDeliveries: createSchoolDeliveries(storage, { activity: open }),
     agentPreferences: createAgentPreferences(storage, access),
     conversationArchives: createConversationArchives(storage, access),

@@ -18,6 +18,8 @@ import { preparationStore, type PreparationStore } from './store'
  * state and by the service on every reconnection; nothing here makes an activity allowed.
  */
 export const cacheableMaterial = (mediaType: string) => mediaType.startsWith('text/') || mediaType === 'application/json'
+// Match the course owner's UTF-8 text, including the BOM used in reference offsets.
+const decodeCourseText = (bytes: Uint8Array) => new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes)
 
 export function createMaterialCache(options: { store?: PreparationStore } = {}) {
   const store = options.store ?? preparationStore
@@ -26,7 +28,7 @@ export function createMaterialCache(options: { store?: PreparationStore } = {}) 
     material: { materialId: string; mediaType: string; sha256: string; byteLength: number }): Promise<string> {
     const saved = await store.readResource(material.sha256).catch(() => undefined)
     if (saved && saved.bytes.length === material.byteLength && await sha256(saved.bytes) === material.sha256)
-      return new TextDecoder('utf-8', { fatal: true }).decode(saved.bytes)
+      return decodeCourseText(saved.bytes)
     if (saved) await store.dropResource(material.sha256).catch(() => undefined)
     const payload = courseMaterialContentSchema.parse(await learningRequest(activity, spaceKey, namespace,
       `releases/${course.releaseId}/materials/${material.materialId}`))
@@ -36,7 +38,7 @@ export function createMaterialCache(options: { store?: PreparationStore } = {}) 
       throw new Error('material-corrupt')
     const bytes = decodeBase64(payload.contentBase64)
     if (bytes.length !== material.byteLength || await sha256(bytes) !== material.sha256) throw new Error('material-corrupt')
-    const value = new TextDecoder('utf-8', { fatal: true }).decode(bytes)
+    const value = decodeCourseText(bytes)
     // Losing the cache costs a re-download on the next open, never correctness for this one.
     await store.writeResource({ sha256: material.sha256, byteLength: bytes.length, mediaType: material.mediaType,
       bytes, storedAt: new Date().toISOString() }).catch(() => undefined)

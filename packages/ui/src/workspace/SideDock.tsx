@@ -1,5 +1,5 @@
 import { Icon, IconText } from '../icons'
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode, type Ref } from 'react'
 
 /**
  * 左侧竖向胶囊导航 + gooey 弹出（形态与动效在 docs/prototypes/workspace/taskinfo.html 定稿）。
@@ -83,23 +83,45 @@ export interface StashItem {
   gen?: { claimSim: boolean; version: number }
 }
 
+type DockPanel = 'task' | 'stash' | null
+
 export interface SideDockProps {
   /** Task information content supplied by the caller. */
   taskInfo: ReactNode
+  taskButtonRef?: Ref<HTMLButtonElement>
+  openPanel?: DockPanel
+  onOpenPanelChange?: (panel: DockPanel) => void
   /** Collected card identities and snapshots remain owned by the caller. */
-  stash: StashItem[]
-  onPin: (key: string) => void
+  stash?: StashItem[]
+  /** A scrollable shelf for callers that supply their own card list and actions. */
+  stashPanel?: { count: number; content: ReactNode }
+  onPin?: (key: string) => void
   onOpen?: (key: string) => void
-  onToast: (msg: string) => void
+  onToast?: (msg: string) => void
 }
 
-export function SideDock({ taskInfo, stash, onPin, onOpen, onToast }: SideDockProps) {
-  const [open, setOpen] = useState<'task' | 'stash' | null>(null)
+export function SideDock({ taskInfo, taskButtonRef, openPanel, onOpenPanelChange, stash: stashItems, stashPanel, onPin, onOpen, onToast }: SideDockProps) {
+  const [localOpen, setLocalOpen] = useState<DockPanel>(null)
+  const open = openPanel === undefined ? localOpen : openPanel
+  const stash = stashItems ?? []
+  const cardId = useId()
+  const cardOpen = open === 'task' || (open === 'stash' && !!stashPanel)
+  const cardLabel = open === 'task' ? '任务信息' : '卡片收纳'
+  const stashCount = stashPanel?.count ?? stash.length
+  const setOpen = (panel: DockPanel) => {
+    if (openPanel === undefined) setLocalOpen(panel)
+    onOpenPanelChange?.(panel)
+  }
   /** 收纳弹出行的垂直锚点：「卡片收纳」按钮中心的视口 y（打开时快照）。 */
   const [anchorY, setAnchorY] = useState<number | null>(null)
   const taskBtnRef = useRef<HTMLButtonElement>(null)
+  const attachTaskButton = useCallback((button: HTMLButtonElement | null) => {
+    taskBtnRef.current = button
+    if (typeof taskButtonRef === 'function') return taskButtonRef(button)
+    if (taskButtonRef) taskButtonRef.current = button
+  }, [taskButtonRef])
   const stashBtnRef = useRef<HTMLButtonElement>(null)
-  const cardRef = useRef<HTMLDivElement>(null)
+  const cardRef = useRef<HTMLElement>(null)
   const itemEls = useRef<(HTMLElement | null)[]>([])
   const stageRef = useRef<HTMLDivElement>(null)
   const genRef = useRef(0)
@@ -192,11 +214,11 @@ export function SideDock({ taskInfo, stash, onPin, onOpen, onToast }: SideDockPr
     if (!btn) return
     // 弹出卡锚定胶囊按钮（容器跟随全局侧栏），不要按视口硬编码——否则侧栏在时卡片与胶囊错位
     const popLeft = Math.round(btn.getBoundingClientRect().right + 14)
-    if (open === 'task') {
+    if (cardOpen) {
       const card = cardRef.current
       if (!card) return
-      card.style.left = popLeft + 'px'
-      card.style.top = Math.round(window.innerHeight / 2 - card.offsetHeight / 2) + 'px'
+      card.style.setProperty('--ws-popcard-left', popLeft + 'px')
+      if (document.activeElement === btn) card.focus({ preventScroll: true })
     } else {
       itemEls.current.forEach((el) => {
         if (el) el.style.left = popLeft + 'px'
@@ -207,11 +229,11 @@ export function SideDock({ taskInfo, stash, onPin, onOpen, onToast }: SideDockPr
     const gen = genRef.current
     const bc = centerOf(btn)
     let blobCount = 1
-    if (open === 'task') {
+    if (cardOpen) {
       const card = cardRef.current!
       const r = card.getBoundingClientRect()
       flyIn(card, bc, r, '18px', 0)
-      playGoo(bc, [{ box: r, radius: 18, color: '#d9f273' }], false)
+      playGoo(bc, [{ box: r, radius: 18, color: 'var(--accent-soft)' }], false)
     } else {
       const targets = itemEls.current.flatMap((el, i) =>
         el ? [{ el, box: el.getBoundingClientRect(), color: PASTEL[i % PASTEL.length] }] : [],
@@ -221,10 +243,15 @@ export function SideDock({ taskInfo, stash, onPin, onOpen, onToast }: SideDockPr
       playGoo(bc, targets.map((t) => ({ box: t.box, radius: 14, color: t.color })), false)
     }
     // 液滴末帧已是透明（fill:both 保持），落定后清掉舞台，避免滤镜层常驻参与合成
-    window.setTimeout(() => {
+    const timer = window.setTimeout(() => {
       if (genRef.current === gen) clearStage()
     }, OPEN_MS + (blobCount - 1) * 90 + LAG_MS + 60)
-  }, [open])
+    return () => {
+      window.clearTimeout(timer)
+      genRef.current += 1
+      clearStage()
+    }
+  }, [open, cardOpen])
 
   /* ---- 关闭：真卡飞回按钮，液滴回流，结束后卸载 ---- */
 
@@ -234,24 +261,29 @@ export function SideDock({ taskInfo, stash, onPin, onOpen, onToast }: SideDockPr
     genRef.current += 1
     const gen = genRef.current
     const btn = (kind === 'task' ? taskBtnRef : stashBtnRef).current
-    const els = kind === 'task' ? [cardRef.current] : itemEls.current.slice()
-    if (!animated || reducedMotion() || !btn || els.some((el) => !el)) {
+    const els = cardOpen ? [cardRef.current] : itemEls.current.slice()
+    const finish = () => {
+      if (cardOpen) btn?.focus({ preventScroll: true })
       setOpen(null)
       clearStage()
+    }
+    if (!animated || reducedMotion() || !btn || els.some((el) => !el)) {
+      finish()
       return
     }
     const bc = centerOf(btn)
     const targets = els.map((el, i) => ({
       el: el!,
       box: el!.getBoundingClientRect(),
-      color: kind === 'task' ? '#d9f273' : PASTEL[i % PASTEL.length],
+      color: cardOpen ? 'var(--accent-soft)' : PASTEL[i % PASTEL.length],
     }))
-    playGoo(bc, targets.map((t) => ({ box: t.box, radius: kind === 'task' ? 18 : 14, color: t.color })), true)
+    const radius = cardOpen ? 18 : 14
+    playGoo(bc, targets.map((t) => ({ box: t.box, radius, color: t.color })), true)
     targets.forEach((t, i) => {
       t.el.getAnimations().forEach((a) => a.cancel())
       const dx = bc.x - (t.box.left + t.box.width / 2)
       const dy = bc.y - (t.box.top + t.box.height / 2)
-      t.el.animate(closeFrames(dx, dy, bc.d / t.box.width, bc.d / t.box.height, kind === 'task' ? '18px' : '14px', 1, false), {
+      t.el.animate(closeFrames(dx, dy, bc.d / t.box.width, bc.d / t.box.height, radius + 'px', 1, false), {
         duration: CLOSE_MS,
         delay: i * 45,
         easing: EASE_BACK,
@@ -261,8 +293,7 @@ export function SideDock({ taskInfo, stash, onPin, onOpen, onToast }: SideDockPr
     window.setTimeout(
       () => {
         if (genRef.current !== gen) return
-        setOpen(null)
-        clearStage()
+        finish()
       },
       CLOSE_MS + (targets.length - 1) * 45 + LAG_MS + 30,
     )
@@ -279,11 +310,11 @@ export function SideDock({ taskInfo, stash, onPin, onOpen, onToast }: SideDockPr
 
   // 收纳卡片被钉完时自动收起
   useEffect(() => {
-    if (open === 'stash' && stash.length === 0) {
+    if (open === 'stash' && !cardOpen && stash.length === 0) {
       setOpen(null)
       clearStage()
     }
-  }, [open, stash.length])
+  }, [open, cardOpen, stash.length])
 
   function clickTask() {
     if (open === 'task') close(true)
@@ -295,8 +326,12 @@ export function SideDock({ taskInfo, stash, onPin, onOpen, onToast }: SideDockPr
       close(true)
       return
     }
+    if (stashPanel) {
+      setOpen('stash')
+      return
+    }
     if (stash.length === 0) {
-      onToast('还没有收纳的卡片——引导气泡里点「⧉ 收纳」试试')
+      onToast?.('还没有收纳的卡片——引导气泡里点「⧉ 收纳」试试')
       return
     }
     // 弹出行组垂直居中于「卡片收纳」按钮，而不是视口
@@ -320,36 +355,42 @@ export function SideDock({ taskInfo, stash, onPin, onOpen, onToast }: SideDockPr
       </svg>
       <nav className="ws-dock" aria-label="工作区辅助">
         <button
-          ref={taskBtnRef}
+          ref={attachTaskButton}
+          type="button"
           className={open === 'task' ? 'ws-dbtn on' : 'ws-dbtn'}
           data-tip="任务信息"
           aria-label="任务信息"
+          aria-expanded={open === 'task'}
+          aria-controls={open === 'task' ? cardId : undefined}
           onClick={clickTask}
         >
           <Icon name="clipboard-text" size={22} />
         </button>
-        <button
+        {(stashItems || stashPanel) && <button
           ref={stashBtnRef}
+          type="button"
           className={open === 'stash' ? 'ws-dbtn on' : 'ws-dbtn'}
           data-tip="卡片收纳"
           aria-label="卡片收纳"
+          aria-expanded={open === 'stash'}
+          aria-controls={open === 'stash' && cardOpen ? cardId : undefined}
           onClick={clickStash}
         >
           <Icon name="archive" size={22} />
-          {stash.length > 0 && <span className="ws-dock-badge">{stash.length}</span>}
-        </button>
+          {stashCount > 0 && <span className="ws-dock-badge">{stashCount}</span>}
+        </button>}
       </nav>
       <div ref={stageRef} className="ws-goostage" style={{ display: 'none' }} />
       {open && <div className="ws-popveil" onClick={() => close(true)} />}
-      {open === 'task' && (
-        <div ref={cardRef} className="ws-popcard">
-          <button className="ws-popx" onClick={() => close(true)} aria-label="关闭">
+      {cardOpen && (
+        <aside key={open} ref={cardRef} id={cardId} className="ws-popcard" aria-label={cardLabel} tabIndex={-1}>
+          <button type="button" className="ws-popx" onClick={() => close(true)} aria-label={`关闭${cardLabel}`}>
             <Icon name="close" />
           </button>
-          {taskInfo}
-        </div>
+          {open === 'task' ? taskInfo : stashPanel?.content}
+        </aside>
       )}
-      {open === 'stash' &&
+      {open === 'stash' && !cardOpen &&
         stash.map((it, i) => (
           <div
             key={it.key}
@@ -379,7 +420,7 @@ export function SideDock({ taskInfo, stash, onPin, onOpen, onToast }: SideDockPr
                     <IconText name="arrow-right" position="end">打开</IconText>
                   </button>
                 )}
-                <button className="pin" onClick={() => onPin(it.key)}>
+                <button className="pin" disabled={!onPin} onClick={() => onPin?.(it.key)}>
                   <IconText name="pin" position="end">钉住</IconText>
                 </button>
               </>
@@ -387,7 +428,7 @@ export function SideDock({ taskInfo, stash, onPin, onOpen, onToast }: SideDockPr
               <>
                 <span className="dot" style={{ background: PASTEL[i % PASTEL.length] }} />
                 <span className="nm">{it.title}</span>
-                <button className="pin" onClick={() => onPin(it.key)}>
+                <button className="pin" disabled={!onPin} onClick={() => onPin?.(it.key)}>
                   <IconText name="pin" position="end">钉住</IconText>
                 </button>
               </>

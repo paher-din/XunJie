@@ -285,7 +285,8 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
     const file = await realpath(resolve(webRoot, relative));
     if (!file.startsWith(webRoot + sep) || !(await stat(file)).isFile()) { send(response, 404, { error: 'not_found' }); return; }
     const contentType = ({ '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
-      '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.woff2': 'font/woff2' } as Record<string, string>)[extname(file)] ?? 'application/octet-stream';
+      '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
+      '.svg': 'image/svg+xml', '.woff2': 'font/woff2' } as Record<string, string>)[extname(file)] ?? 'application/octet-stream';
     response.writeHead(200, { 'content-type': contentType, 'x-content-type-options': 'nosniff',
       // The execution path compiles a pinned, digest-checked WebAssembly algorithm in a dedicated
       // worker; `wasm-unsafe-eval` permits exactly that compilation. `unsafe-eval` stays forbidden.

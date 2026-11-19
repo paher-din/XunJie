@@ -1,24 +1,30 @@
 import { usePersonalProjectTitles } from './PersonalProjectPlan'
 import { sessionInputProtection } from '../reliable-workspace/input-protection'
-import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { activitySchema, courseActivityResultSchema } from '@xunjie/contracts/learning-data'
 import type { LearningActivity, CourseActivityResult } from '@xunjie/contracts/learning-data'
 import { courseCatalogSchema, courseReleaseSchema, courseMaterialContentSchema, createCourseActivitySchema } from '@xunjie/contracts/courses'
 import type { Course, CourseRelease, CourseMaterial } from '@xunjie/contracts/courses'
+import { schoolSubmissionListSchema } from '@xunjie/contracts/school-deliveries'
 import { spaceIdentitySchema, type SpaceIdentity } from '@xunjie/contracts/spaces'
+import { Button, ConfirmationDialog, SelectField, SessionLogin } from '@xunjie/ui/foundation'
+import { WorkspaceResourceList, WorkspaceResourceRow, WorkspaceTaskIntro } from '@xunjie/ui/workspace'
+import { Icon, IconText } from '@xunjie/ui/icons'
 import { useTheme } from '../lib/theme'
+import { formatDeadline } from '../lib/tasks'
 import './product.css'
+import './course-ui.css'
 import type { ActivityWorkspaceHandle } from './ActivityWorkspace'
 import { ProductShell } from '../components/ProductShell'
 import { useModelSelection } from './ModelSelection'
 import { ProductHome } from './ProductHome'
+import { courseReleaseDate, courseTaskEntry, courseTaskProgress, type CourseTaskSelection } from './SchoolCourseTasks'
+import { HomeNavigationProvider } from '../lib/homeCourseNavigation'
 import { ProductConversationHistory } from './ProductConversationHistory'
 import { ProductSettings, type ProductSettingsTab } from './ProductSettings'
 import { SettingsFailureBoundary } from './SettingsFailureBoundary'
 import { ProductProfile } from './ProductProfile'
-import { Button, ConfirmationDialog, SessionLogin } from '@xunjie/ui/foundation'
 import { Toaster, toast, useToastFeedback } from '@xunjie/ui/feedback'
-import { Icon } from '@xunjie/ui/icons'
 import { SettingsStatus, TextInput } from '@xunjie/ui/settings'
 import { createBrowserRouter, RouterProvider, useBlocker, useLocation, useNavigate } from 'react-router-dom'
 import { LearningReadCache } from './learning-read-cache'
@@ -26,6 +32,8 @@ import { skillCatalogCacheKey, skillCatalogSchema } from './skills'
 import { learningSubjectRequest } from './learningTransport'
 import { useAgentSessionHistory } from './useAgentSession'
 import type { AgentSession } from '@xunjie/contracts/agent-sessions'
+import { isCoursePdf } from './CourseMaterials'
+import { cacheableMaterial } from '../component-preparation/materials'
 import { startSchoolAuthorization, rememberSchoolConnection, restoreSchoolConnection, schoolAuthorizationReturnUrl, returnToSchoolClient,
   type PendingSchoolConnection } from './school-authorization'
 
@@ -37,12 +45,16 @@ const prepareAgent = () => { void loadAgent().catch(() => {}) }
 const ProductAgent = lazy(() => loadAgent().then(module => ({ default: module.ProductAgent })))
 const ActivityPage = lazy(() => loadActivityPage().then(module => ({ default: module.ActivityPage })))
 const ActivityReferences = lazy(() => loadReferences().then(module => ({ default: module.ActivityReferences })))
-const CourseMaterialReferences = lazy(() => loadReferences().then(module => ({ default: module.CourseMaterialReferences })))
 const CourseRequirementsReference = lazy(() => loadReferences().then(module => ({ default: module.CourseRequirementsReference })))
 const PersonalModelSettings = lazy(() => loadModelSettings().then(module => ({ default: module.PersonalModelSettings })))
 
 type Account = { key: string; accountName: string; schoolName: string }
 type Context = { clientNamespace: string; profile: string; readOnly?: boolean; identities: { key: string; identity: SpaceIdentity }[]; account?: Account | null }
+
+function activityBelongsTo(activity: LearningActivity, identity: SpaceIdentity) {
+  return activity.identity.kind === identity.kind && activity.identity.environmentId === identity.environmentId
+    && activity.identity.spaceId === identity.spaceId && activity.identity.principalId === identity.principalId
+}
 // Explicit null means unbound. Older servers fall back to one school identity,
 // never the requested route, so a deep link cannot select a different account.
 function normalizeContext(value: Context): Context {
@@ -72,10 +84,17 @@ function preferredKey(context: Context, preferred: string | null, agent = false)
   return knownSpaceKey(context, preferred, new URLSearchParams(location.search).get('activity'))
     ?? personal ?? context.identities[0]?.key ?? ''
 }
-type HomeData = { scope: string; personal: LearningActivity[] | null; school: LearningActivity[] | null; courses: Course[] | null; personalError: string; schoolError: string }
+type HomeData = { scope: string; personal: LearningActivity[] | null; school: LearningActivity[] | null; courses: Course[] | null;
+  personalError: string; courseError: string }
+type CourseTaskPreview = CourseTaskSelection & { search: string; detail?: CourseRelease; error?: string; activityId?: string }
 
 type PendingConnection = PendingSchoolConnection
 type CreateCourseActivity = { requestId: string; releaseId: string }
+function readCoursePending(storageKey: string): CreateCourseActivity | null {
+  const saved = localStorage.getItem(storageKey)
+  return saved ? createCourseActivitySchema.parse(JSON.parse(saved)) : null
+}
+
 const messages: Record<string, string> = {
   forbidden: '访问资格已失效，请重新登录或联系学校管理员。原活动仍属于原空间。',
   missing: '无法找到或无权访问这项内容，请返回列表核对。',
@@ -98,7 +117,10 @@ async function sendLearningRequest(path: string, body?: unknown, key?: string, s
     .catch(() => { throw Object.assign(new Error(messages.unavailable), { code: 'unavailable' }) })
   const result = await response.json()
   if (!response.ok) {
-    const failure = new Error(messages[result.error] ?? '操作结果尚未确认，请核对原请求后重试。') as Error & { code?: string }
+    const message = path === 'course-progress' && result.error === 'missing'
+      ? '学习目标未保存。请重新打开任务，若仍无法保存，请联系学校管理员。'
+      : messages[result.error] ?? '操作结果尚未确认，请核对原请求后重试。'
+    const failure = new Error(message) as Error & { code?: string }
     failure.code = result.error
     throw failure
   }
@@ -106,31 +128,96 @@ async function sendLearningRequest(path: string, body?: unknown, key?: string, s
 }
 const errorText = (error: unknown) => error instanceof Error ? error.message : '操作未完成，请重试。'
 const definitive = new Set(['invalid', 'forbidden', 'missing', 'corrupt', 'identity-conflict'])
-const published = (value: string) => new Date(value).toLocaleDateString('zh-CN')
 const formatBytes = (value: number) => value < 1024 ? `${value} B` : value < 1024 * 1024 ? `${(value / 1024).toFixed(1)} KB` : `${(value / 1024 / 1024).toFixed(1)} MB`
 
-type CourseSectionsContent = Pick<CourseRelease, 'releaseId' | 'objectives' | 'requirements' | 'materials' | 'starterWorks' | 'capabilities'>
-function CourseSections({ content, level, busy, onMaterial, requirementsContent }: {
-  content: CourseSectionsContent; level: 3 | 4; busy: boolean; onMaterial: (item: CourseMaterial) => void
+function CourseTools({ capabilities, components }: Pick<CourseRelease, 'capabilities' | 'components'>) {
+  if (capabilities.length === 0) return null
+  return <details className="capability-note"><summary>课程工具详情</summary>
+    <ul className="course-tool-list">{capabilities.map((item, index) => {
+      const bindings = item.kind === 'component' ? (components ?? []).filter(binding =>
+        binding.definition.manifest.componentId === item.objectId && binding.definition.manifest.version === item.version) : []
+      const names = [...new Set(bindings.map(binding => binding.configuration.title.trim() || binding.definition.manifest.title))]
+      const title = names.join('、') || (item.kind === 'component' ? '学习工具' : '运行工具')
+      const isAlu = bindings.some(binding => binding.definition.manifest.formatVersion === 3
+        && binding.definition.manifest.runtime.adapterId === 'icarus-alu')
+      const description = isAlu ? '用于观察运算结果和检查你的 ALU 实现。'
+        : item.kind === 'executor' ? '用于执行本课程中的程序或检查任务。'
+        : bindings.length > 0 ? '用于本课程的交互学习活动。' : '课程未提供工具名称，使用方式请查看任务要求。'
+      return <li key={`${item.kind}:${item.objectId}:${item.version}:${index}`}>
+        <strong className="course-tool-name">{title}</strong>
+        <p className="course-tool-description">{description}{bindings.length > 0 && '使用说明和运行状态见学习工作区。'}</p>
+        <details className="course-tool-technical"><summary>技术信息</summary>
+          <dl>
+            <div><dt>类型</dt><dd>{item.kind === 'component' ? '课程组件' : '运行工具'}</dd></div>
+            <div><dt>版本</dt><dd>第 {item.version} 版</dd></div>
+            <div><dt>内部编号</dt><dd><code>{item.objectId}</code></dd></div>
+          </dl>
+        </details>
+      </li>
+    })}</ul>
+  </details>
+}
+
+type MaterialLocation = { releaseId: string; materialId: string }
+type MaterialDownload = MaterialLocation & { title: string; url: string }
+function saveMaterialFile(material: MaterialDownload) {
+  const anchor = document.createElement('a')
+  anchor.href = material.url; anchor.download = material.title; anchor.click()
+}
+function CourseInstructions({ content, busy, requirementsContent, objectiveProgress }: {
+  content: Pick<CourseRelease, 'objectives' | 'requirements'>; busy: boolean
   requirementsContent?: ReactNode
+  objectiveProgress?: { completed: readonly number[]; onChange?: (index: number, completed: boolean) => void }
 }) {
-  const Heading = level === 4 ? 'h4' : 'h3'
-  return <>
-    <Heading>学习目标</Heading><ul className="course-points">{content.objectives.map((item, index) => <li key={index}>{item}</li>)}</ul>
-    <Heading>任务要求</Heading>{requirementsContent ?? <p className="preserve-lines">{content.requirements}</p>}
-    <Heading>学习材料</Heading>
-    {content.materials.length === 0 ? <p className="detail">这个版本没有开放材料。</p>
-      : <ul className="material-list">{content.materials.map(item => <li key={item.materialId}>
-        <button type="button" disabled={busy} onClick={() => onMaterial(item)}>{item.title}</button>
-        <span className="detail">{item.mediaType} · {formatBytes(item.byteLength)}</span></li>)}</ul>}
-    {content.starterWorks.length > 0 && <><Heading>起始作品</Heading>
+  return <div className="course-content-main">
+    <section className="course-content-section"><h3>学习目标</h3>
+      <ul className={objectiveProgress ? 'course-points course-objectives' : 'course-points'}>
+        {content.objectives.map((item, index) => <li key={index}>{objectiveProgress ? <label>
+          <input type="checkbox" checked={objectiveProgress.completed.includes(index)} disabled={!objectiveProgress.onChange}
+            aria-disabled={busy || undefined} onChange={event => {
+              if (!busy) objectiveProgress.onChange?.(index, event.currentTarget.checked)
+            }} />
+          <span>{item}</span>
+        </label> : item}</li>)}
+      </ul>
+    </section>
+    <section className="course-content-section"><h3>任务要求</h3>
+      {requirementsContent ?? <p className="preserve-lines">{content.requirements}</p>}
+    </section>
+  </div>
+}
+
+function CourseResources({ content, busy, onOpenMaterial, onDownload, readingMaterial, showMaterialsHeading = true }: {
+  content: Pick<CourseRelease, 'releaseId' | 'materials' | 'starterWorks'>
+  busy: boolean; onOpenMaterial?: (materialId: string) => void; onDownload: (item: CourseMaterial) => void
+  readingMaterial: MaterialLocation | null; showMaterialsHeading?: boolean
+}) {
+  return <div className="course-content-resources">
+    <section className="course-content-section" aria-label={showMaterialsHeading ? undefined : '学习材料'}>
+      {showMaterialsHeading && <h3>学习材料</h3>}
+      {content.materials.length === 0 ? <p className="detail">这个版本没有开放材料。</p>
+        : <WorkspaceResourceList>{content.materials.map(item => {
+          const reading = readingMaterial?.releaseId === content.releaseId && readingMaterial.materialId === item.materialId
+          const canRead = onOpenMaterial && (cacheableMaterial(item.mediaType) || isCoursePdf(item.mediaType))
+          return <WorkspaceResourceRow key={item.materialId} name={item.title} disabled={busy}
+            onOpen={canRead ? () => onOpenMaterial(item.materialId) : undefined}
+            actions={<div className="material-action" data-reading={reading} aria-live="polite">
+              <span className="detail material-size">{formatBytes(item.byteLength)}</span>
+              <span className="material-download">
+                <Button className="material-download-trigger" type="button" variant="outline" disabled={busy}
+                  aria-label={`下载 ${item.title}`} aria-disabled={reading || undefined} aria-busy={reading || undefined}
+                  onClick={() => { if (!reading) onDownload(item) }}>
+                  {reading ? '读取中…' : <IconText name="download-minimalistic">下载</IconText>}
+                </Button>
+              </span>
+            </div>} />
+        })}</WorkspaceResourceList>}
+    </section>
+    {content.starterWorks.length > 0 && <section className="course-content-section"><h3>起始作品</h3>
       <ul className="course-points">{content.starterWorks.map(work => <li key={work.workId}>
-        <strong>{work.title}</strong>{work.description ? ` · ${work.description}` : ''}</li>)}</ul></>}
-    {content.capabilities.length > 0 && <details className="capability-note"><summary>课程工具详情</summary>
-      <p>本课程声明的工具尚未接入当前工作区。</p>
-      <ul>{content.capabilities.map(item => <li key={item.objectId}>{item.kind} · {item.objectId} · {item.version}</li>)}</ul>
-    </details>}
-  </>
+        <strong>{work.title}</strong>{work.description ? ` · ${work.description}` : ''}</li>)}</ul>
+    </section>}
+  </div>
 }
 
 export function LearningApp() {
@@ -167,10 +254,13 @@ function LearningView() {
   const [activities, setActivities] = useState<LearningActivity[] | null>(null)
   const [activitiesFor, setActivitiesFor] = useState('')
   const [opened, setOpened] = useState<LearningActivity | null>(null)
+  const [recordedProgress, setRecordedProgress] = useState<{ activity: LearningActivity; completed: readonly number[] }>()
   const [homeData, setHomeData] = useState<HomeData | null>(null)
-  const [catalog, setCatalog] = useState<Course[] | null>(null)
-  const [release, setRelease] = useState<CourseRelease | null>(null)
-  const [material, setMaterial] = useState<{ title: string; url: string } | null>(null)
+  const [taskPreview, setTaskPreview] = useState<CourseTaskPreview | null>(null)
+  const [taskInfoEntry, setTaskInfoEntry] = useState<HTMLButtonElement | null>(null)
+  const finishTaskDocking = useCallback(() => setTaskPreview(null), [])
+  const [material, setMaterial] = useState<MaterialDownload | null>(null)
+  const [readingMaterial, setReadingMaterial] = useState<MaterialLocation | null>(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [loginName, setLoginName] = useState('')
@@ -186,12 +276,14 @@ function LearningView() {
   const disconnectPending = useRef(false)
   const schoolStartRequest = useRef<{ requestId: string; schoolEndpoint: string } | null>(null)
   const [coursePending, setCoursePending] = useState<CreateCourseActivity | null>(null)
+  const [courseStart, setCourseStart] = useState<{ releaseId: string } | null>(null)
   const [notice, setNotice] = useState('')
   useToastFeedback(error)
   useToastFeedback(notice, 'success')
   const [reload, setReload] = useState(0)
   const epoch = useRef(0)
   const authEpoch = useRef(0)
+  const pendingStatus = useRef(new Set<string>())
   const currentView = useRef({ context, key, opened })
   currentView.current = { context, key, opened }
   useEffect(() => {
@@ -254,16 +346,15 @@ function LearningView() {
   }
   function selectCourse(courseId: string | null) {
     ++contentReadEpoch.current
-    const params = new URLSearchParams(route.search)
+    const params = new URLSearchParams(currentSearch.current)
     if (courseId) {
       if (!context?.account) return
-      params.set('space', context.account.key); params.delete('view'); params.delete('activity'); params.delete('artifact')
+      params.set('space', context.account.key); params.delete('view'); params.delete('activity'); params.delete('artifact'); params.delete('session')
       params.set('course', courseId)
     }
     else params.delete('course')
     navigate({ pathname: route.pathname, search: params.toString() })
-    setRelease(null); rememberMaterial(null)
-    requestAnimationFrame(() => { const heading = document.getElementById('course-title'); heading?.focus(); heading?.scrollIntoView({ block: 'start' }) })
+    setTaskPreview(null); rememberMaterial(null)
   }
   const materialUrl = useRef('')
   const authorize = new URLSearchParams(location.search).get('authorize')
@@ -271,6 +362,15 @@ function LearningView() {
   const accountName = context ? context.account?.accountName ?? '本地学习空间' : '本地学习空间'
   const personalKey = context?.identities.find(item => item.identity.kind === 'personal')?.key
   const schoolKey = context?.account?.key
+  const readTaskSubmission = useCallback(async (activity: LearningActivity, signal: AbortSignal) => {
+    const binding = activity.course
+    if (!schoolKey || !binding) throw new Error('无法核对任务提交状态。')
+    const { submissions } = schoolSubmissionListSchema.parse(await requestLearning(
+      'submissions/' + activity.activityId, undefined, schoolKey, signal, context?.clientNamespace))
+    return submissions.some(receipt => receipt.scope.activityId === activity.activityId
+      && receipt.scope.principalId === activity.identity.principalId
+      && receipt.course.releaseId === binding.releaseId && receipt.course.contentDigest === binding.contentDigest)
+  }, [context?.clientNamespace, schoolKey])
   const schoolLoginRequired = context?.profile === 'school' && !context.identities.some(item => item.key === 'school')
   useEffect(() => { if (schoolLoginRequired) schoolAccount.current?.focus() }, [schoolLoginRequired])
   const routeSpace = new URLSearchParams(route.search).get('space')
@@ -283,30 +383,15 @@ function LearningView() {
     ? { identity: personalIdentity, spaceKey: personalKey, namespace: context.clientNamespace } : undefined, contextVerified)
   const coursePendingKey = context && identity?.kind === 'school'
     ? `xj.course-activity-request.${context.clientNamespace}.${identity.environmentId}.${identity.spaceId}.${identity.principalId}` : ''
-  const activityAuthorized = !!opened && !!identity && contextVerified
-    && opened.identity.environmentId === identity.environmentId && opened.identity.spaceId === identity.spaceId
-    && opened.identity.principalId === identity.principalId
+  const activityAuthorized = !!opened && !!identity && contextVerified && activityBelongsTo(opened, identity)
 
   useEffect(() => { setArchiveOpen(false); setHistoryQuery('') }, [pendingKey])
 
-  useEffect(() => {
-    const target = returnFocus.current
-    if (opened || !activities || activitiesFor !== pendingKey || !target || target.key !== key) return
-    const frame = requestAnimationFrame(() => {
-      const button = document.querySelector<HTMLButtonElement>(`[data-activity-id="${CSS.escape(target.activityId)}"]`)
-      if (!button) return
-      button.focus({ preventScroll: true })
-      const main = document.querySelector('.main')
-      if (main) main.scrollTop = target.scrollTop
-      returnFocus.current = null
-    })
-    return () => cancelAnimationFrame(frame)
-  }, [opened, activities, activitiesFor, pendingKey, key])
-
-  function rememberMaterial(next: { title: string; url: string } | null) {
+  function rememberMaterial(next: MaterialDownload | null) {
     if (materialUrl.current) URL.revokeObjectURL(materialUrl.current)
     materialUrl.current = next?.url ?? ''
     setMaterial(next)
+    setReadingMaterial(null)
   }
   useEffect(() => () => { if (materialUrl.current) URL.revokeObjectURL(materialUrl.current) }, [])
 
@@ -319,7 +404,7 @@ function LearningView() {
     if (generation !== epoch.current || authentication !== authEpoch.current) return false
     const nextKey = prefer && next.identities.some(item => item.key === prefer) ? prefer
       : next.identities.some(item => item.key === key) ? key : next.identities[0]?.key ?? ''
-    rememberActivity(null, nextKey); setActivities(null); setCatalog(null); setRelease(null); rememberMaterial(null)
+    rememberActivity(null, nextKey); setActivities(null); setTaskPreview(null); rememberMaterial(null)
     try { sessionStorage.setItem('xj.works-context.v1', JSON.stringify(next)) } catch { /* Optional reopening hint only. */ }
     setContextVerified(true)
     setContext(next)
@@ -372,19 +457,27 @@ function LearningView() {
     }, 3000)
     return () => clearInterval(timer)
   }, [contextVerified, context, opened])
-  const homeVisible = !agentOpen && !modelsOpen && !new URLSearchParams(route.search).has('activity') && !selectedCourseId
+  const homeVisible = !agentOpen && !modelsOpen && !new URLSearchParams(route.search).has('activity') && !unavailableRoute
   const homeScope = context ? JSON.stringify([context.clientNamespace, context.identities]) : ''
   const readCache = useMemo(() => new LearningReadCache(), [homeScope, reload, contextVerified])
+  const activityView = useRef({ homeScope, readCache, key, pendingKey })
+  activityView.current = { homeScope, readCache, key, pendingKey }
   const readActivities = (space: string) => readCache.read<LearningActivity[]>(space, 'activities', async () =>
     (await api('activities', undefined, space) as unknown[]).map(item => activitySchema.parse(item)))
-  const readCourses = (space: string) => readCache.read<Course[]>(space, 'courses', async () =>
-    courseCatalogSchema.parse(await api('courses', undefined, space)).courses)
+  const readCourses = (space: string, refresh: boolean) => readCache.read<Course[]>(space, 'courses', async () =>
+    courseCatalogSchema.parse(await api('courses', undefined, space)).courses, { maxAgeMs: refresh ? 0 : undefined })
   function publishActivity(activity: LearningActivity, space = key) {
-    readCache.set(space, 'activities/' + activity.activityId, activity)
-    const previous = readCache.peek<LearningActivity[]>(space, 'activities') ?? []
+    const view = activityView.current
+    if (view.homeScope !== homeScope) return
+    const cache = view.readCache
+    cache.set(space, 'activities/' + activity.activityId, activity)
+    const previous = cache.peek<LearningActivity[]>(space, 'activities') ?? readCache.peek<LearningActivity[]>(space, 'activities') ?? []
     const next = [activity, ...previous.filter(item => item.activityId !== activity.activityId)]
-    readCache.set(space, 'activities', next)
-    setActivities(next); setActivitiesFor(pendingKey)
+    cache.set(space, 'activities', next)
+    if (view.key === space) {
+      setActivities(next)
+      setActivitiesFor(view.pendingKey)
+    }
     setHomeData(previous => previous?.scope === homeScope ? { ...previous,
       ...(space === personalKey ? { personal: next } : { school: next }) } : previous)
   }
@@ -401,8 +494,8 @@ function LearningView() {
     const snapshot: HomeData = { scope: homeScope,
       personal: personalKey ? readCache.peek(personalKey, 'activities') ?? null : [],
       school: schoolKey ? readCache.peek(schoolKey, 'activities') ?? null : [],
-      courses: schoolKey ? readCache.peek(schoolKey, 'courses') ?? null : [], personalError: '', schoolError: '' }
-    setHomeData(previous => previous?.scope === homeScope ? { ...previous, personalError: '', schoolError: '' } : snapshot)
+      courses: schoolKey ? readCache.peek(schoolKey, 'courses') ?? null : [], personalError: '', courseError: '' }
+    setHomeData(previous => previous?.scope === homeScope ? { ...previous, personalError: '', courseError: '' } : snapshot)
     const update = (patch: Partial<HomeData>) => {
       if (!controller.signal.aborted) setHomeData(previous => previous?.scope === homeScope ? { ...previous, ...patch } : previous)
     }
@@ -412,27 +505,49 @@ function LearningView() {
     if (schoolKey) {
       void readActivities(schoolKey).then(value => {
         update({ school: value })
-      }).catch(cause => update({ schoolError: errorText(cause) }))
-      void readCourses(schoolKey).then(value => {
+      }).catch(() => { /* Keep course status unknown when its activities cannot be read. */ })
+      void readCourses(schoolKey, !!selectedCourseId).then(value => {
         update({ courses: value })
-      }).catch(cause => update({ schoolError: errorText(cause) }))
+      }).catch(cause => update({ courseError: errorText(cause) }))
     }
     return () => controller.abort()
-  }, [homeVisible, readCache])
+  }, [homeVisible, readCache, selectedCourseId])
   const visibleHome = homeData?.scope === homeScope ? homeData : null
   const projectTitles = usePersonalProjectTitles(visibleHome?.personal ?? null, personalKey, context?.clientNamespace ?? '', contextVerified)
 
   useEffect(() => {
+    const target = returnFocus.current
+    if (opened || !homeVisible || !visibleHome || !target || target.key !== key) return
+    const frame = requestAnimationFrame(() => {
+      const button = document.querySelector<HTMLButtonElement>(`[data-activity-id="${CSS.escape(target.activityId)}"]`)
+      if (!button) return
+      button.focus({ preventScroll: true })
+      const main = document.querySelector('.main')
+      if (main) main.scrollTop = target.scrollTop
+      returnFocus.current = null
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [opened, homeVisible, visibleHome, key])
+
+  useEffect(() => {
     ++epoch.current
     const controller = new AbortController()
+    const restoreCoursePending = (event?: StorageEvent) => {
+      if (!coursePendingKey || event && event.key !== coursePendingKey) return
+      try { setCoursePending(readCoursePending(coursePendingKey)) }
+      catch { setError('无法读取上次课程活动请求，请检查浏览器存储。') }
+    }
+    const retire = () => {
+      ++epoch.current
+      controller.abort()
+      window.removeEventListener('storage', restoreCoursePending)
+    }
     setActivities(readCache.peek(key, 'activities') ?? null); setActivitiesFor(pendingKey)
-    setOpened(null); setCatalog(readCache.peek(key, 'courses') ?? null); setRelease(null); setCoursePending(null); rememberMaterial(null)
+    setOpened(null); setTaskPreview(null); setCoursePending(null); rememberMaterial(null)
     setError(''); setBusy(false)
     if (coursePendingKey) {
-      try {
-        const saved = localStorage.getItem(coursePendingKey)
-        if (saved) setCoursePending(createCourseActivitySchema.parse(JSON.parse(saved)))
-      } catch { setError('无法读取上次课程活动请求，请检查浏览器存储。') }
+      restoreCoursePending()
+      window.addEventListener('storage', restoreCoursePending)
     }
     if (key && pendingKey) {
       if (!contextVerified && context) {
@@ -446,11 +561,10 @@ function LearningView() {
             setOpened(activity)
           }
         } catch { setError('无法读取原活动定位。已保留的作品没有被改动。') }
-        return () => { ++epoch.current; controller.abort() }
+        return retire
       }
-
     }
-    return () => { ++epoch.current; controller.abort() }
+    return retire
   }, [key, pendingKey, coursePendingKey, reload, contextVerified])
 
   useEffect(() => {
@@ -459,9 +573,6 @@ function LearningView() {
     void readActivities(key).then(value => {
       if (active) { setActivities(value); setActivitiesFor(pendingKey) }
     }).catch(cause => { if (active) setError(errorText(cause)) })
-    if (identity?.kind === 'school') void readCourses(key).then(value => {
-      if (active) setCatalog(value)
-    }).catch(cause => { if (active) setError(errorText(cause)) })
     return () => { active = false }
   }, [key, pendingKey, contextVerified, modelsOpen, agentOpen, homeVisible, readCache])
 
@@ -469,8 +580,14 @@ function LearningView() {
     ++contentReadEpoch.current
     ++actionEpoch.current
     setBusy(false)
-    setRelease(null); rememberMaterial(null)
+    setCourseStart(null)
+    setTaskPreview(null); rememberMaterial(null)
   }, [selectedCourseId, key])
+
+  useEffect(() => {
+    const activityId = new URLSearchParams(route.search).get('activity')
+    setTaskPreview(current => current && (current.search === route.search || current.activityId && current.activityId === activityId) ? current : null)
+  }, [route.search])
 
   // Browser history uses the same leave gate as buttons. A route is only read after that gate succeeds.
   useEffect(() => {
@@ -480,8 +597,9 @@ function LearningView() {
     if (!context || modelsOpen && !currentView.current.opened) return
     const params = new URLSearchParams(route.search)
     const activityId = params.get('activity')
+    const requestedSpace = params.get('space') ?? (params.has('course') && !activityId ? schoolKey ?? null : null)
     const desiredKey = agentOpen && !activityId ? personalKey ?? currentView.current.key
-      : knownSpaceKey(context, params.get('space'), activityId) ?? params.get('space') ?? preferredKey(context, null)
+      : knownSpaceKey(context, requestedSpace, activityId) ?? requestedSpace ?? preferredKey(context, null)
     if ((activityId || params.has('course')) && !context.identities.some(item => item.key === desiredKey)) {
       setOpened(null); setError('此活动属于未绑定的学校账号，请在设置中绑定原账号后打开。'); return retire
     }
@@ -503,7 +621,7 @@ function LearningView() {
     void readCache.read(desiredKey, 'activities/' + activityId, async () =>
       activitySchema.parse(await api('activities/' + activityId, undefined, desiredKey))).then(value => {
       if (applies()) {
-        const activity = activitySchema.parse(value)
+        const activity = readCache.peek<LearningActivity>(desiredKey, 'activities/' + activityId) ?? value
         try { sessionStorage.setItem(`xj.works-activity.${context.clientNamespace}.${desiredKey}.${activity.activityId}`, JSON.stringify(activity)) } catch { /* Optional reopening hint. */ }
         setOpened(activity)
         returnFocus.current ??= { key: desiredKey, activityId: activity.activityId, scrollTop: 0 }
@@ -532,73 +650,174 @@ function LearningView() {
     if (generation === epoch.current) setCoursePending(current => current?.requestId === input.requestId ? null : current)
   }
   async function startCourse(releaseId: string) {
+    if (!coursePendingKey || !contextVerified || context?.readOnly) return
     const generation = epoch.current
     const startedSearch = currentSearch.current
+    const startedAction = actionEpoch.current
     const selected = key
-    const input = coursePending ?? createCourseActivitySchema.parse({ requestId: crypto.randomUUID(), releaseId })
-    if (!coursePendingKey) return
-    localStorage.setItem(coursePendingKey, JSON.stringify(input))
-    setCoursePending(input)
-    try {
-      const raw = await api('course-activity-results/' + input.requestId, undefined, selected)
-      const existing = raw === null ? null : courseActivityResultSchema.parse(raw) as CourseActivityResult
-      if (existing?.state === 'rejected') {
+    const previewAtStart = taskPreview?.detail?.releaseId === releaseId && taskPreview.search === startedSearch ? taskPreview : null
+    const applies = () => generation === epoch.current && startedSearch === currentSearch.current && startedAction === actionEpoch.current
+    const enter = (activity: LearningActivity) => {
+      if (!applies()) return
+      if (previewAtStart) setTaskPreview(current => current === previewAtStart ? { ...current, activityId: activity.activityId } : current)
+      rememberActivity(activity)
+      publishActivity(activity, selected)
+    }
+    const openOrCreate = async () => {
+      if (!applies()) return
+      let pending = readCoursePending(coursePendingKey) ?? coursePending
+      let existing: LearningActivity | undefined
+      if (!pending && previewAtStart) {
+        existing = previewEntry?.activity
+        if (!existing) {
+          const list = await api('activities', undefined, selected) as unknown[]
+          const { courseId, task } = previewAtStart
+          existing = courseTaskEntry(list.map(item => activitySchema.parse(item)), courseId, task.taskId, [releaseId]).activity
+          pending = readCoursePending(coursePendingKey)
+        }
+      }
+      if (!applies()) return
+      if (pending && pending.releaseId !== releaseId) { setCoursePending(pending); return }
+      if (!pending && existing) {
+        enter(activitySchema.parse(await api('activities/' + existing.activityId, undefined, selected)))
+        return
+      }
+      if (!pending && !previewAtStart) return
+      const input = pending ?? createCourseActivitySchema.parse({ requestId: crypto.randomUUID(), releaseId })
+      localStorage.setItem(coursePendingKey, JSON.stringify(input))
+      setCoursePending(input)
+      try {
+        const raw = await api('course-activity-results/' + input.requestId, undefined, selected)
+        const result = raw === null ? null : courseActivityResultSchema.parse(raw) as CourseActivityResult
+        if (result?.state === 'rejected') {
+          clearCoursePending(input, generation)
+          throw Object.assign(new Error(messages[result.error ?? 'missing'] ?? '课程活动未能建立。'), { code: result.error ?? 'missing' })
+        }
+        const activity = result?.state === 'accepted' && result.activity
+          ? activitySchema.parse(result.activity)
+          : activitySchema.parse(await api('course-activities', input, selected))
         clearCoursePending(input, generation)
-        throw Object.assign(new Error(messages[existing.error ?? 'missing'] ?? '课程活动未能建立。'), { code: existing.error ?? 'missing' })
+        enter(activity)
+      } catch (error) {
+        const code = (error as { code?: string }).code
+        if (code && definitive.has(code)) clearCoursePending(input, generation)
+        throw error
       }
-      const activity = existing?.state === 'accepted' && existing.activity
-        ? activitySchema.parse(existing.activity)
-        : activitySchema.parse(await api('course-activities', input, selected))
-      clearCoursePending(input, generation)
-      if (generation === epoch.current && startedSearch === currentSearch.current) {
-        rememberActivity(activity)
-        publishActivity(activity)
-      }
-    } catch (error) {
-      const code = (error as { code?: string }).code
-      if (code && definitive.has(code)) clearCoursePending(input, generation)
-      throw error
+    }
+    const attempt = { releaseId }
+    setCourseStart(attempt)
+    try {
+      // Serialize the lookup and start for one release across tabs of this school account.
+      if (navigator.locks) await navigator.locks.request(`${coursePendingKey}.${releaseId}`, openOrCreate)
+      else await openOrCreate()
+    } finally {
+      setCourseStart(current => current === attempt ? null : current)
     }
   }
   function discardCoursePending() {
     if (coursePendingKey) localStorage.removeItem(coursePendingKey)
     setCoursePending(null); setError(''); setNotice('')
   }
-  async function openActivity(activityId: string, _asConversation = false, sourceKey = key) {
+  async function openActivity(activityId: string, _asConversation = false, sourceKey = key, courseId?: string) {
     if (!context?.identities.some(item => item.key === sourceKey)) return
     void Promise.all([loadReferences(), loadActivityPage()]).catch(() => {})
     await protectActivity()
     returnFocus.current = { key: sourceKey, activityId, scrollTop: document.querySelector('.main')?.scrollTop ?? 0 }
     const params = new URLSearchParams(currentSearch.current)
-    params.set('activity', activityId); params.set('space', sourceKey); params.delete('course'); params.delete('artifact')
+    params.set('activity', activityId); params.set('space', sourceKey); params.delete('artifact')
+    if (courseId) params.set('course', courseId)
+    else params.delete('course')
     params.delete('view'); params.delete('session')
     navigate({ pathname: route.pathname, search: params.toString() })
   }
-  async function changeStatus(activity: LearningActivity) {
-    const generation = epoch.current
-    const next = activitySchema.parse(await api('activity-status', { requestId: crypto.randomUUID(), activityId: activity.activityId,
-      status: activity.status === 'closed' ? 'open' : 'closed' }, key))
-    if (generation === epoch.current) { setOpened(next); publishActivity(next) }
+  async function changeStatus(activity: LearningActivity, source = key) {
+    const owner = context?.identities.find(item => item.key === source)?.identity
+    if (!context || !contextVerified || context.readOnly || !owner || !activityBelongsTo(activity, owner))
+      throw new Error('当前学习空间无法更新该活动。')
+    const authentication = authEpoch.current
+    const pending = JSON.stringify([homeScope, source, activity.activityId])
+    if (pendingStatus.current.has(pending)) throw new Error('活动状态正在更新，请稍后重试。')
+    pendingStatus.current.add(pending)
+    try {
+      const status = activity.status === 'closed' ? 'open' : 'closed'
+      const next = activitySchema.parse(await api('activity-status', {
+        requestId: crypto.randomUUID(), activityId: activity.activityId, status,
+      }, source))
+      if (next.activityId !== activity.activityId || next.status !== status || !activityBelongsTo(next, owner))
+        throw new Error('活动状态回执不匹配，请刷新列表核对后重试。')
+      if (authentication !== authEpoch.current || activityView.current.homeScope !== homeScope)
+        throw new Error('学习账号已切换，请在原学习空间核对活动状态。')
+      // A navigation can retire the page that sent the write, but not its confirmed receipt.
+      publishActivity(next, source)
+      setOpened(current => currentView.current.key === source && current?.activityId === next.activityId ? next : current)
+      try { sessionStorage.setItem(`xj.works-activity.${context.clientNamespace}.${source}.${next.activityId}`, JSON.stringify(next)) }
+      catch { /* Optional reopening hint. */ }
+    } finally {
+      pendingStatus.current.delete(pending)
+    }
   }
-  async function viewRelease(releaseId: string) {
+  async function changeCourseProgress(activity: LearningActivity, objectiveIndex: number, completed: boolean) {
+    const generation = epoch.current
+    const next = activitySchema.parse(await api('course-progress', { requestId: crypto.randomUUID(), activityId: activity.activityId,
+      objectiveIndex, completed }, key))
+    if (generation !== epoch.current || currentView.current.opened !== activity) return
+    setRecordedProgress({ activity, completed: next.completedObjectives ?? [] })
+    publishActivity(next)
+    if (context) {
+      try { sessionStorage.setItem(`xj.works-activity.${context.clientNamespace}.${key}.${activity.activityId}`, JSON.stringify(next)) }
+      catch { /* The learning-data owner keeps the confirmed progress. */ }
+    }
+  }
+  async function viewRelease(selection: CourseTaskSelection, releaseId = selection.releaseId) {
+    if (!releaseId || identity?.kind !== 'school' || key !== schoolKey || selectedCourseId !== selection.courseId) return
     const generation = epoch.current
     const contentGeneration = ++contentReadEpoch.current
-    const courseId = selectedCourseId
-    setRelease(null); rememberMaterial(null)
-    const detail = courseReleaseSchema.parse(await api('releases/' + releaseId, undefined, key))
-    if (generation === epoch.current && contentGeneration === contentReadEpoch.current
-      && new URLSearchParams(currentSearch.current).get('course') === courseId && detail.courseId === courseId) setRelease(detail)
+    const preview: CourseTaskPreview = { courseId: selection.courseId, courseName: selection.courseName, task: selection.task,
+      releaseId, search: currentSearch.current }
+    const applies = () => generation === epoch.current && contentGeneration === contentReadEpoch.current && preview.search === currentSearch.current
+    setTaskPreview(preview); rememberMaterial(null)
+    try {
+      const detail = courseReleaseSchema.parse(await api('releases/' + releaseId, undefined, key))
+      if (!applies()) return
+      if (detail.courseId !== preview.courseId || detail.taskId !== preview.task.taskId || detail.releaseId !== releaseId) {
+        throw new Error('任务发布版本不匹配，请重新读取。')
+      }
+      setTaskPreview({ ...preview, detail })
+    } catch (cause) {
+      if (applies()) setTaskPreview({ ...preview, error: errorText(cause) })
+    }
   }
-  async function readMaterial(releaseId: string, item: CourseMaterial) {
+  function closeTaskPreview() {
+    ++contentReadEpoch.current
+    setTaskPreview(null); rememberMaterial(null)
+  }
+  async function downloadMaterial(releaseId: string, item: CourseMaterial) {
+    if (material?.releaseId === releaseId && material.materialId === item.materialId) {
+      saveMaterialFile(material)
+      return
+    }
     const generation = epoch.current
     const contentGeneration = ++contentReadEpoch.current
-    const content = courseMaterialContentSchema.parse(await api(`releases/${releaseId}/materials/${item.materialId}`, undefined, key))
-    if (generation !== epoch.current || contentGeneration !== contentReadEpoch.current) return
-    const binary = atob(content.contentBase64)
-    const data = new Uint8Array(binary.length)
-    for (let index = 0; index < binary.length; index++) data[index] = binary.charCodeAt(index)
-    const url = URL.createObjectURL(new Blob([data], { type: content.mediaType }))
-    rememberMaterial({ title: content.title, url })
+    const startedSearch = currentSearch.current
+    const startedAction = actionEpoch.current
+    const reading = { releaseId, materialId: item.materialId }
+    setReadingMaterial(reading); setError(''); setNotice('')
+    try {
+      const content = courseMaterialContentSchema.parse(await api(`releases/${releaseId}/materials/${item.materialId}`, undefined, key))
+      if (generation !== epoch.current || contentGeneration !== contentReadEpoch.current || startedSearch !== currentSearch.current) return
+      const binary = atob(content.contentBase64)
+      const data = new Uint8Array(binary.length)
+      for (let index = 0; index < binary.length; index++) data[index] = binary.charCodeAt(index)
+      const url = URL.createObjectURL(new Blob([data], { type: content.mediaType }))
+      const downloaded = { ...reading, title: content.title, url }
+      rememberMaterial(downloaded)
+      saveMaterialFile(downloaded)
+    } catch (cause) {
+      if (generation === epoch.current && contentGeneration === contentReadEpoch.current
+        && startedSearch === currentSearch.current && startedAction === actionEpoch.current) setError(errorText(cause))
+    } finally {
+      setReadingMaterial(current => current === reading ? null : current)
+    }
   }
 
   async function disconnectSchool(schoolKey: string) {
@@ -622,7 +841,7 @@ function LearningView() {
       approvedSearch.current = search ? '?' + search : ''
       navigate({ pathname: route.pathname, search })
       ++epoch.current
-      setOpened(null); setActivities(null); setCatalog(null); setRelease(null); rememberMaterial(null); setCoursePending(null)
+      setOpened(null); setActivities(null); setTaskPreview(null); rememberMaterial(null); setCoursePending(null)
       setKey(nextKey); setBusy(false); setReload(value => value + 1)
     }
   }
@@ -745,14 +964,23 @@ function LearningView() {
         setContext(signedOut)
         if (currentView.current.key === 'school') {
           const nextKey = signedOut.identities.some(item => item.key === 'personal') ? 'personal' : signedOut.identities[0]?.key ?? ''
-          rememberActivity(null, nextKey); setActivities(null); setCatalog(null); setRelease(null); rememberMaterial(null); setCoursePending(null)
+          rememberActivity(null, nextKey); setActivities(null); setTaskPreview(null); rememberMaterial(null); setCoursePending(null)
           setKey(nextKey)
           setReload(value => value + 1)
         }
       })}>{busy ? '正在退出…' : '退出学校登录'}</button></div> : null}
     </section>
-  const selectedCourse = catalog?.find(course => course.courseId === selectedCourseId)
-  const visibleRelease = release?.courseId === selectedCourseId ? release : null
+  const preview = !modelsOpen && taskPreview && (taskPreview.activityId
+    ? taskPreview.activityId === opened?.activityId : taskPreview.search === route.search) ? taskPreview : null
+  // Persist a new request immediately, but only show recovery once it needs attention.
+  const enteringCourse = busy && !!preview && courseStart?.releaseId === preview.releaseId
+  const courseRecovery = enteringCourse && coursePending?.releaseId === preview.releaseId ? null : coursePending
+  const visibleActivities = activitiesFor === pendingKey ? activities : null
+  const previewEntry = preview && courseTaskEntry(visibleHome?.school ?? visibleActivities, preview.courseId, preview.task.taskId, [preview.releaseId])
+  const previewRelease = preview?.task.releases.find(release => release.releaseId === preview.releaseId)
+  const previewProgress = previewRelease && previewEntry?.status
+    ? courseTaskProgress(previewRelease.objectives.length, previewEntry.activity?.completedObjectives) : undefined
+  const openedObjectives = opened && (recordedProgress?.activity === opened ? recordedProgress.completed : opened.completedObjectives)
   const changePage = (page: 'home' | 'agent') => void action(async () => {
     await protectActivity()
     const params = new URLSearchParams(currentSearch.current)
@@ -766,10 +994,18 @@ function LearningView() {
     approvedSearch.current = search ? '?' + search : ''
     navigate({ pathname: route.pathname, search })
     ++epoch.current; setBusy(false)
-    setOpened(null); setRelease(null); rememberMaterial(null)
+    setOpened(null); setTaskPreview(null); rememberMaterial(null)
     if (nextKey !== key) setKey(nextKey)
   })
   const goHome = () => changePage('home')
+  const returnFromWorkspace = () => {
+    if (!opened?.course || opened.course.courseId !== selectedCourseId) { goHome(); return }
+    void action(async generation => {
+      await protectActivity()
+      if (generation !== epoch.current) return
+      rememberActivity(null); rememberMaterial(null)
+    })
+  }
   const openAgent = () => { prepareAgent(); conversationHistory.revalidate(); changePage('agent') }
   const openSettings = (tab: ProductSettingsTab | 'school' = 'account') => void action(async () => {
     void loadModelSettings().catch(() => {})
@@ -850,7 +1086,7 @@ function LearningView() {
     onRetryLogout={() => void action(async generation => { await refreshContext(undefined, generation) })}
     onRestoreSession={() => void action(async generation => { await refreshContext(undefined, generation) })} />
 
-  return <ProductShell immersive={!modelsOpen && (opened ? !conversationOpen : !!routeActivityId && !agentOpen)} accountName={accountName}
+  return <HomeNavigationProvider scope={homeScope}><ProductShell immersive={!modelsOpen && (opened ? !conversationOpen : !!routeActivityId && !agentOpen)} accountName={accountName}
     active={modelsOpen ? 'settings' : agentOpen ? 'agent' : 'home'}
     onHome={goHome} onAgent={openAgent} onSettings={() => openSettings()} onProfile={() => setProfileOpen(true)}
     onAgentIntent={prepareAgent}
@@ -897,19 +1133,32 @@ function LearningView() {
       {<ActivityPage activity={opened} spaceKey={key} namespace={context.clientNamespace} authorized={activityAuthorized} selection={modelSelection}
         requestedArtifactId={requestedArtifactId}
         nativeAvailable={context.profile === 'local'}
-        workspaceRef={workspace} busy={busy} onBack={goHome} onStatus={() => void action(() => changeStatus(opened))}
+        workspaceRef={workspace} busy={busy} onBack={returnFromWorkspace} onStatus={() => void action(() => changeStatus(opened))}
+        taskInfoEntryRef={setTaskInfoEntry}
+        taskProgress={opened.course && !opened.purpose ? courseTaskProgress(opened.course.objectives.length, openedObjectives ?? []) : undefined}
         onRefresh={() => void action(async generation => { await refreshContext(undefined, generation) })} onModels={openModels} account={schoolControls}
-        details={openCoursePdf => <>
-          {opened.course ? <><CourseSections content={opened.course} level={3} busy={busy}
-            requirementsContent={<CourseRequirementsReference course={opened.course} />}
-            onMaterial={item => item.mediaType.toLowerCase().split(';')[0].trim() === 'application/pdf'
-              ? openCoursePdf(item.materialId) : void action(() => readMaterial(opened.course!.releaseId, item))} />
-            <CourseMaterialReferences activity={opened} course={opened.course} spaceKey={key} namespace={context.clientNamespace} />
-          </> : <><h2>学习目标</h2><p className="preserve-lines">{opened.goal || opened.question || '资料学习'}</p>
+        courseResources={opened.course ? openCourseMaterial => <>
+          <CourseResources content={opened.course!} busy={busy} readingMaterial={readingMaterial} showMaterialsHeading={false}
+            onDownload={item => void downloadMaterial(opened.course!.releaseId, item)} onOpenMaterial={openCourseMaterial} />
+          <CourseTools capabilities={opened.course!.capabilities} components={opened.course!.components} />
+        </> : undefined}
+        details={<>
+          {opened.course ? <>
+            <header className="product-task-details-heading">
+              <h2>{opened.course.taskTitle}</h2>
+              <p className="detail">{opened.course.courseName} · {opened.status === 'closed' ? '已关闭' : '进行中'}</p>
+            </header>
+            <CourseInstructions content={opened.course} busy={busy}
+              objectiveProgress={opened.purpose ? undefined : {
+                completed: openedObjectives ?? [],
+                onChange: activityAuthorized && !context.readOnly && opened.status === 'open'
+                  ? (index, completed) => void action(() => changeCourseProgress(opened, index, completed)) : undefined,
+              }}
+              requirementsContent={<CourseRequirementsReference course={opened.course} />} />
+          </>
+          : <><h2>学习目标</h2><p className="preserve-lines">{opened.goal || opened.question || '资料学习'}</p>
             {opened.question && opened.goal && <><h3>起始问题</h3><p className="preserve-lines">{opened.question}</p></>}
-            {opened.references.length > 0 && <><h3>学习材料</h3>{opened.references.map((item, index) => <p key={index}><a href={item.url} target="_blank" rel="noreferrer">{item.label}</a></p>)}</>}
           </>}
-          {material && <p className="material-note" role="status">已读取 {material.title}：<a href={material.url} target="_blank" rel="noreferrer" download={material.title}>打开或下载材料</a></p>}
         </>} />}
     </ActivityReferences></Suspense></div> : modelsOpen ? null : unavailableRoute ? <div className="content home-page"><p>此活动属于未绑定的学校账号。请在设置中绑定原账号后打开，本机学习内容会保留。</p><Button onClick={() => openSettings('school')}>管理学校连接</Button><Button variant="outline" onClick={goHome}>返回首页</Button></div> : !context || !identity ? <div className="content home-page product-home">
       {!context && !error && <p role="status" aria-label="正在连接学习空间" />}
@@ -921,41 +1170,58 @@ function LearningView() {
       sessionId={routeSessionId} session={conversationHistory.items.find(item => item.sessionId === routeSessionId)} onSession={sessionCreated} onWorkspace={id => void action(() => openActivity(id, false, personalKey))}
       onWorkspaceCreated={refreshCreatedWorkspaces} onSettings={openModels} selection={modelSelection} readOnly={!!context.readOnly || !contextVerified} /></Suspense>
     : <>
-      {(context.readOnly || authorize || coursePending) && <div className="content product-home-alerts">
+      {(context.readOnly || authorize || courseRecovery && !preview) && <div className="content product-home-alerts">
         {context.readOnly && <p role="status" className="product-workspace-notice">这是还原校验副本，作品与学习对话只读，不会启动 Agent 或实验；请由维护者完成接管后继续。</p>}
         {authorize && <section className="product-connection" aria-labelledby="approve-title"><h2 id="approve-title">学校认证</h2>
           <p>使用当前学校账号认证，完成后返回客户端连接学校。</p>
           <button type="button" className="primary" disabled={busy || !context.identities.some(item => item.key === 'school')}
             onClick={() => void action(async () => { await authenticateSchoolClient() })}>认证并返回客户端</button>
         </section>}
-        {coursePending && <div className="course-pending"><p>上次课程活动的请求结果尚未核对，将先查询原请求。</p>
-          <button type="button" className="outline" disabled={busy} onClick={() => void action(() => startCourse(coursePending.releaseId))}>核对并继续原请求</button>
+        {courseRecovery && !preview && <div className="course-pending"><p>{busy ? '正在准备课程活动…' : '上次课程活动的请求结果尚未核对，将先查询原请求。'}</p>
+          <button type="button" className="outline" disabled={busy} onClick={() => void action(() => startCourse(courseRecovery.releaseId))}>核对并继续原请求</button>
           <button type="button" className="outline" disabled={busy} onClick={discardCoursePending}>放弃这次请求</button></div>}
       </div>}
-      {selectedCourseId && identity.kind === 'school' ? <div className="content home-page product-home">
-        <section className="course-region" aria-labelledby="course-title">
-          <div className="sectionhead"><h2 id="course-title" tabIndex={-1}>{selectedCourse?.name ?? '我的课程'}<small>{selectedCourse ? `${selectedCourse.tasks.length} 个任务` : ''}</small></h2>
-            <button type="button" className="outline" onClick={() => selectCourse(null)}>全部课程</button></div>
-          {catalog === null ? <p>{error ? '课程列表尚未读取成功。' : ''}</p>
-            : !selectedCourse ? <p className="empty">无法找到这门课程。</p>
-            : <div className="task-card-grid">{selectedCourse.tasks.map(task => <article key={task.taskId} className="product-course-task">
-              <h3>{task.title}</h3>{task.summary && <p>{task.summary}</p>}
-              <div className="product-release-list">{task.releases.map((item, index) => <button type="button" className="outline" key={item.releaseId} disabled={busy}
-                onClick={() => void action(() => viewRelease(item.releaseId))}>{published(item.publishedAt)}{index === 0 ? ' · 最近发布' : ''}</button>)}</div>
-            </article>)}</div>}
-          {visibleRelease && <article className="product-release" aria-labelledby="release-title"><h3 id="release-title">{visibleRelease.taskTitle}</h3>
-            <CourseSections content={visibleRelease} level={4} busy={busy} onMaterial={item => void action(() => readMaterial(visibleRelease.releaseId, item))} />
-            {material && <p role="status">已读取 {material.title}：<a href={material.url} target="_blank" rel="noreferrer" download={material.title}>打开或下载材料</a></p>}
-            <button type="button" className="primary" disabled={busy || !!coursePending || context.readOnly} onClick={() => void action(() => startCourse(visibleRelease.releaseId))}>从这一版本开始活动</button>
-          </article>}
-        </section>
-      </div> : <ProductHome projectTitles={projectTitles} accountName={accountName} personalActivities={visibleHome?.personal ?? null} schoolActivities={visibleHome?.school ?? null}
-        courses={visibleHome?.courses ?? null} personalKey={personalKey} schoolKey={schoolKey}
+      <ProductHome projectTitles={projectTitles} accountName={accountName} personalActivities={visibleHome?.personal ?? null} schoolActivities={visibleHome?.school ?? null}
+        courses={visibleHome?.courses ?? null} selectedCourseId={selectedCourseId} personalKey={personalKey} schoolKey={schoolKey}
         initialCategory={schoolKey ? 'school' : 'personal'} dashboardKey={(context.clientNamespace + ':home-dashboard')}
-        busy={busy} personalError={visibleHome?.personalError} schoolError={visibleHome?.schoolError}
-        onOpenActivity={(id, source) => void action(() => openActivity(id, source === personalKey, source))} onOpenCourse={selectCourse}
+        busy={busy || !!selectedCourseId && key !== schoolKey} personalError={visibleHome?.personalError} courseError={visibleHome?.courseError}
+        onOpenActivity={(id, source, courseId) => void action(() => openActivity(id, source === personalKey, source, courseId))}
+        onOpenCourse={selectCourse}
+        onActivityStatus={contextVerified && !context.readOnly ? changeStatus : undefined}
+        onOpenTask={selection => void viewRelease(selection)} readTaskSubmission={readTaskSubmission}
         onStartConversation={openAgent} onConnectSchool={() => openSettings('school')}
-        onRefresh={() => void action(async generation => { await refreshContext(undefined, generation) })} />}
+        onRefresh={() => void action(async generation => { await refreshContext(undefined, generation) })} />
     </>}
-  </ProductShell>
+    {preview && previewEntry && <WorkspaceTaskIntro status={previewEntry.status} name={preview.detail?.taskTitle ?? preview.task.title} course={preview.courseName}
+      deadline={previewRelease?.deadlineAt ? `截止 ${formatDeadline(previewRelease.deadlineAt)}` : '无截止时间'}
+      percent={previewProgress?.percent} done={previewProgress?.done}
+      actionLabel={enteringCourse || preview.activityId ? '正在进入学习工作区…'
+        : courseRecovery?.releaseId === preview.releaseId ? '核对并继续原请求' : previewEntry.action}
+      onStart={() => void action(() => startCourse(preview.releaseId))}
+      dialog={{ onClose: closeTaskPreview, busy: enteringCourse || !!preview.activityId,
+        startDisabled: busy || !!preview.activityId || !preview.detail || !contextVerified || !!context?.readOnly
+          || !!coursePending && coursePending.releaseId !== preview.releaseId,
+        dock: preview.activityId && taskInfoEntry ? { target: taskInfoEntry, onComplete: finishTaskDocking } : undefined }}>
+      {preview.task.releases.length > 1 && <SelectField className="course-version-select" label="任务发布版本"
+        value={preview.releaseId} disabled={busy || !!preview.activityId}
+        options={preview.task.releases.map((item, index) => ({ value: item.releaseId,
+          label: `发布于 ${courseReleaseDate(item.publishedAt)}${index === 0 ? ' · 最新版本' : ''}` }))}
+        onChange={id => void viewRelease(preview, id)} />}
+      {courseRecovery && <div className="course-pending"><p>{courseRecovery.releaseId === preview.releaseId
+        ? '上次课程任务的请求结果尚未核对。' : '请先返回课程列表处理上次课程任务请求。'}</p>
+        {courseRecovery.releaseId === preview.releaseId && <Button variant="outline" disabled={busy} onClick={discardCoursePending}>放弃这次请求</Button>}
+      </div>}
+      {preview.detail ? <>
+        <div className="product-course-sections">
+          <CourseInstructions content={preview.detail} busy={busy || !!preview.activityId} />
+          <CourseResources content={preview.detail} busy={busy || !!preview.activityId} readingMaterial={readingMaterial}
+            onDownload={item => void downloadMaterial(preview.releaseId, item)} />
+        </div>
+        <CourseTools capabilities={preview.detail.capabilities} components={preview.detail.components} />
+      </>
+        : preview.error ? <div className="course-preview-status" role="alert"><p>{preview.error}</p>
+          <Button variant="outline" onClick={() => void viewRelease(preview, preview.releaseId)}>重新读取任务</Button></div>
+          : <p className="course-preview-status" role="status">正在读取任务要求…</p>}
+    </WorkspaceTaskIntro>}
+  </ProductShell></HomeNavigationProvider>
 }

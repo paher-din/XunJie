@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { LearningActivity } from '@xunjie/contracts/learning-data'
 import { toast, useToastFeedback } from '@xunjie/ui/feedback'
+import { Button } from '@xunjie/ui/foundation'
+import { Icon } from '@xunjie/ui/icons'
+import { WorkspaceResourceLibrary, WorkspaceResourceList, WorkspaceResourceRow } from '@xunjie/ui/workspace'
 import { PERSONAL_MATERIAL_LIMITS, personalMaterialReferenceSourceSchema, personalMaterialSchema,
   personalMaterialVersionContentSchema, type PersonalMaterial, type PersonalMaterialMediaType,
   type PersonalMaterialReferenceSource, type PersonalMaterialVersionContent } from '@xunjie/contracts/personal-materials'
@@ -81,6 +84,7 @@ export function usePersonalMaterials({ activity, spaceKey, namespace, authorized
   const [requests, setRequests] = useState<PersonalMaterialRequest[]>([])
   const [reading, setReading] = useState<PersonalMaterialVersionContent | null>(null)
   const [editing, setEditing] = useState(false)
+  const [addForm, setAddForm] = useState({ open: false, name: '', text: '', mediaType: 'text/plain' as PersonalMaterialMediaType })
   const [busy, setBusy] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -244,7 +248,7 @@ export function usePersonalMaterials({ activity, spaceKey, namespace, authorized
       if (!alive.current || epoch !== readEpoch.current) return
       setReading(content)
     } catch (error) { if (alive.current && epoch === readEpoch.current) setError(failureText(error)) }
-    finally { operation.current = false; if (alive.current && epoch === readEpoch.current) setBusy(false) }
+    finally { operation.current = false; if (alive.current) setBusy(false) }
   }
   async function beginUpdate(material: PersonalMaterial) {
     if (!alive.current || operation.current) return
@@ -260,7 +264,7 @@ export function usePersonalMaterials({ activity, spaceKey, namespace, authorized
       if (!alive.current || epoch !== readEpoch.current) return
       setReading(content); setEditing(true)
     } catch (error) { if (alive.current && epoch === readEpoch.current) setError(failureText(error)) }
-    finally { operation.current = false; if (alive.current && epoch === readEpoch.current) setBusy(false) }
+    finally { operation.current = false; if (alive.current) setBusy(false) }
   }
   const beginEditing = () => { if (reading && !reading.material.removedAt) setEditing(true) }
   const cancelEditing = () => setEditing(false)
@@ -319,7 +323,7 @@ export function usePersonalMaterials({ activity, spaceKey, namespace, authorized
       const reason = failureText(error)
       if (alive.current && epoch === readEpoch.current) setError(reason)
       return { ok: false, reason }
-    } finally { operation.current = false; if (alive.current && epoch === readEpoch.current) setBusy(false) }
+    } finally { operation.current = false; if (alive.current) setBusy(false) }
   }
   const latest = useRef({ locate })
   latest.current = { locate }
@@ -338,18 +342,13 @@ export function usePersonalMaterials({ activity, spaceKey, namespace, authorized
   return { materials, requests, reading, editing, busy, loading, error, loadError, notice,
     writable: authorized && !references.readOnly, canQuote: references.draftReady && !!reading && !reading.material.removedAt,
     refresh, save, update, remove, open, beginUpdate, beginEditing, cancelEditing, clearReading, receive: reconcileRequest, locate,
-    reveal: async () => {
-      try { await current.current.reveal() }
-      catch (error) { if (alive.current) setError(failureText(error)) }
-    } }
+    addForm, setAddForm }
 }
 export type PersonalMaterialsController = ReturnType<typeof usePersonalMaterials>
 
-export function PersonalMaterialEntries({ personal }: { personal: PersonalMaterialsController }) {
-  const [adding, setAdding] = useState(false)
-  const [name, setName] = useState('')
-  const [text, setText] = useState('')
-  const [mediaType, setMediaType] = useState<PersonalMaterialMediaType>('text/plain')
+function PersonalMaterialEntries({ personal }: { personal: PersonalMaterialsController }) {
+  const { open: adding, name, text, mediaType } = personal.addForm
+  const updateForm = (patch: Partial<typeof personal.addForm>) => personal.setAddForm(previous => ({ ...previous, ...patch }))
   const localErrorToast = useRef<string | number | undefined>(undefined)
   const setLocalError = (message: string) => {
     if (message) localErrorToast.current = toast.error(message, { id: localErrorToast.current, duration: 8000 })
@@ -367,8 +366,8 @@ export function PersonalMaterialEntries({ personal }: { personal: PersonalMateri
     try {
       const content = await file.text()
       if (!content.trim()) { setLocalError('所选文件没有可保存的文本内容。'); return }
-      setText(content); setMediaType(markdown ? 'text/markdown' : 'text/plain')
-      if (!name.trim()) setName(file.name.replace(/\.(txt|md|markdown)$/i, '').slice(0, PERSONAL_MATERIAL_LIMITS.nameLength))
+      personal.setAddForm(previous => ({ ...previous, text: content, mediaType: markdown ? 'text/markdown' : 'text/plain',
+        name: previous.name.trim() ? previous.name : file.name.replace(/\.(txt|md|markdown)$/i, '').slice(0, PERSONAL_MATERIAL_LIMITS.nameLength) }))
     } catch { setLocalError('无法读取所选文件，请复制正文后粘贴。') }
   }
   const save = async () => {
@@ -376,19 +375,21 @@ export function PersonalMaterialEntries({ personal }: { personal: PersonalMateri
     if (!text.trim()) { setLocalError('请粘贴或选择个人笔记内容。'); return }
     setLocalError('')
     const saved = await personal.save({ name: name.trim(), mediaType, text })
-    if (saved) { setAdding(false); setName(''); setText(''); setMediaType('text/plain') }
+    if (saved) updateForm({ open: false, name: '', text: '', mediaType: 'text/plain' })
   }
-  return <section className="personal-material-entries" aria-label="个人笔记列表与添加">
-    <div className="personal-material-heading"><h3>我的个人笔记</h3>
-      <button type="button" className="ws-btn ghost" disabled={!personal.writable || personal.busy}
-        aria-expanded={adding} onClick={() => { setAdding(value => !value); setLocalError('') }}>
-        {adding ? '收起添加' : '添加笔记'}</button></div>
-    <p className="detail">仅用于你的学习活动 · 支持 .txt / .md，单份最多 2 MiB</p>
+  return <WorkspaceResourceLibrary title="个人笔记" description="随当前活动保存，支持 .txt / .md，单份最多 2 MiB。" busy={personal.busy} actions={<>
+    <Button type="button" variant="outline" className="workspace-resource-icon-action" aria-label="刷新个人笔记列表" title="刷新个人笔记列表"
+      disabled={personal.busy || personal.loading} onClick={() => void personal.refresh()}><Icon name="refresh" /></Button>
+    <Button type="button" variant="outline" disabled={!personal.writable || personal.busy}
+      aria-expanded={adding} onClick={() => { updateForm({ open: !adding }); setLocalError('') }}>
+      {adding ? '收起添加' : '添加笔记'}
+    </Button>
+  </>}>
     {adding && <div className="personal-material-form">
       <label>名称<input aria-label="个人笔记名称" value={name} maxLength={PERSONAL_MATERIAL_LIMITS.nameLength}
-        disabled={personal.busy} onChange={event => setName(event.target.value)} placeholder="例如：课堂笔记" /></label>
+        disabled={personal.busy} onChange={event => updateForm({ name: event.target.value })} placeholder="例如：课堂笔记" /></label>
       <label>正文<textarea aria-label="个人笔记正文" value={text} disabled={personal.busy} rows={7}
-        onChange={event => setText(event.target.value)} placeholder="粘贴个人笔记正文…" /></label>
+        onChange={event => updateForm({ text: event.target.value })} placeholder="粘贴个人笔记正文…" /></label>
       <label>从文件读取<input type="file" aria-label="选择个人笔记文件" accept=".txt,.md,.markdown,text/plain,text/markdown"
         disabled={personal.busy} onChange={event => {
           const file = event.target.files?.[0]
@@ -399,23 +400,20 @@ export function PersonalMaterialEntries({ personal }: { personal: PersonalMateri
         <button type="button" className="ws-btn" disabled={!personal.writable || personal.busy || !name.trim() || !text.trim()}
           onClick={() => void save()}>保存笔记</button>
         <button type="button" className="ws-btn ghost" disabled={personal.busy}
-          onClick={() => { setAdding(false); setLocalError('') }}>取消</button>
+          onClick={() => { updateForm({ open: false }); setLocalError('') }}>取消</button>
       </div>
     </div>}
-    {visible.length > 0 ? <ul className="material-list personal-material-list" aria-label="个人笔记列表">
-      {visible.map(material => <li key={material.materialId}>
-        <div className="personal-material-row"><strong>{material.name}</strong>
-          <span className="detail">第 {material.currentVersion} 版 · {MEDIA_LABEL[material.mediaType]}</span></div>
-        <div className="personal-material-actions">
-          <button type="button" className="ws-btn ghost" disabled={personal.busy}
-            onClick={() => void personal.open(material)}>打开</button>
-          <button type="button" className="ws-btn ghost" disabled={!personal.writable || personal.busy}
-            onClick={() => void personal.beginUpdate(material)}>更新</button>
-          <button type="button" className="ws-btn ghost" disabled={!personal.writable || personal.busy}
-            onClick={() => void personal.remove(material)}>移除</button>
-        </div>
-      </li>)}
-    </ul> : <p className="detail">还没有个人笔记。添加后可在阅读区选择正文引用到问题。</p>}
+    {visible.length > 0 ? <WorkspaceResourceList label="个人笔记列表">
+      {visible.map(material => <WorkspaceResourceRow key={material.materialId} name={material.name}
+        detail={`第 ${material.currentVersion} 版 · ${MEDIA_LABEL[material.mediaType]}`} actions={<>
+          <Button type="button" variant="outline" disabled={personal.busy} onClick={() => void personal.open(material)}>打开</Button>
+          <Button type="button" variant="outline" disabled={!personal.writable || personal.busy}
+            onClick={() => void personal.beginUpdate(material)}>更新</Button>
+          <Button type="button" variant="outline" disabled={!personal.writable || personal.busy}
+            onClick={() => void personal.remove(material)}>移除</Button>
+        </>} />)}
+    </WorkspaceResourceList> : !personal.loading && !personal.busy && !personal.loadError && !pending.length
+      && <p className="detail">还没有个人笔记。添加后可在阅读区选择正文引用到问题。</p>}
     {pending.map(request => <div className="personal-material-pending" key={request.key}>
       <span>「{request.name}」· {requestLabel(request)}尚未确认</span>
       <button type="button" className="ws-btn ghost" disabled={!personal.writable || personal.busy}
@@ -424,53 +422,45 @@ export function PersonalMaterialEntries({ personal }: { personal: PersonalMateri
     {personal.loading && <p className="detail" role="status" aria-label="正在读取个人笔记列表" />}
     {personal.busy && <p className="detail" role="status" aria-label="正在保存或读取个人笔记" />}
     {personal.loadError && <p className="detail">{personal.loadError}</p>}
-    <div className="personal-material-actions">
-      <button type="button" className="ws-btn ghost" disabled={personal.busy || personal.loading}
-        onClick={() => void personal.refresh()}>刷新个人笔记列表</button>
-      <button type="button" className="ws-btn ghost" onClick={() => void personal.reveal()}>打开个人笔记阅读区</button>
-    </div>
-  </section>
+  </WorkspaceResourceLibrary>
 }
 
-export function PersonalMaterials({ personal, onBack }: { personal: PersonalMaterialsController; onBack(): void }) {
+export function PersonalMaterials({ personal }: { personal: PersonalMaterialsController }) {
   const { reading } = personal
   const [text, setText] = useState('')
   useEffect(() => { setText(reading?.text ?? '') }, [reading?.text, personal.editing])
   useEffect(() => () => { personal.clearReading() }, [personal.clearReading])
-  const source = reading ? sourceOf(reading) : null
+  if (!reading) return <PersonalMaterialEntries personal={personal} />
+  const source = sourceOf(reading)
   return <section className="personal-materials" aria-label="个人笔记阅读区" aria-busy={personal.busy}>
     <header className="personal-material-toolbar">
-      <button type="button" className="ws-btn ghost" onClick={onBack}>返回作品</button>
-      <strong>{reading?.version.name ?? '个人笔记'}</strong>
-      {reading && <span className="personal-material-version">第 {reading.version.version} 版</span>}
-      {reading && reading.version.version !== reading.material.currentVersion
+      <button type="button" className="ws-btn ghost" disabled={personal.busy || personal.editing}
+        onClick={personal.clearReading}>返回笔记列表</button>
+      <strong>{reading.version.name}</strong>
+      <span className="personal-material-version">第 {reading.version.version} 版</span>
+      {reading.version.version !== reading.material.currentVersion
         && <span className="personal-material-muted">当前材料已到第 {reading.material.currentVersion} 版</span>}
-      {reading && !personal.editing && <button type="button" className="ws-btn ghost"
+      {!personal.editing && <button type="button" className="ws-btn ghost"
         disabled={!personal.writable || personal.busy || !!reading.material.removedAt}
         onClick={() => personal.beginEditing()}>更新为当前文本</button>}
     </header>
-    {!reading ? <div className="personal-material-empty">
-      <h2>阅读个人笔记</h2>
-      <p>从「目标与材料」添加或打开个人笔记；在正文中选择文字即可引用到问题。</p>
-    </div> : <>
-      {reading.material.removedAt && <p className="personal-material-notice" role="status">这份材料已移除；固定版本仍可阅读和引用。</p>}
-      <div className="personal-material-reading" data-personal-material-reading={`${reading.material.materialId}:${reading.version.version}`}>
-        {source && <TextReferenceSource sourceId={sourceIdOf(source)} sourceName={reading.version.name}
-          text={reading.text} source={source} />}
+    {reading.material.removedAt && <p className="personal-material-notice" role="status">这份材料已移除；固定版本仍可阅读和引用。</p>}
+    <div className="personal-material-reading" data-personal-material-reading={`${reading.material.materialId}:${reading.version.version}`}>
+      <TextReferenceSource sourceId={sourceIdOf(source)} sourceName={reading.version.name}
+        text={reading.text} source={source} />
+    </div>
+    {personal.editing && <div className="personal-material-form personal-material-editor">
+      <label>更新为当前文本
+        <textarea aria-label="更新个人笔记正文" value={text} rows={10} disabled={personal.busy}
+          onChange={event => setText(event.target.value)} />
+      </label>
+      <p className="personal-material-muted">保存后将追加第 {reading.material.currentVersion + 1} 版，当前正文保持可见。</p>
+      <div className="personal-material-actions">
+        <button type="button" className="ws-btn" disabled={!personal.writable || personal.busy || !text.trim()}
+          onClick={() => void personal.update({ text })}>保存新版本</button>
+        <button type="button" className="ws-btn ghost" disabled={personal.busy} onClick={personal.cancelEditing}>取消更新</button>
       </div>
-      {personal.editing && <div className="personal-material-form personal-material-editor">
-        <label>更新为当前文本
-          <textarea aria-label="更新个人笔记正文" value={text} rows={10} disabled={personal.busy}
-            onChange={event => setText(event.target.value)} />
-        </label>
-        <p className="personal-material-muted">保存后将追加第 {reading.material.currentVersion + 1} 版，当前正文保持可见。</p>
-        <div className="personal-material-actions">
-          <button type="button" className="ws-btn" disabled={!personal.writable || personal.busy || !text.trim()}
-            onClick={() => void personal.update({ text })}>保存新版本</button>
-          <button type="button" className="ws-btn ghost" disabled={personal.busy} onClick={personal.cancelEditing}>取消更新</button>
-        </div>
-      </div>}
-    </>}
-    {personal.busy && <p className="personal-material-muted" role="status" aria-label="正在保存或读取个人笔记" />}
+    </div>}
+    {personal.busy && <p className="personal-material-muted" role="status">正在保存或读取个人笔记…</p>}
   </section>
 }

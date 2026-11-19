@@ -195,7 +195,7 @@ export function createLearningEntry(options: {
         || route.startsWith('executions/') || route.startsWith('models/') || route.startsWith('agent/') || route.startsWith('agent-settings')
         || route === 'conversation-archives' || route.startsWith('conversation-archives/')
         || route === 'conversation-history' || route.startsWith('conversation-history/')
-        || route === 'skills' || route.startsWith('skills/') || route.startsWith('submissions/')
+        || route === 'skills' || route.startsWith('skills/') || route.startsWith('submissions/') || route === 'course-progress'
         || route.startsWith('activity-receipts/')) && request.headers['x-xj-namespace']
         && request.headers['x-xj-namespace'] !== environment.clientNamespace) throw new StorageError('forbidden');
       const method = request.method;
@@ -234,7 +234,7 @@ export function createLearningEntry(options: {
         return true;
       }
       if (environment.profile === 'school' && learning && (/^(?:drafts|intents|materials|pdf|artifacts|executions|agent|agent-settings|conversation-archives|conversation-history)(?:\/|$)/.test(route)
-        || route === 'activity-status' || route === 'activities' && method === 'POST')) {
+        || route === 'activity-status' || route === 'course-progress' || route === 'activities' && method === 'POST')) {
         await learning.studyCopies.assertWritable(await current(request));
       }
       if (typeof remote === 'string' && remote.startsWith('school:') && options.client) {
@@ -678,6 +678,7 @@ export function createLearningEntry(options: {
       } else if (route.startsWith('activities/') && method === 'GET') result = await learning.open(await current(request), route.slice(11));
       else if (route === 'activity-status' && method === 'POST') result = await learning.setStatus(await current(request),
         z.object({ requestId: z.uuid(), activityId: z.uuid(), status: z.enum(['open', 'closed']) }).strict().parse(await readLearningBody(request)));
+      else if (route === 'course-progress' && method === 'POST') result = await learning.setCourseProgress(await current(request), await readLearningBody(request));
       else if (route.startsWith('receipts/') && method === 'GET') result = await learning.receipt(await current(request), route.slice(9));
       else throw new StorageError('missing');
       if (route === 'models/selection' && method === 'GET' && await options.restoredInstallation?.())

@@ -24,7 +24,7 @@ function layoutTop(element: HTMLElement): number {
   return top
 }
 
-export function useHomeCourseNavigation(courseId: string | null, ready: boolean) {
+export function useHomeCourseNavigation(courseId: string | null, ready: boolean, navigateCourse?: (courseId: string | null) => void) {
   const context = useContext(HomeNavigationContext)
   if (!context) throw new Error('HomeNavigationProvider is required')
   const memory = context
@@ -65,23 +65,23 @@ export function useHomeCourseNavigation(courseId: string | null, ready: boolean)
     let followLayout = isNewEntry && !!courseId
     const stopFollowing = () => { followLayout = false }
     const restore = () => {
-      main.scrollTo(0, followLayout ? headingTop() : top)
+      main.scrollTop = followLayout ? headingTop() : top
       target?.focus({ preventScroll: true })
     }
     restore()
     // Query data may have arrived in this commit; reapply after its layout has settled.
     const frame = requestAnimationFrame(restore)
-    const observer = new ResizeObserver(() => {
-      if (followLayout) main.scrollTo(0, headingTop())
-    })
-    if (followLayout && region.parentElement) observer.observe(region.parentElement)
+    const observer = followLayout && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => {
+      if (followLayout) main.scrollTop = headingTop()
+    }) : undefined
+    if (region.parentElement) observer?.observe(region.parentElement)
     const interactionEvents = ['wheel', 'touchstart', 'pointerdown', 'keydown'] as const
     for (const type of interactionEvents) main.addEventListener(type, stopFollowing, { passive: true, capture: true })
     const onScroll = () => { entry.top = main.scrollTop }
     main.addEventListener('scroll', onScroll, { passive: true })
     return () => {
       cancelAnimationFrame(frame)
-      observer.disconnect()
+      observer?.disconnect()
       for (const type of interactionEvents) main.removeEventListener(type, stopFollowing, true)
       main.removeEventListener('scroll', onScroll)
     }
@@ -101,6 +101,7 @@ export function useHomeCourseNavigation(courseId: string | null, ready: boolean)
     // Browser Back to this overview returns focus to the card used to leave it.
     if (nextCourseId && current) current.focus = keyboard ? { kind: 'course', courseId: nextCourseId } : undefined
     memory.pending = { courseId: nextCourseId, origin, keyboard: keyboard || !!origin?.keyboard }
+    if (navigateCourse) { navigateCourse(nextCourseId); return }
     setSearchParams(previous => {
       const next = new URLSearchParams(previous)
       if (nextCourseId) next.set('course', nextCourseId)

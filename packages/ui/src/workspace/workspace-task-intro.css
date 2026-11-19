@@ -1,0 +1,44 @@
+.ws-intro-veil.ws-task-dialog-veil {
+  position: fixed;
+  z-index: 80;
+}
+
+.ws-intro-card.ws-task-dialog {
+  position: fixed;
+  z-index: 90;
+  inset: 0;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  width: min(450px, calc(100% - 32px));
+  max-width: none;
+  height: fit-content;
+  max-height: calc(100dvh - 32px);
+  overflow-wrap: anywhere;
+  animation-name: enterFade;
+}
+
+.ws-task-dialog-heading { padding-inline-end: 28px; }
+.ws-task-dialog-heading h2:focus { outline: none; }
+.ws-task-dialog-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  border-radius: 8px;
+}
+.ws-task-dialog-close:hover:enabled { color: var(--ink); background: var(--hover-bg); }
+.ws-task-dialog-body { min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.ws-task-dialog .ws-intro-actions { flex: none; margin-top: 20px; }
+
+@media (max-width: 600px), (max-height: 640px) {
+  .ws-intro-card.ws-task-dialog { padding: 24px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ws-intro-card.ws-task-dialog { animation: none; transition: none; }
+}

@@ -1,7 +1,6 @@
-import { useRef, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { Icon, IconText, type IconName } from '../icons'
-import { FluidHighlight } from '../foundation'
-import { useFluidHover, useRegisterFluidHoverItem } from './fluidHover'
+import './activity-card-menu.css'
 
 const icons: IconName[] = ['virtual-board', 'code-square', 'structure']
 
@@ -13,25 +12,20 @@ export interface CourseTilesProps {
 }
 
 export function CourseTiles({ courses, toneOf, onOpen, titleOf = id => id, summaryOf, actionOf, idKind = 'course' }: CourseTilesProps) {
-  const ref = useRef<HTMLDivElement>(null)
-  const hover = useFluidHover(ref)
-  return <div className="course-tiles" ref={ref} {...hover.handlers}>
-    <FluidHighlight activeIndex={hover.activeIndex} rects={hover.itemRects} className="card-grid-highlight" />
-    {courses.map((id, index) => <CourseTile key={id} id={id} title={titleOf(id)} summary={summaryOf(id)}
-      tone={toneOf(id)} index={index} register={hover.registerItem} onOpen={keyboard => onOpen(id, keyboard)}
+  return <div className="course-tiles">
+    {courses.map(id => <CourseTile key={id} id={id} title={titleOf(id)} summary={summaryOf(id)}
+      tone={toneOf(id)} onOpen={keyboard => onOpen(id, keyboard)}
       action={actionOf?.(id)} idKind={idKind} />)}
   </div>
 }
 export interface CourseTileProps {
-  id: string; title: string; summary: string; tone: number; index: number
+  id: string; title: string; summary: string; tone: number
   action?: string; idKind?: 'course' | 'activity'
-  register: (index: number, element: HTMLElement | null) => void; onOpen: (keyboard: boolean) => void
+  onOpen: (keyboard: boolean) => void
 }
 
-export function CourseTile({ id, title, summary, tone, index, register, onOpen, action = '查看任务', idKind = 'course' }: CourseTileProps) {
-  const ref = useRef<HTMLButtonElement>(null)
-  useRegisterFluidHoverItem(register, index, ref)
-  return <button ref={ref} className="course-tile" data-course-id={idKind === 'course' ? id : undefined}
+export function CourseTile({ id, title, summary, tone, onOpen, action = '查看任务', idKind = 'course' }: CourseTileProps) {
+  return <button className="course-tile" data-course-id={idKind === 'course' ? id : undefined}
     data-activity-id={idKind === 'activity' ? id : undefined} onClick={event => onOpen(event.detail === 0)}>
     {/* DESIGN.md C1–C4: the geometric fallback is the confirmed cover. No illustration has been
         produced yet, so never request a non-existent /courses/*.png (which only caused a 404). */}
@@ -44,25 +38,22 @@ export function CourseTile({ id, title, summary, tone, index, register, onOpen, 
 
 export interface LearningTaskCardProps {
   title: string; goal?: string; badge?: ReactNode; children?: ReactNode; footer?: ReactNode
-  action: string; onOpen: () => void; register?: (index: number, element: HTMLElement | null) => void; index?: number; accessibleLabel?: string; activityId?: string
+  action: string; onOpen: () => void; accessibleLabel?: string; activityId?: string
+  opensDialog?: boolean; disabled?: boolean; menu?: ReactNode
 }
 
-export function LearningTaskCard({ title, goal, badge, children, footer, action, onOpen, register, index = 0, accessibleLabel, activityId }: LearningTaskCardProps) {
-  const ref = useRef<HTMLButtonElement>(null)
-  useRegisterFluidHoverItem(register ?? (() => {}), index, ref)
-  return <button ref={ref} aria-label={accessibleLabel} data-activity-id={activityId} className={`task-card${children ? '' : ' task-card-without-progress'}`} onClick={onOpen}>
+export function LearningTaskCard({ title, goal, badge, children, footer, action, onOpen, accessibleLabel, activityId,
+  opensDialog, disabled, menu }: LearningTaskCardProps) {
+  const card = <button type="button" aria-label={accessibleLabel} aria-haspopup={opensDialog ? 'dialog' : undefined}
+    disabled={disabled} data-activity-id={activityId} className={`task-card${children ? '' : ' task-card-without-progress'}`} onClick={onOpen}>
     {badge && <div>{badge}</div>}<h3>{title}</h3>{goal && <p>{goal}</p>}{children}
     <div className="card-foot"><span>{footer}</span><span className="action"><IconText name="arrow-right" position="end">{action}</IconText></span></div>
   </button>
+  return menu ? <div className="task-card-shell">{card}<div className="task-card-menu">{menu}</div></div> : card
 }
 
-export interface LearningCardGridProps { children: (register: (index: number, element: HTMLElement | null) => void) => ReactNode }
+export interface LearningCardGridProps { children: ReactNode }
 
 export function LearningCardGrid({ children }: LearningCardGridProps) {
-  const ref = useRef<HTMLDivElement>(null)
-  const hover = useFluidHover(ref)
-  return <div className="task-card-grid" ref={ref} {...hover.handlers}>
-    <FluidHighlight activeIndex={hover.activeIndex} rects={hover.itemRects} className="card-grid-highlight" />
-    {children(hover.registerItem)}
-  </div>
+  return <div className="task-card-grid">{children}</div>
 }

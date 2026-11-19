@@ -14,7 +14,7 @@ export interface TaskToolbarProps<T extends string> {
 export function TaskToolbar<T extends string>({ filters, value, onFilter, query, onQuery }: TaskToolbarProps<T>) {
   const searchRef = useRef<HTMLInputElement>(null)
   return <div className="task-toolbar">
-    <div className="filters">{filters.map(filter => <button key={filter}
+    <div className="filters">{filters.map(filter => <button key={filter} type="button" aria-pressed={value === filter}
       className={value === filter ? 'filter active' : 'filter'} onClick={() => onFilter(filter)}>{filter}</button>)}</div>
     <label className="search">
       <Icon name="minimalistic-magnifier" size={14} />
