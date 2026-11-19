@@ -5,6 +5,7 @@ import { useWorkspaceReferences } from './WorkspaceReferences'
 
 const excluded = 'input, textarea, select, [contenteditable], [data-reference-ui], [data-reference-exclude]'
 function elementOf(node: Node | null): Element | null { return node instanceof Element ? node : node?.parentElement ?? null }
+
 function rangeAtOffsets(root: HTMLElement, start: number, end: number): Range | null {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
   const range = document.createRange()
@@ -17,6 +18,21 @@ function rangeAtOffsets(root: HTMLElement, start: number, end: number): Range | 
   }
   return null
 }
+
+export function locateTextRange(element: HTMLElement, start: number, end: number, scroll?: HTMLElement): boolean {
+  if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || end <= start || end > (element.textContent?.length ?? 0)) return false
+  const range = rangeAtOffsets(element, start, end)
+  const selection = element.ownerDocument.getSelection()
+  if (!range || !selection) return false
+  if (scroll) {
+    const first = range.getClientRects()[0]
+    if (first) scroll.scrollTop += first.top - scroll.getBoundingClientRect().top - scroll.clientHeight / 3
+  } else element.scrollIntoView({ block: 'center', behavior: 'instant' })
+  element.focus({ preventScroll: true })
+  selection.removeAllRanges()
+  selection.addRange(range)
+  return true
+}
 /** Exact textContent offsets; never harvest text from adjacent containers or editable controls. */
 export function readTextSelection(root: HTMLElement, text: string, selection: Selection | null): Range | null {
   if (!selection || selection.rangeCount !== 1 || selection.isCollapsed || root.textContent !== text) return null
@@ -28,13 +44,13 @@ export function readTextSelection(root: HTMLElement, text: string, selection: Se
 }
 /** Register a container whose textContent equals the authoritative source text. */
 export function useTextReferenceSource(root: RefObject<HTMLElement | null>, sourceId: string, sourceName: string, text: string,
-  source?: QuestionReferenceSource) {
+  source?: QuestionReferenceSource, { registerSource = true }: { registerSource?: boolean } = {}) {
   const { workspaceKey, register, select, clearSelection } = useWorkspaceReferences()
   const sourceRef = useRef(source); sourceRef.current = source
   useEffect(() => {
     const element = root.current
     if (!element) return
-    const unregister = register({ sourceId, locate: reference => {
+    const unregister = registerSource ? register({ sourceId, locate: reference => {
       const fixedSource = sourceRef.current
       if (!element.isConnected || element.textContent !== text || text.slice(reference.range.start, reference.range.end) !== reference.text)
         return { ok: false, reason: '来源已改变或不可用；保留的是选择时的原文。' }
@@ -42,15 +58,10 @@ export function useTextReferenceSource(root: RefObject<HTMLElement | null>, sour
         return { ok: false, reason: '来源已改变；保留的是选择时的原文。' }
       if (reference.sourceText !== undefined && reference.sourceText !== text)
         return { ok: false, reason: '来源已改变或不可用；保留的是选择时的原文。' }
-      const range = rangeAtOffsets(element, reference.range.start, reference.range.end)
-      if (!range) return { ok: false, reason: '原位置当前不可用；引用副本仍然保留。' }
-      element.scrollIntoView({ block: 'center', behavior: 'instant' })
-      element.focus({ preventScroll: true })
-      const selected = document.getSelection()
-      selected?.removeAllRanges()
-      selected?.addRange(range)
+      if (!locateTextRange(element, reference.range.start, reference.range.end))
+        return { ok: false, reason: '原位置当前不可用；引用副本仍然保留。' }
       return { ok: true }
-    } })
+    } }) : undefined
     let gesture: object | undefined, frame = 0
     const capture = (committed?: object) => {
       const range = readTextSelection(element, text, document.getSelection())
@@ -94,16 +105,18 @@ export function useTextReferenceSource(root: RefObject<HTMLElement | null>, sour
     element.addEventListener('keyup', keyup)
     document.addEventListener('selectionchange', changed)
     return () => {
-      cancelAnimationFrame(frame); unregister()
+      cancelAnimationFrame(frame)
+      if (unregister) unregister()
+      else clearSelection(sourceId)
       element.removeEventListener('pointerdown', down); document.removeEventListener('pointerup', up)
       element.removeEventListener('keydown', keydown); element.removeEventListener('keyup', keyup)
       document.removeEventListener('selectionchange', changed)
     }
-  }, [root, workspaceKey, sourceId, sourceName, text, register, select, clearSelection])
+  }, [root, workspaceKey, sourceId, sourceName, text, register, registerSource, select, clearSelection])
 }
-export function TextReferenceSource({ sourceId, sourceName, text, source }: { sourceId: string; sourceName: string; text: string
-  source?: QuestionReferenceSource }) {
+export function TextReferenceSource({ sourceId, sourceName, text, source, registerSource }: { sourceId: string; sourceName: string; text: string
+  source?: QuestionReferenceSource; registerSource?: boolean }) {
   const ref = useRef<HTMLDivElement>(null)
-  useTextReferenceSource(ref, sourceId, sourceName, text, source)
+  useTextReferenceSource(ref, sourceId, sourceName, text, source, { registerSource })
   return <div ref={ref} className="wr-text-source" tabIndex={0} aria-label={sourceName}>{text}</div>
 }

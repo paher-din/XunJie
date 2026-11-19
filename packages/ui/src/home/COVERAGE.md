@@ -15,6 +15,7 @@
 | `components/home/LearningCards.tsx: CourseTiles` | `CourseTiles` | 已迁展示；含卡组 hover |
 | 同文件 `CourseTile` | `CourseTile` | 已迁展示；含封面、标题、摘要、入口 |
 | 同文件 `LearningTaskCard` | `LearningTaskCard` | 已迁展示；状态、进度等内容由调用方提供 |
+| 新增活动卡管理菜单 | `ActivityCardMenu` | 已有独立菜单；确认、权限和状态写入由调用方负责 |
 | 同文件 `LearningCardGrid` | `LearningCardGrid` | 已迁展示；含网格与高亮注册 |
 | `pages/HomePage.tsx: CourseTiles` 领域包装 | `CourseTiles` | 展示已迁；旧任务计数／摘要适配仍在页面，**业务替代未完成**，不把旧包装计为正式组件 |
 | 同页面 `TaskCards` | `LearningCardGrid` + `HomeTaskCard` | 网格与完整任务卡展示已迁、原页面已消费；**业务替代未完成**：任务循环和进度／逾期计算保留页面 |

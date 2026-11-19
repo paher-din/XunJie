@@ -27,6 +27,8 @@ export default defineConfig(({ command, mode }) => ({
       '@base-ui/react/menu',
       'marked',
       'remend',
+      'pdfjs-dist',
+      '@astryxdesign/core/Chat',
       'sonner',
     ],
   },

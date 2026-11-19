@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode, type Ref } from 'react'
+import * as Dialog from '@radix-ui/react-dialog'
 import { Icon, IconText } from '../icons'
 import { ProgressBar } from '../foundation/ProgressBar'
 import { StatusChip, type TaskDisplayStatus } from '../foundation/StatusChip'
@@ -7,6 +8,7 @@ import { AgentMessage, type AgentMessageProps } from '../chat/AgentMessage'
 import { GenCard } from '../chat/GenCard'
 import type { GenHostFactory } from '../chat/genHost'
 import type { ChatMessageData, GenCardData } from '../chat/types'
+import './workspace-task-intro.css'
 
 /** The host owns navigation and the contents portalled into the two toolbar slots. */
 export interface WorkspaceHeaderProps {
@@ -28,35 +30,107 @@ export function WorkspaceHeader({ progress, onBack, tabsRef, runRef }: Workspace
 }
 
 export interface WorkspaceTaskIntroProps {
-  status: TaskDisplayStatus
+  status?: TaskDisplayStatus
   name: string
   course: string
-  deadline: string
-  goal: string
-  percent: number
-  done: boolean
-  currentProgress: string
+  deadline?: string
+  goal?: string
+  percent?: number
+  done?: boolean
+  currentProgress?: string
   actionLabel: string
-  flying: boolean
+  flying?: boolean
   onStart: () => void
+  children?: ReactNode
+  dialog?: {
+    onClose: () => void
+    busy?: boolean
+    startDisabled?: boolean
+    dock?: { target: HTMLElement; onComplete: () => void }
+  }
 }
 
 /** Only presentation and the start action live here; the host owns first-entry state. */
-export function WorkspaceTaskIntro({ status, name, course, deadline, goal, percent, done, currentProgress,
-  actionLabel, flying, onStart }: WorkspaceTaskIntroProps) {
-  return <div className="ws-intro-veil">
-    <div className={flying ? 'ws-intro-card fly' : 'ws-intro-card'}>
-      <StatusChip status={status} />
-      <h1>{name}</h1>
-      <p className="ws-intro-meta">{course} · {deadline}</p>
-      <p className="ws-intro-goal">{goal}</p>
-      <div className="ws-intro-progress"><span>当前进度 {percent}%</span><ProgressBar percent={percent} done={done} /></div>
-      <p className="ws-intro-last">{currentProgress}</p>
-      <div className="ws-intro-actions"><button className="primary" onClick={onStart}>
-        <IconText name="arrow-right" position="end">{actionLabel}</IconText>
-      </button></div>
-    </div>
-  </div>
+export function WorkspaceTaskIntro({ status, name, course, deadline, goal, percent, done = false, currentProgress,
+  actionLabel, flying, onStart, children, dialog }: WorkspaceTaskIntroProps) {
+  const badge = status && <StatusChip status={status} />
+  const meta = <p className="ws-intro-meta">{course}{deadline && ` · ${deadline}`}</p>
+  const overview = <>
+    {goal && <p className="ws-intro-goal">{goal}</p>}
+    {percent != null && <div className="ws-intro-progress"><span>当前进度 {percent}%</span><ProgressBar percent={percent} done={done} /></div>}
+    {currentProgress && <p className="ws-intro-last">{currentProgress}</p>}
+    {children}
+  </>
+  const actions = <div className="ws-intro-actions"><button type="button" className="primary"
+    disabled={dialog?.busy || dialog?.startDisabled} onClick={onStart}>
+    <IconText name="arrow-right" position="end">{actionLabel}</IconText>
+  </button></div>
+  if (dialog) return <TaskIntroDialog name={name} badge={badge} meta={meta} actions={actions} {...dialog}>{overview}</TaskIntroDialog>
+  return <div className="ws-intro-veil"><div className={flying ? 'ws-intro-card fly' : 'ws-intro-card'}>
+    {badge}<h1>{name}</h1>{meta}{overview}{actions}
+  </div></div>
+}
+
+function TaskIntroDialog({ name, badge, meta, actions, children, onClose, busy, dock }: NonNullable<WorkspaceTaskIntroProps['dialog']> & {
+  name: string; badge: ReactNode; meta: ReactNode; actions: ReactNode; children: ReactNode
+}) {
+  const card = useRef<HTMLDivElement>(null)
+  const overlay = useRef<HTMLDivElement>(null)
+  const title = useRef<HTMLHeadingElement>(null)
+  const previousFocus = useRef<HTMLElement | null>(null)
+  const target = dock?.target
+  const complete = dock?.onComplete
+  useEffect(() => {
+    if (!target || !complete) return
+    const panel = card.current
+    if (!panel?.animate || !target.isConnected || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      complete()
+      return
+    }
+    const from = panel.getBoundingClientRect()
+    const to = target.getBoundingClientRect()
+    const x = to.left + to.width / 2 - (from.left + from.width / 2)
+    const y = to.top + to.height / 2 - (from.top + from.height / 2)
+    const scale = Math.min(to.width / from.width, to.height / from.height)
+    const duration = 440
+    const animation = panel.animate([
+      { transform: 'none', opacity: 1 },
+      { opacity: 0.9, offset: 0.62 },
+      { transform: `translate(${x}px, ${y}px) scale(${scale})`, opacity: 0 },
+    ], { duration, easing: 'cubic-bezier(0.3, 1, 0.35, 1)', fill: 'forwards' })
+    const fade = overlay.current?.animate([{ opacity: 1 }, { opacity: 0 }], { duration, fill: 'forwards' })
+    let active = true
+    void animation.finished.then(() => { if (active) complete() }, () => {})
+    return () => { active = false; animation.cancel(); fade?.cancel() }
+  }, [target, complete])
+  const locked = busy || !!dock
+  return <Dialog.Root open onOpenChange={open => { if (!open && !locked) onClose() }}>
+    <Dialog.Portal>
+      <Dialog.Overlay ref={overlay} className="ws-intro-veil ws-task-dialog-veil" />
+      <Dialog.Content ref={card} className="ws-intro-card ws-task-dialog" aria-describedby={undefined} aria-busy={locked || undefined}
+        onOpenAutoFocus={event => {
+          previousFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+          event.preventDefault()
+          title.current?.focus({ preventScroll: true })
+        }} onCloseAutoFocus={event => {
+          event.preventDefault()
+          const focus = target ?? previousFocus.current
+          if (focus?.isConnected) focus.focus({ preventScroll: true })
+        }} onEscapeKeyDown={event => { if (locked) event.preventDefault() }}
+        onPointerDownOutside={event => { if (locked) event.preventDefault() }}>
+        <Dialog.Close asChild><button type="button" className="ws-task-dialog-close" aria-label="关闭任务预览" disabled={locked}>
+          <Icon name="close" size={16} />
+        </button></Dialog.Close>
+        <div className="ws-task-dialog-body">
+          <header className="ws-task-dialog-heading">
+            {badge}<Dialog.Title asChild><h2 ref={title} tabIndex={-1}>{name}</h2></Dialog.Title>{meta}
+          </header>
+          {children}
+        </div>
+        {actions}
+      </Dialog.Content>
+    </Dialog.Portal>
+  </Dialog.Root>
 }
 
 export interface WorkspaceToolkitPendingProps { title: string; description: string }

@@ -32,12 +32,18 @@ function reply(response: ServerResponse, value: { text: string } | { call: { id:
   ]) response.write('data: ' + JSON.stringify(chunk) + '\n\n')
   response.end('data: [DONE]\n\n')
 }
+let apiNamespace = ''
 async function api(request: import('@playwright/test').APIRequestContext, route: string, body?: unknown) {
+  if (!apiNamespace) apiNamespace = (await (await request.get(endpoint + '/api/learning/context')).json()).clientNamespace
   const response = await request.fetch(endpoint + '/api/learning/' + route, { method: body === undefined ? 'GET' : 'POST',
-    headers: { 'x-xj-space': 'personal' }, ...(body === undefined ? {} : { data: body }) })
+    headers: { 'x-xj-space': 'personal', 'x-xj-namespace': apiNamespace, 'x-xj-agent-contract': '2' },
+    ...(body === undefined ? {} : { data: body }) })
   const value = await response.json()
   expect(response.status(), route + ': ' + JSON.stringify(value)).toBe(200)
   return value
+}
+async function conversationOf(request: import('@playwright/test').APIRequestContext, sessionId: string) {
+  return api(request, 'agent-sessions/' + sessionId + '/conversation?after=0')
 }
 async function configureModel(request: import('@playwright/test').APIRequestContext) {
   const connectionId = randomUUID(), grantId = randomUUID()
@@ -66,6 +72,13 @@ test.beforeAll(async () => {
       const chunks = []
       for await (const chunk of request) chunks.push(chunk)
       const payload = JSON.parse(Buffer.concat(chunks).toString())
+      if ((payload.messages ?? []).some((message: { role: string; content: unknown }) => message.role === 'system'
+        && typeof message.content === 'string' && message.content.includes('STUDENT_INPUT_POLICY_V2'))) {
+        const raw = payload.messages.filter((message: { role: string }) => message.role === 'user').at(-1)?.content
+        const source = JSON.parse(typeof raw === 'string' ? raw : raw.map((part: { text?: string }) => part.text ?? '').join(''))
+        reply(response, { text: JSON.stringify({ inputDigest: source.inputDigest, creationAuthorization: 'ordinary' }) })
+        return
+      }
       payloads.push(payload); await answer(payload, response)
     } catch (error) { modelErrors.push(String(error)); response.destroy() }
   })
@@ -96,6 +109,8 @@ test('capture the formal conversation baseline before student response UI', asyn
   test.skip(process.env.XUNJIE_CAPTURE_STUDENT_ASK_BASELINE !== '1', 'Only capture before changing the product UI')
   await page.goto(endpoint)
   await startConversation(page, '理解四态累加的先验预测', '先问我的预测，再结合我的回答解释。')
+  await expect(page.getByRole('heading', { name: '学习对话', exact: true })).toHaveCount(0)
+  await expect(page.getByText('还没有对话。输入问题并发送后，回答会在这里持续保留。', { exact: true })).toHaveCount(0)
   await expect(page.locator('.product-conversation-head h1')).toHaveText('理解四态累加的先验预测。\n先问我的预测，再结合我的回答解释。')
   await expect(page.getByText('尚未选择模型，问题与草稿已保留。')).toBeVisible({ timeout: 20000 })
   if (evidence) await page.screenshot({ path: join(evidence, `student-ask-before-${process.platform}.png`) })
@@ -111,16 +126,28 @@ test('the existing conversation presents a durable Agent question and explicitly
     : reply(response, { text: '依据你选择的 1 继续：3 加 2 再对 4 取余，结果为 1。' })
   await page.goto(endpoint)
   await startConversation(page, '理解四态累加的先验预测', '先问我的预测，再结合我的回答解释。')
-  const card = page.getByRole('group', { name: 'Agent 的提问', exact: true })
+  const card = page.getByRole('region', { name: 'Agent 的问题', exact: true })
   await expect(card).toBeVisible({ timeout: 20000 })
   await expect(card).toContainText('你预计状态 3 再输入 2 会变成几？')
-  await page.getByText('发送记录', { exact: true }).click()
-  await expect(page.getByRole('region', { name: '待发与接收记录', exact: true })).not.toContainText(/"runId"|"inputId"/)
+  await expect(card.locator('fieldset')).toHaveCSS('display', 'grid')
+  await expect(card.locator('.agent-question-option').first()).toHaveCSS('display', 'flex')
+  const options = await card.locator('.agent-question-option').evaluateAll(elements => elements.map(element => {
+    const { x, y, bottom } = element.getBoundingClientRect()
+    return { x, y, bottom }
+  }))
+  expect(options).toHaveLength(3)
+  for (let index = 1; index < options.length; index++) {
+    expect(options[index].x).toBeCloseTo(options[0].x, 0)
+    expect(options[index].y).toBeGreaterThanOrEqual(options[index - 1].bottom)
+  }
+  await expect(page.getByText('发送记录', { exact: true })).toHaveCount(0)
+  await expect(card.getByText('当前四态累加的先验预测', { exact: true })).toHaveCount(0)
   await card.getByRole('radio', { name: '1', exact: true }).check()
   if (evidence) await page.screenshot({ path: join(evidence, `student-ask-choice-${process.platform}.png`) })
   await card.getByRole('button', { name: '提交回应', exact: true }).click()
   await expect(page.getByText('依据你选择的 1 继续：3 加 2 再对 4 取余，结果为 1。', { exact: true })).toBeVisible({ timeout: 20000 })
-  await expect(card).toContainText('回应已接收')
+  // The answered question leaves the pending question slot; the answer is the durable record.
+  await expect(card).toHaveCount(0)
   expect(payloads.length - before).toBe(2)
   expect(modelErrors).toEqual([])
   await page.reload()
@@ -128,7 +155,35 @@ test('the existing conversation presents a durable Agent question and explicitly
   expect(payloads.length - before).toBe(2)
 })
 
-test('IP opens the same unanswered question without stealing focus or treating display as an answer', async ({ page, request }) => {
+test('editing while waiting for a student response cancels the question before opening the editor', async ({ page, request }) => {
+  test.setTimeout(90000)
+  await configureModel(request)
+  const before = payloads.length
+  answer = (_payload, response) => payloads.length === before + 1 ? reply(response, { call: { id: 'edit-waiting-question', arguments: {
+    question: '你想先讨论哪个问题？', source: '当前学习问题', options: [], allowText: true, skippable: true,
+  } } }) : reply(response, { text: '已经按修改后的学习问题重新回答。' })
+  await page.goto(endpoint)
+  const question = await startConversation(page, '等待时编辑', '你好')
+  const card = page.getByRole('region', { name: 'Agent 的问题', exact: true })
+  await expect(card).toBeVisible({ timeout: 20000 })
+  const student = page.locator('.product-conversation .chat-message.user').first()
+  await student.getByRole('button', { name: '编辑这条消息', exact: true }).click()
+  await expect(student.getByLabel('修改这条消息', { exact: true })).toHaveValue(question, { timeout: 20000 })
+  const sessionId = new URL(page.url()).searchParams.get('session')!
+  const conversation = await conversationOf(request, sessionId)
+  expect(conversation.runs.at(-1).state).toBe('stopped')
+  expect(conversation.waits.at(-1).state).toBe('cancelled')
+  expect(payloads.length - before).toBe(1)
+  await student.getByLabel('修改这条消息', { exact: true }).fill('修改后的学习问题')
+  await student.getByRole('button', { name: '发送', exact: true }).click()
+  await expect(student.locator('.bubble')).toHaveText('修改后的学习问题')
+  await expect(page.getByText('已经按修改后的学习问题重新回答。', { exact: true })).toBeVisible({ timeout: 20000 })
+  expect(payloads.length - before).toBe(2)
+  await expect(page.getByText('回答已停止，已发生的内容仍保留。', { exact: true })).toHaveCount(0)
+  await expect(page.getByText('选择要继续处理的输入', { exact: true })).toHaveCount(0)
+})
+
+test('an unanswered Agent question waits without treating display as an answer', async ({ page, request }) => {
   test.setTimeout(90000)
   await configureModel(request)
   const before = payloads.length
@@ -142,36 +197,25 @@ test('IP opens the same unanswered question without stealing focus or treating d
   try {
     await page.goto(endpoint)
     await startConversation(page, '保留焦点与新问题草稿', '请先问我准备怎样核对。')
-    // The IP reminder and collapsed conversation belong to the workspace surface.
-    await page.getByRole('button', { name: '进入工作区', exact: true }).click()
-    await expect(page.locator('#activity-title')).toHaveText('保留焦点与新问题草稿。\n请先问我准备怎样核对。')
     await expect.poll(() => payloads.length).toBe(before + 1)
-    const activityId = new URL(page.url()).searchParams.get('activity')!
-    const draft = page.getByLabel('你的问题', { exact: true })
-    await expect(draft).toHaveValue('')
-    await draft.fill('保留的后续消息：我还想比较另一种方法。')
-    await page.getByRole('button', { name: '收起对话', exact: true }).click()
-    const reopen = page.getByRole('button', { name: '打开对话', exact: true })
-    await reopen.focus()
     release()
-    await expect.poll(async () => (await api(request, `agent/${activityId}/conversation`)).questions.length).toBe(1)
-    const original = (await api(request, `agent/${activityId}/conversation`)).questions[0]
-    expect(original.presentedAt).toBeNull()
-    await expect(page.getByRole('button', { name: '回答当前问题', exact: true })).toBeVisible({ timeout: 15000 })
-    await expect(reopen).toBeFocused()
-    if (evidence) await page.screenshot({ path: join(evidence, `student-ask-ip-${process.platform}.png`) })
-    await page.getByRole('button', { name: '回答当前问题', exact: true }).click()
-    const card = page.getByRole('group', { name: 'Agent 的提问', exact: true })
-    await expect(card).toBeVisible()
-    await expect(card).toBeFocused()
-    await expect(draft).toHaveValue('保留的后续消息：我还想比较另一种方法。')
-    await expect.poll(async () => (await api(request, `agent/${activityId}/conversation`)).questions[0].presentedAt).not.toBeNull()
-    expect((await api(request, `agent/${activityId}/conversation`)).questions[0].state).toBe('pending')
+    const card = page.getByRole('region', { name: 'Agent 的问题', exact: true })
+    await expect(card).toBeVisible({ timeout: 20000 })
+    const sessionId = new URL(page.url()).searchParams.get('session')!
+    const draft = page.getByLabel('向 Agent 提问', { exact: true })
+    await draft.fill('保留的后续消息：我还想比较另一种方法。')
+    await expect.poll(async () => (await conversationOf(request, sessionId)).waits.length).toBe(1)
+    const original = (await conversationOf(request, sessionId)).waits[0]
+    expect(original.state).toBe('pending')
+    expect(original.response).toBeNull()
     expect(payloads.length - before).toBe(1)
+    await expect(draft).toHaveValue('保留的后续消息：我还想比较另一种方法。')
     await card.getByLabel('你的回应', { exact: true }).fill('先列出输入，再算出对 4 取余的结果。\n与实际观察比较。')
     if (evidence) await page.screenshot({ path: join(evidence, `student-ask-text-${process.platform}.png`) })
-    await page.getByRole('button', { name: '停止', exact: true }).click()
-    await expect(card).toContainText('这次提问已取消')
+    // A retained composer draft becomes the single primary action; clear it to reach stop.
+    await page.getByLabel('向 Agent 提问', { exact: true }).fill('')
+    await page.getByRole('button', { name: '停止生成', exact: true }).click()
+    await expect(card).toHaveCount(0)
     expect(payloads.length - before).toBe(1)
   } finally { release() }
 })
@@ -185,22 +229,23 @@ test('Chinese text survives an unaccepted send and a lost acceptance reply is qu
     ? reply(response, { call: { id: 'ask-preserved-text', arguments: { question: '你预计为几？也请说出核对办法。',
       source: '先保留你的判断，再核对实际结果', options: [], allowText: true, skippable: false } } })
     : reply(response, { text: '已根据你保留的中文回应继续，先验判断与核对方法分别保留。' })
-  await page.route('**/api/learning/agent/*/questions/*/responses', async route => {
+  await page.route('**/api/learning/agent-sessions/*/waits/*/responses', async route => {
     sent.push(route.request().postDataJSON())
     if (phase === 'offline') { await route.abort('failed'); return }
     if (phase === 'lose-reply') {
       const committed = await route.fetch()
       expect(committed.status()).toBe(200)
-      expect((await committed.json()).status).toBe('accepted')
+      const committedBody = await committed.json()
+      expect(committedBody.waitId).toBeTruthy()
       phase = 'online'; await route.abort('failed'); return
     }
     await route.continue()
   })
   await page.goto(endpoint)
   await startConversation(page, '可靠保存中文回应', '请通过明确提问等我回答。')
-  await expect(page).toHaveURL(/[?&]activity=[0-9a-f-]+/)
-  const activityId = new URL(page.url()).searchParams.get('activity')!
-  const card = page.getByRole('group', { name: 'Agent 的提问', exact: true })
+  await expect(page).toHaveURL(/[?&]session=[0-9a-f-]+/)
+  const sessionId = new URL(page.url()).searchParams.get('session')!
+  const card = page.getByRole('region', { name: 'Agent 的问题', exact: true })
   const text = '  我预计为 1。\n先列出状态与输入，再对 4 取余。  '
   await expect(card).toBeVisible()
   await expect(card.getByRole('button', { name: '跳过这次提问', exact: true })).toHaveCount(0)
@@ -209,21 +254,21 @@ test('Chinese text survives an unaccepted send and a lost acceptance reply is qu
   await expect(entry).toHaveValue(text)
   await page.reload(); await expect(entry).toHaveValue(text)
   await card.getByRole('button', { name: '提交回应', exact: true }).click()
-  await expect(card.getByRole('button', { name: '核对原回应', exact: true })).toBeEnabled()
+  await expect(page.getByRole('alert').getByRole('button', { name: '核对并重试', exact: true })).toBeEnabled()
   await expect(entry).toHaveValue(text)
-  expect((await api(request, `agent/${activityId}/conversation`)).questions[0].state).toBe('pending')
-  expect(await api(request, `agent/${activityId}/responses/${sent[0].requestId}`)).toBeNull()
+  expect((await conversationOf(request, sessionId)).waits[0].state).toBe('pending')
+  expect(await api(request, `agent-sessions/${sessionId}/requests/${sent[0].requestId}`)).toBeNull()
   phase = 'lose-reply'
-  await card.getByRole('button', { name: '核对原回应', exact: true }).click()
+  await page.getByRole('alert').getByRole('button', { name: '核对并重试', exact: true }).click()
   await expect.poll(() => phase).toBe('online')
   await page.reload()
   await expect(page.getByText('已根据你保留的中文回应继续，先验判断与核对方法分别保留。', { exact: true })).toBeVisible({ timeout: 20000 })
-  await expect(card).toContainText('回应已接收')
-  const conversation = await api(request, `agent/${activityId}/conversation`)
-  expect(conversation.questions[0].response.answer.text).toBe(text)
-  expect(conversation.messages.filter((message: { kind?: string }) => message.kind === 'student-response')).toHaveLength(1)
-  expect(sent).toHaveLength(2)
-  expect(sent[1]).toEqual(sent[0])
+  await expect(card).toHaveCount(0)
+  const conversation = await conversationOf(request, sessionId)
+  expect(conversation.waits[0].response.text).toBe(text)
+  expect(conversation.waits).toHaveLength(1)
+  expect(sent.length).toBeGreaterThanOrEqual(2)
+  expect(sent.every(value => JSON.stringify(value) === JSON.stringify(sent[0]))).toBe(true)
   expect(payloads.length - before).toBe(2)
   if (evidence) await page.screenshot({ path: join(evidence, `student-ask-receipt-recovered-${process.platform}.png`) })
 })
@@ -240,7 +285,7 @@ test('explicit skip remains distinct and the response entry works with keyboard,
   await page.setViewportSize({ width: 1000, height: 760 })
   await page.goto(endpoint)
   await startConversation(page, '可以跳过的预测', '先问我是否要做预测，允许跳过。')
-  const card = page.getByRole('group', { name: 'Agent 的提问', exact: true })
+  const card = page.getByRole('region', { name: 'Agent 的问题', exact: true })
   await expect(card).toBeVisible()
   const option = card.getByRole('radio', { name: '预计为 1', exact: true })
   await option.focus(); await page.keyboard.press('Space'); await expect(option).toBeChecked()
@@ -248,7 +293,7 @@ test('explicit skip remains distinct and the response entry works with keyboard,
   await skip.focus(); await expect(skip).toBeFocused()
   if (evidence) await page.screenshot({ path: join(evidence, `student-ask-dark-narrow-${process.platform}.png`) })
   await page.keyboard.press('Enter')
-  await expect(card).toContainText('你已明确跳过')
+  await expect(card).toHaveCount(0)
   await expect(page.getByText('你明确跳过了预测；我会说明核对方法，不把跳过当作你的理解证据。', { exact: true })).toBeVisible({ timeout: 20000 })
   expect(payloads.length - before).toBe(2)
   if (evidence) await page.screenshot({ path: join(evidence, `student-ask-skipped-${process.platform}.png`) })

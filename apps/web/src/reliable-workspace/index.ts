@@ -11,8 +11,7 @@ import { componentStateMediaType, componentStateName, matchesComponentState, typ
 
 export { LOCAL_MAX_WAIT_MS, NETWORK_MAX_WAIT_MS } from './coordinator'
 export interface WorkTransport { read(): Promise<WorkView>; receipt(requestId: string): Promise<WorkView | null>; sync(input: WorkSync): Promise<WorkView> }
-export interface WorkspaceState { files: WorkFile[]; ready: boolean; error: string; conflict?: WorkConflict; conflictReady: boolean; editorEpoch: number
-  protection?: { unprotected: boolean; pendingConfirmation: boolean; revision: number } }
+export interface WorkspaceState { files: WorkFile[]; ready: boolean; error: string; conflict?: WorkConflict; conflictReady: boolean; editorEpoch: number }
 /** Apply local changes to the newly adopted head, using the same baseline rule before and after protection. */
 function mergeAdoptedFiles(baseline: WorkFile[], local: WorkFile[], remote: WorkFile[],
   reconcile: (local: WorkFile, remote: WorkFile) => WorkFile) {
@@ -53,8 +52,7 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
   }
   trackInput<T>(input: Promise<T>): Promise<T> {
     this.inputs.add(input)
-    this.notify()
-    const settled = () => { this.inputs.delete(input); this.notify() }
+    const settled = () => { this.inputs.delete(input) }
     void input.then(settled, settled)
     return input
   }
@@ -191,11 +189,7 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
     }, transport, { denied: () => this.accessDenied() || draft.accessDenied(),
       confirmed: () => { this.confirmAccess(); draft.confirmAccess() } }, this.readOnly)
   }
-  private notify(patch: Partial<WorkspaceState> = {}) {
-    this.state = { ...this.state, ...patch, conflictReady: !this.dirty,
-      protection: { unprotected: this.unprotectedInput(), pendingConfirmation: !!this.record.pending || !!this.record.remoteOperation, revision: this.record.remoteRevision } }
-    for (const listener of this.listeners) listener()
-  }
+  private notify(patch: Partial<WorkspaceState> = {}) { this.state = { ...this.state, ...patch, conflictReady: !this.dirty }; for (const listener of this.listeners) listener() }
   protected ready() { return this.state.ready }
   protected conflicted() { return !!this.state.conflict }
   protected clearListeners() { this.listeners.clear() }

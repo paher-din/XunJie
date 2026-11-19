@@ -44,7 +44,7 @@ export function ActivityConversation(props: { activity: LearningActivity; spaceK
       if (presentation.generatingPage(tool.name)) return toolFailed(tool)
         ? <p role="alert" className="learning-error">这次页面未能完成，原内容和输入仍保留。{toolDetail(tool)}</p> : null
       const record = presentation.records.get(tool.toolCallId)
-      return record ? <TeachingToolRecords records={[record]} onLocate={props.onLocateTool} /> : null
+      return record ? <TeachingToolRecords embedded records={[record]} onLocate={props.onLocateTool} /> : null
     }} /> : <p role="status" aria-label="正在打开工作区对话" />}
     {presentation.previews.map(preview => <ArtifactPreview key={preview.key} preview={preview} />)}
     {props.artifacts?.entries.map(entry => <ArtifactCard key={entry.artifact.artifactId} entry={entry} controller={props.artifacts!}

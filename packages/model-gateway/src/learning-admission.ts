@@ -57,6 +57,12 @@ export const learningAdmissionMigration: Migration = { version: 19, name: 'learn
   FROM model_attempts WHERE body->>'purpose'='learning' ORDER BY created_at,id;
 
 ` };
+export const learningTransportMigration: Migration = { version: 25, name: 'learning-local-transport-lifetime', sql: `
+  ALTER TABLE model_learning_admissions ADD COLUMN local_transport_ended boolean NOT NULL DEFAULT false;
+  UPDATE model_learning_admissions a SET local_transport_ended=true,physical_held=false
+    FROM model_attempts m WHERE m.id=a.attempt_id AND a.charged_at IS NOT NULL
+      AND m.physical_ended AND m.state<>'accepted';
+` };
 const principalOf = (identity: SpaceIdentity) => identity.environmentId + '.' + identity.principalId;
 export const lockLearningAdmission = (tx: OwnedTransaction) =>
   tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', ['model-physical-slots']);
@@ -73,10 +79,19 @@ export function learningFinalUnits(usage: ModelUsage): number | null {
   return Number.isSafeInteger(units) && units >= 0 ? units : null;
 }
 
+/** With SDK retries disabled, these failures establish that no connection was
+ * made. A reset, timeout after connecting or local abort gives no such proof. */
+function connectionNeverOpened(body: ModelAttempt) {
+  return body.physicalRequestEnded && !body.text && !body.toolIntents?.length
+    && body.usage.state === 'unknown' && body.upstream?.httpStatus === undefined
+    && ['ECONNREFUSED', 'ENOTFOUND', 'EAI_NONAME', 'EAI_AGAIN', 'ENETUNREACH', 'EHOSTUNREACH']
+      .includes(body.upstream?.networkCode ?? '');
+}
+
 type AdmissionRow = Record<string, unknown> & {
   attempt_id: string; fee_source: string; principal: string; policy: LearningAdmissionPolicy;
   reserved_units: string; charged_at: Date | null; settled_units: string | null;
-  physical_held: boolean; upstream_ended: boolean; settlement: string; ready: boolean; ticket_id: string | null;
+  physical_held: boolean; local_transport_ended: boolean; upstream_ended: boolean; settlement: string; ready: boolean; ticket_id: string | null;
 };
 export function createLearningAdmission(storage: OwnedStorage, configured?: LearningAdmissionPolicy) {
   const policy = learningAdmissionPolicySchema.parse(configured ?? defaultLearningAdmissionPolicy);
@@ -128,6 +143,13 @@ export function createLearningAdmission(storage: OwnedStorage, configured?: Lear
     await tx.query('UPDATE model_learning_admissions SET reserved_units=$2 WHERE attempt_id=$1', [body.attemptId, own.reserved_units]);
     const { rows: [clock] } = await tx.query('SELECT clock_timestamp() AS now');
     const now = new Date(clock!.now as string).getTime();
+    // Reconcile older retained reservations from the original transport facts,
+    // without replaying the failed request or changing its historical result.
+    const { rows: ended } = await tx.query<{ body: ModelAttempt }>(`SELECT m.body FROM model_learning_admissions a
+      JOIN model_attempts m ON m.id=a.attempt_id WHERE a.physical_held AND m.physical_ended AND m.state<>'accepted'`);
+    for (const { body: previous } of ended) {
+      await settle(tx, previous);
+    }
     const { rows: charges } = await tx.query<AdmissionRow>('SELECT * FROM model_learning_admissions WHERE charged_at IS NOT NULL');
     const { rows: waiting } = await tx.query<AdmissionRow>(`SELECT a.* FROM model_learning_admissions a
       JOIN model_attempts m ON m.id=a.attempt_id WHERE a.ready AND a.charged_at IS NULL AND m.state='accepted'
@@ -154,7 +176,7 @@ export function createLearningAdmission(storage: OwnedStorage, configured?: Lear
       return waitingReason;
     }
     await tx.query(`UPDATE model_learning_admissions SET charged_at=clock_timestamp(),physical_held=true,
-      settlement='reserved',upstream_ended=false,wait_reason=NULL WHERE attempt_id=$1`, [body.attemptId]);
+      settlement='reserved',local_transport_ended=false,upstream_ended=false,wait_reason=NULL WHERE attempt_id=$1`, [body.attemptId]);
     return null;
   }
   /** Same transaction as the immutable attempt result. Logical cancellation alone never refunds/releases. */
@@ -166,14 +188,21 @@ export function createLearningAdmission(storage: OwnedStorage, configured?: Lear
       if (body.state !== 'accepted') await tx.query('UPDATE model_learning_admissions SET ready=false,wait_reason=NULL WHERE attempt_id=$1', [body.attemptId]);
       return;
     }
-    if (row.settlement === 'final' || row.settlement === 'not-sent') return;
+    const localEnded = body.physicalRequestEnded && body.state !== 'accepted';
+    if (row.settlement === 'final' || row.settlement === 'not-sent') {
+      await tx.query(`UPDATE model_learning_admissions SET local_transport_ended=local_transport_ended OR $2,
+        physical_held=CASE WHEN $2 THEN false ELSE physical_held END,
+        upstream_ended=upstream_ended OR $3 WHERE attempt_id=$1`, [body.attemptId, localEnded, evidence.upstreamEnded === true]);
+      return;
+    }
     const units = learningFinalUnits(body.usage);
-    const notSent = evidence.notSent === true && !body.dispatched;
+    const notSent = evidence.notSent === true && !body.dispatched || connectionNeverOpened(body);
     await tx.query(`UPDATE model_learning_admissions SET settlement=$2,settled_units=$3,
-      physical_held=CASE WHEN $4 THEN false ELSE physical_held END,
+      physical_held=CASE WHEN $5 THEN false ELSE physical_held END,
+      local_transport_ended=local_transport_ended OR $5,
       upstream_ended=upstream_ended OR $4,settled_at=clock_timestamp() WHERE attempt_id=$1`,
       [body.attemptId, notSent ? 'not-sent' : units === null ? 'unknown' : 'final', notSent ? null : units,
-        notSent || evidence.upstreamEnded === true]);
+        notSent || evidence.upstreamEnded === true, localEnded]);
   }
   async function validate() {
     const { rows } = await storage.read(`SELECT a.*,m.body FROM model_learning_admissions a JOIN model_attempts m ON m.id=a.attempt_id`);
@@ -182,8 +211,9 @@ export function createLearningAdmission(storage: OwnedStorage, configured?: Lear
       const body = row.body as ModelAttempt;
       if (body.purpose !== 'learning' || body.source?.feeSource !== row.fee_source
         || (row.settlement === 'final' && learningFinalUnits(body.usage) !== Number(row.settled_units))
-        || (row.physical_held && row.upstream_ended)
-        || (row.charged_at && !row.physical_held && !row.upstream_ended)) throw new StorageError('corrupt');
+        || (row.physical_held && row.local_transport_ended)
+        || (row.local_transport_ended && (!body.physicalRequestEnded || body.state === 'accepted'))
+        || (row.charged_at && !row.physical_held && !row.local_transport_ended)) throw new StorageError('corrupt');
     }
   }
   return { enqueue, currentTicket, ready, withdraw, claim, settle, validate };

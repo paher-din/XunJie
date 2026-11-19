@@ -9,7 +9,7 @@ import { learningTargetSchema, type LearningTarget, type SpaceIdentity } from '@
 import type { SessionMaterials } from '@xunjie/agents/capabilities/documents/index';
 import { personalMaterialSaveSchema, personalMaterialUpdateSchema, personalMaterialRemoveSchema, personalMaterialReadSchema } from '@xunjie/contracts/personal-materials';
 import { pdfUploadSchema, pdfReadInputSchema, pdfFindInputSchema } from '@xunjie/contracts/pdf-materials';
-import { sessionSkillSelectSchema, type SessionSkillsPort } from '@xunjie/contracts/agent-skills';
+import { sessionSkillSelectSchema, teachingSkillReferenceSchema, type SessionSkillsPort } from '@xunjie/contracts/agent-skills';
 
 export interface SessionHttpPort {
   sessions: {
@@ -22,6 +22,7 @@ export interface SessionHttpPort {
   /** The host authorizes and selects the saved service, not a browser-selected owner. */
   agent(identity: SpaceIdentity, sessionId: string): Promise<AgentSessionPort>;
   materials?(identity: SpaceIdentity, sessionId: string): Promise<SessionMaterials>;
+  skillDescription?(identity: SpaceIdentity, sessionId: string, reference: { skillId: string; version: number }): Promise<string>;
   skills?(identity: SpaceIdentity, sessionId: string): Promise<SessionSkillsPort>;
 }
 const control = z.object({ requestId: z.uuid() }).strict();
@@ -53,6 +54,8 @@ export async function routeAgentSessions(host: SessionHttpPort, identity: SpaceI
     if (session.deleted) throw new StorageError('missing');
     if (session.archived && method !== 'GET') throw new StorageError('conflict');
     const skills = await host.skills(identity, sessionId);
+    if (parts.length === 4 && parts[3] === 'description' && method === 'POST' && host.skillDescription)
+      return { text: await host.skillDescription(identity, sessionId, teachingSkillReferenceSchema.parse(body)) };
     if (parts.length === 3 && method === 'GET') return skills.resolveSession(identity, sessionId);
     if (parts.length === 4 && parts[3] === 'select' && method === 'POST')
       return skills.selectSession(identity, sessionId, sessionSkillSelectSchema.parse(body));

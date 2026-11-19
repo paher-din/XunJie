@@ -1,0 +1,45 @@
+.chat-message.user .bubble {
+  box-sizing: border-box;
+  max-width: min(100%, max(80%, 280px));
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: var(--chip-bg);
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.7;
+  text-align: start;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.chat-message.user .turn-actions {
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: 8px;
+  padding-inline: 8px;
+}
+
+.chat-message .turn-actions button,
+.chat-message.user .agent-message-action {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  padding: 0;
+  border-radius: 6px;
+}
+
+.chat-message .turn-actions button > .ui-icon,
+.chat-message.user .agent-message-action > .ui-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.product-shell .chat-message.user:has(> .product-message-context > .agent-input-record.compact > .agent-control-actions) {
+  row-gap: 8px;
+  column-gap: 4px;
+}
+
+.chat-message.user.editing .user-edit {
+  max-width: 100%;
+}

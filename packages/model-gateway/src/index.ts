@@ -9,7 +9,7 @@ import type { ModelConfiguration, ModelConnection, ModelCheckPolicy, SaveModelCo
 import { z } from 'zod';
 import { sealCredential, openCredential } from './vault.js';
 import { createChecks, checkMigrations, type CheckSnapshot } from './checks.js';
-import { learningAdmissionMigration, type LearningAdmissionPolicy } from './learning-admission.js';
+import { learningAdmissionMigration, learningTransportMigration, type LearningAdmissionPolicy } from './learning-admission.js';
 export type { LearningAdmissionPolicy } from './learning-admission.js';
 export { learningAdmissionPolicySchema, defaultLearningAdmissionPolicy } from './learning-admission.js';
 import type { ModelCheckInput, ModelAttempt } from '@xunjie/contracts/model-connections';
@@ -65,7 +65,7 @@ export const modelMigrations: readonly Migration[] = [{ version: 1, name: 'perso
 ` }, { version: 24, name: 'paired-model-session-routes', sql: `
   CREATE TABLE model_paired_sessions(scope text NOT NULL,kind text NOT NULL,id uuid NOT NULL,session_id uuid,PRIMARY KEY(scope,kind,id));
   INSERT INTO model_paired_sessions(scope,kind,id,session_id) SELECT scope,kind,id,NULL FROM model_paired_routes;
-` }];
+` }, learningTransportMigration];
 type StoredConnection = { configuration: ModelConfiguration; version: number; routeId: string; credentialRef: string | null; policy?: ModelCheckPolicy; retired?: true };
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const scopeOf = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId].join('.');
@@ -289,9 +289,11 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
       const { rows: [row] } = await storage.read('SELECT body FROM model_connections WHERE scope=$1 AND id=$2', [ownerScope, chosen.choice.connection.connectionId]);
       if (!row) throw new StorageError('unavailable');
       const stored = row.body as StoredConnection;
+      if (learning && stored.version !== chosen.choice.connection.version) throw new StorageError('conflict');
       if (!stored.configuration.enabled || !stored.credentialRef || projection(stored).adapterState !== 'ready') throw new StorageError('unavailable');
-      return { connection: projection(stored), credentialRef: stored.credentialRef, policy: stored.policy ?? chosen.choice.policy,
-        source: chosen.source };
+      return { connection: learning && chosen.choice.reasoningEffort
+        ? { ...projection(stored), reasoningEffort: chosen.choice.reasoningEffort } : projection(stored),
+        credentialRef: stored.credentialRef, policy: stored.policy ?? chosen.choice.policy, source: chosen.source };
     }
     let configuration: ModelConfiguration, credentialRef: string | null, version: number, routeId: string;
     let retain: ((tx: OwnedTransaction) => Promise<void>) | undefined;

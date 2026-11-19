@@ -129,22 +129,22 @@ async function openActivity(page: import('@playwright/test').Page, activityId: s
   await expect(page.locator('#activity-title')).toHaveText(title)
   const open = page.getByRole('button', { name: '打开对话', exact: true })
   if (await open.isVisible().catch(() => false)) await open.click()
-  await expect(page.getByLabel('你的问题', { exact: true })).toBeVisible()
+  await expect(page.getByLabel('向 Agent 提问', { exact: true })).toBeVisible()
 }
 async function ask(page: import('@playwright/test').Page, text: string) {
-  const input = page.getByLabel('你的问题', { exact: true })
+  const input = page.getByLabel('向 Agent 提问', { exact: true })
   await input.fill(text)
   await page.getByRole('button', { name: '发送问题', exact: true }).click()
   await expect(input).toHaveValue('', { timeout: 15000 })
 }
 async function waitAnswer(page: import('@playwright/test').Page, text: string) {
-  const bubble = page.locator('.teaching-message.assistant').filter({ hasText: text })
+  const bubble = page.locator('.chat-message.agent').filter({ hasText: text })
   await expect(bubble).toBeVisible({ timeout: 90000 })
   return bubble
 }
 async function waitAssistantCount(page: import('@playwright/test').Page, count: number) {
-  await expect(page.locator('.teaching-message.assistant')).toHaveCount(count, { timeout: 120000 })
-  return page.locator('.teaching-message.assistant').last()
+  await expect(page.locator('.chat-message.agent')).toHaveCount(count, { timeout: 120000 })
+  return page.locator('.chat-message.agent').last()
 }
 async function events(activityId: string) {
   return must('agent/' + activityId + '/events', undefined, member())
@@ -276,7 +276,7 @@ test('school and personal models switch both ways while prior questions, answers
   const toolRecords = page.locator('[aria-label="工具记录"]')
   await expect(toolRecords).toContainText('已完成', { timeout: 30000 })
   const schoolAnswer = await waitAnswer(page, '学校模型回答1')
-  await expect(schoolAnswer.getByText('来源：学校模型 · school-chat · chat-completions', { exact: true })).toBeVisible()
+  await expect(schoolAnswer.getByText(/^来源：(?:个人模型|学校模型|原模型)/)).toHaveCount(0)
   await expect(toolRecords).toContainText('切换固定观察.txt')
   if (output) await page.screenshot({ path: join(output, 'model-switch-school-before-darwin.png') })
 
@@ -290,7 +290,7 @@ test('school and personal models switch both ways while prior questions, answers
 
   await ask(page, '这是个人模型下的继续提问。')
   const personalAnswer = await waitAssistantCount(page, 2)
-  await expect(personalAnswer.getByText('来源：个人模型 · personal-responses · responses', { exact: true })).toBeVisible()
+  await expect(personalAnswer.getByText(/^来源：(?:个人模型|学校模型|原模型)/)).toHaveCount(0)
   await expect(schoolAnswer).toBeVisible()
   if (output) await page.screenshot({ path: join(output, 'model-switch-personal-answer-darwin.png') })
 
@@ -300,14 +300,14 @@ test('school and personal models switch both ways while prior questions, answers
   await openActivity(page, activityId, '模型切换与学习延续')
   await ask(page, '回到学校模型后的第三问。')
   const schoolAgain = await waitAnswer(page, '学校模型回答3')
-  await expect(schoolAgain.getByText('来源：学校模型 · school-chat · chat-completions', { exact: true })).toBeVisible()
+  await expect(schoolAgain.getByText(/^来源：(?:个人模型|学校模型|原模型)/)).toHaveCount(0)
 
   await switchTo(page, '个人 Messages 模型', 'personal-messages')
   await page.reload()
   await openActivity(page, activityId, '模型切换与学习延续')
   await ask(page, '这是个人 Messages 协议下的第四问。')
   const messagesAnswer = await waitAssistantCount(page, 4)
-  await expect(messagesAnswer.getByText('来源：个人模型 · personal-messages · messages', { exact: true })).toBeVisible()
+  await expect(messagesAnswer.getByText(/^来源：(?:个人模型|学校模型|原模型)/)).toHaveCount(0)
   await expect(schoolAnswer).toBeVisible()
   await expect(personalAnswer).toBeVisible()
   await expect(schoolAgain).toBeVisible()
@@ -353,12 +353,12 @@ test('a switch requested during a slow answer waits for the original call, keeps
   await page.reload()
   await openActivity(page, activityId, '在途切换与重复请求')
   const schoolAnswer = await waitAnswer(page, '学校模型回答2')
-  await expect(schoolAnswer.getByText('来源：学校模型 · school-chat · chat-completions', { exact: true })).toBeVisible({ timeout: 30000 })
+  await expect(schoolAnswer.getByText(/^来源：(?:个人模型|学校模型|原模型)/)).toHaveCount(0)
   await expect.poll(async () => (await events(activityId)).filter((event: { kind: string }) => event.kind === 'model-switch-completed').length,
     { timeout: 30000 }).toBe(1)
   await ask(page, '切换完成后的继续提问。')
   const personalAnswer = await waitAssistantCount(page, 2)
-  await expect(personalAnswer.getByText('来源：个人模型 · personal-responses · responses', { exact: true })).toBeVisible()
+  await expect(personalAnswer.getByText(/^来源：(?:个人模型|学校模型|原模型)/)).toHaveCount(0)
   expect(requests.filter(item => item.text.includes('在途切换问题')).length).toBe(1)
   if (output) await page.screenshot({ path: join(output, 'model-switch-inflight-continued-darwin.png') })
 })
@@ -410,7 +410,7 @@ test('a lost switch reply is explicit, keeps the activity readable after reload 
   await openActivity(page, activityId, '网络中断与进程重启')
   await ask(page, '重试切换后的继续提问。')
   const personalAnswer = await waitAssistantCount(page, 2)
-  await expect(personalAnswer.getByText('来源：个人模型 · personal-responses · responses', { exact: true })).toBeVisible()
+  await expect(personalAnswer.getByText(/^来源：(?:个人模型|学校模型|原模型)/)).toHaveCount(0)
   const eventsValue = await events(activityId)
   expect(eventsValue.filter((event: { kind: string }) => event.kind === 'model-switch-completed')).toHaveLength(1)
 })
@@ -423,15 +423,17 @@ test('stopping an answer keeps the stopped state and the unsent draft', async ({
   await openActivity(page, activityId, '停止与草稿保留')
   await ask(page, '请慢速回答停止测试。')
   await expect(page.getByText('Agent 正在生成回答…', { exact: true })).toBeVisible({ timeout: 20000 })
-  const input = page.getByLabel('你的问题', { exact: true })
+  const input = page.getByLabel('向 Agent 提问', { exact: true })
   await input.fill('生成期间继续输入的新草稿。')
   await expect(page.getByLabel('本次发送方式', { exact: true })).toHaveValue('steering')
   await expect(page.getByRole('button', { name: '补充当前任务', exact: true })).toBeEnabled()
-  await page.getByRole('button', { name: '停止', exact: true }).click()
-  await expect(page.getByText('回答已停止，已发生的内容仍保留。', { exact: true })).toBeVisible({ timeout: 30000 })
+  const activeStudent = page.locator('.chat-message.user').last()
+  await activeStudent.getByRole('button', { name: '编辑这条消息', exact: true }).click()
+  await expect(page.getByLabel('修改这条消息', { exact: true })).toBeVisible({ timeout: 30000 })
+  await expect(page.getByText('回答已停止，已发生的内容仍保留。', { exact: true })).toHaveCount(0)
   await expect(input).toHaveValue('生成期间继续输入的新草稿。')
   if (output) await page.screenshot({ path: join(output, 'model-switch-stopped-draft-darwin.png') })
   await page.reload()
   await openActivity(page, activityId, '停止与草稿保留')
-  await expect(page.getByLabel('你的问题', { exact: true })).toHaveValue('生成期间继续输入的新草稿。', { timeout: 15000 })
+  await expect(page.getByLabel('向 Agent 提问', { exact: true })).toHaveValue('生成期间继续输入的新草稿。', { timeout: 15000 })
 })

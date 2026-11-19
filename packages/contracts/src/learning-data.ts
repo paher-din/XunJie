@@ -23,9 +23,18 @@ export const createActivitySchema = z.object({ requestId: z.uuid(), goal: z.stri
     url: z.url().refine(value => /^https:\/\//.test(value)), label: z.string().min(1).max(300) }).strict()).max(50),
 }).strict().refine(value => !!(value.goal.trim() || value.question.trim() || value.references.length));
 export type CreateActivity = z.infer<typeof createActivitySchema>;
+const courseObjectiveIndexSchema = z.number().int().min(0).max(19);
+export const courseProgressInputSchema = z.object({ requestId: z.uuid(), activityId: z.uuid(),
+  objectiveIndex: courseObjectiveIndexSchema, completed: z.boolean() }).strict();
+
 export const activitySchema = z.object({ activityId: z.uuid(), identity: spaceIdentitySchema,
   target: learningTargetSchema, goal: z.string(), question: z.string(), references: createActivitySchema.shape.references,
-  status: z.enum(['open', 'closed']), createdAt: z.string(), course: courseActivityBindingSchema.optional(), purpose: z.literal('preview').optional() }).strict();
+  status: z.enum(['open', 'closed']), createdAt: z.string(), course: courseActivityBindingSchema.optional(), purpose: z.literal('preview').optional(),
+  completedObjectives: z.array(courseObjectiveIndexSchema).max(20).refine(indexes => new Set(indexes).size === indexes.length).optional(),
+}).strict().refine(activity => {
+  const { completedObjectives, course, purpose } = activity;
+  return completedObjectives === undefined || (!!course && !purpose && completedObjectives.every(index => index < course.objectives.length));
+});
 export type LearningActivity = z.infer<typeof activitySchema>;
 
 export const courseActivityResultSchema = z.object({ requestId: z.uuid(),

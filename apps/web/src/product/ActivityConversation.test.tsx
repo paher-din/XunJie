@@ -64,6 +64,17 @@ const click = async (label: string) => act(async () => {
   const button = [...host.querySelectorAll('button')].find(button => button.textContent === label)
   expect(button).toBeDefined(); button!.click(); await settle()
 })
+const openTool = async (commandId: string) => {
+  if (!host.querySelector(`[data-command-id="${commandId}"] .agent-trace-trigger`)) {
+    const trace = host.querySelector<HTMLButtonElement>('[aria-label="思考与执行记录"] .agent-trace-group-trigger')
+    if (trace) await act(async () => { trace.click(); await settle() })
+  }
+  const trigger = host.querySelector<HTMLButtonElement>(`[data-command-id="${commandId}"] .agent-trace-trigger`)
+  expect(trigger).not.toBeNull()
+  if (!host.querySelector(`[data-command-id="${commandId}"] .teaching-tool-source`)) {
+    await act(async () => { trigger!.click(); await settle() })
+  }
+}
 it('keeps an unshelved generated page accessible through its original card, tool-area open, retry and shelf actions', async () => {
   const f = await fixture(); await f.render()
   expect(host.querySelector('[data-artifact-id="' + f.entry.artifact.artifactId + '"]')?.textContent).toContain('互动解释页')
@@ -95,7 +106,7 @@ it('uses v3 progress for inert page previews and locates the original material f
   expect(preview!.srcdoc).toContain('正在形成的解释'); expect(preview!.srcdoc).not.toContain('<script>')
   const record = host.querySelector<HTMLDetailsElement>('[data-command-id="' + materialCommandId + '"]')!
   expect(record).not.toBeNull(); record.open = true
-  await click('定位来源')
+  await openTool(materialCommandId); await click('查看原内容')
   expect(f.locate).toHaveBeenCalledOnce()
   expect(f.locate.mock.calls[0]![0]).toMatchObject({ commandId: materialCommandId, runId: f.turnId, name: 'read_personal_material', result: material })
   f.artifacts.entries = [f.entry]; f.conversation.turns[0]!.state = 'completed'; f.conversation.lastSeq++
@@ -114,7 +125,7 @@ it('locates the fixed read_work file from its real result.file', async () => {
   f.conversation.tools = [{ toolCallId: commandId, turnId: f.turnId, stepId: id(), name: 'read_work', state: 'closed',
     result: { kind: 'completed', outcome: 'success', summary: JSON.stringify({ state: 'completed', file }), data } }]
   await f.render()
-  await click('定位来源')
+  await openTool(commandId); await click('查看原内容')
   expect(f.locate).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ commandId, runId: f.turnId,
     arguments: { objectId: file.objectId, contentId: file.contentId }, source: { label: file.name, contentId: file.contentId }, result: data }))
   expect(host.querySelector('[data-command-id="' + commandId + '"]')?.textContent).toContain('alu.sv')
@@ -132,8 +143,8 @@ it('locates the original execution by the request identity retained in result.qu
   f.conversation.tools = [{ toolCallId: commandId, turnId: f.turnId, stepId: id(), name: 'course_operation', state: 'closed',
     result: { kind: 'completed', outcome: 'success', summary: JSON.stringify({ state: 'accepted', query }), data } }]
   await f.render()
-  await click('定位原结果')
+  await openTool(commandId); await click('查看实验记录')
   expect(f.locate).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ commandId, runId: f.turnId,
     name: 'course_operation', source: { label: '原执行结果', requestId, contentId }, result: data }))
-  expect(host.querySelector('[data-command-id="' + commandId + '"]')?.textContent).toContain('原执行结果')
+  expect(host.querySelector('[data-command-id="' + commandId + '"]')?.textContent).toContain('查看实验记录')
 })

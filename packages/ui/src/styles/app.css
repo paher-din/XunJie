@@ -1055,15 +1055,14 @@ h3 {
   background: var(--veil);
 }
 
-/* 课程卡片（方案 B 第一层：封面图 + fluid hover 组高亮，参考 fluidfunctionalism Card） */
+/* 课程卡片 */
 .course-tiles {
   position: relative;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
-/* 卡片组共享的 hover 高亮层：课程卡片组与课程内任务卡片组同一套 2-D fluid hover，
-   整组只有这一块高亮，弹性滑向指针最近的卡片（见 lib/fluidHover.ts） */
+/* FluidHighlight 的独立示例 */
 .card-grid-highlight {
   position: absolute;
   left: 0;
@@ -1077,7 +1076,6 @@ h3 {
 }
 .course-tile {
   position: relative;
-  z-index: 1;
   display: flex;
   flex-direction: column;
   padding: 0 0 16px;
@@ -1086,9 +1084,6 @@ h3 {
   overflow: hidden;
   text-align: left;
   box-shadow: var(--panel-shadow);
-}
-.course-tile:hover {
-  filter: none;
 }
 .course-cover {
   display: block;
@@ -1176,7 +1171,7 @@ h3 {
   color: var(--muted);
 }
 
-/* 任务卡片（与课程卡片组同一套 2-D fluid hover：整组共享 .card-grid-highlight 高亮，弹性滑向指针最近的卡片） */
+/* 任务卡片 */
 .task-card-grid {
   position: relative;
   display: grid;
@@ -1186,7 +1181,6 @@ h3 {
 }
 .task-card {
   position: relative;
-  z-index: 1;
   width: 100%;
   text-align: left;
   border: 1px solid var(--line);
@@ -1212,8 +1206,19 @@ h3 {
 .task-card .progresslabel {
   margin-top: auto;
 }
-.task-card:hover {
+:is(.course-tile, .task-card) {
+  transition: background-color 150ms var(--ease-s);
+}
+:is(.course-tile, .task-card):hover {
   filter: none;
+}
+:is(.course-tile, .task-card):focus-visible {
+  background-color: var(--chip-bg);
+}
+@media (hover: hover) {
+  :is(.course-tile, .task-card):enabled:hover {
+    background-color: var(--chip-bg);
+  }
 }
 .card-foot {
   display: flex;
@@ -1261,6 +1266,10 @@ h3 {
 .status.done {
   background: var(--status-done-bg);
   color: var(--status-done-fg);
+}
+.status.closed {
+  background: var(--chip-bg);
+  color: var(--ink-soft);
 }
 .status.overdue {
   background: var(--status-overdue-bg);
@@ -2521,11 +2530,13 @@ h3 {
   align-items: center;
   line-height: 0;
   padding: 6px;
+  border-radius: 8px;
 }
+.ctx-ring:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .ctx-tip {
   position: fixed;
   z-index: 80;
-  width: 264px;
+  width: min(264px, calc(100vw - 24px));
   padding: 14px 16px 16px;
   background: var(--raised);
   border: 1px solid var(--line);
@@ -2551,6 +2562,7 @@ h3 {
   color: var(--ink-soft);
   white-space: nowrap;
 }
+.ctx-tip-detail { margin-top: 4px; color: var(--muted); font-size: 12px; }
 .ctx-tip-bar {
   margin-top: 12px;
   height: 5px;
@@ -3144,6 +3156,7 @@ h3 {
 
 /* PromptInput：Agent 对话页输入框（布局参照 HeroUI Pro Prompt Input） */
 .prompt-input {
+  position: relative;
   background: var(--raised);
   border: 1px solid var(--panel-border);
   border-radius: 12px;
@@ -3186,9 +3199,63 @@ h3 {
   align-items: center;
   margin-top: 8px;
 }
+.prompt-add { position: static; flex: none; }
+.prompt-add .prompt-add-menu {
+  inset: auto -1px calc(100% + 8px) -1px;
+  width: auto;
+  min-width: 0;
+  max-width: none;
+  max-height: min(420px, 52dvh);
+  overflow-y: auto;
+  transform-origin: bottom left;
+  z-index: 31;
+  padding: 8px;
+  border-radius: 14px;
+}
+.prompt-add-title { display: flex; align-items: baseline; gap: 8px; padding: 7px 10px 6px; color: var(--muted); }
+.prompt-add-title strong { color: var(--ink-soft); font-size: 13px; font-weight: 500; }
+.prompt-add-title span { margin-left: auto; color: var(--faint); font-size: 12px; }
+.prompt-add-item {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: 9px;
+  color: var(--ink-soft);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s cubic-bezier(0.3, 1, 0.35, 1);
+}
+.prompt-add-item:hover, .prompt-add-item:focus-visible { background: var(--hover-bg); }
+.prompt-add-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.prompt-add-item:disabled { opacity: .55; cursor: default; }
+.prompt-add-copy { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.prompt-add-copy strong { flex: none; color: var(--ink); font-size: 14px; font-weight: 400; }
+.prompt-add-copy small { min-width: 0; overflow: hidden; color: var(--muted); font-size: 13px; font-weight: 400; text-overflow: ellipsis; white-space: nowrap; }
+.prompt-menu-key { margin-left: auto; color: var(--muted); }
+.prompt-add-status { margin: 0; padding: 8px; color: var(--muted); font-size: 13px; }
+.prompt-editor { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 6px; min-width: 0; padding: 4px 6px 0; }
+.prompt-editor > textarea { flex: 1 1 160px; min-width: min(160px, 100%); width: auto; max-width: 100%; padding: 0; }
+.prompt-context-chips { display: flex; flex: 0 1 auto; flex-wrap: wrap; align-items: center; gap: 6px; width: max-content; max-width: 100%; max-height: 104px; overflow-y: auto; padding: 0; margin: 0; list-style: none; }
+.prompt-context-chips li { display: inline-flex; align-items: center; gap: 2px; min-width: 0; max-width: 100%; height: 24px; padding: 0 3px 0 0; border-radius: 6px; background: var(--chip-bg); color: var(--ink-soft); font-size: 13px; }
+.prompt-context-chips li[data-kind='skill'] { color: var(--accent-deep); background: var(--accent-soft); }
+.prompt-context-chips [data-astryx-token] { min-width: 0; max-width: 100%; height: 24px; }
+.prompt-context-chips .astryx-badge { max-width: 100%; color: var(--accent-deep); background: var(--accent-soft); font: 500 13px/1.5 var(--font-sans); }
+.prompt-context-chips li > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.prompt-context-chips button { display: grid; place-items: center; flex: none; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: inherit; cursor: pointer; }
+.prompt-context-chips button:hover { background: var(--accent-soft-hover); }
+.prompt-context-chips button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.prompt-skill-item .prompt-add-copy { flex-direction: column; align-items: flex-start; gap: 2px; }
+.prompt-skill-item .prompt-add-copy strong { font-size: 13px; font-weight: 500; }
+.prompt-skill-item .prompt-add-copy small { max-width: 100%; font-size: 12px; }
+.prompt-skill-item[data-active='true'] { background: var(--accent-soft); }
+.prompt-skill-item[data-active='true'] .prompt-add-copy strong { color: var(--accent-deep); }
+.prompt-skill-footer { padding: 8px 10px 4px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
 .prompt-attach {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: var(--chip-bg);
   color: var(--muted);
@@ -3206,8 +3273,8 @@ h3 {
   transform: scale(0.975);
 }
 .prompt-send {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: var(--primary);
   color: var(--on-primary);
@@ -3216,6 +3283,11 @@ h3 {
   transition:
     background-color 0.15s cubic-bezier(0.3, 1, 0.35, 1),
     transform 0.15s cubic-bezier(0.3, 1, 0.35, 1);
+}
+.prompt-attach > .ui-icon,
+.prompt-send > .ui-icon {
+  width: 16px;
+  height: 16px;
 }
 .prompt-send:active:not(:disabled) {
   transform: scale(0.975);
@@ -3232,15 +3304,18 @@ h3 {
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
 }
 .prompt-model {
   position: relative;
+  min-width: 0;
 }
 .prompt-model-btn {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   padding: 8px 8px;
+  max-width: 100%;
   border-radius: 8px;
   font-size: 13px;
   color: var(--muted);
@@ -3265,8 +3340,10 @@ h3 {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  min-width: 0;
   animation: model-swap 0.24s cubic-bezier(0.3, 1, 0.35, 1);
 }
+.prompt-model-label { overflow: hidden; text-overflow: ellipsis; }
 @keyframes model-swap {
   from {
     opacity: 0;
@@ -3285,6 +3362,7 @@ h3 {
 /* 思考强度独立按钮：与模型按钮并列，向上弹出三档菜单 */
 .prompt-effort {
   position: relative;
+  flex: none;
 }
 .prompt-effort .prompt-model-menu {
   min-width: 110px;
@@ -3317,6 +3395,8 @@ h3 {
   bottom: calc(100% + 8px);
   right: 0;
   min-width: 262px;
+  max-height: min(360px, 54dvh);
+  overflow-y: auto;
   background: var(--raised);
   border: 1px solid var(--panel-border);
   border-radius: 12px;
@@ -3396,10 +3476,11 @@ h3 {
 .prompt-model-item .mi-name {
   font-size: 13px;
   color: var(--ink-soft);
+  overflow-wrap: anywhere;
 }
 .prompt-model-item .mi-note {
   font-size: 11px;
-  color: var(--faint);
+  color: var(--muted);
 }
 .prompt-model-item .mi-check {
   width: 16px;
@@ -4393,21 +4474,21 @@ h3 {
   flex-direction: column;
   gap: 4px;
   padding: 6px;
-  background: #1e2126;
+  background: var(--sunken);
+  border: 1px solid var(--line-strong);
   border-radius: 999px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    0 8px 20px rgb(16 20 30 / 0.26),
-    0 2px 5px rgb(16 20 30 / 0.16);
+  box-shadow: inset 0 1px 0 var(--dialog-rim), var(--shadow-control);
 }
 .ws-dbtn {
+  --dock-button-bg: var(--sunken);
   position: relative;
   width: 32px;
   height: 32px;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  color: #9aa1ad;
+  color: var(--muted);
+  background: var(--dock-button-bg);
   transition:
     color 0.15s cubic-bezier(0.3, 1, 0.35, 1),
     background 0.15s cubic-bezier(0.3, 1, 0.35, 1),
@@ -4419,19 +4500,25 @@ h3 {
   display: block;
 }
 .ws-dbtn:hover {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.09);
+  --dock-button-bg: var(--hover-bg);
+  color: var(--ink);
+  filter: none;
   transform: scale(1.04);
+}
+.ws-dbtn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 .ws-dbtn:active {
   transform: scale(0.96);
 }
 .ws-dbtn.on {
-  color: #3c4718;
-  background: #d9f273;
+  --dock-button-bg: var(--accent-soft);
+  color: var(--accent-deep);
+  box-shadow: inset 0 0 0 1px var(--accent-line);
 }
 .ws-dbtn.on:hover {
-  background: #d9f273;
+  --dock-button-bg: var(--accent-soft-hover);
 }
 .ws-dbtn.on::after {
   display: none;
@@ -4444,17 +4531,13 @@ h3 {
   height: 12px;
   padding: 0 2px;
   border-radius: 6px;
-  background: #d9f273;
-  color: #3c4718;
+  background: var(--chip-active);
+  color: var(--ink);
   font-size: 11px;
   font-weight: 600;
   line-height: 12px;
   text-align: center;
-  border: 2px solid #1e2126;
-}
-.ws-dbtn.on .ws-dock-badge {
-  border-color: #d9f273;
-  background: #fff;
+  box-shadow: 0 0 0 2px var(--dock-button-bg);
 }
 .ws-dbtn::after {
   content: attr(data-tip);
@@ -4464,13 +4547,13 @@ h3 {
   transform: translateY(-50%) translateX(-6px) scale(0.92);
   transform-origin: left center;
   background: var(--inverse);
-  color: #fff;
+  color: var(--on-inverse);
   font-size: 11px;
   line-height: 1;
   white-space: nowrap;
   padding: 6px 10px;
   border-radius: 8px;
-  box-shadow: 0 5px 14px rgb(16 20 30 / 0.3);
+  box-shadow: var(--shadow-tip);
   opacity: 0;
   pointer-events: none;
   transition:
@@ -4501,13 +4584,18 @@ h3 {
   z-index: 45;
 }
 
-/* 任务信息弹出卡（crisp 内容层：WAAPI 果冻形变，内容随卡片一体缩放，无独立入场） */
+/* 胶囊弹出面板（内容随卡片一体缩放） */
 .ws-popcard {
   position: fixed;
   z-index: 50;
+  top: 50dvh;
+  left: var(--ws-popcard-left, 62px);
+  translate: 0 -50%;
   width: 320px;
-  max-height: 74vh;
+  max-width: calc(100vw - var(--ws-popcard-left, 62px) - 12px);
+  max-height: 74dvh;
   overflow: auto;
+  overscroll-behavior: contain;
   background: var(--raised);
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -4516,6 +4604,7 @@ h3 {
   will-change: transform;
   border-color: var(--line);
 }
+.ws-popcard:focus { outline: none; }
 .ws-popx {
   position: absolute;
   top: 10px;
@@ -4584,12 +4673,25 @@ h3 {
 .ws-popstash .pin:active {
   transform: scale(0.96);
 }
-.ws-taskinfo {
+.ws-taskinfo,
+.ws-dock-content {
   padding: 26px 24px;
 }
-.ws-taskinfo h2 {
+.ws-taskinfo h2,
+.ws-dock-content h2 {
   font-size: 17px;
   margin: 0 0 10px;
+  padding-inline-end: 20px;
+  overflow-wrap: anywhere;
+}
+.ws-dock-content > p {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--muted);
+  margin: 0;
+}
+.ws-taskinfo .progresslabel {
+  margin-top: 12px;
 }
 .ws-taskinfo-goal {
   font-size: 13px;
@@ -4968,7 +5070,8 @@ h3 {
   transform: translate(-36vw, -32vh) scale(0.2);
   opacity: 0;
 }
-.ws-intro-card h1 {
+.ws-intro-card h1,
+.ws-task-dialog-heading h2 {
   font-size: 22px;
   font-weight: 600;
   letter-spacing: -0.4px;
@@ -6173,26 +6276,17 @@ h3 {
 }
 .user-edit {
   display: inline-block;
-  width: 85%;
+  width: 100%;
   text-align: left;
-  background: var(--paper);
-  border: 1px solid var(--line-strong);
-  border-radius: 12px;
-  padding: 10px 12px 8px;
-  box-shadow: var(--panel-shadow);
-  transform-origin: bottom right;
-  animation: user-edit-open 0.24s cubic-bezier(0.3, 1, 0.35, 1) backwards;
 }
 /* 焦点在里面的 textarea 上，描边与柔光落在整张编辑卡（同 .st-input:focus 的口径） */
-.user-edit:has(> .user-edit-field:focus) {
-  border-color: var(--accent);
-  box-shadow: var(--panel-shadow), var(--focus-glow);
-}
+.user-edit-field:focus { border-color: var(--accent); }
 .user-edit-field {
   display: block;
   width: 100%;
-  padding: 2px 2px 0;
-  border: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
   outline: 0;
   resize: none;
   overflow: hidden;
@@ -7140,7 +7234,7 @@ h3 {
 @media (forced-colors: active) {
   .st-input:focus-visible,
   .user-edit:has(> .user-edit-field:focus-visible),
-  .agent-layout .prompt-input:has(> textarea:focus-visible) {
+  .agent-layout .prompt-input:has(> .prompt-editor > textarea:focus-visible) {
     outline: 2px solid Highlight;
     outline-offset: 2px;
   }
@@ -10382,7 +10476,7 @@ button.st-check.checked:hover {
 .agent-layout .prompt-input {
   box-shadow: var(--panel-shadow);
 }
-.agent-layout .prompt-input:has(> textarea:focus) {
+.agent-layout .prompt-input:has(> .prompt-editor > textarea:focus) {
   border-color: var(--accent);
   box-shadow: var(--panel-shadow), var(--focus-glow);
 }
@@ -10419,3 +10513,22 @@ button.st-check.checked:hover {
 .student-settings .st-model-feedback[data-status='error'] {
   color: var(--danger-deep);
 }
+
+/* Astryx Markdown adapted to XunJie's type, surface and motion roles. */
+.turn-body.astryx-prose { line-height: 1.7; }
+.turn-body.astryx-prose .astryx-markdown { max-width: 100%; color: var(--ink); font-size: 15px; }
+.turn-body.astryx-prose .md-pre-bar { background: transparent; padding: 8px 12px; }
+.turn-body.astryx-prose .md-pre-lang { color: var(--muted); font-size: 12px; letter-spacing: 0; }
+.turn-body.astryx-prose .md-pre pre { white-space: pre-wrap; overflow-wrap: anywhere; padding: 16px; }
+.turn-body.astryx-prose .md-pre-bar button { width: 28px; height: 28px; }
+.turn-body .md-table-bar { justify-content: space-between; padding: 8px 12px; }
+.turn-body .md-table-label { color: var(--muted); font-size: 12px; }
+.turn-body .md-table-bar button { width: auto; min-width: 28px; height: 28px; padding: 0 6px; gap: 6px; font-size: 12px; }
+.turn-body.astryx-prose .md-tablecard { border-radius: 12px; }
+.turn-body.astryx-prose .md-table th, .turn-body.astryx-prose .md-table td { padding: 10px 16px; min-width: 90px; }
+.turn-body.astryx-prose .md-table tbody tr:hover { background: var(--hover-bg); }
+.turn-body .ast-token-keyword, .turn-body .ast-token-boolean { color: var(--tok-k); }
+.turn-body .ast-token-string { color: var(--tok-s); }
+.turn-body .ast-token-comment { color: var(--muted); }
+.turn-body .ast-token-number { color: var(--tok-n); }
+.turn-body .ast-token-function { color: var(--tok-f); }

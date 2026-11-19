@@ -1,3 +1,4 @@
+import { createSkillDescriptionTranslator } from '@xunjie/model-gateway/skill-description';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { hostname } from 'node:os';
 import { join } from 'node:path';
@@ -44,6 +45,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { validateDeployment } from './deployment.js';
 import { createExecutionRouting, createSchoolExecutionHandler, executionRoutingRequestSchema } from './execution-routing.js';
 import { collectAgentRuntimeBoundary, collectAgentRuntimeReceiverBoundary, validateAgentRuntimeBoundary } from '@xunjie/agent-runtime/maintenance';
+import type { ScenarioInput } from '@xunjie/agent-runtime';
 import { createAgentSessions } from '@xunjie/learning-space/learning-data/agent-sessions';
 import { createSessionMaterials } from '@xunjie/learning-space/learning-data/session-materials';
 import { createPersonalProjects } from '@xunjie/learning-space/learning-data/personal-projects';
@@ -62,7 +64,7 @@ import { agentServiceMigrations, validateAgentServiceStorage, collectAgentServic
 import { createAgentSessionHandler } from './session-handler.js';
 import { createWorkspaceAgentAuthority } from './workspace-agent-authority.js';
 import { createSkills } from '@xunjie/learning-space/learning-data/skills';
-import { createSkillTools } from '@xunjie/agents/capabilities/skills/index';
+import { createSkillTools, selectedSkillInstruction } from '@xunjie/agents/capabilities/skills/index';
 import { createAgentSessionApplication, type AgentSessionDirectory } from './agent-sessions.js';
 import { createAgentDependencyChannel, createAgentDependencyClient, type AgentSessionDependencies } from '@xunjie/agents/transport/session-dependencies';
 import { workFileSchema } from '@xunjie/contracts/learning-data';
@@ -681,15 +683,20 @@ export async function createProductLearningApplication(context: {
             scope: session.scenario === 'student-assistant' ? { kind: 'session', sessionId: session.sessionId }
               : { kind: 'workspace', activityId: z.uuid().parse(session.workspace?.activityId) },
             source: { sourceId: 'local-personal', owner: { ...data!.storage.owner, version: 1 } } });
+          // Only names actually assembled for this scene, never a wildcard of all potential tools.
+          const toolNames = session.scenario === 'student-assistant'
+            ? [...learningToolNames, ...documents.map(tool => tool.definition.name), 'student_ask']
+            : [...workspaceToolNames, ...documents.map(tool => tool.definition.name), 'student_ask'];
           const skills = sessionSkills ? createSkillTools({ owner: { ...data!.storage.owner, version: 1 }, skills: sessionSkills,
-            // Only names actually assembled for this scene, never a wildcard of all potential tools.
-            toolNames: async () => session.scenario === 'student-assistant'
-              ? [...learningToolNames, ...documents.map(tool => tool.definition.name), 'student_ask']
-              : [...workspaceToolNames, ...documents.map(tool => tool.definition.name), 'student_ask'] }) : undefined;
+            toolNames: async () => toolNames }) : undefined;
+          const contextExtension = sessionSkills ? async (input: ScenarioInput) =>
+            selectedSkillInstruction(await sessionSkills.resolveSession(input.identity, input.sessionId, toolNames)) : undefined;
           if (session.scenario === 'student-assistant') {
-            return { student: await studentToolsHost(), documents, ...(skills ? { skills } : {}) };
+            return { student: await studentToolsHost(), documents, ...(skills ? { skills } : {}),
+              ...(contextExtension ? { contextExtension } : {}) };
           }
-          return { workspace: await workspaceOptions(session), documents, ...(skills ? { skills } : {}) };
+          return { workspace: await workspaceOptions(session), documents, ...(skills ? { skills } : {}),
+            ...(contextExtension ? { contextExtension } : {}) };
         },
         taskOwner: createLearningSpaceTaskOwner({ storage: executionModule?.storage ?? data!.storage,
           executions: independentExecution?.executions ?? learning!.executions,
@@ -713,6 +720,7 @@ export async function createProductLearningApplication(context: {
       deferInitialization: session => session.owner.delivery === 'client',
       workspaceRequest: projectWorkspaceRequest,
     }) : undefined;
+    const translateSkillDescription = model && models ? createSkillDescriptionTranslator(model.storage, models) : undefined;
     const sessionHttp = directory && directoryApplication ? {
       sessions: sessionAgent?.sessions ?? directoryApplication,
       async agent(identity: SpaceIdentity, id: string) {
@@ -721,6 +729,12 @@ export async function createProductLearningApplication(context: {
         if (session.state !== 'ready') throw new StorageError('unavailable');
         return sessionRuntimeFor(session);
       },
+      ...(translateSkillDescription && sessionSkills ? { async skillDescription(identity: SpaceIdentity, sessionId: string, reference: { skillId: string; version: number }) {
+        const catalog = await sessionSkills.resolveSession(identity, sessionId);
+        const entry = catalog.catalog.find(item => item.skillId === reference.skillId && item.version === reference.version && !item.disabled);
+        if (!entry) throw new StorageError('missing');
+        return translateSkillDescription(identity, entry.description, reference);
+      } } : {}),
       ...(sessionMaterials ? { materials: async () => sessionMaterials } : {}),
       ...(sessionSkills ? { async skills(identity: SpaceIdentity, sessionId: string) {
         if (identity.environmentId !== environment.environmentId) {

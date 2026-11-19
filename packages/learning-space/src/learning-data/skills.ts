@@ -225,8 +225,11 @@ export function createSkills(storage: OwnedStorage, options: {
     const { rows } = await storage.read('SELECT range_key,body FROM teaching_skill_selections WHERE owner_key=$1 AND range_key=ANY($2::text[])',
       [key(identity), ranges]);
     const row = ranges.map(range => rows.find(row => row.range_key === range)).find(Boolean);
-    const selection = row ? teachingSkillSelectSchema.parse(row.body).skills : undefined;
-    return { identity, ...(current ? { activity: current } : {}), ...(selection ? { selection } : {}) };
+    // A conversation starts with no personal Skills selected. An explicit session selection,
+    // including the empty list after a consumed turn, is authoritative for that conversation.
+    // Required course Skills remain selected independently in build().
+    const selection = row ? teachingSkillSelectSchema.parse(row.body).skills : [];
+    return { identity, ...(current ? { activity: current } : {}), selection };
   }
   async function resolveSession(identity: SpaceIdentity, sessionId: string, toolNames?: string[]) {
     return (await sessionSnapshot(identity, sessionId, toolNames)).state;

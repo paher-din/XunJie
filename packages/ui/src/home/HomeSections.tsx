@@ -58,13 +58,13 @@ export function PreparationEntryCard({ flag, title, description, note, action, o
 }
 
 export interface HomeTaskCardProps extends Omit<LearningTaskCardProps, 'badge' | 'children'> {
-  status: TaskDisplayStatus; overdue?: boolean; progress?: { percent: number; done: boolean }
+  status?: TaskDisplayStatus; overdue?: boolean; progress?: { percent: number; done: boolean; label?: string }
 }
 /** 显示状态与进度，不推算完成度、截止时间或动作。 */
 export function HomeTaskCard({ status, overdue = false, progress, ...card }: HomeTaskCardProps) {
   return <LearningTaskCard {...card}
-    badge={<><StatusChip status={status} />{overdue && <span className="status overdue">已逾期</span>}</>}>
-    {progress && <><div className="progresslabel"><span>任务进度</span><span>{progress.percent}%</span></div>
+    badge={status || overdue ? <>{status && <StatusChip status={status} />}{overdue && <span className="status overdue">已逾期</span>}</> : undefined}>
+    {progress && <><div className="progresslabel"><span>{progress.label ?? '任务进度'}</span><span>{progress.percent}%</span></div>
       <ProgressBar percent={progress.percent} done={progress.done} /></>}
   </LearningTaskCard>
 }

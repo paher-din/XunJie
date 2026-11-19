@@ -69,10 +69,6 @@ import { Button } from '@xunjie/ui/foundation'
 
 ## 实屏目录与检查
 
-工作区 `FileStripView` 用既有文件菜单与 `FileTabs` 展示自动保存作品：调用方提供稳定文件身份、已打开标签、新建／改名／删除命令和校验结果；关闭标签不会调用删除。删除复用 `ConfirmationDialog`，失败保留确认窗口与错误。旧版 `FileStrip` 与其共用 `FileStripFrame` 外框，仍由旧调用方负责回收／恢复，不将两套文件生命周期混用。目录入口为 `#/workspace/file-strip-view/interactive`。
-
-`MaterialPicker` 展示由调用方提供的材料分组、名称、辅助信息、打开及添加入口，覆盖加载、空列表和读取失败；不拥有材料、上传或阅读状态。PDF 和个人笔记共享展示，阅读及固定引用仍由产品控制器负责。目录入口为 `#/workspace/material-picker/list`，并提供 empty、error、loading 状态。
-
 从仓库根目录启动 `npm run dev:prep -w @xunjie/web`，访问 `http://127.0.0.1:5601/ui-catalog.html`。目录使用正式包的真实组件和隔离示例数据；每个示例的稳定入口与覆盖情况以目录注册表为准。目录用于开发验收，不是学生或教师的产品入口。
 
 在仓库根目录运行：

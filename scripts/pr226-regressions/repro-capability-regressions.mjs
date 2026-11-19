@@ -25,11 +25,15 @@ try {
     const c = call(name, args); return tools.find(t => t.definition.name === name).execute(c, { ...context, toolCallId: c.toolCallId });
   };
   const simple = await f.skills.import(f.identity, packageInput('simple-guidance'));
+  await f.skills.selectSession(f.identity, f.session.sessionId, { requestId: randomUUID(),
+    skills: [{ skillId: simple.skillId, version: 1 }] });
   const skills = createSkillTools({ owner: f.target, skills: f.skills });
   assert.equal((await runTool(skills, 'skill_load', { skillId: simple.skillId, version: 1 })).outcome, 'success');
   const withTool = await f.skills.import(f.identity, packageInput('pdf-guidance', { files: [
     { path: 'SKILL.md', encoding: 'utf8', content: '---\nname: pdf-guidance\ndescription: PDF guidance\nallowed-tools: [read_pdf]\n---\nRead the selected PDF.' }
   ] }));
+  await f.skills.selectSession(f.identity, f.session.sessionId, { requestId: randomUUID(),
+    skills: [{ skillId: simple.skillId, version: 1 }, { skillId: withTool.skillId, version: 1 }] });
   const discovery = await runTool(skills, 'discover_skills', {});
   const blocked = discovery.data.entries.find(e => e.skillId === withTool.skillId);
   assert.equal(blocked.unavailable.reason, 'tool-unavailable');

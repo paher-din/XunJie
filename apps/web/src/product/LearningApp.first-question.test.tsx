@@ -43,7 +43,11 @@ async function fill(text: string) {
   await act(async () => { const field = host.querySelector<HTMLTextAreaElement>('textarea[aria-label="向 Agent 提问"]')!; expect(field).not.toBeNull()
     Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(field, text); field.dispatchEvent(new Event('input', { bubbles: true })); await settle() })
 }
-async function send(text: string) { await fill(text); await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="发送消息"]')!.click(); await settle() }) }
+async function sendWhenReady(text: string) {
+  await fill(text)
+  await waitFor(() => expect(host.querySelector<HTMLButtonElement>('[aria-label="发送消息"]')?.disabled).toBe(false))
+  await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="发送消息"]')!.click(); await settle() })
+}
 const mount = async () => act(async () => { root.render(<LearningApp />); await settle() })
 const reload = async () => { await act(async () => root.unmount()); root = createRoot(host); await mount() }
 beforeEach(() => {
@@ -104,7 +108,7 @@ beforeEach(() => {
 })
 afterEach(async () => { await act(async () => { root.unmount(); toast.dismiss() }); host.remove(); vi.restoreAllMocks(); vi.unstubAllGlobals() })
 it('the formal Agent first question creates a persisted session and never creates an activity', async () => {
-  await mount(); await send('什么是递归？')
+  await mount(); await sendWhenReady('什么是递归？')
   await waitFor(() => expect(host.textContent).toContain('递归通过更小的同类问题求解。'))
   expect(writes.filter(item => item.path === 'activities')).toHaveLength(0)
   expect(writes.find(item => item.path === 'agent-sessions')!.body.scenario).toBe('student-assistant')
@@ -112,23 +116,23 @@ it('the formal Agent first question creates a persisted session and never create
   expect(new URLSearchParams(location.search).has('activity')).toBe(false)
 })
 it('a lost first input ACK is queried under the original identity on reload and is never sent twice', async () => {
-  loss = true; await mount(); await send('保留这个原问题')
-  expect(writes.filter(item => /\/inputs$/.test(item.path))).toHaveLength(1)
+  loss = true; await mount(); await sendWhenReady('保留这个原问题')
+  await waitFor(() => expect(writes.filter(item => /\/inputs$/.test(item.path))).toHaveLength(1))
   loss = false; await reload()
   await waitFor(() => expect(new URLSearchParams(location.search).get('session')).toBe([...sessions.keys()][0]))
   expect(writes.filter(item => /\/inputs$/.test(item.path))).toHaveLength(1)
   expect(host.textContent).toContain('保留这个原问题')
 })
 it('new home sessions remain independent and history keeps their real saved titles', async () => {
-  await mount(); await send('第一段会话'); await waitFor(() => expect(sessions.size).toBe(1))
-  await click('新对话'); await send('第二段会话'); await waitFor(() => expect(sessions.size).toBe(2))
+  await mount(); await sendWhenReady('第一段会话'); await waitFor(() => expect(sessions.size).toBe(1))
+  await click('新对话'); await sendWhenReady('第二段会话'); await waitFor(() => expect(sessions.size).toBe(2))
   const first = [...sessions.values()][0]!
   await click(first.title!)
   await waitFor(() => expect(new URLSearchParams(location.search).get('session')).toBe(first.sessionId))
   expect(host.querySelectorAll('[data-message-id]')).toHaveLength(2)
 })
 it('the formal sidebar renames, pins, archives, restores and deletes the same session with archived input kept read-only', async () => {
-  await mount(); await send('原对话标题'); await waitFor(() => expect(sessions.size).toBe(1))
+  await mount(); await sendWhenReady('原对话标题'); await waitFor(() => expect(sessions.size).toBe(1))
   const session = [...sessions.values()][0]!
   const row = () => host.querySelector<HTMLElement>(`[data-conversation-id="${session.sessionId}"]`)!
   const rowClick = async (selector: string) => act(async () => { row().querySelector<HTMLButtonElement>(selector)!.click(); await settle() })
@@ -149,7 +153,7 @@ it('the formal sidebar renames, pins, archives, restores and deletes the same se
 })
 
 it('a confirmed workspace tool result refreshes the formal home tiles and opens the real activity', async () => {
-  await mount(); await send('创建一个练习项目'); await waitFor(() => expect(sessions.size).toBe(1))
+  await mount(); await sendWhenReady('创建一个练习项目'); await waitFor(() => expect(sessions.size).toBe(1))
   const sessionId = [...sessions.keys()][0]!, conversation = conversations.get(sessionId)!, turnId = conversation.turns[0]!.turnId, activityId = crypto.randomUUID()
   const activity = { activityId, identity: actor, target: { environmentId: actor.environmentId, serviceId: crypto.randomUUID(), version: 1 }, question: '递归练习', goal: '递归练习', references: [], status: 'open', createdAt: now }
   workspaces.push(activity)

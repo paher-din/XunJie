@@ -280,7 +280,8 @@ function ProgressLevels() {
   return <div className="demo-progress">{[0, 36, 100].map(percent => <div key={percent}><span>{percent}%</span><ProgressBar percent={percent} done={percent === 100} /></div>)}</div>
 }
 function StatusLevels() {
-  return <div className="demo-row"><StatusChip status="未开始" /><StatusChip status="已分配" /><StatusChip status="进行中" /><StatusChip status="已完成" /><StatusChip status="任务已暂停" /></div>
+  return <div className="demo-row"><StatusChip status="未开始" /><StatusChip status="已分配" /><StatusChip status="进行中" />
+    <StatusChip status="已提交" /><StatusChip status="已完成" /><StatusChip status="任务已暂停" /><StatusChip status="已关闭" /></div>
 }
 function ShellDemo({ initialCollapsed = false, initialImmersive = false }: { initialCollapsed?: boolean; initialImmersive?: boolean }) {
   const [collapsed, setCollapsed] = useState(initialCollapsed)

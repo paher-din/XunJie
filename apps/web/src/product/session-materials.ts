@@ -30,10 +30,15 @@ export async function sessionUploads(client: AgentSessionsClient, sessionId: str
 }
 export async function protectSessionUpload(client: AgentSessionsClient, sessionId: string, file: File) {
   const pdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name)
-  if (!pdf && !/\.(txt|md|markdown)$/i.test(file.name) && !['text/plain', 'text/markdown'].includes(file.type)) throw new Error('请选择 PDF、Markdown 或纯文本资料。')
+  if (!pdf && !/\.(txt|md|markdown|c|h|cc|cpp|hpp|mjs|cjs|js|jsx|ts|tsx|py|java|go|rs|sh|bash|sql|xml|yaml|yml|toml|html|css|csv|tsv|json)$/i.test(file.name) && !['text/plain', 'text/markdown'].includes(file.type)) throw new Error('请选择 PDF 或 UTF-8 文本、代码文件。')
   if (!file.size || file.size > (pdf ? 20 : 2) * 1024 * 1024) throw new Error(pdf ? 'PDF 需在 20 MiB 以内。' : '文本资料需在 2 MiB 以内。')
   const bytes = new Uint8Array(await file.arrayBuffer()), chunks: string[] = []
   for (let offset = 0; offset < bytes.length; offset += 32768) chunks.push(String.fromCharCode(...bytes.subarray(offset, offset + 32768)))
+  if (!pdf) {
+    let text: string
+    try { text = new TextDecoder('utf-8', { fatal: true }).decode(bytes) } catch { throw new Error('文件须使用 UTF-8 编码。') }
+    if (!text.trim() || text.includes('\0')) throw new Error('文件中没有可用的文本内容。')
+  }
   const requestId = crypto.randomUUID(), id = crypto.randomUUID(), scope = sessionMaterialScope(client, sessionId)
   const record: SessionMaterialUpload = { key: JSON.stringify([scope, requestId]), scope, kind: pdf ? 'pdf' : 'materials',
     input: { requestId, name: file.name, dataBase64: btoa(chunks.join('')), ...(pdf ? { documentId: id } : { materialId: id, mediaType: /\.(md|markdown)$/i.test(file.name) ? 'text/markdown' as const : 'text/plain' as const }) } }

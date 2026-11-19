@@ -1,4 +1,7 @@
-import { Fragment, memo, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { Fragment, memo, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { Markdown as AstryxMarkdown } from '@astryxdesign/core/Markdown'
+import { tokenize } from '@astryxdesign/core/CodeBlock'
+import '@astryxdesign/core/astryx.css'
 import { lexer, type Token, type Tokens } from 'marked'
 import remend, { isWithinCodeBlock } from 'remend'
 import { insertIndex } from './messageBlocks'
@@ -25,6 +28,7 @@ import { Icon } from '../icons'
  * 引用 / 标题（消息内 h3–h4）；无公式、无 mermaid、不渲染原始 HTML 与图片。
  */
 export interface MarkdownProps {
+  variant?: 'legacy' | 'astryx'
   text: string
   /** 流式中：自愈未闭合语法，尾块逐字淡入，并在最后一个块的内容末尾跟闪烁光标。 */
   live?: boolean
@@ -36,27 +40,28 @@ export interface MarkdownProps {
   insertAfterPara?: number
 }
 
-export const Markdown = memo(function Markdown({
+export function Markdown({
+  variant = 'legacy',
   text,
   live,
   truncated,
   insert,
   insertAfterPara,
 }: MarkdownProps) {
-  const blocks = blocksOf(text, live, truncated)
+  const blocks = useMemo(() => blocksOf(text, live, truncated), [text, live, truncated])
   const caret = live ? <span className="turn-caret" /> : undefined
   const at = insert ? anchorIndex(blocks, insertAfterPara, live) : -1
   return (
-    <div className="turn-body">
+    <div className={variant === 'astryx' ? 'turn-body astryx-prose' : 'turn-body'}>
       {blocks.map((token, i) => (
         <Fragment key={i}>
-          <Block token={token} caret={i === blocks.length - 1 ? caret : undefined} tail={live && i === blocks.length - 1} />
+          <Block variant={variant} token={token} caret={i === blocks.length - 1 ? caret : undefined} tail={live && i === blocks.length - 1} />
           {i === at && insert}
         </Fragment>
       ))}
     </div>
   )
-})
+}
 
 /**
  * 流式中卡片要等它依附的那一段真的上了屏才挂：早半拍会先钉在当时的正文末尾，
@@ -121,10 +126,21 @@ function isMarkerOnly(token: Token): boolean {
 }
 
 /** 块级渲染；caret 与逐字淡入只给能内联收住它们的块（段落 / 标题 / 列表末项 / 引用末块）。 */
-export interface BlockProps { token: Token; caret?: ReactNode; tail?: boolean }
+export interface BlockProps { token: Token; caret?: ReactNode; tail?: boolean; variant?: MarkdownProps['variant'] }
+
+const astryxComponents = {
+  link: ({ href, children }: { href: string; children: ReactNode }) => /^https?:\/\//i.test(href) || href.startsWith('mailto:')
+    ? <a className="md-link" href={href} target="_blank" rel="noreferrer noopener">{children}</a> : <>{children}</>,
+  image: ({ alt }: { alt: string }) => <>{alt}</>,
+  heading: ({ level, children }: { level: number; children: ReactNode }) => level <= 3
+    ? <h3 className="md-h">{children}</h3> : <h4 className="md-h">{children}</h4>,
+}
 
 export const Block = memo(
-  function Block({ token, caret, tail }: BlockProps) {
+  function Block({ token, caret, tail, variant }: BlockProps) {
+    if (variant === 'astryx' && (token.type === 'paragraph' || token.type === 'heading'))
+      // AgentMessage already paces the visible prefix; a second reveal loop would resegment the same prose every frame.
+      return <><AstryxMarkdown headingLevelStart={3} isStreaming={false} components={astryxComponents}>{token.raw}</AstryxMarkdown>{caret}</>
     switch (token.type) {
       case 'space':
         return null
@@ -151,15 +167,16 @@ export const Block = memo(
       }
       case 'code':
         // 代码块不逐字淡入：高亮 span 的行内结构不该被拆开重排
-        return <CodeBlock token={token as Tokens.Code} caret={caret} />
+        return <CodeBlock token={token as Tokens.Code} caret={caret} variant={variant} />
       case 'list':
-        return <ListBlock token={token as Tokens.List} caret={caret} tail={tail} />
+        return <ListBlock token={token as Tokens.List} caret={caret} tail={tail} variant={variant} />
       case 'blockquote': {
         const t = token as Tokens.Blockquote
         return (
           <blockquote className="md-quote">
             {t.tokens.map((sub, i) => (
               <Block
+                variant={variant}
                 key={i}
                 token={sub}
                 caret={i === t.tokens.length - 1 ? caret : undefined}
@@ -179,26 +196,41 @@ export const Block = memo(
     }
   },
   // 内容等价即不重渲染：每帧只有尾块的 raw 在长，前面的块一律跳过
-  (a, b) => a.token.raw === b.token.raw && a.tail === b.tail && !!a.caret === !!b.caret,
+  (a, b) => a.token.raw === b.token.raw && a.tail === b.tail && !!a.caret === !!b.caret && a.variant === b.variant,
 )
 
 /** 代码块：一条顶栏放语言与复制键；正文按语言走迷你高亮，无语言时按纯文本。 */
-export interface CodeBlockProps { token: Tokens.Code; caret?: ReactNode }
+export interface CodeBlockProps { token: Tokens.Code; caret?: ReactNode; variant?: MarkdownProps['variant'] }
 
-export function CodeBlock({ token, caret }: CodeBlockProps) {
+export function CodeBlock({ token, caret, variant }: CodeBlockProps) {
   const [copied, setCopied] = useState(false)
   const [copyError,setCopyError]=useState(false)
-  const lang = (token.lang ?? '').toLowerCase()
+  const lang = (token.lang ?? '').trim().split(/\s+/)[0].toLowerCase()
   // 光标还落在这一块 = 还在写；但围栏一闭合就该高亮，不必等下一块开始
-  const open = !!caret && !FENCE_CLOSED.test(token.raw)
+  const closed = isFenceClosed(token.raw)
+  const open = !!caret && !closed
   // 还在写就先出纯文本：每帧重扫整段代码会把高亮 span 全部重建（成本随已到达长度线性增长），
   // 而中途的判词边界下一拍就会被改判——闭合那一拍扫一次就够。Streamdown 同一条口径。
   // 收尾的 ``` 是一拍一拍敲进来的：围栏还没闭合时，先敲下的 1–2 个反引号会被 marked 当成
   // 代码内容画在末尾，削掉（停在半路的回复同理，那半截 ``` 会永久留在记录里）。
-  const code = FENCE_CLOSED.test(token.raw) ? token.text : token.text.replace(/`{1,2}$/, '')
-  const body = VERILOG_LANGS.has(lang) && !open ? highlightVerilog(code) : code
+  const code = closed ? token.text : token.text.replace(/`{1,2}$/, '')
+  const body = useMemo(() => {
+    if (open) return code
+    if (VERILOG_LANGS.has(lang)) return highlightVerilog(code)
+    if (variant !== 'astryx') return code
+    const highlighted = tokenize(code, lang || 'plaintext')
+    return code.split('\n').map((line, index) => {
+      let offset = 0
+      const pieces: ReactNode[] = []
+      for (const part of highlighted[index] ?? []) {
+        pieces.push(line.slice(offset, part.start), <span key={part.start} className={`ast-token-${part.type}`}>{line.slice(part.start, part.end)}</span>)
+        offset = part.end
+      }
+      return <Fragment key={index}>{index > 0 && '\n'}{pieces}{line.slice(offset)}</Fragment>
+    })
+  }, [code, lang, open, variant])
   // 光标还落在这一块 = 围栏没闭合，复制出去是半截代码，先不给按
-  const pending = !!caret
+  const pending = open
   const pre = useGrowPin<HTMLPreElement>(pending, token.text)
   return (
     <div className="md-pre">
@@ -230,7 +262,12 @@ export function CodeBlock({ token, caret }: CodeBlockProps) {
 }
 
 /** 围栏的收尾那一拍：``` 已经落下，代码块可以按成品对待（高亮、复制）。 */
-const FENCE_CLOSED = /```[ \t]*\r?\n?$/
+function isFenceClosed(raw: string) {
+  const opening = /^ {0,3}(`{3,}|~{3,})/.exec(raw)?.[1]
+  if (!opening || !raw.trimEnd().includes('\n')) return false
+  const last = raw.trimEnd().split('\n').at(-1)!.trim()
+  return last.length >= opening.length && [...last].every(character => character === opening[0])
+}
 
 /**
  * 流式中还在长高的块关进限高的盒子、内部贴底：生长发生在盒子内部，页面上正在读的那行
@@ -247,12 +284,14 @@ function useGrowPin<T extends HTMLElement>(growing: boolean, content: string) {
 }
 
 export interface ListBlockProps {
+  variant?: MarkdownProps['variant']
   token: Tokens.List
   caret?: ReactNode
   tail?: boolean
 }
 
 export function ListBlock({
+  variant,
   token,
   caret,
   tail,
@@ -275,7 +314,7 @@ export function ListBlock({
                   </Fragment>
                 )
               }
-              return <Block key={k} token={sub} />
+              return <Block key={k} token={sub} variant={variant} />
             })}
           </li>
         )
@@ -293,6 +332,7 @@ export interface TableBlockProps { token: Tokens.Table; caret?: ReactNode }
 
 export function TableBlock({ token, caret }: TableBlockProps) {
   const [copied, setCopied] = useState(false)
+  const [copyError, setCopyError] = useState(false)
   const pending = !!caret
   const box = useGrowPin<HTMLDivElement>(pending, token.raw)
   const align = (i: number): CSSProperties => ({
@@ -302,20 +342,26 @@ export function TableBlock({ token, caret }: TableBlockProps) {
   return (
     <div className="md-tablecard">
       <div className="md-table-bar">
+        <span className="md-table-label">表格</span>
         <button
           type="button"
           disabled={pending}
           aria-label={pending ? '表格生成中' : copied ? '已复制表格' : '复制表格为 Markdown'}
           title={pending ? '生成中' : copied ? '已复制' : '复制表格为 Markdown'}
-          onClick={() => {
-            navigator.clipboard.writeText(token.raw).catch(() => {})
-            setCopied(true)
-            window.setTimeout(() => setCopied(false), 1500)
+          onClick={async () => {
+            setCopied(false); setCopyError(false)
+            try {
+              await navigator.clipboard.writeText(token.raw)
+              setCopied(true)
+              window.setTimeout(() => setCopied(false), 1500)
+            } catch { setCopyError(true) }
           }}
         >
           <Icon className={copied ? 'copied' : ''} name={copied ? 'check' : 'copy'} size={13} />
+          <span>{pending ? '生成中' : copied ? '已复制' : '复制表格'}</span>
         </button>
       </div>
+      {copyError && <span role="status">复制失败，请选择表格手动复制</span>}
       <div className={pending ? 'md-tablebox growing' : 'md-tablebox'} ref={box}>
         <table className="md-table">
           <thead>

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { teachingSkillLoadedSchema } from './agent-skills.js';
 import { spaceIdentitySchema, type SpaceIdentity } from './spaces.js';
 import { agentInputSchema, agentRuntimeSessionSchema, agentTurnSchema, agentEventSchema, agentInputReceiptSchema,
   agentQuestionSchema, agentQuestionResponseSchema, agentQuestionReceiptSchema, agentToolCallSchema, agentStepSchema,
@@ -60,7 +61,7 @@ export const agentSessionCallSchema = z.discriminatedUnion('operation', [
   envelope.extend({ operation: z.literal('request'), args: z.object({ requestId: z.uuid() }).strict() }),
   envelope.extend({ operation: z.literal('inputControl'), args: z.object({ inputId: z.uuid(), control: agentInputControlSchema }).strict() }),
   envelope.extend({ operation: z.literal('registerNotification'), args: z.object({ originTurnId: z.uuid(), fact: taskTerminalFactSchema }).strict() }),
-  envelope.extend({ operation: z.literal('recordProgress'), args: z.object({ attemptId: z.uuid(), progress: z.object({ revision: z.number().int().positive(), text: z.string().max(1_000_000), tools: z.array(z.json()).max(128).optional() }).strict() }).strict() }),
+  envelope.extend({ operation: z.literal('recordProgress'), args: z.object({ attemptId: z.uuid(), progress: z.object({ thinking: z.string().max(16000).optional(), revision: z.number().int().positive(), text: z.string().max(1_000_000), tools: z.array(z.json()).max(128).optional() }).strict() }).strict() }),
   envelope.extend({ operation: z.literal('assertDispatch'), args: z.object({ permit: agentDispatchPermitSchema }).strict() }),
 ]).superRefine((call, context) => {
   if (call.operation === 'submit' && call.args.input.sessionId !== call.sessionId)
@@ -79,19 +80,27 @@ export type AgentAcceptedRequest = z.infer<typeof agentAcceptedRequestSchema>;
 
 export const agentConversationMessageSchema = z.object({
   messageId: z.string().min(1).max(300), turnId: z.uuid(), inputId: z.uuid().optional(),
-  role: z.enum(['user', 'assistant']), text: z.string(), createdAt: z.iso.datetime(),
+  role: z.enum(['user', 'assistant']), text: z.string(), createdAt: z.iso.datetime(), editedAt: z.iso.datetime().optional(),
   state: z.enum(['streaming', 'settled', 'failed', 'stopped']),
 }).strict();
 export const agentConversationInputSchema = z.object({
+  canEdit: z.boolean().optional(),
   inputId: z.uuid(), turnId: z.uuid(), version: z.number().int().positive(),
   state: z.enum(['pending', 'adopted', 'removed', 'deferred']), text: z.string(), createdAt: z.iso.datetime(),
 }).strict();
 export const agentConversationToolSchema = z.object({
   toolCallId: z.uuid(), turnId: z.uuid(), stepId: z.uuid(), name: z.string().min(1).max(200),
   state: z.enum(['pending', 'started', 'closed']), result: z.json().nullable(),
+  stepNo: z.number().int().positive().optional(), createdAt: z.iso.datetime().optional(),
+  inputId: z.uuid().optional(), skill: teachingSkillLoadedSchema.optional(),
 }).strict();
 /** Product projection, independent of debug snapshots and provider SDK response shapes. */
 export const agentConversationSchema = z.object({
+  reset: z.boolean().optional(),
+  thinking: z.array(z.object({ messageId: z.string(), turnId: z.uuid(), inputId: z.uuid().optional(),
+    stepId: z.uuid().optional(), stepNo: z.number().int().positive().optional(),
+    text: z.string(), createdAt: z.iso.datetime(), active: z.boolean() })).optional(),
+  contextUsage: z.object({ model: z.object({ connectionId: z.uuid(), version: z.number().int().positive() }), tokens: z.number().int().nonnegative(), lowerBound: z.boolean() }).optional(),
   sessionId: z.uuid(), lastSeq: z.number().int().nonnegative(), messages: z.array(agentConversationMessageSchema),
   turns: z.array(agentTurnSchema), inputs: z.array(agentConversationInputSchema), questions: z.array(agentQuestionSchema),
   tools: z.array(agentConversationToolSchema),
@@ -113,7 +122,7 @@ export interface AgentSessionPort {
   request(identity: SpaceIdentity, sessionId: string, requestId: string): Promise<AgentAcceptedRequest | null>;
   inputControl(identity: SpaceIdentity, sessionId: string, inputId: string, control: AgentInputControl): Promise<AgentInputControlReceipt>;
   registerNotification(identity: SpaceIdentity, sessionId: string, originTurnId: string, fact: TaskTerminalFact): Promise<{ notificationId: string; turnId: string | null }>;
-  recordProgress(identity: SpaceIdentity, sessionId: string, attemptId: string, progress: { revision: number; text: string; tools?: readonly unknown[] }): Promise<boolean>;
+  recordProgress(identity: SpaceIdentity, sessionId: string, attemptId: string, progress: { revision: number; text: string; thinking?: string; tools?: readonly unknown[] }): Promise<boolean>;
   /** Live-Step check for a cross-machine adapter; not a loop phase and not a browser operation. */
   assertDispatch(identity: SpaceIdentity, permit: AgentDispatchPermit): Promise<null>;
 }

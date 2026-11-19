@@ -73,6 +73,11 @@ function signal() {
   return { promise, resolve }
 }
 
+async function expandLastTraceGroup(page: import('@playwright/test').Page) {
+  const trigger = page.locator('.agent-trace-group-trigger').last()
+  if (await trigger.count() && await trigger.getAttribute('aria-expanded') !== 'true') await trigger.click()
+}
+
 function reply(response: ServerResponse, value: { text: string } | { call: { id: string; name: string; arguments: unknown } }) {
   response.writeHead(200, { 'content-type': 'text/event-stream' })
   const delta = 'text' in value ? { role: 'assistant', content: value.text }
@@ -116,7 +121,15 @@ test.beforeAll(async () => {
     try {
       const chunks = []
       for await (const chunk of request) chunks.push(chunk)
-      await answer(JSON.parse(Buffer.concat(chunks).toString()), response)
+      const payload = JSON.parse(Buffer.concat(chunks).toString())
+      if ((payload.messages ?? []).some((message: { role: string; content: unknown }) => message.role === 'system'
+        && typeof message.content === 'string' && message.content.includes('STUDENT_INPUT_POLICY_V2'))) {
+        const raw = payload.messages.filter((message: { role: string }) => message.role === 'user').at(-1)?.content
+        const source = JSON.parse(typeof raw === 'string' ? raw : raw.map((part: { text?: string }) => part.text ?? '').join(''))
+        reply(response, { text: JSON.stringify({ inputDigest: source.inputDigest, creationAuthorization: 'ordinary' }) })
+        return
+      }
+      await answer(payload, response)
     } catch (error) { modelErrors.push(String(error)); response.destroy() }
   })
   await new Promise<void>(resolve => upstream.listen(0, '127.0.0.1', resolve))
@@ -177,7 +190,7 @@ test('the formal conversation shows the real fixed work read and retains it afte
       const feedback = payload.messages.find(message => message.role === 'tool')
       expect(feedback?.tool_call_id).toBe('read-fixed-observation')
       expect(feedback?.content).toContain('37')
-      expect(feedback?.content).not.toContain('999')
+      expect(feedback?.content).not.toContain('后续观察：总数改为 999。')
       reply(response, { text: '读取固定观察后，可依据其中的总数 37 解释；编辑后的 999 属于另一个版本。' })
     }
   }
@@ -187,22 +200,21 @@ test('the formal conversation shows the real fixed work read and retains it afte
   await page.goto(endpoint + '/?space=personal&activity=' + activity.activityId)
   await expect(page.locator('#activity-title')).toHaveText('核对固定作品来源')
   await page.getByRole('button', { name: '打开对话', exact: true }).click()
-  await page.getByLabel('你的问题', { exact: true }).fill('请读取本次固定作品，并解释总数。')
+  await page.getByLabel('向 Agent 提问', { exact: true }).fill('请读取本次固定作品，并解释总数。')
   await page.getByRole('button', { name: '发送问题', exact: true }).click()
   try {
     await dispatched.promise
     await api(request, 'workspaces/' + activity.activityId, { requestId: randomUUID(), baseRevision: 1,
       files: [{ ...work, contentId: randomUUID(), value: '后续观察：总数改为 999。' }] })
   } finally { release.resolve() }
+  await expandLastTraceGroup(page)
   const record = page.locator('.teaching-tool-record').filter({ hasText: '观察记录.txt' })
   await expect(record.locator('.teaching-tool-status')).toHaveText('已完成', { timeout: 25000 })
-  await record.locator(':scope > summary').click()
-  await record.getByText('实际结果', { exact: true }).click()
-  await expect(record.locator('.teaching-tool-data').last()).toContainText('固定观察：总数为 37。')
-  await expect(record.locator('.teaching-tool-data').last()).not.toContainText('999')
-  await expect(record.locator('.teaching-tool-source')).toContainText('观察记录.txt')
-  await expect(record.getByRole('button', { name: '定位来源', exact: true })).toBeVisible()
-  await expect(page.locator('.teaching-message.assistant')).toContainText('总数 37')
+  await record.locator(':scope > .agent-trace-trigger').click()
+  await expect(record.locator('.teaching-tool-excerpt')).toContainText('固定观察：总数为 37。')
+  await expect(record.locator('.teaching-tool-excerpt')).not.toContainText('后续观察：总数改为 999。')
+  await expect(record.getByRole('button', { name: '查看原内容', exact: true })).toBeVisible()
+  await expect(page.locator('.chat-message.agent')).toContainText('总数 37')
   await record.scrollIntoViewIfNeeded()
   if (evidence) await page.screenshot({ path: join(evidence, `tools-read-after-${process.platform}.png`) })
   await page.emulateMedia({ colorScheme: 'dark' })
@@ -216,6 +228,7 @@ test('the formal conversation shows the real fixed work read and retains it afte
   await expect(page.locator('#activity-title')).toHaveText('核对固定作品来源')
   const reopen = page.getByRole('button', { name: '打开对话', exact: true })
   await reopen.click()
+  await expandLastTraceGroup(page)
   await expect(page.locator('.teaching-tool-status')).toHaveText('已完成', { timeout: 20000 })
   expect(calls).toBe(2)
   expect(modelErrors).toEqual([])
@@ -281,27 +294,29 @@ test('real native and browser operations retain results; a disconnected browser 
   await page.goto(endpoint + '/?space=school&activity=' + activity.activityId)
   await expect(page.locator('#activity-title')).toHaveText('观察固定输入与真实结果')
   await page.getByRole('button', { name: '打开对话', exact: true }).click()
-  await page.getByLabel('你的问题', { exact: true }).fill('请启动四态累加模拟，依次输入 1、2、2，并解释真实状态。')
+  await page.getByLabel('向 Agent 提问', { exact: true }).fill('请启动四态累加模拟，依次输入 1、2、2，并解释真实状态。')
   await page.getByRole('button', { name: '发送问题', exact: true }).click()
-  await expect(page.locator('.teaching-message.assistant')).toContainText('实际状态依次为 1、3、1', { timeout: 30000 })
+  await expect(page.locator('.chat-message.agent')).toContainText('实际状态依次为 1、3、1', { timeout: 30000 })
     .catch(async error => { throw new Error(error.message + '\n' + JSON.stringify({ modelErrors,
       conversation: await api(page.request, 'agent/' + activity.activityId + '/conversation', undefined, {}) })) })
+  await expandLastTraceGroup(page)
+  const persistedTools = await api(page.request, 'agent/' + activity.activityId + '/conversation', undefined, {})
+  expect(persistedTools.tools).toHaveLength(6)
   await expect(page.locator('.teaching-tool-record')).toHaveCount(6)
-  const nativeRecords = page.locator('.teaching-tool-record').filter({ has: page.locator('.teaching-tool-name').filter({ hasText: /^course_operation$/ }) })
+  const nativeRecords = page.locator('.teaching-tool-record[data-tool-name="course_operation"]')
   await expect(nativeRecords).toHaveCount(4)
-  await expect(page.locator('.teaching-tool-name').filter({ hasText: /^discover_tools$/ })).toHaveCount(1)
-  await expect(page.locator('.teaching-tool-name').filter({ hasText: /^load_tools$/ })).toHaveCount(1)
+  await expect(page.locator('.teaching-tool-record[data-tool-name="discover_tools"]')).toHaveCount(1)
+  await expect(page.locator('.teaching-tool-record[data-tool-name="load_tools"]')).toHaveCount(1)
   const last = nativeRecords.last()
-  await last.locator(':scope > summary').click()
-  await last.getByText('参数', { exact: true }).click()
-  await expect(last.locator('.teaching-tool-data')).toContainText('数值2')
-  await last.getByRole('button', { name: '定位原结果', exact: true }).click()
+  await last.locator(':scope > .agent-trace-trigger').click()
+  await expect(last.locator('.teaching-tool-summary')).toContainText('当前结果：1')
+  await last.getByRole('button', { name: '查看实验记录', exact: true }).click()
   await expect(page.locator('.native-session-observation strong')).toHaveText('1', { timeout: 20000 })
   await expect(page.frameLocator('.component-view iframe').getByText('组件已就绪')).toBeVisible()
   if (evidence) await page.screenshot({ path: join(evidence, `tools-native-after-${process.platform}.png`) })
   const previous = nativeRecords.nth(2)
-  await previous.locator(':scope > summary').click()
-  await previous.getByRole('button', { name: '定位原结果', exact: true }).click()
+  await previous.locator(':scope > .agent-trace-trigger').click()
+  await previous.getByRole('button', { name: '查看实验记录', exact: true }).click()
   const previousObservation = page.getByRole('list', { name: '已确认观察' }).getByRole('listitem').filter({ hasText: '第 2 次' })
   await expect(previousObservation).toContainText('状态 3')
   await expect(previousObservation).toBeFocused()
@@ -336,15 +351,15 @@ test('real native and browser operations retain results; a disconnected browser 
       reply(response, { text: '已读取真实聚合结果，12 行数据分成 3 组，总平均分约为 83.33。' })
     }
   }
-  await page.getByLabel('你的问题', { exact: true }).fill('请按固定表格按小组计算得分平均值，并解释实际结果。')
+  await page.getByLabel('向 Agent 提问', { exact: true }).fill('请按固定表格按小组计算得分平均值，并解释实际结果。')
   await page.getByRole('button', { name: '发送问题', exact: true }).click()
-  await expect(page.locator('.teaching-message.assistant').last()).toContainText('已读取真实聚合结果', { timeout: 30000 })
+  await expect(page.locator('.chat-message.agent').last()).toContainText('已读取真实聚合结果', { timeout: 30000 })
+  await expandLastTraceGroup(page)
   const calculation = page.locator('.teaching-tool-record').last()
   await expect(calculation.locator('.teaching-tool-status')).toHaveText('已完成')
-  await calculation.locator(':scope > summary').click()
-  await calculation.getByText('实际结果', { exact: true }).click()
-  await expect(calculation.locator('.teaching-tool-data')).toContainText('83.33333333333333')
-  await calculation.getByRole('button', { name: '定位原结果', exact: true }).click()
+  await calculation.locator(':scope > .agent-trace-trigger').click()
+  await expect(calculation.locator('.teaching-tool-summary').first()).toContainText('课程实验')
+  await calculation.getByRole('button', { name: '查看实验记录', exact: true }).click()
   await expect(page.locator('.execution-panel')).toContainText('总计 83.333333，共 3 组。')
   if (evidence) await page.screenshot({ path: join(evidence, `tools-browser-result-${process.platform}.png`) })
   expect(finiteCalls).toBe(2)
@@ -366,19 +381,21 @@ test('real native and browser operations retain results; a disconnected browser 
       componentKey: 'table', operationId: 'aggregate', parameters: { groupColumn: '小组', valueColumn: '得分', aggregate: 'mean' },
     } } })
   }
-  await page.getByLabel('你的问题', { exact: true }).fill('核对接收回包丢失后的原计算，不要换身份重跑。')
+  await page.getByLabel('向 Agent 提问', { exact: true }).fill('核对接收回包丢失后的原计算，不要换身份重跑。')
   await page.getByRole('button', { name: '发送问题', exact: true }).click()
   await lostAcceptance.promise
   await expect(page.getByText('等待浏览器连接或操作结果…', { exact: true })).toBeVisible({ timeout: 20000 })
   const lostCommand = (await api(page.request, 'agent/' + activity.activityId + '/conversation', undefined, {})).tools.at(-1).commandId
-  await page.getByRole('region', { name: '与 Agent 的对话' }).getByRole('button', { name: '停止', exact: true }).click()
-  await expect(page.getByText('回答已停止，已发生的内容仍保留。')).toBeVisible({ timeout: 20000 })
+  await page.locator('.prompt-input').getByRole('button', { name: '停止生成', exact: true }).click()
+  await expect(page.locator('.prompt-input').getByRole('button', { name: '继续生成', exact: true })).toBeEnabled({ timeout: 20000 })
+  await expect(page.getByText('回答已停止，已发生的内容仍保留。', { exact: true })).toHaveCount(0)
   // Drain in-flight receipt interceptions before removing the fault; otherwise a
   // late route.fetch completion can try to abort a route Playwright already released.
   await page.unrouteAll({ behavior: 'wait' })
   await expect.poll(async () => (await api(page.request, `executions/${activity.activityId}/${lostCommand}`, undefined, {}))?.state)
     .toBe('cancelled')
-  await expect(page.locator('.teaching-tool-record').last().locator('.teaching-tool-status')).toHaveText('已取消')
+  await expandLastTraceGroup(page)
+  await expect(page.locator('.teaching-tool-record').last().locator('.teaching-tool-status')).toHaveText('已停止')
   expect(lostCalls).toBe(1)
   await page.reload()
   await expect(page.locator('#activity-title')).toHaveText('观察固定输入与真实结果')
@@ -398,7 +415,7 @@ test('real native and browser operations retain results; a disconnected browser 
         parameters: { groupColumn: '小组', valueColumn: '得分', aggregate: 'mean' } } } })
     else reply(response, { text: '浏览器已接受任务；计算结果尚未到达。' })
   }
-  await page.getByLabel('你的问题', { exact: true }).fill('请按固定表格按小组计算得分平均值。')
+  await page.getByLabel('向 Agent 提问', { exact: true }).fill('请按固定表格按小组计算得分平均值。')
   const disconnected = signal()
   await page.route('**/executions/**/agent/*/claim', async route => {
     const actual = await route.fetch()
@@ -418,9 +435,10 @@ test('real native and browser operations retain results; a disconnected browser 
     await waitingPage.getByRole('button', { name: '打开对话', exact: true }).click()
     const waiting = waitingPage.getByText('等待浏览器连接或操作结果…', { exact: true })
     await expect(waiting).toBeVisible({ timeout: 25000 })
+    await expandLastTraceGroup(waitingPage)
     await expect(waitingPage.locator('.teaching-tool-record').last().locator('.teaching-tool-status'))
-      .toHaveText(/已接受，等待结果|效果未知/)
-    await waitingPage.getByLabel('你的问题', { exact: true }).fill('等待期间继续保留的新问题。')
+      .toHaveText(/处理中|等待结果|待确认/)
+    await waitingPage.getByLabel('向 Agent 提问', { exact: true }).fill('等待期间继续保留的新问题。')
     await expect(waitingPage.getByRole('button', { name: '补充当前任务', exact: true })).toBeEnabled()
     await expect.poll(async () => (await api(waitingPage.request, 'drafts/' + activity.activityId, undefined, {})).question)
       .toBe('等待期间继续保留的新问题。')
@@ -430,11 +448,13 @@ test('real native and browser operations retain results; a disconnected browser 
     await expect(waitingPage.locator('#activity-title')).toHaveText('观察固定输入与真实结果')
     await waitingPage.getByRole('button', { name: '打开对话', exact: true }).click()
     await expect(waiting).toBeVisible({ timeout: 20000 })
-    await expect(waitingPage.getByLabel('你的问题', { exact: true })).toHaveValue('等待期间继续保留的新问题。')
-    await waitingPage.getByRole('region', { name: '与 Agent 的对话' }).getByRole('button', { name: '停止', exact: true }).click()
-    await expect(waitingPage.getByText('回答已停止，已发生的内容仍保留。')).toBeVisible({ timeout: 20000 })
-    await expect(waitingPage.getByLabel('你的问题', { exact: true })).toHaveValue('等待期间继续保留的新问题。')
-    await expect(waitingPage.getByRole('button', { name: '发送问题', exact: true })).toBeEnabled()
+    await expect(waitingPage.getByLabel('向 Agent 提问', { exact: true })).toHaveValue('等待期间继续保留的新问题。')
+    const activeStudent = waitingPage.locator('.chat-message.user').last()
+    await activeStudent.getByRole('button', { name: '编辑这条消息', exact: true }).click()
+    await expect(waitingPage.getByLabel('修改这条消息', { exact: true })).toBeVisible({ timeout: 20000 })
+    await expect(waitingPage.getByText('回答已停止，已发生的内容仍保留。', { exact: true })).toHaveCount(0)
+    await expect(waitingPage.getByLabel('向 Agent 提问', { exact: true })).toHaveValue('等待期间继续保留的新问题。')
+    await expect(waitingPage.locator('.prompt-input').getByRole('button', { name: '发送问题', exact: true })).toBeEnabled()
     if (evidence) await waitingPage.screenshot({ path: join(evidence, `tools-wait-stopped-${process.platform}.png`) })
   } finally { await otherProfile.close() }
   expect(browserCalls).toBeLessThanOrEqual(2)

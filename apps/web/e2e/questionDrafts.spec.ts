@@ -1,5 +1,5 @@
 import { evidenceDirectory, evidencePath } from './evidence'
-import { renameWorkFile, deleteWorkFile, selectProductSpace } from './support/product-ui'
+import { renameWorkFile, deleteWorkFile, selectProductSpace, useEmbeddedSchoolFixture } from './support/product-ui'
 import { test, expect, type Page } from '@playwright/test'
 import { randomUUID, createHash } from 'node:crypto'
 import { mkdtemp, mkdir, writeFile } from 'node:fs/promises'
@@ -100,7 +100,12 @@ async function selectAllCode(page: Page) {
 test('course text and requirements stay as fixed references through collapse, reload and activity switch', async ({ page }) => {
   const control = await resolveCredential(runtimeRoot, 'control')
   const courseId = randomUUID(), taskId = randomUUID(), releaseId = randomUUID(), materialId = randomUUID()
-  const studentText = '\uFEFF# ALU 题目\r\n完成 4 位加减与逻辑运算。\r\n请比较两种逻辑。'
+  const studentText = [
+    '\uFEFF# ALU 题目', '完成 4 位加减与逻辑运算。', '请比较两种逻辑。', '',
+    '行内公式$x^2$。行内代码 `$raw$`。', '',
+    '$$', '\\frac{1}{2} + \\sqrt{4}', '$$', '',
+    '| 输入 | 输出 |', '| --- | --- |', '| A | F |',
+  ].join('\r\n')
   const requirements = '实现四种运算并用仿真验证边界输入。\r\n中文要求保持原样。'
   const bytes = Buffer.from(studentText)
   const manage = async (path: string, body: unknown) => {
@@ -112,14 +117,13 @@ test('course text and requirements stay as fixed references through collapse, re
   await manage('course-import', { formatVersion: 1, requestId: randomUUID(),
     course: { courseId, name: '固定引用课程' }, task: { taskId, title: '固定引用的任务', summary: '课堂材料' },
     release: { helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },  releaseId, objectives: ['引用材料与要求'], requirements,
-      materials: [{ materialId, title: 'ALU 题目', path: 'alu.txt', mediaType: 'text/plain', access: 'student',
+      materials: [{ materialId, title: 'ALU 题目', path: 'alu.md', mediaType: 'text/markdown', access: 'student',
         sha256: sha256(bytes), byteLength: bytes.byteLength }], starterWorks: [], capabilities: [] },
-    resources: [{ path: 'alu.txt', contentBase64: bytes.toString('base64') }] })
+    resources: [{ path: 'alu.md', contentBase64: bytes.toString('base64') }] })
   const password = randomUUID(), loginName = 'draft-chrome-' + randomUUID()
   const member = await manage('members', { requestId: randomUUID(), loginName, password })
   await manage('course-access', { requestId: randomUUID(), courseId, principalId: member.principalId, active: true })
-  const login = await page.request.post(endpoint + '/api/learning/login', { data: { loginName, password } })
-  expect(login.status()).toBe(200)
+  await useEmbeddedSchoolFixture(page, endpoint, loginName, password)
   const created = await page.request.post(endpoint + '/api/learning/course-activities', { data: { requestId: randomUUID(), releaseId } })
   expect(created.status()).toBe(200)
   const activityId = (await created.json()).activityId as string
@@ -134,9 +138,27 @@ test('course text and requirements stay as fixed references through collapse, re
       await route.fulfill({ response })
     } else await route.continue()
   })
+  const activityTitle = page.getByRole('heading', { name: '固定引用的任务', exact: true, level: 1 })
+  const activityCard = page.locator(`[data-activity-id="${activityId}"]`)
   await page.goto(endpoint + '/?space=school&activity=' + activityId)
-  await expect(page.getByRole('heading', { name: '固定引用的任务', exact: true })).toBeVisible()
-  await expect(page.getByLabel('ALU 题目', { exact: true })).toBeVisible()
+  await expect(activityTitle).toBeVisible()
+  const reader = page.getByRole('region', { name: '课程材料阅读', exact: true })
+  const preview = reader.locator('.course-reader-markdown')
+  const material = page.getByLabel('ALU 题目', { exact: true })
+  await expect(reader).toHaveCount(0)
+  await page.getByRole('tab', { name: '课程材料', exact: true }).click()
+  await page.getByRole('region', { name: '课程材料', exact: true }).getByRole('button', { name: 'ALU 题目', exact: true }).click()
+  await expect(preview.getByRole('heading', { name: 'ALU 题目' })).toBeVisible()
+  await expect(preview.locator('math')).toHaveCount(2)
+  await expect(preview.getByRole('table')).toContainText('输出')
+  await expect(preview.locator('code')).toHaveText('$raw$')
+  await expect(material).toHaveCount(0)
+  if (evidenceDirectory()) {
+    await page.evaluate(() => document.fonts.ready)
+    await page.screenshot({ path: evidencePath('152/course-material-preview.png') })
+  }
+  await reader.getByRole('button', { name: '原文与引用', exact: true }).click()
+  await expect(material).toBeVisible()
   const selected = '完成 4 位加减与逻辑运算。'
   await selectText(page, 'ALU 题目', selected)
   await expect(page.getByRole('button', { name: '询问 Agent', exact: true })).toBeVisible()
@@ -145,7 +167,9 @@ test('course text and requirements stay as fixed references through collapse, re
   await page.getByRole('button', { name: '询问 Agent', exact: true }).click()
   await expect(refs(page)).toHaveCount(1)
   expect(await refs(page).first().locator('pre').textContent()).toBe(selected)
+  await expect.poll(async () => (await draftOf(page, activityId, false)).references[0]?.copy).toBe(selected)
   await question(page).fill('为什么需要边界输入？')
+  await expect(question(page)).toHaveValue('为什么需要边界输入？')
   await expect.poll(async () => (await draftOf(page, activityId, false)).question).toBe('为什么需要边界输入？')
   const firstDraft = await draftOf(page, activityId, false)
   expect(firstDraft.revision).toBeGreaterThan(0)
@@ -177,27 +201,32 @@ test('course text and requirements stay as fixed references through collapse, re
   await page.getByRole('button', { name: '打开对话', exact: true }).click()
   await expect(question(page)).toHaveValue('为什么需要边界输入？')
   await expect(refs(page)).toHaveCount(2)
-  const send = page.getByRole('button', { name: '发送问题（尚未接入）' })
-  await expect(send).toBeDisabled()
-  await expect(page.getByText('真实 Agent 尚未接入', { exact: false })).toBeVisible()
   await page.reload()
-  await expect(page.getByRole('heading', { name: '固定引用的任务', exact: true })).toBeVisible()
+  await expect(activityTitle).toBeVisible()
+  await openComposer(page)
+  await expect(question(page)).toHaveValue('为什么需要边界输入？')
+  await expect(refs(page)).toHaveCount(2)
+  await expect(material).toHaveCount(0)
+  const taskDetails = page.getByRole('button', { name: '目标与要求', exact: true })
+  if (await taskDetails.getAttribute('aria-expanded') === 'true') await taskDetails.click()
+  await page.getByRole('button', { name: /^定位引用 \d+：ALU 题目$/ }).click()
+  await expect(reader.getByRole('button', { name: '原文与引用', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await expect(material).toBeVisible()
+  await expect(page.getByRole('region', { name: '通知' }).getByText('已定位引用来源。', { exact: true })).toBeVisible()
+  expect(await page.evaluate(() => document.getSelection()?.toString())).toBe(selected)
+  if (evidenceDirectory()) await page.screenshot({ path: evidencePath('152/course-material-located.png') })
+  await page.getByRole('button', { name: '返回活动列表', exact: true }).click()
+  await activityCard.click()
+  await expect(activityTitle).toBeVisible()
   await openComposer(page)
   await expect(question(page)).toHaveValue('为什么需要边界输入？')
   await expect(refs(page)).toHaveCount(2)
   await page.getByRole('button', { name: '返回活动列表', exact: true }).click()
-  await expect(page.getByRole('heading', { name: '固定引用的任务', exact: true })).toBeVisible()
-  await page.getByRole('button', { name: '固定引用的任务', exact: true }).click()
-  await expect(page.getByRole('heading', { name: '固定引用的任务', exact: true })).toBeVisible()
-  await openComposer(page)
-  await expect(question(page)).toHaveValue('为什么需要边界输入？')
-  await expect(refs(page)).toHaveCount(2)
   await selectProductSpace(page, '个人空间')
-  await expect(page.getByRole('heading', { name: '我的学习活动', exact: true })).toBeVisible()
+  await expect(activityCard).toHaveCount(0)
   await selectProductSpace(page, '学校空间')
-  await expect(page.getByRole('heading', { name: /^我的课程/ })).toBeVisible()
-  await page.getByRole('button', { name: '固定引用的任务', exact: true }).click()
-  await expect(page.getByRole('heading', { name: '固定引用的任务', exact: true })).toBeVisible()
+  await activityCard.click()
+  await expect(activityTitle).toBeVisible()
   await openComposer(page)
   await expect(question(page)).toHaveValue('为什么需要边界输入？')
   await expect(refs(page)).toHaveCount(2)
@@ -230,14 +259,14 @@ test('code reference keeps original copy after rename and edit, and survives fil
   await renameWorkFile(page, 'renamed.sv')
   await expect(page.getByRole('button', { name: 'renamed.sv', exact: true })).toBeVisible()
   await page.getByRole('button', { name: '定位引用 1：demo.sv', exact: true }).click()
-  await expect(page.getByRole('status').filter({ hasText: '已定位引用来源。' })).toBeVisible()
+  await expect(page.getByRole('region', { name: '通知' }).getByText('已定位引用来源。', { exact: true })).toBeVisible()
   const editor = page.locator('.monaco-editor textarea.inputarea')
   await editor.focus()
   const endOfDocument = process.platform === 'darwin' ? 'Meta+ArrowDown' : 'Control+End'
   await page.keyboard.press(endOfDocument)
   await page.keyboard.insertText('// 已编辑')
   await page.getByRole('button', { name: '定位引用 1：demo.sv', exact: true }).click()
-  await expect(page.getByRole('status').filter({ hasText: '来源内容已改变' })).toBeVisible()
+  await expect(page.getByRole('region', { name: '通知' }).getByText('来源内容已改变')).toBeVisible()
   await selectAllCode(page)
   await expect(refs(page)).toHaveCount(2)
   expect(await refs(page).nth(0).locator('pre').textContent()).toBe(original.slice(1))

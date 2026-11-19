@@ -1,15 +1,17 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import {
   WorkspaceChatInput, WorkspaceChatPaneView, WorkspaceDockedChat, WorkspaceFloatingChat, WorkspaceHeader,
   WorkspaceMissingTask, WorkspacePinnedCardsColumn, WorkspacePinnedGeneratedCard, WorkspacePinnedLearningCard,
-  WorkspaceTaskIntro, WorkspaceToast, WorkspaceToolkitPending,
+  WorkspaceResourceLibrary, WorkspaceResourceList, WorkspaceResourceRow, WorkspaceTaskIntro, WorkspaceToast, WorkspaceToolkitPending,
 } from '@xunjie/ui/workspace'
+import { Button } from '@xunjie/ui/foundation'
 import { GenCard, type ChatMessageData, type GenCardData, type GenHostFactory } from '@xunjie/ui/chat'
 import type { CatalogEntry } from '../types'
 
 const workspacePageViews = '@xunjie/ui/workspace'
 const source = 'packages/ui/src/workspace/WorkspacePageViews.tsx'
+const resourceSource = 'packages/ui/src/workspace/WorkspaceResourceLibrary.tsx'
 const toastSource = 'packages/ui/src/foundation/ShellParts.tsx'
 const exampleSource = 'apps/web/src/ui-catalog/examples/workspace-page.tsx'
 
@@ -40,6 +42,21 @@ function IntroDemo({ done = false }: { done?: boolean }) {
 }
 function IntroInProgress() { return <IntroDemo /> }
 function IntroDone() { return <IntroDemo done /> }
+function IntroCourseDialog() {
+  const [open, setOpen] = useState(false), [docking, setDocking] = useState(false), [info, setInfo] = useState(false)
+  const [target, setTarget] = useState<HTMLButtonElement | null>(null)
+  const close = useCallback(() => { setOpen(false); setDocking(false) }, [])
+  return <Surface><div className="ws-center" style={{ padding: 24 }}>
+    <button ref={setTarget} type="button" className="outline" aria-expanded={info} onClick={() => setInfo(value => !value)}>任务信息</button>
+    <button type="button" className="outline" onClick={() => setOpen(true)}>预览示例任务</button>
+    {info && <p>比较两种文本统计方法，解释结果不同的原因。</p>}
+    {open && <WorkspaceTaskIntro name="文本统计" course="程序设计基础" status="未开始" actionLabel="开始任务"
+      dialog={{ onClose: close, startDisabled: docking, dock: docking && target ? { target, onComplete: close } : undefined }}
+      onStart={() => setDocking(true)}>
+      <h3>任务要求</h3><p>比较两种文本统计方法，解释结果不同的原因。</p>
+    </WorkspaceTaskIntro>}
+  </div></Surface>
+}
 function PendingDemo() { return <Surface><WorkspaceToolkitPending title="示例课程工具包正在接入。" description="此预览只展示提示，不读取课程配置。" /></Surface> }
 function MissingDemo() { const [message, setMessage] = useState(''); return <div><WorkspaceMissingTask onBack={() => setMessage('已触发示例返回')} /><output>{message}</output></div> }
 function LearningCardDemo({ docked = false }: { docked?: boolean }) {
@@ -139,9 +156,24 @@ function InputBusy() { return <InputDemo initialBusy /> }
 function ToastInfo() { return <WorkspaceToast>已完成示例操作</WorkspaceToast> }
 function ToastError() { return <WorkspaceToast role="alert">示例操作未完成，请重试。</WorkspaceToast> }
 
+function ResourceLibraryDemo({ empty = false }: { empty?: boolean }) {
+  const [notice, setNotice] = useState('')
+  return <WorkspaceResourceLibrary title="个人笔记" description="随当前活动保存，支持 .txt / .md，单份最多 2 MiB。"
+    actions={<Button type="button" variant="outline" onClick={() => setNotice('已触发示例添加')}>添加笔记</Button>}>
+    {empty ? <p className="detail">还没有个人笔记。</p> : <WorkspaceResourceList label="示例资料列表">
+      <WorkspaceResourceRow name="课前阅读.pdf" detail="3 页" current onOpen={() => setNotice('已打开示例 PDF')} />
+      <WorkspaceResourceRow name="实验记录" detail="第 2 版 · Markdown" actions={
+        <Button type="button" variant="outline" onClick={() => setNotice('已打开示例笔记')}>打开</Button>
+      } />
+    </WorkspaceResourceList>}
+    {notice && <output>{notice}</output>}
+  </WorkspaceResourceLibrary>
+}
+function ResourceLibraryEmpty() { return <ResourceLibraryDemo empty /> }
+
 export const workspacePageEntries: CatalogEntry[] = [
   { id: 'workspace-header', name: 'WorkspaceHeader', description: '工作区返回、工具标签槽、进度和运行槽。', importPath: workspacePageViews, source, exampleSource, props: ['progress, onBack, tabsRef?, runRef?'], dependencies: ['工具和运行内容由宿主通过 Portal 插入'], states: [{ id: 'progress', name: '进行中', component: HeaderInProgress }, { id: 'done', name: '已完成', component: HeaderDone }] },
-  { id: 'workspace-task-intro', name: 'WorkspaceTaskIntro', description: '首次进入时的任务介绍卡。', importPath: workspacePageViews, source, exampleSource, props: ['status, name, course, deadline, goal, percent, done, currentProgress', 'actionLabel, flying, onStart'], dependencies: ['显示时机由宿主控制'], states: [{ id: 'progress', name: '进行中', component: IntroInProgress }, { id: 'done', name: '已完成', component: IntroDone }] },
+  { id: 'workspace-task-intro', name: 'WorkspaceTaskIntro', description: '任务介绍卡及可收进工作区入口的任务预览。', importPath: workspacePageViews, source, exampleSource, props: ['status, name, course, deadline, goal, percent, done, currentProgress', 'actionLabel, flying, onStart, children, dialog'], dependencies: ['显示时机、正文和收纳目标由宿主提供'], states: [{ id: 'progress', name: '进行中', component: IntroInProgress }, { id: 'done', name: '已完成', component: IntroDone }, { id: 'course-dialog', name: '课程预览与收纳', component: IntroCourseDialog }] },
   { id: 'workspace-toolkit-pending', name: 'WorkspaceToolkitPending', description: '工具尚未接入时的说明。', importPath: workspacePageViews, source, exampleSource, props: ['title, description'], dependencies: ['说明由宿主提供'], states: [{ id: 'pending', name: '待接入', component: PendingDemo }] },
   { id: 'workspace-missing-task', name: 'WorkspaceMissingTask', description: '任务不存在时的返回入口。', importPath: workspacePageViews, source, exampleSource, props: ['onBack'], dependencies: ['跳转由宿主控制'], states: [{ id: 'missing', name: '未找到', component: MissingDemo }] },
   { id: 'workspace-pinned-cards-column', name: 'WorkspacePinnedCardsColumn', description: '固定卡片容器，随右侧对话调整位置。', importPath: workspacePageViews, source, exampleSource, props: ['docked, children'], dependencies: ['放在相对定位的工作区正文中'], states: [{ id: 'floating', name: '未固定对话', component: ColumnDefault }, { id: 'docked', name: '对话已固定', component: ColumnDocked, viewport: 'wide' }] },
@@ -152,4 +184,7 @@ export const workspacePageEntries: CatalogEntry[] = [
   { id: 'workspace-chat-input', name: 'WorkspaceChatInput', description: '受控输入与停止按钮。', importPath: workspacePageViews, source, exampleSource, props: ['draft, busy, onDraft, onSend, onStop'], dependencies: ['发送和停止由宿主处理'], states: [{ id: 'ready', name: '输入', component: InputReady }, { id: 'busy', name: '生成中', component: InputBusy }] },
   { id: 'workspace-chat-pane-view', name: 'WorkspaceChatPaneView', description: '任务引导对话的消息、队列和输入。', importPath: workspacePageViews, source, exampleSource, props: ['messages, live, busy, queued, queueText, taskName', 'draft, onDraft, onSend, onStop, onResume, onRetry', '生成卡与概念卡回调及消息展示配置'], dependencies: ['示例消息保存在内存；生成卡需要显式注入宿主'], states: [{ id: 'conversation', name: '示例对话', component: PaneDemo, height: 620 }, { id: 'streaming', name: '生成中', component: PaneStreaming, height: 620 }, { id: 'queued', name: '消息排队', component: PaneQueued, height: 620 }] },
   { id: 'workspace-toast', name: 'WorkspaceToast', description: '复用正式基础提示。', importPath: workspacePageViews, source: toastSource, exampleSource, props: ['children, role?: status | alert'], dependencies: ['宿主控制显示时机'], states: [{ id: 'status', name: '普通提示', component: ToastInfo }, { id: 'error', name: '错误提示', component: ToastError }] },
+  { id: 'workspace-resource-library', name: 'WorkspaceResourceLibrary', description: '资料页共用标题、操作栏与内容栏。', importPath: workspacePageViews, source: resourceSource, exampleSource, props: ['title, description, actions?, busy?, children'], dependencies: ['列表状态由宿主提供'], states: [{ id: 'list', name: '有资料', component: ResourceLibraryDemo }, { id: 'empty', name: '空列表', component: ResourceLibraryEmpty }] },
+  { id: 'workspace-resource-list', name: 'WorkspaceResourceList', description: '共用文件行间距和列表语义。', importPath: workspacePageViews, source: resourceSource, exampleSource, props: ['label?, children'], dependencies: ['文件行由宿主传入'], states: [{ id: 'list', name: '资料列表', component: ResourceLibraryDemo }] },
+  { id: 'workspace-resource-row', name: 'WorkspaceResourceRow', description: '统一文件名、详情和可选行内操作。', importPath: workspacePageViews, source: resourceSource, exampleSource, props: ['name, detail?, actions?, current?, disabled?, onOpen?'], dependencies: ['打开与管理操作由宿主提供'], states: [{ id: 'rows', name: '打开与行内操作', component: ResourceLibraryDemo }] },
 ]

@@ -1,5 +1,5 @@
 import { Icon } from '../icons'
-import { useEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { formatMessageTime } from './chatTime'
 import type {ChatImage} from './types'
 
@@ -18,6 +18,7 @@ export interface UserMessageProps {
   /** Optional host-owned edit state survives view unmounts. */
   editDraft?: { text: string; editing: boolean }
   onEditDraftChange?: (draft: { text: string; editing: boolean }) => void
+  onRequestEdit?: () => Promise<void>
   /** 回合生成中：这一问正在被回答，编辑键先禁用。 */
   busy?: boolean
 }
@@ -30,6 +31,7 @@ export function UserMessage({
   images,
   editDraft,
   onEditDraftChange,
+  onRequestEdit,
 }: UserMessageProps) {
   const [localEditing, setLocalEditing] = useState(false)
   const [localDraft, setLocalDraft] = useState(text)
@@ -48,7 +50,8 @@ export function UserMessage({
     const el = fieldRef.current
     if (!el) return
     el.style.height = 'auto'
-    el.style.height = el.scrollHeight + 'px'
+    el.style.height = Math.min(el.scrollHeight, 240) + 'px'
+    el.style.overflowY = el.scrollHeight > 240 ? 'auto' : 'hidden'
   }
 
   const save = () => {
@@ -61,14 +64,14 @@ export function UserMessage({
     } else changeEdit(draft, false)
   }
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!editing) return
     const el = fieldRef.current
     if (!el) return
     grow()
     el.focus()
     el.setSelectionRange(el.value.length, el.value.length)
-  }, [editing])
+  }, [editing, draft])
 
   return (
     <div className={'chat-message user' + (editing ? ' editing' : '')}>
@@ -98,7 +101,7 @@ export function UserMessage({
             }}
           />
           <div className="user-edit-btns">
-            <button className="outline" onClick={() => changeEdit(text, false)}>
+            <button className="outline" disabled={busy} onClick={() => changeEdit(text, false)}>
               取消
             </button>
             <button className="primary" disabled={busy || !draft.trim()} onClick={save}>
@@ -129,10 +132,10 @@ export function UserMessage({
           {onEdit && (
             <button
               aria-label="编辑这条消息"
-              title={busy ? '生成中不能改' : '编辑'}
+              title={busy ? '正在核对操作' : '编辑'}
               disabled={busy}
-              onClick={() => {
-                changeEdit(text, true)
+              onClick={async () => {
+                try { await onRequestEdit?.(); changeEdit(text, true) } catch {}
               }}
             >
               <Icon name="pen" size={16} />

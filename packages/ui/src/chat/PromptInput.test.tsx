@@ -22,6 +22,21 @@ afterEach(() => { act(() => root.unmount()); node.remove(); vi.useRealTimers(); 
 const render = () => act(() => root.render(<PromptInput {...props} />))
 const button = (label: string) => node.querySelector(`[aria-label="${label}"]`) as HTMLButtonElement
 
+it('shares the primary action position for stop, resume and sending while preserving disabled controls', () => {
+  props.value = ''; props.canSend = false; props.busy = true; props.onStop = vi.fn(); render()
+  expect(node.querySelectorAll('.prompt-send')).toHaveLength(1)
+  act(() => button('停止生成').click())
+  expect(props.onStop).toHaveBeenCalledOnce()
+  props.busy = false; props.onResume = vi.fn(); props.actionDisabled = true; render()
+  expect(button('继续生成').disabled).toBe(true)
+  props.actionDisabled = false; render()
+  act(() => button('继续生成').click())
+  expect(props.onResume).toHaveBeenCalledOnce()
+  props.value = '新问题'; props.onResume = undefined; props.canSend = true; render()
+  expect(button('发送消息').disabled).toBe(false)
+  expect(node.querySelectorAll('.prompt-send')).toHaveLength(1)
+})
+
 it('Enter 提交，Shift+Enter 和组合输入不提交；回调不自行清空受控草稿', () => {
   props.autoFocus = true; render()
   const field = node.querySelector('textarea')!
@@ -35,6 +50,21 @@ it('Enter 提交，Shift+Enter 和组合输入不提交；回调不自行清空�
   props.canSend = false; render()
   act(() => field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })))
   expect(props.onSend).toHaveBeenCalledOnce()
+})
+
+it('技能标记显示图标与名称，不提供关闭按钮，并保留退格移除', () => {
+  const remove = vi.fn()
+  props.contextItems = [{ id: 'teach', label: 'teach', kind: 'skill', remove }]
+  render()
+  const token = node.querySelector('[data-astryx-token]')!
+  expect(token.textContent).toBe('teach')
+  expect(token.textContent).not.toContain('/')
+  expect(token.querySelector('svg')).not.toBeNull()
+  expect(button('移除技能 teach')).toBeNull()
+  const field = node.querySelector('textarea')!
+  field.setSelectionRange(0, 0)
+  act(() => field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true })))
+  expect(remove).toHaveBeenCalledOnce()
 })
 
 it('模型和强度菜单保留受控选择、键盘操作、互斥退场及 Escape', () => {

@@ -40,6 +40,8 @@ async function harness(policy = {}, storageWrapper = storage => storage) {
   const backend = createFileBackend({ id: 'r9', root: join(fixture.root, 'r9') });
   let storage = await openStorage({ binding, migrations, backend });
   const feeSources = new Map(), streams = new Map(), identities = new Map(), preflights = new Map(), authorizations = new Map(), inputs = new Map();
+  const connectionFailures = new Map();
+  const transportHolds = new Map();
   let sends = 0;
   const rules = { ...defaultLearningAdmissionPolicy, version: 'r9-test-v1', ...policy };
   function owner(dispatcher = { id: 'live', hasEnded: async () => false }) {
@@ -53,9 +55,14 @@ async function harness(policy = {}, storageWrapper = storage => storage) {
       requestFetch: async () => async (_url, init) => {
         sends++;
         const request = JSON.parse(init.body), label = request.messages[0].content;
+        await transportHolds.get(label);
+        if (connectionFailures.has(label)) throw new TypeError('fetch failed', {
+          cause: Object.assign(new Error('Controlled transport failure'), { code: connectionFailures.get(label) }),
+        });
         const stream = new ReadableStream({
           start(controller) {
             streams.set(label, controller);
+            if (init.signal?.aborted) { controller.error(new DOMException('Local reader aborted', 'AbortError')); return; }
             // A real fetch rejects its local reader on abort. This says nothing about
             // the provider's computation, so admission must keep its upstream slot.
             init.signal?.addEventListener('abort', () => {
@@ -82,7 +89,7 @@ async function harness(policy = {}, storageWrapper = storage => storage) {
       choices: [{ index: 0, delta: { role: 'assistant', content: '完成' }, finish_reason: 'stop' }], usage }) + '\n\ndata: [DONE]\n\n'));
     controller.close();
   }
-  return { fixture, environmentId, binding, backend, feeSources, preflights, authorizations, rules, owner, receive, finish,
+  return { fixture, environmentId, binding, backend, feeSources, preflights, authorizations, connectionFailures, transportHolds, rules, owner, receive, finish,
     get storage() { return storage; }, get checks() { return checks; }, get sends() { return sends; },
     async reopen(dispatcher) { await storage.close(); storage = await openStorage({ binding, migrations, backend }); checks = createChecks(storage, owner(dispatcher)); },
     async close() {
@@ -90,6 +97,35 @@ async function harness(policy = {}, storageWrapper = storage => storage) {
       await checks.drain().catch(() => {});
       await storage.close(); await fixture.close();
     } };
+}
+
+for (const code of ['ECONNREFUSED', 'ECONNRESET']) {
+  test(`learning admission reconciles connection failure ${code} from saved transport evidence`, { timeout: 90000 }, async () => {
+    const h = await harness();
+    try {
+      const identity = actor(h.environmentId);
+      h.connectionFailures.set('failed-connection', code);
+      const failed = await h.receive(identity, 'failed-connection');
+      await h.checks.dispatch(identity, failed);
+      await until(() => h.checks.read(identity, failed), fact => fact.physicalRequestEnded && fact.state !== 'accepted');
+      const { rows: [settled] } = await h.storage.read('SELECT * FROM model_learning_admissions WHERE attempt_id=$1', [failed]);
+      assert.equal(settled.physical_held, false);
+      assert.equal(settled.local_transport_ended, true);
+      assert.equal(settled.settlement, code === 'ECONNREFUSED' ? 'not-sent' : 'unknown');
+      // Reproduce a reservation retained by an older build, with the immutable
+      // attempt still carrying its original connection failure evidence.
+      if (code === 'ECONNREFUSED') await h.storage.request({ requestId: randomUUID(), fingerprint: 'legacy-held-connection' }, async tx => {
+        await tx.query("UPDATE model_learning_admissions SET physical_held=true,upstream_ended=false,settlement='unknown' WHERE attempt_id=$1", [failed]);
+        return null;
+      });
+      const next = await h.receive(identity, 'next-question');
+      await h.checks.dispatch(identity, next);
+      await until(async () => h.sends, sends => sends === 2);
+      h.finish('next-question');
+      await until(() => h.checks.read(identity, next), fact => fact.state === 'completed');
+      await h.checks.validate();
+    } finally { await h.close(); }
+  });
 }
 
 test('R9 real PG atomically limits shared fees and physical/principal slots, bypasses blocked principals fairly, and settles once after restart', { timeout: 90000 }, async () => {
@@ -135,7 +171,35 @@ test('R9 real PG atomically limits shared fees and physical/principal slots, byp
   } finally { await h.close(); }
 });
 
-test('R9 unknown/cancelled upstream keeps reservation and physical slot across dispatcher death and time windows', { timeout: 90000 }, async () => {
+test('R9 a logical cancellation cannot release a transport that has not actually returned', { timeout: 90000 }, async () => {
+  const h = await harness();
+  let release;
+  const held = new Promise(resolve => { release = resolve; });
+  try {
+    const identity = actor(h.environmentId);
+    h.transportHolds.set('held-transport', held);
+    const original = await h.receive(identity, 'held-transport');
+    await h.checks.dispatch(identity, original);
+    await until(async () => h.sends, count => count === 1);
+    await h.checks.cancel(identity, original);
+    const { rows: [before] } = await h.storage.read('SELECT * FROM model_learning_admissions WHERE attempt_id=$1', [original]);
+    assert.equal(before.physical_held, true);
+    assert.equal(before.local_transport_ended, false);
+    const next = await h.receive(identity, 'after-held-transport');
+    await h.checks.dispatch(identity, next);
+    assert.equal(h.sends, 1);
+    assert.equal((await h.checks.read(identity, next)).reason, 'learning-principal-concurrency');
+    release();
+    await until(() => h.checks.read(identity, original), fact => fact.physicalRequestEnded);
+    await h.checks.dispatch(identity, next);
+    await until(async () => h.sends, count => count === 2);
+    h.finish('after-held-transport');
+    await until(() => h.checks.read(identity, next), fact => fact.state === 'completed');
+    await h.checks.validate();
+  } finally { release(); await h.close(); }
+});
+
+test('R9 cancellation releases ended local transport while unknown fees survive restart and time windows', { timeout: 90000 }, async () => {
   const h = await harness({ maxPhysical: 1, maxFeeSourcePhysical: 1, feeWindowMs: 1000 });
   try {
     const a = actor(h.environmentId), b = actor(h.environmentId);
@@ -152,10 +216,11 @@ test('R9 unknown/cancelled upstream keeps reservation and physical slot across d
     await h.storage.request({ requestId: randomUUID(), fingerprint: 'age-r9' }, tx => tx.query("UPDATE model_learning_admissions SET charged_at=clock_timestamp()-interval '2 days' WHERE attempt_id=$1", [id]));
     await h.reopen({ id: 'after-crash', hasEnded: async () => true });
     await h.checks.dispatch(b, next);
-    assert.equal((await h.checks.read(b, next)).state, 'accepted');
-    assert.equal(h.sends, 1);
+    await until(async () => h.sends, sends => sends === 2);
+    h.finish('waiting');
+    await until(() => h.checks.read(b, next), fact => fact.state === 'completed');
     const { rows: [charge] } = await h.storage.read('SELECT * FROM model_learning_admissions WHERE attempt_id=$1', [id]);
-    assert.equal(charge.physical_held, true); assert.equal(charge.upstream_ended, false); assert.equal(charge.settled_units, null); assert.equal(charge.settlement, 'unknown');
+    assert.equal(charge.physical_held, false); assert.equal(charge.local_transport_ended, true); assert.equal(charge.upstream_ended, false); assert.equal(charge.settled_units, null); assert.equal(charge.settlement, 'unknown');
     assert.equal((await h.checks.read(a, id)).physicalRequestEnded, true);
   } finally { await h.close(); }
 });
@@ -294,12 +359,49 @@ test('R9 an external call with lost result persistence is never replayed or refu
     await h.checks.dispatch(a, id);
     const next = await h.receive(b, 'later');
     await h.checks.dispatch(b, next);
-    assert.equal(h.sends, 1);
-    assert.equal((await h.checks.read(b, next)).reason, 'learning-physical-capacity');
+    await until(async () => h.sends, sends => sends === 2);
+    h.finish('later');
+    await until(() => h.checks.read(b, next), fact => fact.state === 'completed');
     const { rows: [charge] } = await h.storage.read('SELECT * FROM model_learning_admissions WHERE attempt_id=$1', [id]);
-    assert.equal(charge.physical_held, true); assert.equal(charge.upstream_ended, false);
+    assert.equal(charge.physical_held, false); assert.equal(charge.local_transport_ended, true); assert.equal(charge.upstream_ended, false);
     assert.equal(charge.settlement, 'unknown'); assert.equal(charge.settled_units, null);
     await h.checks.drain(); await h.checks.validate();
+  } finally { await h.close(); }
+});
+
+test('R9 ended transport with failed result writes recovers capacity without restarting or replaying', { timeout: 90000 }, async () => {
+  let loseResults = false, failedWrites = 0;
+  const h = await harness({ maxPhysical: 1 }, storage => ({ ...storage,
+    async request(input, effect) {
+      if (loseResults && (input.fingerprint.startsWith('model-result:') || input.fingerprint.startsWith('model-transition:'))) {
+        failedWrites++; throw new StorageError('unavailable');
+      }
+      return storage.request(input, effect);
+    },
+  }));
+  try {
+    const identity = actor(h.environmentId);
+    const original = await h.receive(identity, 'failed-publication');
+    await h.checks.dispatch(identity, original);
+    await until(async () => h.sends, count => count === 1);
+    loseResults = true;
+    h.finish('failed-publication');
+    await until(async () => failedWrites, count => count >= 2);
+    loseResults = false;
+    await until(() => h.checks.read(identity, original), fact => fact.physicalRequestEnded);
+    const { rows: [charge] } = await h.storage.read('SELECT * FROM model_learning_admissions WHERE attempt_id=$1', [original]);
+    assert.equal(charge.local_transport_ended, true);
+    assert.equal(charge.physical_held, false);
+    assert.equal(charge.settlement, 'unknown');
+    assert.equal(charge.upstream_ended, false);
+    const next = await h.receive(identity, 'after-publication-failure');
+    await h.checks.dispatch(identity, next);
+    await until(async () => h.sends, count => count === 2);
+    h.finish('after-publication-failure');
+    await until(() => h.checks.read(identity, next), fact => fact.state === 'completed');
+    await h.checks.dispatch(identity, original);
+    assert.equal(h.sends, 2);
+    await h.checks.validate();
   } finally { await h.close(); }
 });
 

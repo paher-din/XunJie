@@ -1,6 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { FileTabs } from './FileTabs'
-import { FileStripFrame } from './FileStripView'
 import { Icon, type IconName } from '../icons'
 import type { WorkspaceFile as ProjectFile } from './filePresentation'
 import {
@@ -160,7 +159,7 @@ export const FileStrip = forwardRef<FileStripHandle, FileStripProps>(function Fi
   }
 
   return (
-    <FileStripFrame>
+    <div className="cw-filestrip">
       <div className="cw-filelist" ref={wrapRef}>
         <button
           ref={menuButtonRef}
@@ -311,6 +310,6 @@ export const FileStrip = forwardRef<FileStripHandle, FileStripProps>(function Fi
       <FileTabs files={openFiles.map(file => ({ id: file.fileId, name: file.path,
         decoration: isCreated(file) ? <span className="cw-tag-new">新建</span> : isDirty(file) ? <i className="cw-dot" /> : null }))}
         activeId={activeFileId} onOpen={onOpen} onClose={onClose} tabRoles />
-    </FileStripFrame>
+    </div>
   )
 })

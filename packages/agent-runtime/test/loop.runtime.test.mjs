@@ -75,6 +75,38 @@ async function harness(responses, tools = [echoTool()], faults = {}, budget = un
 }
 const input = (sessionId, text) => ({ requestId: randomUUID(), sessionId, text, context: {} });
 
+test('编辑提问前的消息会退休旧回应，不把旧回答重新带入新模型上下文', async () => {
+  const ask = { definition: { name: 'ask', description: 'Ask the student', inputSchema: { type: 'object', properties: {} } },
+    supportsBackground: false, async execute(_call, context) {
+      await context.ask({ presentation: { question: 'Choose a direction' }, deadline: null });
+      return { kind: 'completed', outcome: 'success', summary: 'Student responded' };
+    } };
+  const h = await harness([
+    { text: '', toolIntents: [{ callId: 'ask-original', name: 'ask', arguments: {} }] },
+    { text: 'old answer', toolIntents: [] }, { text: 'new answer', toolIntents: [] },
+  ], [ask]);
+  try {
+    const submitted = await h.runtime.submit(h.identity, input(h.session.sessionId, 'original question'));
+    let question;
+    for (let attempt = 0; attempt < 200; attempt++) {
+      question = (await h.runtime.sessionSnapshot(h.identity, h.session.sessionId)).questions.find(item => item.state === 'pending');
+      if (question) break;
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
+    assert.ok(question);
+    await h.runtime.answerQuestion(h.identity, h.session.sessionId, { questionId: question.questionId,
+      requestId: randomUUID(), expectedVersion: question.version, answer: { kind: 'text', text: 'old response' } });
+    await h.settle();
+    await h.runtime.inputControl(h.identity, h.session.sessionId, submitted.inputId,
+      { requestId: randomUUID(), expectedVersion: 1, operation: 'edit', text: 'revised question' });
+    await h.settle();
+    const { rows: [row] } = await h.storage.read('SELECT state FROM agent_runtime_sessions WHERE session_id=$1', [h.session.sessionId]);
+    assert.ok(row.state.history.some(item => item.text === 'revised question'));
+    assert.ok(!row.state.history.some(item => item.text === 'old response' || item.text === 'old answer'));
+    await validateAgentRuntime(h.storage);
+  } finally { await h.close(); }
+});
+
 test('一次响应含一个工具：1 Step 派发工具，结果后下一 Step 解释，Turn completed', async () => {
   const h = await harness([
     { text: '调用工具', toolIntents: [{ callId: 'c1', name: 'echo', arguments: { value: 'hi' } }] },
