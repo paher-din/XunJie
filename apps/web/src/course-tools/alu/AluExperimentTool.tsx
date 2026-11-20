@@ -42,6 +42,7 @@ const settled = (record: ExecutionRecord) => record.query.statusKnowledge === 'c
 const executionStatusLabel: Partial<Record<ExecutionVisibility['state'], string>> = {
   queued: '等待执行', running: '执行中', succeeded: '已完成', failed: '未完成', cancelled: '已停止',
 }
+const LOCATION_QUERY_ATTEMPTS = 3
 
 function useResultVisibility(enabled: boolean, requestId: string | undefined, contentId: string | undefined,
   token: string | undefined, workIds: string) {
@@ -207,11 +208,8 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
       return false
     }
   }
-  const [semanticLocation, setSemanticLocation] = useState<{ parentToken?: string; value: ComponentResultLocation }>()
   const [closedLocationToken, setClosedLocationToken] = useState<string>()
-  const candidateLocation = semanticLocation?.parentToken === location?.token && semanticLocation
-    ? semanticLocation.value : location
-  const resultLocation = !compact && candidateLocation?.token !== closedLocationToken ? candidateLocation : undefined
+  const resultLocation = !compact && location?.token !== closedLocationToken ? location : undefined
   const locatedRecord = resultLocation ? records.find(record => record.requestId === resultLocation.requestId
     && record.action.execution.instance.key === binding.key
     && record.action.execution.instance.definitionDigest === binding.definition.digest) : undefined
@@ -223,13 +221,24 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
   // inputs and prediction gate. Re-checking a name-scoped "before submission" helper here made
   // a submitted check-all permanently invisible.
   const locatedResult = authorized && locatedRecord && (!gated || locatedVisibility?.reveal === true) ? locatedRecord : undefined
-  const locationPending = !!resultLocation && (gated ? locatedVisibility === undefined : !locatedRecord)
-  const requestedLocation = useRef<string | undefined>(undefined)
+  const requestedLocation = useRef<{ token: string; attempts: number } | undefined>(undefined)
   useEffect(() => {
-    if (!authorized || !resultLocation || locatedRecord || requestedLocation.current === resultLocation.token) return
-    requestedLocation.current = resultLocation.token
-    void execution.query(resultLocation.requestId).catch(() => {})
-  }, [authorized, resultLocation, locatedRecord, execution])
+    if (!authorized || !resultLocation || locatedRecord) return
+    const token = resultLocation.token, requestId = resultLocation.requestId
+    if (requestedLocation.current?.token !== token) requestedLocation.current = { token, attempts: 0 }
+    let active = true
+    let retry: ReturnType<typeof setTimeout> | undefined
+    const query = (attempt: number) => {
+      if (!active || requestedLocation.current?.token !== token) return
+      requestedLocation.current = { token, attempts: attempt + 1 }
+      void execution.query(requestId).catch(() => {
+        if (!active || requestedLocation.current?.token !== token || attempt + 1 >= LOCATION_QUERY_ATTEMPTS) return
+        retry = setTimeout(() => query(attempt + 1), 300 * 2 ** attempt)
+      })
+    }
+    query(0)
+    return () => { active = false; clearTimeout(retry) }
+  }, [authorized, resultLocation?.token, resultLocation?.requestId, locatedRecord, execution])
   const resetState = () => {
     try {
       const files = workspace.snapshot().files
@@ -694,10 +703,9 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
       </section>
       <NumericEditor values={controls} disabled={!canWrite} onChange={changeInput} />
       {manifest.stateVersion === 3 && <AluCaseResults activity={activity} binding={binding} state={alu} records={records}
-        record={comparisonRecord} locatedRecord={locatedObservation} locatedRange={resultLocation?.range}
-        locationToken={resultLocation?.token} locationPending={locationPending}
-        onLocateResult={value => setSemanticLocation({ parentToken: location?.token, value })}
-        suppressed={feedbackHeld || !!resultLocation && !locatedObservation} canWrite={canWrite} writeState={writeState} selectState={selectState} />}
+        record={comparisonRecord} locatedRange={resultLocation?.range}
+        suppressed={feedbackHeld || !!resultLocation && !locatedObservation}
+        canWrite={canWrite} writeState={writeState} selectState={selectState} />}
       <details className="alu-rules" open>
         <summary>公开行为、映射与采样规则</summary>
         <table><thead><tr><th>M</th><th>S</th><th>F</th><th>Cout</th></tr></thead><tbody>

@@ -177,7 +177,8 @@ export interface GenerateInput {
   segmentEpoch: number;
   signal: AbortSignal;
   adoptContext?(): Promise<void>;
-  verifyContext?(): Promise<void>;
+  /** Re-authorize the exact materials and native history this Attempt is about to dispatch. */
+  verifyContext?(input: { rebuilt: boolean }): Promise<void>;
   smallerThanBytes?: number;
   /** A final-payload pressure result may request one real compaction before dispatch. */
   allowPressureCompaction?: boolean;

@@ -188,7 +188,7 @@ export function createModelAdapter(source: ModelGatewaySource, store: AgentStore
               responseRef: null, error: 'context-pressure' });
             throw new ContextPressureError(capacity);
           }
-          await input.verifyContext?.();
+          await input.verifyContext?.({ rebuilt });
           await input.adoptContext?.();
           // Persist the source bindings before dispatch, including requests whose reply is lost.
           if (historySources?.length || input.factsDigest) {

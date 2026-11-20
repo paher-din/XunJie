@@ -29,8 +29,78 @@ export interface ProductAgentScene {
 /** Fixed target facts the host permission hook needs before any inspected data is returned. */
 export interface ProductAgentInspectionTarget {
   session: AgentSession;
-  /** Session workspace plus fixed experiment-reference activities; empty means no proven course link. */
+  /** The exact Attempt/Turn/Step selected from the persisted snapshot, never a client claim. */
+  attempt: { attemptId: string; stepId: string; turnId: string };
+  /** Course activities proven by this Attempt's accepted materials, history and tool receipts. */
   activityIds: readonly string[];
+  /** Course-level sources that have no activity link (for example a course material citation). */
+  courseIds: readonly string[];
+}
+const recordOf = (value: unknown): Record<string, unknown> | null =>
+  value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null;
+function collectInspectionSource(scope: { activityIds: Set<string>; courseIds: Set<string> }, value: unknown) {
+  const source = recordOf(value);
+  if (!source) return;
+  if (typeof source.activityId === 'string') scope.activityIds.add(source.activityId);
+  if (typeof source.courseId === 'string') scope.courseIds.add(source.courseId);
+  const nestedScope = recordOf(source.scope);
+  if (nestedScope && typeof nestedScope.activityId === 'string') scope.activityIds.add(nestedScope.activityId);
+  // Tool receipts wrap the original fixed source under `source`; material lists carry
+  // individual fixed references whose activity/course identity is equally enforceable.
+  if (source.kind === 'tool-call') collectInspectionSource(scope, source.source);
+  for (const key of ['references', 'items']) for (const value of Array.isArray(source[key]) ? source[key] as unknown[] : []) {
+    const item = recordOf(value);
+    collectInspectionSource(scope, item?.source ?? value);
+  }
+}
+function collectInspectionSources(scope: { activityIds: Set<string>; courseIds: Set<string> }, values: unknown) {
+  for (const value of Array.isArray(values) ? values : []) {
+    const item = recordOf(value);
+    collectInspectionSource(scope, item?.source ?? value);
+  }
+}
+function collectInspectionMaterials(scope: { activityIds: Set<string>; courseIds: Set<string> }, values: unknown) {
+  for (const value of Array.isArray(values) ? values : []) {
+    const item = recordOf(value);
+    // A failed/denied material can echo a client-provided activity id without proving access.
+    if (!item || !['included', 'reference-only'].includes(String(item.readState))) continue;
+    collectInspectionSource(scope, item.source);
+  }
+}
+function inspectionScope(session: AgentSession, snapshot: Awaited<ReturnType<AgentSessionPort['sessionSnapshot']>>,
+  step: { stepId: string; turnId: string; snapshot: Record<string, unknown> }, attemptId: string) {
+  const scope = { activityIds: new Set<string>(), courseIds: new Set<string>() };
+  // A workspace Session is itself fixed to one course activity. A home Session must prove
+  // its link from the exact Attempt's accepted materials/history, never from raw client input
+  // activity ids or the whole Session's unrelated Turns.
+  if (session.workspace) scope.activityIds.add(session.workspace.activityId);
+  const attemptContexts = recordOf(step.snapshot.attemptContexts);
+  const assembly = recordOf(attemptContexts?.[attemptId]) ?? recordOf(step.snapshot.context);
+  collectInspectionMaterials(scope, assembly?.materials);
+  collectInspectionSources(scope, assembly?.historySources);
+  for (const call of snapshot.toolCalls) {
+    if (call.stepId !== step.stepId) continue;
+    collectInspectionSources(scope, toolMaterial(call).map(material => material.source));
+  }
+  return { activityIds: [...scope.activityIds].sort(), courseIds: [...scope.courseIds].sort() };
+}
+/** A prior Turn may be replayed inside the native request; it must fit the same approved scope. */
+function priorTurnsWithinScope(session: AgentSession, snapshot: Awaited<ReturnType<AgentSessionPort['sessionSnapshot']>>,
+  targetTurnId: string, targetScope: { activityIds: readonly string[]; courseIds: readonly string[] }) {
+  const index = snapshot.turns.findIndex(turn => turn.turnId === targetTurnId);
+  if (index <= 0) return true;
+  const activityIds = new Set(targetScope.activityIds), courseIds = new Set(targetScope.courseIds);
+  for (const turn of snapshot.turns.slice(0, index)) {
+    const steps = snapshot.steps.filter(step => step.turnId === turn.turnId);
+    const step = steps.at(-1);
+    if (!step) return false;
+    const attempt = snapshot.attempts.filter(item => item.stepId === step.stepId).at(-1);
+    const scope = inspectionScope(session, snapshot, step, attempt?.attemptId ?? '');
+    if (!scope.activityIds.length && !scope.courseIds.length) return false;
+    if (scope.activityIds.some(activityId => !activityIds.has(activityId))
+      || scope.courseIds.some(courseId => !courseIds.has(courseId))) return false;
+  }
+  return true;
 }
 export interface ProductAgentOptions {
   storage: OwnedStorage;
@@ -126,27 +196,20 @@ export function createProductAgent(options: ProductAgentOptions) {
     // Read the fixed runtime facts with the target's own identity, never the inspector's. This is
     // the same immutable snapshot a normal read would use and performs no model or tool action.
     const snapshot = await host.local.sessionSnapshot(session.identity, sessionId);
-    const activityIds = new Set<string>();
-    if (session.workspace) activityIds.add(session.workspace.activityId);
-    for (const item of snapshot.inputs) {
-      const refs = item.input.context.experimentReferences;
-      if (!Array.isArray(refs)) continue;
-      for (const ref of refs) {
-        if (ref && typeof ref === 'object' && !Array.isArray(ref)
-          && typeof (ref as Record<string, unknown>).activityId === 'string')
-          activityIds.add((ref as Record<string, unknown>).activityId as string);
-      }
-    }
-    // The host-level permission hook receives the exact target metadata. It must prove a
-    // target-level course/activity relationship; course.manage alone is not enough.
-    await options.authorizeInspection(identity, { session, activityIds: [...activityIds] });
-    await options.authorize(identity);
     const attempt = snapshot.attempts.filter(item => (!target.attemptId || item.attemptId === target.attemptId)
       && (!target.stepId || item.stepId === target.stepId)
       && (!target.turnId || snapshot.steps.find(step => step.stepId === item.stepId)?.turnId === target.turnId)).at(-1);
-    if (!attempt) throw new StorageError('missing');
+    // Do not distinguish a non-existent target from a private one before the host hook runs.
+    if (!attempt) throw new StorageError('forbidden');
     const step = snapshot.steps.find(item => item.stepId === attempt.stepId);
     if (!step) throw new StorageError('corrupt');
+    // The host-level permission hook receives the exact Attempt identity and evidence drawn
+    // only from that Turn/Attempt. A whole-Session activity can never authorize a private one.
+    const scope = inspectionScope(session, snapshot, step, attempt.attemptId);
+    if (!scope.activityIds.length && !scope.courseIds.length) throw new StorageError('forbidden');
+    await options.authorizeInspection(identity, { session,
+      attempt: { attemptId: attempt.attemptId, stepId: step.stepId, turnId: step.turnId }, ...scope });
+    await options.authorize(identity);
     const attemptContexts = step.snapshot.attemptContexts as Record<string, unknown> | undefined;
     const assembly = attemptContexts?.[attempt.attemptId] as {
       materials?: { sourceId: string; label: string; source: Facts; readState: string }[];
@@ -170,13 +233,18 @@ export function createProductAgent(options: ProductAgentOptions) {
       const surviving = new Set(allowed.map(entry => entry.id));
       if (!receipts.every(entry => surviving.has(entry.id))) throw new StorageError('forbidden');
     }
+    const requestInScope = priorTurnsWithinScope(session, snapshot, step.turnId, scope);
     const gateway = await resolveGateway(options.models, session.identity, sessionId);
     if (!gateway.checks.readRecorded) throw new StorageError('unavailable');
-    const modelResult = attempt.requestRef ? await gateway.checks.readRecorded(session.identity, attempt.attemptId) : null;
+    const modelResult = requestInScope && attempt.requestRef
+      ? await gateway.checks.readRecorded(session.identity, attempt.attemptId) : null;
     const request = modelResult ? await gateway.checks.requestPayload(session.identity, attempt.attemptId) : null;
     const capacities = step.snapshot.attemptCapacities as Record<string, unknown> | undefined;
     return { version: 1 as const, sessionId, turnId: step.turnId, stepId: step.stepId, attemptId: attempt.attemptId,
       assembly, attempt, capacity: capacities?.[attempt.attemptId] ?? null, request, result: modelResult,
+      // A native request replaying an earlier unscoped/private Turn cannot be returned without
+      // exposing that prior content. The target-scoped assembly and tool receipts remain usable.
+      ...(!requestInScope ? { redaction: { request: 'mixed-session-history', result: 'mixed-session-history' } } : {}),
       tools: calls.map(call => ({ toolCallId: call.toolCallId, name: call.name, state: call.state, result: call.result })),
       citations: calls.filter(call => call.name === 'cite_source').flatMap(call => {
         const value = call.result?.kind === 'completed' && call.result.data && typeof call.result.data === 'object'

@@ -178,6 +178,15 @@ test('the formal inspection entry reads a student personal session for an author
       const restored = (await call('agent-inspections/' + session.sessionId + '?turnId=' + receipt.turnId,
         undefined, { cookie: again.cookie, 'x-xj-agent-contract': '3' })).value;
       assert.equal(restored.attemptId, view.attemptId);
+      // Withdrawing the student's current course access closes inspection even though the
+      // historical Activity still names the course and the teacher still has course.manage.
+      await spaceStorage.request({ requestId: id(), fingerprint: 'inspection-course-revoked' }, async tx => {
+        await tx.query('UPDATE course_access SET active=false WHERE course_id=$1 AND principal_id=$2',
+          [courseId, student.principalId]);
+        return null;
+      });
+      await call('agent-inspections/' + session.sessionId + '?turnId=' + receipt.turnId, undefined,
+        { cookie: again.cookie, 'x-xj-agent-contract': '3' }, 403);
       // An unrelated home session is not opened merely because the actor has course.manage.
       const home = (await call('agent-sessions', { requestId: id(), sessionId: id(), scenario: 'student-assistant' },
         { ...personal, 'x-xj-agent-contract': '3' })).value;

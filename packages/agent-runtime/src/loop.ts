@@ -155,13 +155,21 @@ async function runStep(deps: LoopDependencies, turn: AgentTurn, step: AgentStep,
       rebuildHistorySources: materialsAsHistorySources(plan.rebuildMaterials),
       factsDigest: plan.factsDigest,
       segmentEpoch: plan.segmentEpoch,
-      ...(scenario.authorizeHistory ? { async verifyContext() {
+      ...(scenario.authorizeHistory ? { async verifyContext({ rebuilt }) {
         const current = await store.sessionState(sessionId);
         const sources = Array.isArray(current.nativeHistorySources)
           ? current.nativeHistorySources as unknown as NonNullable<HistoryEntry['sources']> : [];
-        const entries = [...plan.history, ...sources.map((source, index): HistoryEntry => ({
-          id: 'dispatch-source:' + index, version: 1, role: 'user', text: '', sources: [source],
-        }))];
+        const nativeEntries = sources.map((source, index): HistoryEntry => ({
+          id: 'dispatch-native:' + index, version: 1, role: 'user', text: '', sources: [source],
+        }));
+        // The final request may inline `rebuildMaterials` on a fresh segment or keep the
+        // current `materials` reference-only view on a continued native segment. Check both
+        // the content-bearing receipts and the recorded native sources at dispatch time.
+        const materialEntries = materialsAsHistorySources(rebuilt ? plan.rebuildMaterials : plan.materials)
+          .map((source, index): HistoryEntry => ({
+            id: 'dispatch-material:' + index, version: 1, role: 'user', text: '', sources: [source],
+          }));
+        const entries = [...plan.history, ...nativeEntries, ...materialEntries];
         if (historyDigest(await scenario.authorizeHistory!(scenarioInput, entries)) !== historyDigest(entries))
           throw new AgentError('context-changed');
       } } : {}),
@@ -172,9 +180,18 @@ async function runStep(deps: LoopDependencies, turn: AgentTurn, step: AgentStep,
     });
   };
   let response;
+  let revocationRetry = false;
   try { response = await generate();
   } catch (error) {
-    if (error instanceof ContextPressureError) {
+    if (error instanceof AgentError && error.code === 'context-changed') {
+      if (revocationRetry) throw error;
+      revocationRetry = true;
+      // The context assembled earlier in this Step can become stale before dispatch. Rebuild
+      // once from current owner authorization; only the rebuilt, rechecked payload may send.
+      plan = await buildContext({ store, gateway: deps.gateway, scenario, taskFacts: deps.taskFacts,
+        budget, spent: usage, signal }, scenarioInput, { inputs, notifications });
+      response = await generate({ allowPressureCompaction: false });
+    } else if (error instanceof ContextPressureError) {
       const compacted = await buildContext({ store, gateway: deps.gateway, scenario, taskFacts: deps.taskFacts,
         budget, spent: usage, signal, compactionBasis: error.capacity }, scenarioInput, { inputs, notifications });
       plan = compacted;

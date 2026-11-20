@@ -846,13 +846,16 @@ export async function createProductLearningApplication(context: {
         async authorizeInspection(identity, target) {
           if (identity.environmentId !== environment.environmentId || identity.kind !== 'school'
             || !await spaces.hasMemberPermission(identity, 'course.manage')) throw new StorageError('forbidden');
-          // A school manager may inspect only the local personal learner. Every home session still
-          // needs a fixed course activity relationship; course.manage alone never opens all sessions.
+          // A school manager may inspect only the local personal learner. The exact target
+          // Attempt/Turn must itself prove a managed course relation; `course.manage` alone
+          // never opens a home Session or a private Turn in a mixed Session.
           const personal = await spaces.readPersonal().catch(() => null);
           if (!personal || !sameAgentSubject(target.session.identity, personal) || !learning)
             throw new StorageError('forbidden');
+          if (!target.attempt?.attemptId || !target.attempt.stepId || !target.attempt.turnId)
+            throw new StorageError('forbidden');
           const managed = await courses.listCourses(identity, true);
-          const courseIds = new Set(managed.courses.map(course => course.courseId));
+          const managedCourseIds = new Set(managed.courses.map(course => course.courseId));
           for (const activityId of target.activityIds) {
             try {
               const activity = await learning.readForInspection(target.session.identity, activityId);
@@ -866,7 +869,7 @@ export async function createProductLearningApplication(context: {
                   .catch(() => null);
                 if (source?.course) { courseId = source.course.courseId; accessIdentity = source.identity; }
               }
-              if (!courseId || !courseIds.has(courseId)) continue;
+              if (!courseId || !managedCourseIds.has(courseId)) continue;
               // Current course eligibility is rechecked for the target, so a withdrawn course
               // closes inspection even when the historical activity body still names it.
               if (await courses.hasAccess(accessIdentity, courseId)) return;
@@ -874,6 +877,12 @@ export async function createProductLearningApplication(context: {
               if (!(error instanceof StorageError)) throw error;
               // A withdrawn/missing activity is not evidence of access; keep checking the rest.
             }
+          }
+          // A course-material source has a verified courseId but no activity id. It is still
+          // target-specific evidence; require both management and the learner's current access.
+          for (const courseId of target.courseIds) {
+            if (!managedCourseIds.has(courseId)) continue;
+            if (await courses.hasAccess(target.session.identity, courseId).catch(() => false)) return;
           }
           throw new StorageError('forbidden');
         },

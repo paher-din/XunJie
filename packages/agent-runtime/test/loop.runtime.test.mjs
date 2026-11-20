@@ -25,8 +25,9 @@ function mockGateway(responses, faults = {}) {
   const segment = (segmentId, seq, projectionId = null) => ({ sessionId: undefined, segmentId, formatVersion: 1, sequence: seq,
     connection: selected, prefixDigest: '0'.repeat(64), projectionId, resultRef: null, pending: false, closed: false, pendingTools: [] });
   const receives = [];
+  const calls = { dispatched: [] };
   return {
-    calls: { dispatched: [] }, settles, segmentConnections, segmentInputs, receives, segments,
+    calls, settles, segmentConnections, segmentInputs, receives, segments,
     setConnection(value) { selected = value; },
     selection: {
       read: async () => ({ selected: true, version: 1 }),
@@ -42,8 +43,9 @@ function mockGateway(responses, faults = {}) {
       close: async (_identity, segmentId) => { const s = segments.get(segmentId); s.closed = true; return { ...s, boundary: { owner: { environmentId: 'e', serviceId: 's' }, segmentId, sequence: s.sequence, routeId: connection.routeId, resultRef: null } }; },
     },
     checks: {
-      receive: async (_identity, input) => { receives.push(input); const a = { attemptId: input.attemptId, state: 'accepted', physicalRequestEnded: false, dispatched: false, cancelRequested: false, text: '', usage: { state: 'unknown' }, requestRef: randomUUID(), resultRef: null, reason: '', upstreamStopped: 'unknown', createdAt: new Date().toISOString(), purpose: 'learning', connection, limits: input.limits }; attempts.set(input.attemptId, a); return a; },
+      receive: async (_identity, input) => { receives.push(input); const a = { attemptId: input.attemptId, state: 'accepted', physicalRequestEnded: false, dispatched: false, cancelRequested: false, text: '', usage: { state: 'unknown' }, requestRef: randomUUID(), resultRef: null, reason: '', upstreamStopped: 'unknown', createdAt: new Date().toISOString(), purpose: 'learning', connection, limits: input.limits, input: input.input }; attempts.set(input.attemptId, a); return a; },
       dispatch: async (_identity, attemptId) => { const a = attempts.get(attemptId);
+        calls.dispatched.push({ attemptId, input: a.input });
         if (faults.dispatchFailures) { faults.dispatchFailures--; throw new Error('temporarily unavailable'); }
         const r = queue.shift() ?? { text: '完成', toolIntents: [] };
         await r.beforeReply?.();
@@ -158,6 +160,37 @@ test('派发前已提交的原生来源在下一 Turn 失效时触发重建并�
     const rebuilt = h.gateway.segmentInputs.at(-1);
     assert.ok(rebuilt.previousSegmentId);
     assert.equal(JSON.stringify(rebuilt.portable).includes('source-marker'), false);
+  } finally { await h.close(); }
+});
+
+test('上下文装配后撤权：派发前重新授权并重建，不发送已读材料正文', async () => {
+  const source = { kind: 'work', objectId: randomUUID(), contentId: randomUUID() };
+  const material = { materialId: 'M-dispatch-revoked', sourceId: 'dispatch-revoked', kind: 'student-work', author: 'student',
+    label: 'alu.sv v7', version: 'v7', range: null, digest: 'dispatch-revoked-digest', content: 'DISPATCH_REVOKED_MARKER',
+    readState: 'included', source, citationAllowed: true };
+  let revoked = false, authorizationCalls = 0;
+  const assistant = { ...scenario([]),
+    async context() { return { system: '测试助手', facts: {}, sources: [], materials: revoked ? [] : [material] }; },
+    async authorizeHistory(_input, history) {
+      authorizationCalls++;
+      // The first assembly is allowed; revoke immediately after it. The dispatch-time check
+      // therefore observes a stale material set and must force a fresh assembly.
+      if (authorizationCalls === 1) { revoked = true; return [...history]; }
+      return revoked ? history.filter(entry => !entry.sources?.length) : [...history];
+    } };
+  const h = await harness([{ text: '撤权后回答', toolIntents: [] }], [], {}, undefined, assistant);
+  try {
+    const receipt = await h.runtime.submit(h.identity, input(h.session.sessionId, '读取这份作品'));
+    await h.settle();
+    const snapshot = await h.runtime.sessionSnapshot(h.identity, h.session.sessionId);
+    assert.equal(snapshot.turns.find(turn => turn.turnId === receipt.turnId)?.state, 'completed');
+    assert.ok(authorizationCalls >= 3, '装配、派发前检查与重建都必须重新授权');
+    assert.equal(h.gateway.receives[0].input.text.includes('DISPATCH_REVOKED_MARKER'), true,
+      '首次装配确实读取过旧材料');
+    assert.equal(h.gateway.calls.dispatched.length, 1);
+    assert.equal(JSON.stringify(h.gateway.calls.dispatched[0].input).includes('DISPATCH_REVOKED_MARKER'), false,
+      '撤权材料不得进入实际派发请求');
+    assert.equal(JSON.stringify(h.gateway.segmentInputs.at(-1).portable).includes('DISPATCH_REVOKED_MARKER'), false);
   } finally { await h.close(); }
 });
 

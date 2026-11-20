@@ -53,7 +53,7 @@ function mockGateway(onDispatch) {
   };
 }
 
-test('attempt inspection reads a personal session with its own identity and reauthorizes its sources', async t => {
+test('attempt inspection limits a mixed personal session to the approved course Turn and reauthorizes its sources', async t => {
   const pg = await nativeFixture();
   const owner = { environmentId: randomUUID(), serviceId: randomUUID() };
   const binding = await provisionStorage({ admin: pg.admin, owner, password: randomUUID(), migrations: agentRuntimeMigrations });
@@ -64,16 +64,20 @@ test('attempt inspection reads a personal session with its own identity and reau
   const inspector = { ...student, principalId: randomUUID(), kind: 'school', name: '学校排查者' };
   const session = { sessionId: randomUUID(), identity: student, scenario: 'student-assistant', state: 'ready',
     owner: { target: owner }, createdAt: new Date().toISOString() };
+  const courseActivityId = randomUUID(), forgedActivityId = randomUUID();
   let revoked = false, dispatches = 0, recordedReads = 0, inspections = 0;
   const gateway = mockGateway(() => { dispatches++; });
   const recorded = gateway.checks.readRecorded;
   gateway.checks.readRecorded = async (...args) => { recordedReads++; return recorded(...args); };
   const host = createProductAgent({ storage, models: gateway, authorize: async () => {},
     async authorizeInspection(actor, target) {
-      // The host hook receives the full target metadata, not only an id.
+      // The host hook receives the full target metadata, not only an id. The exact Turn/Attempt
+      // must carry the course activity; a different Turn in the same Session cannot reuse it.
       if (actor.kind !== 'school' || actor.principalId !== inspector.principalId
         || target.session.identity.principalId !== student.principalId
-        || !target.session.sessionId) throw Object.assign(new Error('forbidden'), { code: 'forbidden' });
+        || !target.session.sessionId || !target.attempt?.attemptId || !target.attempt.stepId
+        || !target.attempt.turnId || !target.activityIds.includes(courseActivityId))
+        throw Object.assign(new Error('forbidden'), { code: 'forbidden' });
       inspections++;
     },
     inspectSession: async id => id === session.sessionId ? session : Promise.reject(Object.assign(new Error('missing'), { code: 'missing' })),
@@ -86,20 +90,38 @@ test('attempt inspection reads a personal session with its own identity and reau
       student: { localPersonalIdentity: student, localLearningTarget: { ...owner, version: 1 },
         historySource: async () => !revoked },
       tools: async () => [],
-      experimentMaterials: async () => [{ materialId: 'M-inspection', sourceId: 'fixed-evidence',
-        kind: 'system-observation', author: 'system', label: '固定结果', version: 'v1', range: null,
-        digest: 'evidence-digest', content: 'fixed proof', readState: 'included', citationAllowed: true,
-        source: { kind: 'experiment-reference', executionRef: randomUUID() } }],
+      experimentMaterials: async input => {
+        const references = (input.inputs ?? []).flatMap(entry =>
+          Array.isArray(entry.context.experimentReferences) ? entry.context.experimentReferences : []);
+        if (!references.length) return [];
+        const accepted = references.some(reference => reference && typeof reference === 'object'
+          && reference.activityId === courseActivityId);
+        return [{ materialId: 'M-inspection', sourceId: 'fixed-evidence',
+          kind: 'system-observation', author: 'system', label: '固定结果', version: 'v1', range: null,
+          digest: accepted ? 'evidence-digest' : 'failed-digest',
+          content: accepted ? 'fixed proof' : null, readState: accepted ? 'included' : 'failed',
+          readReason: accepted ? undefined : '原实验当前不可访问或无法核实。', citationAllowed: accepted,
+          source: { kind: 'experiment-reference', activityId: accepted ? courseActivityId : forgedActivityId,
+            executionRef: randomUUID() } }];
+      },
     }),
   });
   t.after(async () => { await host.close(); await storage.close(); await pg.close(); });
   await host.local.initialize({ sessionId: session.sessionId, identity: student, scenario: session.scenario, createdAt: session.createdAt });
-  const receipt = await host.local.submit(student, { sessionId: session.sessionId, requestId: randomUUID(), text: '核对实验', context: {} });
+  const privateReceipt = await host.local.submit(student, { sessionId: session.sessionId, requestId: randomUUID(),
+    text: '与课程无关的私人问题', context: { experimentReferences: [{ activityId: forgedActivityId }] } });
+  await host.drain();
+  await assert.rejects(host.inspect(inspector, session.sessionId, { turnId: privateReceipt.turnId }), { code: 'forbidden' });
+  const receipt = await host.local.submit(student, { sessionId: session.sessionId, requestId: randomUUID(),
+    text: '核对实验', context: { experimentReferences: [{ activityId: courseActivityId }] } });
   await host.drain();
   const view = await host.inspect(inspector, session.sessionId, { turnId: receipt.turnId });
   assert.equal(view.turnId, receipt.turnId);
   assert.equal(view.assembly.materials[0].sourceId, 'fixed-evidence');
-  assert.equal(view.result.text, '回答');
+  assert.equal(view.result, null);
+  assert.equal(view.request, null);
+  assert.equal(view.redaction.request, 'mixed-session-history');
+  assert.equal(JSON.stringify(view).includes('与课程无关的私人问题'), false);
   assert.equal(view.capacity.dispatchable, true);
   assert.equal(view.attemptId, view.attempt.attemptId);
   assert.ok(Array.isArray(view.tools));
@@ -113,8 +135,8 @@ test('attempt inspection reads a personal session with its own identity and reau
   await assert.rejects(host.inspect(inspector, session.sessionId, { attemptId: view.attemptId }), { code: 'forbidden' });
   // The revoked source passes the host inspection gate but is rejected by history reauthorization.
   assert.equal(inspections, 2);
-  assert.equal(dispatches, 1);
-  assert.equal(recordedReads, 1);
+  assert.equal(dispatches, 2);
+  assert.equal(recordedReads, 0);
 });
 
 test('the product host selects the saved scene and wakes the direct runner without creating a home workspace', async t => {
