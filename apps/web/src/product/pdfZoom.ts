@@ -1,8 +1,8 @@
 import type { PdfPage } from '@xunjie/contracts/pdf-materials'
 
-export const pdfZoomMin = 1
 export const pdfZoomMax = 300
 export const pdfSpreadGap = 16
+const preferredPdfZoomMin = 50
 const pdfSpreadMinWidth = 760
 export const pdfZoomStops = [
   { value: 'fit-page', label: '适合整页', edge: 'top' },
@@ -38,5 +38,9 @@ export function pdfZoomPercent(zoom: PdfZoom, viewport: PdfSize, pages: readonly
   const readingPercent = Math.min(150, Math.max(125, heightPercent * 1.25))
   const wanted = zoom === 'reading' ? Math.min(widthPercent, readingPercent)
     : zoom === 'fit-page' ? Math.min(widthPercent, heightPercent) : widthPercent
-  return Math.max(pdfZoomMin, Math.min(pdfZoomMax, Math.floor(wanted)))
+  return Math.max(1, Math.min(pdfZoomMax, Math.floor(wanted)))
+}
+
+export function pdfZoomSliderMin(viewport: PdfSize, pages: readonly (PdfSize | undefined)[]): number {
+  return Math.min(preferredPdfZoomMin, pdfZoomPercent('fit-page', viewport, pages))
 }

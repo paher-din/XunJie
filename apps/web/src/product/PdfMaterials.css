@@ -38,7 +38,7 @@
   white-space: nowrap;
 }
 .pdf-toolbar-controls { flex-wrap: wrap; gap: 4px 8px; }
-.pdf-toolbar .pdf-icon-button {
+.pdf-reader .pdf-icon-button {
   display: grid;
   place-items: center;
   flex: none;
@@ -48,7 +48,7 @@
   border-color: transparent;
 }
 .pdf-reader .pdf-icon-button[aria-expanded='true'] { color: var(--accent-deep); background: var(--accent-soft); }
-.pdf-page-controls input, .pdf-find-input {
+.pdf-page-controls input, .pdf-find-popover input {
   min-width: 0;
   height: 32px;
   border: 1px solid var(--line-strong);
@@ -176,8 +176,8 @@
   background: var(--paper);
 }
 .pdf-reader-sidebar[hidden] { display: none; }
-.pdf-reader-modes, .pdf-reader-actions, .pdf-find { display: grid; gap: 4px; margin: 0; }
-.pdf-reader-actions, .pdf-find, .pdf-thumbnails { margin-block-start: 12px; padding-block-start: 12px; border-block-start: 1px solid var(--line); }
+.pdf-reader-modes, .pdf-reader-actions { display: grid; gap: 4px; margin: 0; }
+.pdf-reader-actions, .pdf-thumbnails { margin-block-start: 12px; padding-block-start: 12px; border-block-start: 1px solid var(--line); }
 .pdf-reader .pdf-reader-sidebar .outline {
   display: flex;
   align-items: center;
@@ -190,7 +190,7 @@
   text-align: start;
   white-space: normal;
 }
-.pdf-reader-sidebar .outline:not(:disabled):hover, .pdf-toolbar .pdf-icon-button:not(:disabled):hover { background: var(--hover-bg); filter: none; }
+.pdf-reader-sidebar .outline:not(:disabled):hover, .pdf-reader .pdf-icon-button:not(:disabled):hover { background: var(--hover-bg); filter: none; }
 .pdf-reader-sidebar .outline[aria-pressed='true'], .pdf-reader-sidebar .outline[aria-pressed='true']:hover {
   color: var(--accent-deep);
   background: var(--accent-soft);
@@ -217,16 +217,40 @@
   color: var(--muted);
 }
 .pdf-thumbnail-image canvas { width: auto; height: auto; max-width: 100%; max-height: 100%; box-shadow: var(--panel-shadow); }
-.pdf-find-input { display: flex; align-items: center; gap: 6px; padding-inline: 8px; color: var(--muted); }
-.pdf-find-input .ui-icon { flex: none; }
-.pdf-find input { width: 100%; min-width: 0; padding: 0; border: 0; outline: 0; color: var(--ink); background: transparent; font: inherit; }
-.pdf-find input::placeholder { color: var(--muted); }
-.pdf-page-controls input:focus-visible, .pdf-find-input:focus-within, .pdf-thumbnails summary:focus-visible {
+.pdf-find-popover {
+  position: absolute;
+  z-index: 3;
+  inset-block-start: 8px;
+  inset-inline-end: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  box-sizing: border-box;
+  width: min(360px, calc(100% - 24px));
+  padding: 6px;
+  border-radius: 8px;
+  background: var(--raised);
+  box-shadow: var(--shadow-menu);
+}
+.pdf-find-popover[hidden] { display: none; }
+.pdf-find-popover input { flex: 1 1 108px; width: 0; padding-inline: 8px; }
+.pdf-find-popover input::placeholder { color: var(--muted); }
+.pdf-find-controls { display: flex; align-items: center; gap: 2px; margin-inline-start: auto; }
+.pdf-find-status {
+  padding-inline: 2px 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.pdf-page-controls input:focus-visible, .pdf-find-popover input:focus-visible, .pdf-thumbnails summary:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }
 .pdf-muted, .pdf-hint, .pdf-page h3 span { color: var(--muted); font-size: 12px; font-weight: 400; }
 .pdf-hint { margin: 4px 0 0; overflow-wrap: anywhere; }
+.pdf-reader-stage { position: relative; display: flex; flex: 1; min-width: 0; min-height: 0; }
 .pdf-reading-status {
   position: absolute;
   inset-block-start: 12px;
@@ -292,6 +316,20 @@
 .pdf-page-image.selecting .pdf-page-text span { pointer-events: none; user-select: none; }
 .pdf-page-text ::selection { color: transparent; background: color-mix(in srgb, var(--accent) 32%, transparent); }
 .pdf-page-text ::highlight(xunjie-pdf-find) { color: transparent; background: color-mix(in srgb, var(--status-pending-bg) 48%, transparent); }
+.pdf-page-text ::highlight(xunjie-pdf-find-active) { color: transparent; background: color-mix(in srgb, var(--indicator-amber) 55%, transparent); }
+.pdf-reader .pdf-selection-copy {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding-inline: 10px;
+  background: var(--raised);
+  box-shadow: var(--panel-shadow);
+  white-space: nowrap;
+}
+.pdf-selection-copy[data-above='true'] { translate: 0 -100%; }
 .pdf-text-unavailable {
   position: absolute;
   inset-block-start: 8px;

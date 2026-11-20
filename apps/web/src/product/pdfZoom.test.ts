@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest'
 import type { PdfPage } from '@xunjie/contracts/pdf-materials'
-import { pdfCanSpread, pdfPageSize, pdfSpreadGap, pdfZoomPercent } from './pdfZoom'
+import { pdfCanSpread, pdfPageSize, pdfSpreadGap, pdfZoomPercent, pdfZoomSliderMin } from './pdfZoom'
 
 const portrait = { width: 794, height: 1123 }
 const desktop = { width: 1280, height: 800 }
@@ -11,6 +11,16 @@ it('opens a wide desktop view between fit page and fit width', () => {
   expect(reading).toBeGreaterThan(pdfZoomPercent('fit-page', desktop, [portrait]))
   expect(reading).toBeLessThan(pdfZoomPercent('fit-width', desktop, [portrait]))
   expect(portrait.width * reading / 100).toBeLessThanOrEqual(desktop.width)
+})
+
+it('keeps whole-page fitting reachable below the normal slider minimum', () => {
+  const short = { width: 1280, height: 350 }
+  const pages = [portrait, portrait]
+  expect(pdfZoomSliderMin(desktop, pages)).toBe(50)
+  const minimum = pdfZoomSliderMin(short, pages)
+  expect(minimum).toBe(pdfZoomPercent('fit-page', short, pages))
+  expect(minimum).toBeLessThan(50)
+  expect(portrait.height * minimum / 100 + 26).toBeLessThanOrEqual(short.height)
 })
 
 it('uses the available width for a narrow column without horizontally clipping either page', () => {

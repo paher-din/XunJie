@@ -11,10 +11,10 @@ import { questionReferenceSourceId } from '@xunjie/contracts/question-drafts'
 import { useWorkspaceReferences } from '../components/workspace/references'
 import { acknowledgePdfRequest, listPdfRequests, retainCoursePdf, retainPdfUpload, type PdfMaterialRequest } from '../reliable-workspace/pdf-materials'
 import { learningRequest, workspaceScope } from './learningTransport'
-import { PdfReaderText, usePdfReaderText, usePdfTextFind } from './PdfReaderText'
+import { PdfReaderText, PdfSelectionCopy, usePdfReaderText, usePdfTextFind } from './PdfReaderText'
 import { PdfPagePreview } from './PdfPagePreview'
 import { PdfThumbnails } from './PdfThumbnails'
-import { pdfCanSpread, pdfPageSize, pdfSpreadGap, pdfZoomMax, pdfZoomMin, pdfZoomPercent, pdfZoomStops, type PdfSize, type PdfZoom } from './pdfZoom'
+import { pdfCanSpread, pdfPageSize, pdfSpreadGap, pdfZoomMax, pdfZoomPercent, pdfZoomSliderMin, pdfZoomStops, type PdfSize, type PdfZoom } from './pdfZoom'
 import './PdfMaterials.css'
 
 type PdfSource = ReturnType<typeof pdfReferenceSourceSchema.parse>
@@ -365,14 +365,14 @@ export function PersonalPdfLibrary({ pdf }: { pdf: PdfMaterialsController }) {
   </WorkspaceResourceLibrary>
 }
 
-function pdfZoomPosition(percent: number): CSSProperties {
-  return { '--pdf-zoom-position': `${100 * (percent - pdfZoomMin) / (pdfZoomMax - pdfZoomMin)}%` } as CSSProperties
+function pdfZoomPosition(percent: number, min: number): CSSProperties {
+  return { '--pdf-zoom-position': `${100 * (percent - min) / (pdfZoomMax - min)}%` } as CSSProperties
 }
 
 const pdfZoomDotSize = 6
 
-function PdfZoomControls({ zoom, percent, viewport, pages, disabled, onChange }: {
-  zoom: PdfZoom; percent: number; viewport: PdfSize; pages: readonly (PdfSize | undefined)[]
+function PdfZoomControls({ zoom, percent, min, viewport, pages, disabled, onChange }: {
+  zoom: PdfZoom; percent: number; min: number; viewport: PdfSize; pages: readonly (PdfSize | undefined)[]
   disabled: boolean; onChange(zoom: PdfZoom): void
 }) {
   const slider = useRef<HTMLInputElement>(null)
@@ -388,7 +388,8 @@ function PdfZoomControls({ zoom, percent, viewport, pages, disabled, onChange }:
     return () => observer.disconnect()
   }, [])
   const stops = pdfZoomStops.map(stop => ({ ...stop, percent: pdfZoomPercent(stop.value, viewport, pages) }))
-  const distance = Math.abs(stops[0].percent - stops[1].percent) * trackWidth / (pdfZoomMax - pdfZoomMin)
+  const range = pdfZoomMax - min
+  const distance = Math.abs(stops[0].percent - stops[1].percent) * trackWidth / range
   const overlap = distance < pdfZoomDotSize
   const moveStop = (event: PointerEvent<HTMLButtonElement>) => {
     const active = pointer.current
@@ -401,21 +402,21 @@ function PdfZoomControls({ zoom, percent, viewport, pages, disabled, onChange }:
     const bounds = track.current?.getBoundingClientRect()
     if (!bounds?.width) return
     const ratio = Math.max(0, Math.min(1, (event.clientX - bounds.left) / bounds.width))
-    onChange(Math.round(pdfZoomMin + ratio * (pdfZoomMax - pdfZoomMin)))
+    onChange(Math.round(min + ratio * range))
   }
   return <div className="pdf-zoom" role="group" aria-label="PDF 缩放">
     <Button type="button" variant="outline" className="pdf-zoom-reset" disabled={disabled}
       aria-pressed={zoom === 'reading'} onClick={() => onChange('reading')}>默认</Button>
     <div className="pdf-zoom-slider">
       <div className="pdf-zoom-scale">
-        <input ref={slider} type="range" min={pdfZoomMin} max={pdfZoomMax} step={1} value={percent} disabled={disabled}
-          style={pdfZoomPosition(percent)} aria-label="PDF 缩放比例" aria-valuetext={`${percent}%`}
+        <input ref={slider} type="range" min={min} max={pdfZoomMax} step={1} value={percent} disabled={disabled}
+          style={pdfZoomPosition(percent, min)} aria-label="PDF 缩放比例" aria-valuetext={`${percent}%`}
           onChange={event => onChange(event.currentTarget.valueAsNumber)} />
         <div ref={track} className="pdf-zoom-stops" data-overlap={overlap || undefined}
           style={{ '--pdf-zoom-dot-size': `${pdfZoomDotSize}px`, '--pdf-zoom-stop-width': `${overlap ? 20 : Math.min(20, distance)}px` } as CSSProperties}>
           {stops.map(({ value, label, edge, percent: position }) => <button key={value} type="button" className="pdf-zoom-stop"
             data-edge={edge} data-current={percent === position || undefined} aria-label={label} aria-pressed={zoom === value} disabled={disabled}
-            style={pdfZoomPosition(position)}
+            style={pdfZoomPosition(position, min)}
             onPointerDown={event => {
               if (!event.isPrimary || event.button !== 0) return
               pointer.current = { id: event.pointerId, x: event.clientX, dragging: false }
@@ -471,8 +472,12 @@ export function PdfMaterials({ pdf, onBackToList }: {
   const [zoom, setZoom] = useState<PdfZoom>('reading')
   const [viewportSize, setViewportSize] = useState<PdfSize>({ width: 0, height: 0 })
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [findOpen, setFindOpen] = useState(false)
   const sidebarId = useId()
+  const findId = useId()
   const sidebarToggle = useRef<HTMLButtonElement>(null)
+  const findToggle = useRef<HTMLButtonElement>(null)
+  const findInput = useRef<HTMLInputElement>(null)
   const viewport = useRef<HTMLDivElement>(null)
   const restoreZoomPosition = useRef<(() => void) | undefined>(undefined)
   const [selectionMode, setSelectionMode] = useState<'page' | 'region'>('page')
@@ -481,12 +486,15 @@ export function PdfMaterials({ pdf, onBackToList }: {
   const [localError, setLocalError] = useState('')
   const [textLayout, textChanged] = useReducer(value => value + 1, 0)
   const openText = usePdfReaderText(doc?.state === 'ready' && pdf.authorized ? doc : null, pdf.loadOriginal)
-  const find = usePdfTextFind(viewport, reading?.readingId, selectionMode === 'region' ? '' : query, textLayout, !!reading?.region)
+  const pendingPages = pdf.busy ? pdf.pendingRead?.pages : undefined
+  const find = usePdfTextFind(viewport, reading?.readingId, findOpen && !pendingPages ? query : '', textLayout, !!reading?.region)
   useToastFeedback(localError)
   const composing = useRef(false)
+  const findComposing = useRef(false)
   const page = reading?.requestedPages[0] ?? pdf.pendingRead?.pages[0] ?? 1
   const pageSizes = reading?.pages.map(pdfPageSize) ?? []
-  const percent = pdfZoomPercent(zoom, viewportSize, pageSizes)
+  const zoomMin = pdfZoomSliderMin(viewportSize, pageSizes)
+  const percent = Math.max(zoomMin, pdfZoomPercent(zoom, viewportSize, pageSizes))
   const hasPageImage = pageSizes.some(Boolean)
   const ready = doc?.state === 'ready'
   const selecting = selectionMode === 'region'
@@ -497,7 +505,8 @@ export function PdfMaterials({ pdf, onBackToList }: {
   const quoteLabel = selecting ? '引用所选区域' : reading?.region ? '引用此区域' : twoPages ? '引用这两页' : '引用此页'
   const cancelRegion = () => { setSelectionMode('page'); setRegion(null) }
   useEffect(() => { setPageInput(String(page)); cancelRegion(); setLocalError('') }, [reading?.readingId, page, doc?.documentId])
-  useEffect(() => { setQuery('') }, [doc?.documentId])
+  useEffect(() => { setQuery(''); setFindOpen(false); findComposing.current = false }, [doc?.documentId])
+  useLayoutEffect(() => { if (findOpen) findInput.current?.focus() }, [findOpen])
   useLayoutEffect(() => {
     const area = viewport.current
     if (!ready || !area) return
@@ -529,7 +538,19 @@ export function PdfMaterials({ pdf, onBackToList }: {
     setLocalError('')
     void pdf.readPages(two ? [next, next + 1] : [next])
   }
+  const openFind = () => {
+    if (selecting) cancelRegion()
+    if (findOpen) { findInput.current?.focus(); findInput.current?.select() }
+    else setFindOpen(true)
+  }
+  const closeFind = (restoreFocus = true) => {
+    setFindOpen(false)
+    setQuery('')
+    findComposing.current = false
+    if (restoreFocus) findToggle.current?.focus()
+  }
   const startRegion = () => {
+    closeFind(false)
     const selection = window.getSelection()
     if (selection?.anchorNode && viewport.current?.contains(selection.anchorNode)) selection.removeAllRanges()
     setSelectionMode('region')
@@ -537,10 +558,17 @@ export function PdfMaterials({ pdf, onBackToList }: {
   }
   if (!doc) return null
   return <section className="pdf-reader" aria-label="PDF 阅读区" aria-busy={pdf.busy} onKeyDown={event => {
-    if (event.key !== 'Escape' || event.defaultPrevented) return
-    if (selecting) { event.preventDefault(); cancelRegion() }
-    else if (sidebarOpen && !(event.target instanceof HTMLInputElement && event.target.type === 'search' && query)) {
-      event.preventDefault(); setSidebarOpen(false); sidebarToggle.current?.focus()
+    if (event.defaultPrevented || event.nativeEvent.isComposing || event.keyCode === 229) return
+    if (ready && !event.altKey && (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
+      event.preventDefault(); openFind()
+    } else if (event.key === 'Escape') {
+      if (findOpen) { event.preventDefault(); closeFind(); return }
+      if (selecting) { event.preventDefault(); cancelRegion(); return }
+      const selection = window.getSelection()
+      if (selection?.anchorNode && !selection.isCollapsed && viewport.current?.contains(selection.anchorNode)) {
+        event.preventDefault(); selection.removeAllRanges(); return
+      }
+      if (sidebarOpen) { event.preventDefault(); setSidebarOpen(false); sidebarToggle.current?.focus() }
     }
   }}>
     <header className="pdf-toolbar">
@@ -569,8 +597,11 @@ export function PdfMaterials({ pdf, onBackToList }: {
           </form>
           <PdfIconButton icon="alt-arrow-right" label="下一页" disabled={!canNavigate || page >= doc.pageCount} onClick={() => navigate(page + 1)} />
         </div>
-        <PdfZoomControls zoom={zoom} percent={percent} viewport={viewportSize} pages={pageSizes}
+        <PdfZoomControls zoom={zoom} percent={percent} min={zoomMin} viewport={viewportSize} pages={pageSizes}
           disabled={!hasPageImage} onChange={changeZoom} />
+        <PdfIconButton ref={findToggle} icon="minimalistic-magnifier" label="查找文字"
+          aria-keyshortcuts="Control+F Meta+F" aria-expanded={findOpen} aria-controls={findId}
+          onClick={() => { if (findOpen) closeFind(); else openFind() }} />
       </div>}
     </header>
     {!ready ? <div className="pdf-empty"><p role="status">{documentStates[doc.state]}</p>{doc.detail && <p>{doc.detail}</p>}</div>
@@ -600,45 +631,55 @@ export function PdfMaterials({ pdf, onBackToList }: {
             {selecting && <p className="pdf-hint">在页图上拖动框选，再引用所选区域。</p>}
             {reading?.region && <p className="pdf-hint">当前显示已引用的区域。点「完整页」可阅读整页。</p>}
           </div>
-          <form className="pdf-find" role="search" onSubmit={event => { event.preventDefault(); find.revealMatch() }}>
-            <div className="pdf-find-input">
-              <Icon name="minimalistic-magnifier" size={15} />
-              <input type="search" aria-label="当前页文字查找" value={query} onChange={event => setQuery(event.target.value)}
-                disabled={selecting} placeholder="查找页内文字" maxLength={200} />
-            </div>
-            {query.trim() && !selecting && <p className="pdf-hint" role="status">
-              {!reading || find.loading ? '正在读取页内文字…' : find.count ? `匹配 ${find.count} 处，按 Enter 跳转`
-                : find.unavailable || (hasNativeText && !openText) ? '原生文字暂不可用' : hasNativeText ? '当前阅读页无匹配文字'
-                  : reading.pages.every(item => item.state === 'ready') ? '当前阅读页无原生文字' : '当前阅读页文字未能完整读取'}
-            </p>}
-          </form>
           {doc.pageCount > 1 && <PdfThumbnails key={doc.documentId} open={openText} pageCount={doc.pageCount}
             page={page} visible={sidebarOpen} enabled={canNavigate}
             onNavigate={next => navigate(next, twoPages && next < doc.pageCount)} />}
         </aside>
-        <div className="pdf-reading" data-pdf-reading-id={reading?.readingId} ref={viewport} tabIndex={0} aria-label="PDF 页图">
-          <div className="pdf-pages" data-spread={spread} style={spread ? { gap: pdfSpreadGap } : undefined}>
-            {reading?.pages.map((item, index) => <article className="pdf-page" data-pdf-page={item.page} tabIndex={-1} key={item.page}
-              style={pageSizes[index] ? { width: pageSizes[index].width * percent / 100 } : undefined}>
-              <h3>第 {item.page} 页{item.label && item.label !== String(item.page) && <span title={item.label}>页标签 {item.label}</span>}</h3>
-              {item.state !== 'ready' || !item.image ? <p className="pdf-error" role="status">{item.state === 'out-of-range' ? '此页超出 PDF 实际页数。'
-                : item.state === 'limit' ? '此页图超出处理尺寸或体积限制，无法显示。'
-                  : item.state === 'timeout' ? '此页处理超时，未生成可引用页图。' : '此页图未完整生成，无法引用。'}{item.detail ? ` ${item.detail}` : ''}</p>
-                : <PdfPageImage key={reading.readingId + ':' + item.page} item={item} image={item.image}
-                  openText={reading.documentSha256 === doc.sha256 ? openText : undefined}
-                  sharpen={!reading.region && reading.readingId !== pdf.referenceReadingId} onTextLayout={textChanged}
-                  selecting={selecting && !pdf.busy} region={region} onRegion={setRegion} />}
-            </article>)}
+        <div className="pdf-reader-stage">
+          <div className="pdf-reading" data-pdf-reading-id={reading?.readingId} ref={viewport} tabIndex={0} aria-label="PDF 页图">
+            <div className="pdf-pages" data-spread={spread} style={spread ? { gap: pdfSpreadGap } : undefined}>
+              {reading?.pages.map((item, index) => <article className="pdf-page" data-pdf-page={item.page} tabIndex={-1} key={item.page}
+                style={pageSizes[index] ? { width: pageSizes[index].width * percent / 100 } : undefined}>
+                <h3>第 {item.page} 页{item.label && item.label !== String(item.page) && <span title={item.label}>页标签 {item.label}</span>}</h3>
+                {item.state !== 'ready' || !item.image ? <p className="pdf-error" role="status">{item.state === 'out-of-range' ? '此页超出 PDF 实际页数。'
+                  : item.state === 'limit' ? '此页图超出处理尺寸或体积限制，无法显示。'
+                    : item.state === 'timeout' ? '此页处理超时，未生成可引用页图。' : '此页图未完整生成，无法引用。'}{item.detail ? ` ${item.detail}` : ''}</p>
+                  : <PdfPageImage key={reading.readingId + ':' + item.page} item={item} image={item.image}
+                    openText={reading.documentSha256 === doc.sha256 ? openText : undefined}
+                    sharpen={!reading.region && reading.readingId !== pdf.referenceReadingId} onTextLayout={textChanged}
+                    selecting={selecting && !pdf.busy} region={region} onRegion={setRegion} />}
+              </article>)}
+            </div>
+            {pdf.pendingRead && !pdf.busy && <Button type="button" variant="outline" disabled={!pdf.writable}
+              onClick={() => void pdf.retryRead()}>核对并继续本次阅读</Button>}
+            {reading?.pages.some(item => item.state === 'failed' || item.state === 'timeout') && <Button type="button" variant="outline"
+              disabled={!canNavigate} onClick={() => void pdf.readPages(reading.requestedPages, reading.region)}>重新读取页图</Button>}
+            {pdf.busy && !pendingPages && <p className="pdf-hint" role="status">正在读取 PDF…</p>}
           </div>
-          {pdf.pendingRead && !pdf.busy && <Button type="button" variant="outline" disabled={!pdf.writable}
-            onClick={() => void pdf.retryRead()}>核对并继续本次阅读</Button>}
-          {reading?.pages.some(item => item.state === 'failed' || item.state === 'timeout') && <Button type="button" variant="outline"
-            disabled={!canNavigate} onClick={() => void pdf.readPages(reading.requestedPages, reading.region)}>重新读取页图</Button>}
-          {pdf.busy && !pdf.pendingRead && <p className="pdf-hint" role="status">正在读取 PDF…</p>}
+          <PdfSelectionCopy viewport={viewport} readingId={reading?.readingId} scale={percent} enabled={!selecting && !findOpen && !pdf.busy} />
         </div>
-        {pdf.busy && pdf.pendingRead && <p className="pdf-hint pdf-reading-status" role="status">
-          正在读取第 {pdf.pendingRead.pages.join('、')} 页…
+        {pendingPages && <p className="pdf-hint pdf-reading-status" role="status">
+          正在读取第 {pendingPages.join('、')} 页…
         </p>}
+        <form className="pdf-find-popover" id={findId} role="search" aria-label="PDF 页内查找" hidden={!findOpen}
+          onSubmit={event => event.preventDefault()}>
+          <input ref={findInput} type="search" aria-label="当前页文字查找" value={query} onChange={event => setQuery(event.target.value)}
+            placeholder="查找页内文字" maxLength={200} onCompositionStart={() => { findComposing.current = true }}
+            onCompositionEnd={() => { findComposing.current = false }} onKeyDown={event => {
+              if (event.key !== 'Enter' || findComposing.current || event.nativeEvent.isComposing || event.keyCode === 229) return
+              event.preventDefault(); find.step(event.shiftKey ? -1 : 1)
+            }} />
+          <div className="pdf-find-controls">
+            <span className="pdf-find-status" role="status">{query.trim() && (
+              pendingPages ? '正在换页…' : find.count ? `${find.position} / ${find.total}` : !reading || find.loading || pdf.busy ? '正在查找…'
+                : find.unavailable || (hasNativeText && !openText) ? '文字暂不可用' : hasNativeText ? '无匹配'
+                  : reading.pages.every(item => item.state === 'ready') ? '无原生文字' : '文字读取不完整')}
+            </span>
+            <PdfIconButton icon="arrow-up" label="上一处匹配" disabled={!find.count} onClick={() => find.step(-1)} />
+            <PdfIconButton icon="arrow-down" label="下一处匹配" disabled={!find.count} onClick={() => find.step(1)} />
+            <PdfIconButton icon="close" label="关闭查找" onClick={() => closeFind()} />
+          </div>
+        </form>
       </div>}
   </section>
 }
