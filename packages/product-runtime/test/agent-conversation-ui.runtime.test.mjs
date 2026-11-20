@@ -15,7 +15,7 @@ test('v3 revision replaces the original bubble and answer, preserves its new tim
     backend: createFileBackend({ id: 'agent-ui', root: join(pg.root, 'agent-ui') }) });
   const segments = new Map(), attempts = new Map();
   const connection = { connectionId: randomUUID(), routeId: randomUUID(), version: 1, maxOutputTokens: 4096, contextWindow: 1000000,
-    protocol: 'openai-chat', parameterMode: 'plain', capabilities: {}, hasCredential: true, adapterState: 'ready' };
+    protocol: 'chat-completions', modelId: 'fixture', parameterMode: 'plain', capabilities: {}, hasCredential: true, adapterState: 'ready' };
   const choice = { choice: { connection }, source: { kind: 'personal', ownerScope: 'test', feeSource: 'test' } };
   const gateway = {
     selection: { read: async () => ({ selected: true, version: 1 }), snapshot: async () => choice, pin: async () => choice },
@@ -26,7 +26,7 @@ test('v3 revision replaces the original bubble and answer, preserves its new tim
     checks: {
       receive: async (_identity, input) => { const attempt = { attemptId: input.attemptId, state: 'accepted', text: '', usage: { state: 'unknown' }, physicalRequestEnded: false, requestRef: randomUUID(), resultRef: null, segment: { segmentId: input.segmentId, sequence: 0 } }; attempts.set(input.attemptId, attempt); return attempt; },
       dispatch: async (_identity, id) => { const attempt = attempts.get(id); Object.assign(attempt, { state: 'completed', physicalRequestEnded: true, text: attempts.size === 1 ? 'old answer' : 'new answer', toolIntents: [], usage: { state: 'final', inputTokens: 10, outputTokens: 5 }, resultRef: randomUUID() }); return attempt; },
-      read: async (_identity, id) => attempts.get(id), progress: async () => null, cancel: async () => {},
+      read: async (_identity, id) => attempts.get(id), progress: async () => null, requestPayload: async () => ({}), cancel: async () => {},
     },
   };
   const scenario = { id: 'fixture', version: 1, context: async () => ({ system: 'Answer the latest question.', facts: {}, sources: [] }), tools: async () => [] };

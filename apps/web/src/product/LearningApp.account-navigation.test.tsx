@@ -19,7 +19,7 @@ vi.mock('./ActivityReferences', () => ({ ActivityReferences: ({ children }: { ch
   CourseMaterialReferences: () => null, CourseRequirementsReference: () => null }))
 function Workspace({ activity, workspaceRef }: { activity: LearningActivity; workspaceRef: RefObject<ActivityWorkspaceHandle | null> }) {
   useImperativeHandle(workspaceRef, () => ({ leave: async () => { if (rejectLeave) throw new Error('保护失败') } }))
-  return <h1 data-testid="workspace">{activity.course?.taskTitle ?? activity.question}</h1>
+  return <h1 data-testid="workspace" data-status={activity.status}>{activity.course?.taskTitle ?? activity.question}</h1>
 }
 vi.mock('./ActivityPage', () => ({ ActivityPage: (props: Parameters<typeof Workspace>[0]) => <Workspace {...props} /> }))
 
@@ -132,6 +132,57 @@ afterEach(async () => {
   toast.dismiss(); host.remove(); vi.restoreAllMocks(); vi.unstubAllGlobals()
 })
 
+it('updates the school workspace when the reopen receipt arrives after entering from a course', async () => {
+  const fetchMock = vi.mocked(fetch)
+  const originalFetch = fetchMock.getMockImplementation()!
+  const closed = { ...schoolActivity, status: 'closed' }
+  const binding = schoolActivity.course!
+  const course = { courseId, name: binding.courseName, tasks: [{
+    taskId: binding.taskId, title: binding.taskTitle, summary: '',
+    releases: [{ releaseId: binding.releaseId, contentDigest: binding.contentDigest,
+      objectives: binding.objectives, publishedAt: schoolActivity.createdAt }],
+  }] }
+  let acknowledge!: () => void
+  const pendingReceipt = new Promise<void>(resolve => { acknowledge = resolve })
+  const writes: Array<{ space?: string; activityId: string; status: string }> = []
+  fetchMock.mockImplementation(async (...args) => {
+    const route = String(args[0]), options = args[1]
+    const space = (options?.headers as Record<string, string>)?.['x-xj-space']
+    if (route === '/api/learning/activity-status') {
+      const { activityId, status } = JSON.parse(String(options?.body))
+      writes.push({ space, activityId, status })
+      await pendingReceipt
+      return response(schoolActivity)
+    }
+    if (space === schoolKey && route === '/api/learning/activities') return response([closed])
+    if (space === schoolKey && route === '/api/learning/activities/' + schoolActivity.activityId) return response(closed)
+    if (space === schoolKey && route === '/api/learning/courses') return response({ courses: [course] })
+    return originalFetch(...args)
+  })
+  const choose = (label: string) => act(async () => {
+    const item = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(element => element.textContent === label)
+    expect(item, label).toBeDefined()
+    item!.click()
+    await settle()
+  })
+  try {
+    history.replaceState(null, '', '/?space=' + schoolKey + '&course=' + courseId)
+    await mount()
+    await clickSelector('[aria-label="管理活动：学校任务"]')
+    await choose('重新开始活动')
+    expect(new URLSearchParams(location.search).get('course')).toBe(courseId)
+    expect(writes).toEqual([{ space: schoolKey, activityId: schoolActivity.activityId, status: 'open' }])
+    await clickSelector('[aria-label="管理活动：学校任务"]')
+    await choose('打开活动')
+    expect(new URLSearchParams(location.search).get('course')).toBe(courseId)
+    expect(host.querySelector('[data-testid="workspace"]')?.getAttribute('data-status')).toBe('closed')
+    await act(async () => { acknowledge(); await settle() })
+    expect(host.querySelector('[data-testid="workspace"]')?.getAttribute('data-status')).toBe('open')
+  } finally {
+    acknowledge()
+  }
+})
+
 it('keeps the bound account across filtering, school entry, personal Agent, settings, profile, refresh and offline reopening', async () => {
   await mount()
   expect(accountLabel()).toBe('Robert')
@@ -236,7 +287,7 @@ it('reuses recently verified activity metadata when reopening its workspace', as
 
 it('opens the school activity through its own source and protects it before opening the personal Agent', async () => {
   await mount()
-  await clickSelector('[data-activity-id="' + schoolActivity.activityId + '"]')
+  await clickSelector('.db-continue button')
   expect(host.querySelector('[data-testid="workspace"]')?.textContent).toBe('学校任务')
   expect(new URLSearchParams(location.search).get('space')).toBe(schoolKey)
   rejectLeave = true
@@ -338,8 +389,8 @@ it('unbinds before rebinding, keeps local data, and restores the same account co
   expect(localStorage.getItem(localDraftKey)).toBe(pendingCourse)
   await click('首页')
   expect(host.textContent).toContain('学校课程')
-  expect(host.querySelector('[data-activity-id="' + schoolActivity.activityId + '"]')).not.toBeNull()
-  await clickSelector('[data-activity-id="' + schoolActivity.activityId + '"]')
+  expect(host.querySelector('.db-continue h3')?.textContent).toBe('学校任务')
+  await clickSelector('.db-continue button')
   expect(host.querySelector('[data-testid="workspace"]')?.textContent).toBe('学校任务')
   expect(new URLSearchParams(location.search).get('space')).toBe('school:reconnected')
 })

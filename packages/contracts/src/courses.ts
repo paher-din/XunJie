@@ -28,6 +28,7 @@ const objectivesSchema = z.array(z.string().min(1).max(500)).min(1).max(20);
 const requirementsSchema = z.string().min(1).max(20000);
 const starterWorksSchema = z.array(courseStarterWorkSchema).max(50);
 const capabilitiesSchema = z.array(courseCapabilitySchema).max(50);
+const deadlineAtSchema = z.iso.datetime({ offset: true }).optional();
 
 /** A release is immutable; a changed registration needs a new releaseId. */
 export const courseReleaseSchema = z.object({
@@ -35,6 +36,7 @@ export const courseReleaseSchema = z.object({
   contentDigest: courseDigestSchema, objectives: objectivesSchema, requirements: requirementsSchema,
   materials: z.array(courseMaterialSchema).max(100), starterWorks: starterWorksSchema,
   capabilities: capabilitiesSchema, publishedAt: z.string(), courseName: z.string().min(1).max(200),
+  deadlineAt: deadlineAtSchema,
   components: componentBindingsSchema.optional(),
   skills: courseSkillPackagesSchema.optional(),
   /** Absent for a release published before execution plans existed; such a release keeps its own bytes. */
@@ -47,7 +49,7 @@ export type CourseRelease = z.infer<typeof courseReleaseSchema>;
 
 export const courseReleaseSummarySchema = z.object({
   releaseId: z.uuid(), contentDigest: courseDigestSchema, objectives: z.array(z.string().min(1).max(500)),
-  publishedAt: z.string(),
+  publishedAt: z.string(), deadlineAt: deadlineAtSchema,
 }).strict();
 export type CourseReleaseSummary = z.infer<typeof courseReleaseSummarySchema>;
 
@@ -90,7 +92,7 @@ export const courseImportSchema = z.object({
   course: z.object({ courseId: z.uuid(), name: z.string().min(1).max(200) }).strict(),
   task: z.object({ taskId: z.uuid(), title: z.string().min(1).max(300), summary: z.string().max(4000) }).strict(),
   release: z.object({
-    releaseId: z.uuid(), objectives: objectivesSchema, requirements: requirementsSchema,
+    releaseId: z.uuid(), objectives: objectivesSchema, requirements: requirementsSchema, deadlineAt: deadlineAtSchema,
     materials: z.array(courseImportMaterialSchema).max(100), starterWorks: starterWorksSchema,
     capabilities: capabilitiesSchema,
     components: componentBindingsSchema.optional(),

@@ -1,5 +1,5 @@
 import { evidenceDirectory } from './evidence'
-import { createWorkFile, clickActivityAction, openWorkspacePopover, closeWorkspacePopover, openCourseTasks } from './support/product-ui'
+import { createWorkFile, clickActivityAction, openWorkspacePopover, closeWorkspacePopover, courseTaskCard, openCourseTasks } from './support/product-ui'
 import { test, expect } from '@playwright/test'
 import { randomUUID, createHash } from 'node:crypto'
 import { createServer } from 'node:http'
@@ -193,11 +193,16 @@ for (const mode of ['personal', 'school-shared', 'hybrid-local-owner'] as const)
       await page.getByRole('button', { name: '进入工作区', exact: true }).click()
     } else {
       await openCourseTasks(page, '部署验收课程')
-      await page.getByRole('button', { name: /最近发布/ }).click()
-      await page.getByRole('button', { name: '从这一版本开始活动', exact: true }).click()
+      await courseTaskCard(page, '部署验收任务').click()
+      const preview = page.getByRole('dialog', { name: '部署验收任务', exact: true })
+      await expect(preview).toContainText('保存并重开中文作品。')
+      await preview.getByRole('button', { name: '开始任务', exact: true }).click()
+      await expect(preview).toHaveCount(0)
       await expect(page.locator('#activity-title')).toHaveText('部署验收任务', { timeout: 30000 })
-      await page.getByRole('button', { name: '学校原题', exact: false }).click()
-      await expect(page.getByRole('link', { name: '打开或下载材料' })).toBeVisible()
+      await page.getByRole('tab', { name: '课程材料', exact: true }).click()
+      await page.getByRole('region', { name: '课程材料', exact: true }).getByRole('button', { name: '学校原题', exact: true }).click()
+      await expect(page.getByRole('region', { name: '课程材料阅读', exact: true })).toContainText('学校原始题目')
+      await page.getByRole('button', { name: '返回作品', exact: true }).click()
     }
     await createWorkFile(page, '中文原文.txt')
     await page.locator('.monaco-editor textarea').focus()

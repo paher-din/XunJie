@@ -182,3 +182,48 @@ test('inline citation markers remain structured evidence without becoming a seco
   assert.equal(value.citations[0].citation.claim, '实测 F=0001');
   assert.equal(value.messages.filter(message => message.role === 'assistant').length, 0, '引用标记不生成额外的助手回答');
 });
+
+test('a tool-only citation attaches to the next saved answer to the same input', async () => {
+  const sessionId = randomUUID(), turnId = randomUUID();
+  const identity = { kind: 'personal', name: 'Student', environmentId: randomUUID(), spaceId: randomUUID(), principalId: randomUUID() };
+  const at = second => new Date(Date.UTC(2026, 0, 1, 0, 0, second)).toISOString();
+  const inputs = [0, 5].map(second => ({ inputId: randomUUID(), turnId, version: 1, state: 'adopted', createdAt: at(second),
+    input: { requestId: randomUUID(), sessionId, text: 'Read the handout', context: {} } }));
+  const steps = ['Earlier reply', '', 'Handout answer', '', 'Next topic'].map((text, index) => ({
+    stepId: randomUUID(), turnId, stepNo: index + 1, state: 'completed', snapshot: {},
+    createdAt: at(index + 1), updatedAt: at(index + 1), completedAt: at(index + 1),
+    attemptId: randomUUID(), text,
+  }));
+  const attempts = steps.map(step => ({ attemptId: step.attemptId, stepId: step.stepId,
+    state: 'completed', responseRef: randomUUID() }));
+  const events = steps.map((step, index) => ({ sessionId, seq: index + 1, eventId: randomUUID(), version: 1,
+    kind: 'assistant', createdAt: step.createdAt, body: { turnId, stepId: step.stepId, attemptId: step.attemptId, text: step.text } }));
+  const [withText, toolOnly, answer, unanswered] = steps;
+  const toolCalls = [withText, toolOnly, unanswered].map(step => {
+    const citation = { citationId: randomUUID(), claim: 'Page 2', label: 'Handout',
+      source: { kind: 'tool-call', toolCallId: randomUUID() }, range: null, version: 'v1', digest: 'digest' };
+    return { toolCallId: randomUUID(), stepId: step.stepId, name: 'cite_source',
+      result: { kind: 'completed', outcome: 'success', data: { citation } } };
+  });
+  const projection = createAgentConversationProjection({
+    events: async (_identity, _sessionId, after = 0) => events.filter(event => event.seq > after),
+    sessionSnapshot: async () => ({
+      session: { sessionId, identity, scenario: 'student-assistant', createdAt: at(0) },
+      turns: [{ turnId, sessionId, requestId: randomUUID(), trigger: 'user', originNotificationId: null,
+        state: 'completed', reason: '', ownerInstanceId: 'owner', createdAt: at(0), updatedAt: at(5), completedAt: at(5) }],
+      inputs, steps, attempts, toolCalls, questions: [], notifications: [],
+    }),
+  });
+  const check = value => {
+    const citations = new Map(value.citations.map(item => [item.toolCallId, item]));
+    assert.equal(citations.get(toolCalls[0].toolCallId).attemptId, withText.attemptId);
+    assert.equal(citations.get(toolCalls[1].toolCallId).stepId, answer.stepId);
+    assert.equal(citations.get(toolCalls[1].toolCallId).attemptId, answer.attemptId);
+    assert.equal(citations.get(toolCalls[2].toolCallId).attemptId, unanswered.attemptId);
+  };
+  check(await projection.conversation(identity, sessionId));
+  const delta = await projection.conversation(identity, sessionId, 2);
+  assert.equal(delta.reset, true);
+  check(delta);
+  assert.equal((await projection.conversation(identity, sessionId, 5)).citations, undefined);
+});

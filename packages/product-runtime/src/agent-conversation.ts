@@ -55,6 +55,9 @@ export function createAgentConversationProjection(runtime: Pick<AgentSessionPort
         messages.set(messageId, { messageId, turnId: input.turnId, inputId: input.inputId, role: 'user',
           text: input.input.text, createdAt: input.createdAt, state: 'settled', ...(edited.has(input.inputId) ? { editedAt: edited.get(input.inputId) } : {}) });
       }
+      const savedResponses = new Map<string, boolean>();
+      const answersByTurn = new Map<string, typeof snapshot.steps>();
+      const changedTools = new Set(events.filter(event => event.kind === 'tool-result').map(event => event.body.toolCallId));
       for (const event of events) {
         if (!['assistant', 'model-progress'].includes(event.kind)) continue;
         const body = event.body;
@@ -65,6 +68,15 @@ export function createAgentConversationProjection(runtime: Pick<AgentSessionPort
         const operation = String(body.attemptId);
         const priorThinking = thinking.get(operation);
         const step = steps.get(String(body.stepId));
+        if (event.kind === 'assistant' && step && finalAttempts.get(step.stepId) === operation && typeof body.text === 'string') {
+          const hasAnswer = !!body.text.trim();
+          savedResponses.set(step.stepId, hasAnswer);
+          if (hasAnswer) {
+            const answers = answersByTurn.get(step.turnId) ?? [];
+            answers.push(step);
+            answersByTurn.set(step.turnId, answers);
+          }
+        }
         const inputId = inputAt(eventTurnId, step?.createdAt ?? event.createdAt);
         const thinkingStepId = step?.stepId ?? priorThinking?.stepId;
         const thinkingStepNo = step?.stepNo ?? priorThinking?.stepNo;
@@ -99,10 +111,22 @@ export function createAgentConversationProjection(runtime: Pick<AgentSessionPort
         const inputId = inputAt(step.turnId, step.createdAt);
         const loaded = teachingSkillLoadedSchema.safeParse(record(record(call.result).data).loaded);
         const cited = agentCitationSchema.safeParse(record(record(call.result).data).citation);
-        if (call.name === 'cite_source' && cited.success) citations.push({ citation: cited.data, toolCallId: call.toolCallId,
-          turnId: step.turnId, stepId: call.stepId, ...(finalAttempts.get(call.stepId) ? { attemptId: finalAttempts.get(call.stepId) } : {}),
-          ...(inputId ? { inputId } : {}) });
-        if (call.name === 'cite_source') continue;
+        if (call.name === 'cite_source') {
+          if (!cited.success) continue;
+          // An incremental read may start after the citation Step or its answer. Refresh the
+          // projection when either changes so both the saved text and its attachment are visible.
+          if (after && (answersByTurn.has(step.turnId) || changedTools.has(call.toolCallId)))
+            return this.conversation(identity, sessionId);
+          // A tool-only model response can cite evidence for its following answer. Keep the
+          // original ToolCall, and bind its card to the first saved answer to the same input.
+          const reply = savedResponses.get(step.stepId) === false ? answersByTurn.get(step.turnId)?.find(candidate =>
+            candidate.stepNo > step.stepNo && inputAt(candidate.turnId, candidate.createdAt) === inputId) : undefined;
+          const stepId = reply?.stepId ?? step.stepId;
+          const attemptId = finalAttempts.get(stepId);
+          citations.push({ citation: cited.data, toolCallId: call.toolCallId, turnId: step.turnId, stepId,
+            ...(attemptId ? { attemptId } : {}), ...(inputId ? { inputId } : {}) });
+          continue;
+        }
         tools.push({ toolCallId: call.toolCallId, turnId: step.turnId, stepId: call.stepId,
           name: call.name, state: call.state, result: call.result, stepNo: step.stepNo, createdAt: call.createdAt,
           ...(inputId ? { inputId } : {}), ...(loaded.success ? { skill: loaded.data } : {}) });
@@ -159,13 +183,14 @@ export function createAgentConversationProjection(runtime: Pick<AgentSessionPort
           }
         }
       }
+      const projectedCitations = after ? citations.filter(item => !item.toolCallId) : citations;
       return agentConversationSchema.parse({ sessionId, lastSeq: events.at(-1)?.seq ?? after,
         messages: [...messages.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.messageId.localeCompare(b.messageId)),
         turns: [...archive?.turns ?? [], ...snapshot.turns],
         inputs: [...archive?.inputs ?? [], ...snapshot.inputs.map(input => ({ inputId: input.inputId, turnId: input.turnId, version: input.version,
           state: input.state, text: input.input.text, createdAt: input.createdAt, canEdit: input.inputId === editableInput }))],
         questions: snapshot.questions.filter(question => !retired.has(question.turnId)), tools, workspaces,
-        thinking: [...thinking.values()], ...(citations.length ? { citations } : {}),
+        thinking: [...thinking.values()], ...(projectedCitations.length ? { citations: projectedCitations } : {}),
         ...(contextUsage ? { contextUsage } : {}), ...(after === 0 ? { reset: true } : {}) });
     },
   };

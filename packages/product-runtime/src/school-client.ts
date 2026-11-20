@@ -1395,6 +1395,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     if (route === 'activities') return body === undefined ? learning.list(identity) : learning.create(identity, body as never);
     if (route.startsWith('activities/')) return learning.open(identity, route.slice(11));
     if (route === 'activity-status') return learning.setStatus(identity, body as never);
+    if (route === 'course-progress') return learning.setCourseProgress(identity, body);
     if (route.startsWith('receipts/')) return learning.receipt(identity, route.slice(9));
     if (route === 'course-activities') return learning.createCourse(identity, body);
     if (route.startsWith('course-activity-results/')) return learning.courseResult(identity, route.slice('course-activity-results/'.length));
@@ -1638,7 +1639,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     if (route === 'agent-sources' && body !== undefined) throw new StorageError('missing');
     const id = '[0-9a-f-]{36}';
     const key = '[a-z][a-z0-9-]{0,47}';
-    if (!new RegExp(`^(?:agent-sources|execution-environment|activities(?:/${id})?|activity-status|receipts/${id}|courses|releases/${id}` +
+    if (!new RegExp(`^(?:agent-sources|execution-environment|activities(?:/${id})?|activity-status|course-progress|receipts/${id}|courses|releases/${id}` +
       `|artifacts/${id}(?:/(?:check|adopt|shelf|checks/${id}|candidates/${id}|receipts/${id}|${id}(?:/revisions/${id}(?:/resource)?)?))?` +
       `|agent-settings(?:/receipts/${id})?` +
       `|conversation-archives(?:/(?:set|import))?` +
@@ -1738,7 +1739,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
         return routeExecutionHttp(local.executions, local.executionCommandAuthorization, identity, route, body);
       }
     }
-    if (connection.localBinding && /^(artifacts|pdf|materials|conversation-archives|conversation-history|agent-settings|activities|activity-status|receipts|course-activities|course-activity-results|workspaces|drafts|intents|executions)(\/|$)/.test(route)) {
+    if (connection.localBinding && /^(artifacts|pdf|materials|conversation-archives|conversation-history|agent-settings|activities|activity-status|course-progress|receipts|course-activities|course-activity-results|workspaces|drafts|intents|executions)(\/|$)/.test(route)) {
       if (!local) throw new StorageError('unavailable');
       const value = await localForward(connection, route, body);
       if (route === 'conversation-history' || route.startsWith('conversation-history/')) {
@@ -1885,7 +1886,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       if (result.activity) check(result.activity);
       return result;
     }
-    if (route === 'course-activities' || route === 'activity-status' || route.startsWith('activities/')) return check(value);
+    if (route === 'course-activities' || route === 'activity-status' || route === 'course-progress' || route.startsWith('activities/')) return check(value);
     if (route === 'activities') return Array.isArray(value) ? value.map(check) : check(value);
     if (route.startsWith('receipts/')) return value === null ? null : check(value);
     return value;

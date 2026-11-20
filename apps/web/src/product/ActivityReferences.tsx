@@ -16,8 +16,6 @@ import { ExecutionController } from '../tool-execution/controller'
 import { createAlgorithmProvider } from '../tool-execution/provider'
 import { createAdapterRegistry } from '../tool-execution/adapters'
 import { runtimePreparation } from '../component-preparation/runtime'
-import { cacheableMaterial, materialCache } from '../component-preparation/materials'
-import { materialLinks } from './material-links'
 import { createExecutionTransport, createSessionTransport } from './executionTransport'
 import { NativeSessionController } from '../tool-execution/session-controller'
 import { SessionRequests } from '../tool-execution/session-requests'
@@ -28,8 +26,6 @@ import type { AgentSession } from '@xunjie/contracts/agent-sessions'
 import { useAgentInteraction } from './AgentInteraction'
 import { useSkillCatalog, draftSkillOption } from './skills'
 import type { LearningReadCache } from './learning-read-cache'
-
-const readable = cacheableMaterial
 
 export function ActivityReferences({ activity, spaceKey, namespace, authorized, readOnly = false, children, viewActive = true, readCache }: {
   activity: LearningActivity; spaceKey: string; namespace: string; authorized: boolean; readOnly?: boolean; children: ReactNode; viewActive?: boolean
@@ -92,6 +88,7 @@ export function ActivityReferences({ activity, spaceKey, namespace, authorized, 
       await workspace.flush(); await draft.leave()
       if (action.draft.skills) sessionSkillStateSchema.parse(await agentClient.request(`${agentSession.sessionId}/skills/select`, { requestId: action.requestId, skills: action.draft.skills }))
     })) : undefined, [actions, agentClient, agentSession, readOnly, workspace, draft])
+  // Retain the same workspace controllers when progress or activity status changes.
   const execution = useMemo(() => {
     // One page load is one executor generation; an older page cannot adopt a newer run.
     const transport = createExecutionTransport(activity, spaceKey, namespace)
@@ -105,10 +102,10 @@ export function ActivityReferences({ activity, spaceKey, namespace, authorized, 
         if (!binding || binding.definition.digest !== action.execution.instance.definitionDigest) throw new Error('forbidden')
         return runtimePreparation.resources({ activity, binding, spaceKey, namespace })
       } }), () => access.current && !workspace.accessDenied(), readOnly)
-  }, [scope, actions, activity, spaceKey, namespace, readOnly])
+  }, [scope, actions, spaceKey, namespace, readOnly])
   const sessions = useMemo(() => new NativeSessionController(scope,
     createSessionTransport(activity, spaceKey, namespace),
-    () => access.current && !workspace.accessDenied(), new SessionRequests(), readOnly), [scope, activity, spaceKey, namespace, workspace, readOnly])
+    () => access.current && !workspace.accessDenied(), new SessionRequests(), readOnly), [scope, spaceKey, namespace, workspace, readOnly])
   useEffect(() => {
     let active = true
     let stopAgentTasks = () => {}
@@ -142,47 +139,4 @@ export function CourseRequirementsReference({ course }: { course: CourseActivity
     releaseId: course.releaseId, contentDigest: course.contentDigest, field: 'requirements' as const }), [course])
   return <div data-course-requirements tabIndex={-1}><TextReferenceSource sourceId={questionReferenceSourceId(source)} sourceName="任务要求"
     text={course.requirements} source={source} /></div>
-}
-
-export function CourseMaterialReferences({ activity, course, spaceKey, namespace }: {
-  activity: LearningActivity; course: CourseActivityBinding; spaceKey: string; namespace: string
-}) {
-  const materialKey = useMemo(() => JSON.stringify([course.releaseId, course.materials.map(item => item.materialId)]), [course])
-  const [contents, setContents] = useState<Record<string, { text?: string; error?: string }>>({})
-  useEffect(() => {
-    let cancelled = false
-    const readableMaterials = course.materials.filter(item => readable(item.mediaType))
-    setContents(Object.fromEntries(readableMaterials.map(item => [item.materialId, {}])))
-    // An opened activity reads its fixed release from the local byte cache; the service is only
-    // asked for bytes this browser does not already hold, and every answer is re-verified.
-    void Promise.all(readableMaterials.map(async item => {
-      try {
-        const text = await materialCache.text(activity, course, spaceKey, namespace, item)
-        return [item.materialId, { text }] as const
-      } catch { return [item.materialId, { error: '材料内容暂时无法读取；该材料尚未缓存在本机。已保存的引用副本不受影响。' }] as const }
-    })).then(entries => { if (!cancelled) setContents(Object.fromEntries(entries)) })
-    return () => { cancelled = true }
-  }, [activity, course, spaceKey, namespace, materialKey])
-  const materials = course.materials.filter(item => readable(item.mediaType))
-  if (!materials.length) return null
-  return <section aria-labelledby="readable-materials-title">
-    <h3 id="readable-materials-title">可引用课程内容</h3>
-    <p className="detail">选择下面的文字或编辑区代码，可带着固定引用向 Agent 提问。</p>
-    {materials.map(item => {
-      const source = { kind: 'course-material' as const, courseId: course.courseId, taskId: course.taskId,
-        releaseId: course.releaseId, contentDigest: course.contentDigest, materialId: item.materialId,
-        materialSha256: item.sha256, mediaType: item.mediaType }
-      const content = contents[item.materialId]
-      const links = content?.text ? materialLinks(content.text) : []
-      return <article className="learning-material-text" key={item.materialId} data-material-id={item.materialId} tabIndex={-1}>
-        <h4>{item.title}</h4>
-        {links.length>0&&<details><summary>打开补学资料来源</summary><ul>{links.map(link=><li key={link.href}>
-          <a href={link.href} target="_blank" rel="noopener noreferrer">{link.label}</a>
-        </li>)}</ul></details>}
-        {content?.text !== undefined ? <TextReferenceSource sourceId={questionReferenceSourceId(source)}
-          sourceName={item.title} text={content.text} source={source} />
-          : content?.error ? <p className="detail" role="status">{content.error}</p> : <p className="detail" role="status" aria-label="正在读取材料" />}
-      </article>
-    })}
-  </section>
 }

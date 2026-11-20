@@ -1,0 +1,91 @@
+import { useMemo } from 'react'
+import DOMPurify from 'dompurify'
+import katex from 'katex'
+import { Marked, Renderer } from 'marked'
+import 'katex/dist/katex.min.css'
+
+const inlineFormula = /^\$(?![\s$])((?:\\[^\r\n]|[^\\$\r\n])+)\$(?![\d$])/
+const displayFormula = /^ {0,3}\$\$[ \t]*\n([\s\S]*?)\n {0,3}\$\$[ \t]*(?:\n|$)/
+const shortDisplayFormula = /^ {0,3}\$\$((?:\\[^\r\n]|[^\\$\r\n])+)\$\$[ \t]*(?:\n|$)/
+
+function escapeHtml(text: string) {
+  return text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;').replaceAll("'", '&#39;')
+}
+
+function formula(text: string, raw: string, displayMode: boolean) {
+  try {
+    if (text.length <= 8192) {
+      return katex.renderToString(text, {
+        displayMode, trust: false, maxExpand: 500, maxSize: 40, throwOnError: true, strict: 'ignore',
+      })
+    }
+  } catch { /* Keep unsupported syntax readable as source. */ }
+  return '<code>' + escapeHtml(raw.trim()) + '</code>'
+}
+
+const markdown = new Marked({
+  gfm: true,
+  extensions: [{
+    name: 'courseInlineMath',
+    level: 'inline',
+    start(source) { return source.indexOf('$') },
+    tokenizer(source) {
+      const match = inlineFormula.exec(source)
+      if (match && !/\s$/.test(match[1]))
+        return { type: 'courseInlineMath', raw: match[0], text: match[1] }
+    },
+    renderer(token) { return formula(token.text, token.raw, false) },
+  }, {
+    name: 'courseDisplayMath',
+    level: 'block',
+    start(source) {
+      const line = /\n {0,3}\$\$/.exec(source)
+      return line ? line.index + 1 : undefined
+    },
+    tokenizer(source) {
+      const match = displayFormula.exec(source) ?? shortDisplayFormula.exec(source)
+      if (match?.[1].trim()) return { type: 'courseDisplayMath', raw: match[0], text: match[1].trim() }
+    },
+    renderer(token) {
+      return '<div class="course-reader-math-block">' + formula(token.text, token.raw, true) + '</div>'
+    },
+  }],
+  renderer: {
+    heading({ depth, tokens }) {
+      const tag = 'h' + Math.min(6, depth + 2)
+      return '<' + tag + '>' + this.parser.parseInline(tokens) + '</' + tag + '>'
+    },
+    html(token) { return escapeHtml(token.raw) },
+    image(token) { return escapeHtml(token.text) },
+    link({ href, tokens }) {
+      const label = this.parser.parseInline(tokens)
+      if (!/^https?:\/\//i.test(href)) return label
+      try {
+        const url = new URL(href)
+        if (!url.username && !url.password)
+          return '<a href="' + escapeHtml(url.href) + '" target="_blank" rel="noopener noreferrer">' + label + '</a>'
+      } catch { /* Malformed links remain readable as text. */ }
+      return label
+    },
+    table(token) {
+      return '<div class="course-reader-table" role="region" aria-label="表格" tabindex="0">'
+        + Renderer.prototype.table.call(this, token) + '</div>'
+    },
+  },
+})
+
+export default function CourseMarkdown({ text }: { text: string }) {
+  const html = useMemo(() => {
+    try {
+      if (!DOMPurify.isSupported) return null
+      return DOMPurify.sanitize(markdown.parse(text.replace(/^\uFEFF/, ''), { async: false }), {
+        ADD_ATTR: ['target'],
+        ALLOW_DATA_ATTR: false,
+        FORBID_TAGS: ['img', 'audio', 'video', 'iframe', 'object', 'embed', 'style', 'form'],
+      })
+    } catch { return null }
+  }, [text])
+  return html === null ? <pre className="course-reader-plain">{text}</pre>
+    : <article className="course-reader-markdown" dangerouslySetInnerHTML={{ __html: html }} />
+}

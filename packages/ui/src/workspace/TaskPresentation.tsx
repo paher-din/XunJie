@@ -13,12 +13,12 @@ export interface TaskInfoProps {
   name: string
   status: ReactNode
   demoNotice?: ReactNode
-  goal: string
-  percent: number
-  done: boolean
-  currentProgress: string
-  stage: ReactNode
-  deadline: string
+  goal?: string
+  percent?: number
+  done?: boolean
+  currentProgress?: string
+  stage?: ReactNode
+  deadline?: ReactNode
   course: string
 }
 
@@ -82,25 +82,27 @@ export function TaskInfo({ name, status, demoNotice, goal, percent, done, curren
       <h2>{name}</h2>
       {status}
       {demoNotice != null && <p className="ws-demo-flag">{demoNotice}</p>}
-      <p className="ws-taskinfo-goal">{goal}</p>
-      <div className="progresslabel">
-        <span>任务进度</span>
-        <span>{percent}%</span>
-      </div>
-      <ProgressBar percent={percent} done={done} />
+      {goal && <p className="ws-taskinfo-goal">{goal}</p>}
+      {percent !== undefined && <>
+        <div className="progresslabel">
+          <span>任务进度</span>
+          <span>{percent}%</span>
+        </div>
+        <ProgressBar percent={percent} done={done} />
+      </>}
       <div className="ws-kv-list">
-        <div className="ws-kv">
+        {currentProgress && <div className="ws-kv">
           <span>当前进展</span>
           <b>{currentProgress}</b>
-        </div>
-        <div className="ws-kv">
+        </div>}
+        {stage != null && <div className="ws-kv">
           <span>阶段</span>
           <b>{stage}</b>
-        </div>
-        <div className="ws-kv">
+        </div>}
+        {deadline != null && <div className="ws-kv">
           <span>截止时间</span>
           <b>{deadline}</b>
-        </div>
+        </div>}
         <div className="ws-kv">
           <span>课程</span>
           <b>{course}</b>

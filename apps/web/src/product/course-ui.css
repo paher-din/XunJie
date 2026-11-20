@@ -1,0 +1,52 @@
+/* Course and material presentation; Agent output keeps its shared renderer. */
+.course-version-select { margin-bottom: 20px; }
+.course-preview-status { color: var(--muted); font-size: 13px; }
+.product-course-sections { display: grid; gap: 24px; }
+.course-content-main, .course-content-resources { min-width: 0; display: grid; align-content: start; gap: 24px; font-size: 13px; line-height: 1.9; overflow-wrap: anywhere; }
+.course-content-section > :is(h3, h4) { margin: 0 0 12px; font-size: 15px; font-weight: 600; line-height: 1.5; }
+.course-content-section p { margin: 0; }
+.course-content-section .preserve-lines { white-space: pre-wrap; }
+.course-content-section .course-points { margin: 0; padding-left: 20px; }
+.course-content-section .course-points li { margin: 8px 0; }
+.course-content-section .course-points li:first-child { margin-top: 0; }
+.course-content-section .course-points li:last-child { margin-bottom: 0; }
+.course-content-section .course-objectives { padding-left: 0; list-style: none; }
+.course-objectives label { display: flex; align-items: flex-start; gap: 8px; }
+.course-objectives input { flex: none; margin: 6px 0 0; accent-color: var(--primary); }
+.material-action { display: grid; place-items: center end; min-width: 76px; }
+.material-action > span { grid-area: 1 / 1; }
+.material-size { color: var(--muted); white-space: nowrap; font-size: 12px; }
+.material-download { display: flex; opacity: 0; pointer-events: none; }
+.workspace-resource-row:is(:hover, :focus-within) .material-download, .material-action[data-reading="true"] .material-download { opacity: 1; pointer-events: auto; }
+.workspace-resource-row:is(:hover, :focus-within) .material-size, .material-action[data-reading="true"] .material-size { opacity: 0; }
+.material-action .material-download-trigger { display: inline-flex; align-items: center; min-height: 32px; height: 32px; padding: 0; border: 0; background: transparent; color: var(--accent-deep); font-size: 13px; text-decoration: underline; text-underline-offset: 2px; border-radius: 4px; }
+.material-action .material-download-trigger:hover { color: var(--ink); }
+.material-action .material-download-trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.material-action .material-download-trigger[aria-busy="true"] { color: var(--muted); text-decoration: none; cursor: progress; }
+@media (hover: none) {
+  .material-download { opacity: 1; pointer-events: auto; }
+  .material-size { opacity: 0; }
+}
+.ws-task-dialog .capability-note, .workspace-resource-library .capability-note { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
+.workspace-resource-library .capability-note { margin-top: 12px; }
+.capability-note summary { cursor: pointer; color: var(--ink-soft); }
+.capability-note .course-tool-list { display: grid; gap: 16px; list-style: none; padding: 0; margin: 16px 0 0; }
+.capability-note .course-tool-list > li { margin: 0; }
+.course-tool-name { color: var(--ink); font-size: 15px; font-weight: 600; }
+.course-tool-description { margin: 4px 0 8px; max-width: 72ch; font-size: 13px; line-height: 1.7; }
+.course-tool-technical { font-size: 12px; }
+.course-tool-technical dl { display: grid; gap: 8px; margin: 12px 0 0; }
+.course-tool-technical dl > div { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 8px; align-items: baseline; }
+.course-tool-technical :is(dt, dd) { margin: 0; }
+.course-tool-technical code { font-size: inherit; overflow-wrap: anywhere; }
+.product-task-details { width: 360px; flex: none; overflow: auto; padding: 24px; border-right: 1px solid var(--line); }
+.product-task-details-heading { margin-bottom: 20px; overflow-wrap: anywhere; }
+.product-task-details-heading h2 { font-size: 17px; margin: 0 0 6px; }
+.product-task-details-heading p { margin: 0; }
+.product-task-details > h3, .product-task-details > section > h3 { margin: 24px 0 12px; font-size: 15px; }
+.product-task-details h4 { font-size: 13px; font-weight: 600; }
+.product-task-details ul { padding-left: 20px; }
+.product-task-details li { margin: 8px 0; font-size: 13px; }
+.product-task-details .wr-text-source { font-size: 13px; line-height: 1.9; }
+@media (max-width: 1200px) { .product-task-details { width: 300px; padding: 20px; } }
+@media (max-width: 760px) { .product-task-details { width: 240px; } }

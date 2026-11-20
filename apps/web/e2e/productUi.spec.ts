@@ -10,8 +10,9 @@ import { openProductRuntime, createProductRuntimeHost, createProductLearningAppl
 import { controlledActionReceiver } from '../../server/tests/support/action-receiver.mjs'
 import { annotationPackage } from '../../../components/material-annotation/package.mjs'
 import { aluPackage, aluCoursePackage } from '../../../components/alu-experiment/package.mjs'
-import { openCourseTasks, selectProductSpace } from './support/product-ui'
 import type { AgentConversation } from '@xunjie/contracts/agent-service'
+import { fixedPdf } from '../../server/tests/fixtures/pdf-material.mjs'
+import { courseTaskCard, openCourseTasks, selectProductSpace, useEmbeddedSchoolFixture } from './support/product-ui'
 
 const postgresBin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN
 test.skip(!postgresBin, 'Requires the native PostgreSQL distribution')
@@ -23,6 +24,7 @@ let host: Awaited<ReturnType<typeof createProductRuntimeHost>>
 const cases: { name: string; status: string | undefined; durationMs: number }[] = []
 const output = evidenceDirectory('159')
 test.beforeAll(async ({ browser }, info) => {
+  test.setTimeout(180_000)
   browserVersion = browser.version(); headless = info.project.use.headless !== false
   if (output) await mkdir(output, { recursive: true })
   root = await mkdtemp(join(tmpdir(), 'xj-ui159-tests-'))
@@ -52,6 +54,22 @@ async function newActivity(page: Page, goal = '自主学习-' + randomUUID()) {
   await expect(page.locator('#activity-title')).toHaveText(goal)
   return new URL(page.url()).searchParams.get('activity')!
 }
+
+async function openPersonalActivityFromHome(page: Page) {
+  const goal = '自主学习-' + randomUUID()
+  const response = await page.request.post(endpoint + '/api/learning/activities', {
+    headers: { 'x-xj-space': 'personal' }, data: { requestId: randomUUID(), goal, question: '', references: [] },
+  })
+  expect(response.status()).toBe(200)
+  const { activityId: id } = await response.json() as { activityId: string }
+  await page.goto(endpoint)
+  await selectProductSpace(page, '个人空间')
+  await page.locator(`[data-activity-id="${id}"]`).click()
+  await expect(page.locator('#activity-title')).toHaveText(goal)
+  expect(new URL(page.url()).searchParams.get('activity')).toBe(id)
+  return id
+}
+
 async function fileMenu(page: Page) {
   const trigger = page.getByRole('button', { name: '文件', exact: true })
   if (await trigger.getAttribute('aria-expanded') !== 'true') await trigger.click()
@@ -67,7 +85,7 @@ const readWorks = async (page: Page, id: string) => (await page.request.get(endp
   { headers: { 'x-xj-space': 'personal' } })).json()
 
 test('default product entry uses shared UI and stable file identities through rename, deletion and recreation', async ({ page }) => {
-  const id = await newActivity(page)
+  const id = await openPersonalActivityFromHome(page)
   await expect(page.locator('.shell.immersive')).toBeVisible()
   await newFile(page, '中文.txt')
   await page.keyboard.insertText('第一份原文')
@@ -187,15 +205,25 @@ test('course content and shared navigation keep usable widths, theme and keyboar
   }
   const courseId = randomUUID(), taskId = randomUUID(), releaseId = randomUUID(), materialId = randomUUID()
   const bytes = Buffer.from('可选择的课程材料，中文原文保持不变。')
+  const pdfName = '随堂讲义.pdf', pdfBytes = fixedPdf(), pdfMaterialId = randomUUID()
+  const deadlineAt = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+  const helpPolicy = { version: 1, questions: 'allowed', scope: 'course' }
   await manage('course-import', { formatVersion: 1, requestId: randomUUID(), course: { courseId, name: '课程入口回归' },
-    task: { taskId, title: '实际课程任务', summary: '从固定材料进入作品' }, release: { helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },  releaseId, objectives: ['保留固定依据'],
-      requirements: '要求与当前作品一起容易找到。', materials: [{ materialId, title: '课程材料', path: 'material.txt', access: 'student',
-        mediaType: 'text/plain', byteLength: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') }], starterWorks: [], capabilities: [] },
-    resources: [{ path: 'material.txt', contentBase64: bytes.toString('base64') }] })
+    task: { taskId, title: '实际课程任务', summary: '从固定材料进入作品' }, release: { helpPolicy,
+      releaseId: randomUUID(), objectives: ['保留旧版依据'], requirements: '这是已固定的旧版要求。', materials: [], starterWorks: [], capabilities: [] }, resources: [] })
+  await manage('course-import', { formatVersion: 1, requestId: randomUUID(), course: { courseId, name: '课程入口回归' },
+    task: { taskId, title: '实际课程任务', summary: '从固定材料进入作品' }, release: { helpPolicy, releaseId, deadlineAt, objectives: ['保留固定依据', '验证课程结果'],
+      requirements: '要求与当前作品一起容易找到。', materials: [
+        { materialId, title: '课程材料', path: 'material.txt', access: 'student', mediaType: 'text/plain',
+          byteLength: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') },
+        { materialId: pdfMaterialId, title: pdfName, path: 'handout.pdf', access: 'student', mediaType: 'application/pdf',
+          byteLength: pdfBytes.length, sha256: createHash('sha256').update(pdfBytes).digest('hex') },
+      ], starterWorks: [], capabilities: [] },
+    resources: [{ path: 'material.txt', contentBase64: bytes.toString('base64') }, { path: 'handout.pdf', contentBase64: pdfBytes.toString('base64') }] })
   const loginName = 'ui-' + randomUUID(), password = randomUUID()
   const member = await manage('members', { requestId: randomUUID(), loginName, password })
   await manage('course-access', { requestId: randomUUID(), courseId, principalId: member.principalId, active: true })
-  expect((await page.request.post(endpoint + '/api/learning/login', { data: { loginName, password } })).status()).toBe(200)
+  await useEmbeddedSchoolFixture(page, endpoint, loginName, password)
   await page.setViewportSize({ width: 960, height: 900 }); await page.goto(endpoint + '/?space=school')
   await expect(page.locator('.shell')).toHaveClass(/collapsed/)
   await expect(page.locator('.main')).toHaveCSS('margin-left', '60px')
@@ -204,10 +232,199 @@ test('course content and shared navigation keep usable widths, theme and keyboar
   await expect(page.locator('.shell')).not.toHaveClass(/collapsed/)
   await page.getByRole('button', { name: /外观/ }).click(); await page.keyboard.press('Escape')
   await expect(page.getByRole('button', { name: /外观/ })).toBeFocused()
+  const dashboard = await page.getByRole('heading', { name: '学习看板', exact: true }).elementHandle()
   await openCourseTasks(page, '课程入口回归')
-  await page.getByRole('button', { name: /最近发布/ }).click()
-  await page.getByRole('button', { name: '从这一版本开始活动' }).click()
-  await expect(page.getByLabel('课程材料', { exact: true })).toContainText(bytes.toString())
+  expect(await dashboard?.evaluate(element => element.isConnected)).toBe(true)
+  await expect(page.locator('.course-region h2')).toContainText('课程与任务')
+  await expect(page.getByRole('button', { name: '刷新任务', exact: true })).toHaveCount(0)
+  const task = courseTaskCard(page, '实际课程任务')
+  await expect(task.getByText('未开始', { exact: true })).toBeVisible()
+  await expect(task.getByText('已逾期', { exact: true })).toBeVisible()
+  await expect(task.locator('.progresslabel')).toHaveText(/任务进度.*0\/2 项\s*0%/)
+  await expect(task.locator('time')).toHaveAttribute('datetime', deadlineAt)
+  const search = page.getByRole('textbox', { name: '搜索任务', exact: true })
+  await search.fill('不会匹配')
+  await expect(task).toHaveCount(0)
+  await page.getByRole('button', { name: '清除搜索', exact: true }).click()
+  await expect(task).toBeVisible()
+  const courseUrl = page.url()
+  await task.focus(); await page.keyboard.press('Enter')
+  const preview = page.getByRole('dialog', { name: '实际课程任务', exact: true })
+  const centerError = (atEntrance = false) => preview.evaluate((element, atEntrance) => {
+    const animation = atEntrance ? element.getAnimations()[0] : undefined
+    const currentTime = animation?.currentTime ?? null
+    if (animation) animation.currentTime = 0
+    const rect = element.getBoundingClientRect()
+    if (animation) animation.currentTime = currentTime
+    return Math.max(Math.abs(rect.left + rect.width / 2 - innerWidth / 2), Math.abs(rect.top + rect.height / 2 - innerHeight / 2))
+  }, atEntrance)
+  expect(await centerError(true)).toBeLessThan(1)
+  await expect(preview).toContainText('要求与当前作品一起容易找到。')
+  await expect(preview.locator('.ws-intro-meta')).toContainText('截止')
+  expect(await centerError()).toBeLessThan(1)
+  await page.setViewportSize({ width: 960, height: 480 })
+  await expect.poll(() => centerError()).toBeLessThan(1)
+  await page.setViewportSize({ width: 960, height: 900 })
+  await expect(page).toHaveURL(courseUrl)
+  const version = preview.getByRole('combobox', { name: '任务发布版本', exact: true })
+  await version.click()
+  await preview.getByRole('option').filter({ hasNotText: '最新版本' }).click()
+  await expect(preview).toContainText('这是已固定的旧版要求。')
+  await page.keyboard.press('Escape')
+  await expect(preview).toHaveCount(0)
+  await expect(task).toBeFocused()
+  await task.click()
+  await expect(preview).toContainText('要求与当前作品一起容易找到。')
+  await preview.getByRole('button', { name: '开始任务', exact: true }).click()
+  await expect(preview).toHaveCount(0)
+  const dock = page.getByRole('navigation', { name: '工作区辅助', exact: true })
+  const taskInfo = dock.getByRole('button', { name: '任务信息', exact: true })
+  const stash = dock.getByRole('button', { name: '卡片收纳', exact: true })
+  const details = page.getByRole('complementary', { name: '目标与要求', exact: true })
+  const detailsToggle = page.getByRole('button', { name: '目标与要求', exact: true })
+  await expect(taskInfo).toHaveAttribute('aria-expanded', 'false')
+  await expect(taskInfo).toBeFocused()
+  await expect(stash).toBeVisible()
+  await expect(detailsToggle).toHaveAttribute('aria-expanded', 'true')
+  await taskInfo.click()
+  const basicInfo = page.getByRole('complementary', { name: '任务信息', exact: true })
+  await expect(basicInfo).toHaveClass('ws-popcard')
+  await expect(taskInfo).toHaveAttribute('aria-controls', (await basicInfo.getAttribute('id'))!)
+  await expect(basicInfo.getByRole('heading', { name: '实际课程任务' })).toBeVisible()
+  await expect(basicInfo).toContainText('课程入口回归')
+  await expect(basicInfo.locator('time')).toHaveAttribute('datetime', deadlineAt)
+  await expect(basicInfo).not.toContainText('要求与当前作品一起容易找到。')
+  await expect(basicInfo.getByRole('checkbox')).toHaveCount(0)
+  await expect(basicInfo.getByRole('button', { name: '课程材料', exact: true })).toHaveCount(0)
+  await stash.click()
+  const stashPanel = page.getByRole('complementary', { name: '卡片收纳', exact: true })
+  await expect(basicInfo).toHaveCount(0)
+  await expect(stashPanel).toContainText('在学习页面点「收纳」后')
+  await page.keyboard.press('Escape')
+  await expect(stashPanel).toHaveCount(0)
+  await expect(stash).toBeFocused()
+  await expect(details).toBeVisible()
+  await expect(details).toContainText('要求与当前作品一起容易找到。')
+  await expect(details.getByRole('heading', { name: /学习材料|PDF|个人笔记/ })).toHaveCount(0)
+  await expect(details.getByRole('button', { name: '课程材料', exact: true })).toHaveCount(0)
+  const firstObjective = details.getByRole('checkbox', { name: '保留固定依据', exact: true })
+  await firstObjective.click()
+  await expect(firstObjective).toBeChecked()
+  await taskInfo.click()
+  await expect(basicInfo.locator('.progresslabel')).toHaveText(/任务进度\s*50%/)
+  await page.keyboard.press('Escape')
+  await expect(basicInfo).toHaveCount(0)
+  await expect(taskInfo).toBeFocused()
+  const resourceTab = page.getByRole('tab', { name: '学习资料', exact: true })
+  const resourceNav = page.getByRole('group', { name: '资料分类' })
+  const courseMaterialsTab = resourceNav.getByRole('button', { name: '课程材料', exact: true })
+  const library = page.getByRole('region', { name: '课程材料', exact: true })
+  await resourceTab.click()
+  await expect(courseMaterialsTab).toHaveAttribute('aria-pressed', 'true')
+  await library.getByRole('button', { name: '课程材料', exact: true }).click()
+  const reader = page.getByRole('region', { name: '课程材料阅读', exact: true })
+  await expect(reader).toContainText(bytes.toString())
+  await expect(details).toHaveCount(0)
+  await reader.getByRole('button', { name: '返回材料列表', exact: true }).click()
+  await expect(library.getByRole('button', { name: '课程材料', exact: true })).toBeVisible()
+  const pdfTab = resourceNav.getByRole('button', { name: '个人 PDF', exact: true })
+  const pdfList = page.getByRole('region', { name: '个人 PDF', exact: true })
+  const pdfReader = page.getByRole('region', { name: 'PDF 阅读区', exact: true })
+  await page.route('**/api/learning/pdf/*/course', async route => {
+    await route.fetch()
+    await route.abort('failed')
+  }, { times: 1 })
+  await library.getByRole('button', { name: pdfName, exact: true }).click()
+  const retryLabel = '核对并继续原请求'
+  const courseRetry = library.getByRole('button', { name: retryLabel, exact: true })
+  await expect(courseRetry).toBeEnabled()
+  await pdfTab.click()
+  await expect(pdfList.getByRole('button', { name: retryLabel, exact: true })).toHaveCount(0)
+  await courseMaterialsTab.click()
+  await courseRetry.click()
+  await expect(courseMaterialsTab).toHaveAttribute('aria-pressed', 'true')
+  await expect(pdfReader.getByRole('img', { name: 'PDF 第 1 页固定页图', exact: true })).toBeVisible()
+  await expect(pdfReader.getByRole('heading', { name: pdfName, exact: true })).toBeVisible()
+  await expect(pdfReader.getByRole('button', { name: '返回作品', exact: true })).toHaveCount(0)
+  const pdfTools = pdfReader.getByRole('button', { name: 'PDF 工具侧栏', exact: true })
+  await expect(pdfTools).toHaveAttribute('aria-expanded', 'false')
+  await pdfTools.click()
+  await pdfReader.getByRole('button', { name: '引用此页', exact: true }).click()
+  await pdfReader.getByRole('button', { name: '返回材料列表', exact: true }).click()
+  await pdfTab.click()
+  await expect(pdfList.getByRole('button', { name: '添加 PDF', exact: true })).toBeEnabled()
+  await expect(pdfList.getByRole('button', { name: pdfName, exact: true })).toHaveCount(0)
+  await pdfList.locator('input[type=file]').setInputFiles({ name: pdfName, mimeType: 'application/pdf', buffer: pdfBytes })
+  const cover = pdfReader.getByRole('img', { name: 'PDF 第 1 页固定页图', exact: true })
+  await expect(cover).toBeVisible()
+  const defaultZoom = pdfReader.getByRole('button', { name: '默认', exact: true })
+  const fitWidth = pdfReader.getByRole('button', { name: '适合宽度', exact: true })
+  const fitPage = pdfReader.getByRole('button', { name: '适合整页', exact: true })
+  const zoomSlider = pdfReader.getByRole('slider', { name: 'PDF 缩放比例' })
+  await expect(defaultZoom).toHaveAttribute('aria-pressed', 'true')
+  await fitWidth.click()
+  await expect(fitWidth).toHaveAttribute('aria-pressed', 'true')
+  const closedWidth = (await cover.boundingBox())!.width
+  await pdfTools.click()
+  await expect.poll(async () => (await cover.boundingBox())!.width).toBeLessThan(closedWidth)
+  await defaultZoom.click()
+  await pdfReader.getByRole('button', { name: '下一页', exact: true }).click()
+  await expect(pdfReader.getByText('页标签 7', { exact: true })).toBeVisible()
+  await expect(zoomSlider).toBeEnabled()
+  const initialZoom = Number(await zoomSlider.inputValue())
+  await zoomSlider.press('ArrowRight')
+  await expect(zoomSlider).toHaveValue(String(initialZoom + 1))
+  await zoomSlider.press('ArrowLeft')
+  await expect(zoomSlider).toHaveValue(String(initialZoom))
+  await fitPage.click()
+  await expect(fitPage).toHaveAttribute('aria-pressed', 'true')
+  const textLayer = pdfReader.locator('.pdf-page-text[data-text-state="ready"]')
+  const run = textLayer.getByText('Fixed evidence: 37 volts', { exact: true })
+  await expect(run).toBeVisible()
+  const pdfSearch = pdfReader.getByRole('searchbox', { name: '当前页文字查找' })
+  await pdfSearch.fill('37 volts')
+  await expect(pdfReader.getByRole('status')).toHaveText('匹配 1 处，按 Enter 跳转')
+  await expect.poll(() => page.evaluate(() => CSS.highlights.get('xunjie-pdf-find')?.size)).toBe(1)
+  const bounds = (await run.boundingBox())!
+  await page.mouse.move(bounds.x + 1, bounds.y + bounds.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(bounds.x + bounds.width - 1, bounds.y + bounds.height / 2, { steps: 8 })
+  await page.mouse.up()
+  await expect.poll(() => page.evaluate(() => window.getSelection()?.toString())).toBe('Fixed evidence: 37 volts')
+  await pdfReader.getByRole('button', { name: '框选区域', exact: true }).click()
+  await expect(textLayer).toBeHidden()
+  await page.keyboard.press('Escape')
+  await expect(textLayer).toBeVisible()
+  await pdfTools.click()
+  await expect(pdfTools).toHaveAttribute('aria-expanded', 'false')
+  await pdfReader.getByRole('button', { name: '返回 PDF 列表', exact: true }).click()
+  await expect(pdfList.getByRole('button', { name: pdfName, exact: true })).toBeVisible()
+  const references = page.getByRole('region', { name: '上下文引用', exact: true })
+  await references.getByRole('button', { name: /^定位引用 1：随堂讲义/ }).click()
+  await expect(courseMaterialsTab).toHaveAttribute('aria-pressed', 'true')
+  await expect(pdfReader.getByRole('heading', { name: pdfName, exact: true })).toBeVisible()
+  await expect(pdfReader.getByRole('img', { name: 'PDF 第 1 页固定页图', exact: true })).toBeVisible()
+  await pdfReader.getByRole('button', { name: '返回材料列表', exact: true }).click()
+  await references.getByRole('button', { name: '移除引用 1', exact: true }).click()
+  await page.getByRole('button', { name: '收起对话', exact: true }).click()
+  const notesTab = resourceNav.getByRole('button', { name: '个人笔记', exact: true })
+  const notes = page.getByRole('region', { name: '个人笔记', exact: true })
+  await notesTab.click()
+  await notes.getByRole('button', { name: '添加笔记', exact: true }).click()
+  await notes.getByRole('textbox', { name: '个人笔记名称', exact: true }).fill('课程随记')
+  const noteText = notes.getByRole('textbox', { name: '个人笔记正文', exact: true })
+  await noteText.fill('在任务要求之外记录自己的思路。')
+  await pdfTab.click()
+  await notesTab.click()
+  await expect(noteText).toHaveValue('在任务要求之外记录自己的思路。')
+  await notes.getByRole('button', { name: '保存笔记', exact: true }).click()
+  await expect(notes.getByText('课程随记', { exact: true })).toBeVisible()
+  await notes.getByRole('button', { name: '打开', exact: true }).click()
+  const noteReader = page.getByRole('region', { name: '个人笔记阅读区', exact: true })
+  await expect(noteReader).toContainText('在任务要求之外记录自己的思路。')
+  await noteReader.getByRole('button', { name: '返回笔记列表', exact: true }).click()
+  await expect(notes.getByText('课程随记', { exact: true })).toBeVisible()
+  await page.getByRole('tab', { name: '作品', exact: true }).click()
   await newFile(page, '中文.txt')
   const cdp = await page.context().newCDPSession(page)
   // Browser IME protocol; physical OS input is measured separately in the platform evidence.
@@ -221,10 +438,72 @@ test('course content and shared navigation keep usable widths, theme and keyboar
   const courseActivity = new URL(page.url()).searchParams.get('activity')!
   await expect.poll(async () => (await (await page.request.get(endpoint + '/api/learning/workspaces/' + courseActivity,
     { headers: { 'x-xj-space': 'school' } })).json()).files[0]?.value).toBe('你好\n世界')
+  await page.getByRole('button', { name: '提交作品', exact: true }).click()
+  const submission = page.getByRole('dialog', { name: '提交作品', exact: true })
+  await submission.getByRole('button', { name: '确认提交', exact: true }).click()
+  await expect(submission.getByRole('region', { name: '我的提交记录', exact: true })).toContainText('学校已接收')
+  await submission.getByRole('button', { name: '返回作品', exact: true }).click()
+  await manage('course-import', { formatVersion: 1, requestId: randomUUID(), course: { courseId, name: '课程入口回归' },
+    task: { taskId, title: '实际课程任务', summary: '从固定材料进入作品' }, release: { helpPolicy,
+      releaseId: randomUUID(), objectives: ['显式选用新版'], requirements: '这是随后发布的要求。', materials: [], starterWorks: [], capabilities: [] }, resources: [] })
+  await page.getByRole('button', { name: '返回活动列表', exact: true }).click()
+  await expect(task).toContainText('继续任务')
+  await expect(task.getByText('已提交', { exact: true })).toBeVisible()
+  await expect(task.getByText('已逾期', { exact: true })).toHaveCount(0)
+  await expect(task.locator('.progresslabel')).toHaveText(/任务进度.*1\/2 项\s*50%/)
+  await expect(task.locator('time')).toHaveAttribute('datetime', deadlineAt)
+  await task.click()
+  await expect(preview).toContainText('要求与当前作品一起容易找到。')
+  await version.click()
+  await preview.getByRole('option').filter({ hasText: '最新版本' }).click()
+  await expect(preview).toContainText('这是随后发布的要求。')
+  await expect(preview.locator('.ws-intro-meta')).toContainText('无截止时间')
+  await expect(preview).toContainText('当前进度 0%')
+  await expect(preview.getByRole('button', { name: '开始任务', exact: true })).toBeEnabled()
+  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: '全部课程', exact: true }).click()
+  await expect(page.getByRole('region', { name: '我的学习活动', exact: true })).toHaveCount(0)
+  await openCourseTasks(page, '课程入口回归')
+  await task.click()
+  await preview.getByRole('button', { name: '继续任务', exact: true }).click()
+  await expect(page).toHaveURL(url => url.searchParams.get('activity') === courseActivity)
+  await expect(preview).toHaveCount(0)
+  await expect(taskInfo).toBeFocused()
+  await expect(firstObjective).toBeChecked()
+  await detailsToggle.click()
+  await expect(details).toHaveCount(0)
+  await expect.poll(async () => {
+    const response = await page.request.get(endpoint + '/api/learning/activities', { headers: { 'x-xj-space': 'school' } })
+    const items = await response.json() as { activityId: string; course?: { taskId: string } }[]
+    return items.filter(item => item.course?.taskId === taskId).map(item => item.activityId)
+  }).toEqual([courseActivity])
   await page.getByRole('button', { name: '打开对话', exact: true }).click()
   await page.getByRole('button', { name: '收起对话', exact: true }).click()
   await expect(page.getByRole('button', { name: '打开对话', exact: true })).toBeFocused()
   expect(await page.locator('.ws').evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
+  const cardTitle = '收纳回归学习卡'
+  const published = await page.request.post(endpoint + '/api/learning/artifacts/' + courseActivity, {
+    headers: { 'x-xj-space': 'school' }, data: { requestId: randomUUID(), payload: {
+      formatVersion: 1, title: cardTitle, display: 'card', hostApiVersion: 1,
+      html: '<label>我的解释<textarea></textarea></label>', css: '',
+      javascript: '(async()=>{const {content}=await window.xunjie.read();const field=document.querySelector("textarea");field.value=content.answer;field.addEventListener("input",()=>window.xunjie.change({answer:field.value}));})();',
+      stateVersion: 1, stateShape: { type: 'object', properties: { answer: { type: 'string', maxLength: 400 } } },
+      initialState: { answer: '' }, semanticFields: [{ key: 'answer', meaning: '原回答' }], semanticObjects: [],
+      requiredCapabilities: ['workspace.read', 'workspace.change'],
+    } },
+  })
+  expect(published.status()).toBe(200)
+  const { artifactId, revisionId } = await published.json()
+  await page.getByRole('button', { name: '打开对话', exact: true }).click()
+  const card = page.locator(`.teaching-artifact-card[data-artifact-id="${artifactId}"]`)
+  await expect(card).toHaveAttribute('data-revision-id', revisionId)
+  await card.getByRole('button', { name: '收纳', exact: true }).click()
+  await page.getByRole('button', { name: '收起对话', exact: true }).click()
+  await expect(stash.locator('.ws-dock-badge')).toHaveText('1')
+  await stash.click()
+  await stashPanel.getByRole('button', { name: cardTitle, exact: true }).click()
+  await expect(stashPanel).toHaveCount(0)
+  await expect(page.locator(`.teaching-artifact-center[data-artifact-id="${artifactId}"]`)).toHaveAttribute('data-revision-id', revisionId)
   await page.emulateMedia({ colorScheme: 'dark' })
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
   if (output) await page.screenshot({ path: join(output, 'course-narrow-dark.png') })
@@ -292,7 +571,7 @@ test('home citations open the pinned course text and PDF page, then respect cour
   } })
   const conversation: AgentConversation = { sessionId, lastSeq: 1, reset: true,
     turns: [], inputs: [], questions: [], tools: [], workspaces: [],
-    messages: [{ messageId: 'assistant:fixture', turnId, role: 'assistant', text: '请核对讲义。',
+    messages: [{ messageId: 'assistant:fixture', turnId, stepId, role: 'assistant', text: '请核对讲义。',
       createdAt: new Date().toISOString(), state: 'settled' }],
     citations: [cite(oldText, { offset: 2, length: 4 }), cite(oldPdf, { page: 2 })],
   }
@@ -385,6 +664,13 @@ test('retained ALU v4 runs after a new release and a home citation is revoked by
   const { action, query } = await getExecution()
   await expect.poll(() => displayReceipts, { timeout: 10000 }).toContainEqual({ status: 200 })
   expect(action.execution.instance.componentVersion).toBe(4)
+  await page.getByRole('button', { name: '到主页追问', exact: true }).click()
+  await expect(page).toHaveURL(url => url.searchParams.get('view') === 'agent'
+    && url.searchParams.get('space') === 'personal' && !url.searchParams.has('activity'))
+  await expect(page.getByText(/已固定工作区实验/)).toBeVisible()
+  const fixedExperiment = await page.evaluate(namespace =>
+    JSON.parse(sessionStorage.getItem('xj.agent-experiment.' + namespace) ?? 'null'), namespace)
+  expect(fixedExperiment).toMatchObject({ activityId: activity.activityId, requestId: query.requestId })
   const ref = { activityId: activity.activityId, requestId: query.requestId, executionRef: query.executionRef,
     inputDigest: query.inputDigest, label: '原 ALU 观察',
     source: { kind: 'component', formatVersion: 1, ...action.scope, origin: 'execution-result',
@@ -469,13 +755,13 @@ test('course browser history retires both visible and in-flight release details 
   await openCourseTasks(page, '课程历史 A')
   await page.getByRole('button', { name: '全部课程', exact: true }).click()
   await openCourseTasks(page, '课程历史 B')
-  await page.getByRole('button', { name: /最近发布/ }).click()
-  await expect(page.locator('#release-title')).toHaveText(courses[1].title)
+  await courseTaskCard(page, courses[1].title).click()
+  await expect(page.getByRole('dialog', { name: courses[1].title })).toContainText('核对当前课程')
   await page.goBack()
-  await expect(page.locator('#release-title')).toHaveCount(0)
+  await expect(page.getByRole('dialog')).toHaveCount(0)
   await page.goBack()
-  await expect(page.locator('#course-title')).toContainText(courses[0].name)
-  await expect(page.locator('#release-title')).toHaveCount(0)
+  await expect(page.locator('.course-breadcrumb')).toContainText(courses[0].name)
+  await expect(page.getByRole('dialog')).toHaveCount(0)
   let releaseRead!: () => void, reading!: () => void, delivered!: () => void
   const held = new Promise<void>(resolve => { releaseRead = resolve })
   const started = new Promise<void>(resolve => { reading = resolve })
@@ -484,17 +770,16 @@ test('course browser history retires both visible and in-flight release details 
     const response = await route.fetch(); reading(); await held; await route.fulfill({ response }); delivered()
   })
   try {
-    await page.getByRole('button', { name: /最近发布/ }).click(); await started
+    await courseTaskCard(page, courses[0].title).click(); await started
     await page.goBack(); releaseRead(); await finished
     await page.unroute('**/api/learning/releases/' + courses[0].releaseId)
     await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
-    await expect(page.locator('#release-title')).toHaveCount(0)
-    await expect(page.getByRole('button', { name: '从这一版本开始活动' })).toHaveCount(0)
+    await expect(page.getByRole('dialog')).toHaveCount(0)
   } finally { releaseRead() }
 })
 
 test('an initial activity reopen cannot undo browser back to the list while its read is pending', async ({ page }) => {
-  const id = await newActivity(page)
+  const id = await openPersonalActivityFromHome(page)
   await page.getByRole('button', { name: '返回活动列表', exact: true }).click()
   await expect(page.locator(`[data-activity-id="${id}"]`)).toBeVisible()
   await page.goto(endpoint + '/?space=personal&activity=' + id)
@@ -539,7 +824,7 @@ async function courseHistoryFixture(page: Page, withComponent = false) {
     await manage('course-access', { requestId: randomUUID(), courseId, principalId: member.principalId, active: true })
     courses.push({ courseId, releaseId, name, title })
   }
-  await page.request.post(endpoint + '/api/learning/login', { data: { loginName, password } })
+  await useEmbeddedSchoolFixture(page, endpoint, loginName, password)
   return courses
 }
 
@@ -629,20 +914,22 @@ test('a late older course result cannot clear the newer unknown request', async 
   try {
     await page.goto(endpoint + '/?space=school')
     await openCourseTasks(page, '课程历史 A')
-    await page.getByRole('button', { name: /最近发布/ }).click()
-    await page.getByRole('button', { name: '从这一版本开始活动', exact: true }).click(); await sentA
-    await page.getByRole('button', { name: '全部课程', exact: true }).click()
+    await courseTaskCard(page, courses[0].title).click()
+    await page.getByRole('dialog').getByRole('button', { name: '开始任务', exact: true }).click(); await sentA
+    await expect(page.getByRole('dialog').getByRole('button', { name: /正在进入学习工作区/ })).toBeDisabled()
+    await expect(page.getByRole('button', { name: '核对并继续原请求', exact: true })).toHaveCount(0)
+    await page.goBack()
     await openCourseTasks(page, '课程历史 B')
     await page.getByRole('button', { name: '放弃这次请求', exact: true }).click()
-    await page.getByRole('button', { name: /最近发布/ }).click()
-    await page.getByRole('button', { name: '从这一版本开始活动', exact: true }).click(); await sentB
+    await courseTaskCard(page, courses[1].title).click()
+    await page.getByRole('dialog').getByRole('button', { name: '开始任务', exact: true }).click(); await sentB
     releaseA(); await finishedA
     releaseB(); await finishedB
-    await expect(page.getByRole('alert')).toContainText('暂时无法连接')
-    await expect(page.getByRole('button', { name: '从这一版本开始活动', exact: true })).toBeDisabled()
+    await expect(page.locator('[data-sonner-toast][data-type="error"]')).toContainText('暂时无法连接')
+    await expect(page.getByRole('dialog').getByRole('button', { name: '开始任务', exact: true })).toHaveCount(0)
     const queried: string[] = []
     page.on('request', request => { if (request.url().includes('course-activity-results/')) queried.push(request.url().split('/').at(-1)!) })
-    await page.getByRole('button', { name: '核对并继续原请求', exact: true }).click()
+    await page.getByRole('dialog').getByRole('button', { name: '核对并继续原请求', exact: true }).click()
     await expect(page.locator('#activity-title')).toHaveText(courses[1].title)
     expect(posted).toHaveLength(2)
     expect(queried.at(-1)).toBe(posted[1].requestId)

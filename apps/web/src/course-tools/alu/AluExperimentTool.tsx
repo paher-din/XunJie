@@ -415,7 +415,7 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
       await workspace.trackInput(execution.submit(action))
       writeState(previous => !previous.selectedCheck || previous.selectedCheckBasis.startsWith('follow:')
         ? { ...previous, selectedCheck: action.requestId, selectedCheckBasis: `follow:${basis.requestId}` } : previous, true)
-      toast.info(codeChanged ? '已检查上次运行的作品；当前代码有修改，若要检查新代码请先运行。' : '已提交全量检查；完成前不会显示通过。')
+      toast.info(codeChanged ? '本次检查针对上次启用的作品；当前修改需先运行并启用，再重新检查。' : '已发起全量检查，请以下方报告中的执行状态和检查结论为准。')
     } catch (error) {
       toast.error(`全量检查未提交：${errorText(error)}`)
     } finally { admission.busy = false; if (alive.current) setObserveTick(value => value + 1) }
@@ -610,7 +610,7 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
         {!ready && canWrite && <button type="button" className="ws-btn ghost" onClick={() => setAttempt(value => value + 1)}>重试准备</button>}
       </div>
     </header>
-    {showModified && <p role="status" className="alu-notice">修改尚未运行。运行后才把新代码用于实验；旧观察和旧检查仍只对应旧作品。</p>}
+    {showModified && <p role="status" className="alu-notice">当前修改尚未启用。运行成功并启用后才会用于实验；已有观察和检查仍对应原作品。</p>}
     {alu.pendingActivation && <p role="status" className="alu-notice">已接收运行，正在等待真实结果后启用；旧作品在确认前仍可用于实验。
       <button type="button" className="ws-btn ghost" onClick={() => {
         const requestId = alu.pendingActivation

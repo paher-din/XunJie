@@ -86,10 +86,10 @@ export function RealHomePage() {
         <TaskToolbar filters={ASSIGNMENT_FILTERS} value={statusFilter} onFilter={setStatusFilter} query={query} onQuery={setQuery} />
         {selected.assignments.length === 0 ? <HomeStatus kind="empty" message="此课程暂无分配任务" />
           : visibleTasks.length === 0 ? <HomeStatus kind="empty" message="此课程没有匹配的任务" searchIcon />
-          : <LearningCardGrid>{registerItem => <>{visibleTasks.map((task, index) => <TaskCard key={task.assignmentId}
+          : <LearningCardGrid>{visibleTasks.map(task => <TaskCard key={task.assignmentId}
               task={{ name: displayProjectName(task.title, task.displayTitle), goal: task.goal, status: task.active ? '已分配' : '任务已暂停' }}
-              action={task.active ? '进入任务' : '查看任务'} index={index}
-              registerItem={registerItem} onOpen={() => navigate('/task/' + encodeURIComponent(task.assignmentId))} />)}</>}</LearningCardGrid>}
+              action={task.active ? '进入任务' : '查看任务'}
+              onOpen={() => navigate('/task/' + encodeURIComponent(task.assignmentId))} />)}</LearningCardGrid>}
       </> : courses.length === 0 ? <HomeStatus kind="empty" message="暂无获准的学生课程与任务" />
         : <CourseTiles courses={courses.map(course => course.courseId)} tasks={[]}
           titleOf={id => displayCourseName(id, courses.find(course => course.courseId === id)?.name)}
@@ -194,10 +194,6 @@ export function PreparationHomePage() {
   )
 }
 
-/**
- * 课程卡片组（参考 fluidfunctionalism Card 的 2-D fluid hover）：整组共享一块
- * 高亮，弹性滑向指针最近的卡片；卡片 = 封面图 + 名称 + 待完成数 +「查看任务」。
- */
 export function CourseTiles({
   courses,
   toneOf,
@@ -217,10 +213,6 @@ export function CourseTiles({
     summaryOf={id => summaryOf ? summaryOf(id) : pendingCount(tasks, id) > 0 ? pendingCount(tasks, id) + ' 个待完成' : '暂无待完成任务'} />
 }
 
-/**
- * 课程内任务卡片组：与课程卡片组共用同一套 2-D fluid hover——整组共享一块高亮，
- * 弹性滑向指针最近的卡片；卡片自身不做位移 / 描边 hover，反馈交给高亮。
- */
 export function TaskCards({
   tasks,
   now,
@@ -231,37 +223,33 @@ export function TaskCards({
   onOpen: (task: ProjectTask) => void
 }) {
   return (
-    <LearningCardGrid>{registerItem => <>{tasks.map((t, i) => (
+    <LearningCardGrid>
+      {tasks.map(t => (
         <TaskCard
           key={t.id}
           task={{ ...t, progress: { percent: progressPercent(t), done: t.status === '已完成' } }}
-          index={i}
           overdue={isOverdue(t, now)}
           onOpen={() => onOpen(t)}
-          registerItem={registerItem}
         />
-      ))}</>}</LearningCardGrid>
+      ))}
+    </LearningCardGrid>
   )
 }
 
 export function TaskCard({
   task,
-  index,
   overdue = false,
   action: explicitAction,
   onOpen,
-  registerItem,
 }: {
   task: { name: string; goal?: string; status: TaskDisplayStatus; deadlineAt?: string | null
     progress?: { percent: number; done: boolean } }
-  index: number
   overdue?: boolean
   action?: string
   onOpen: () => void
-  registerItem: (index: number, el: HTMLElement | null) => void
 }) {
   const action = explicitAction ?? (task.status === '未开始' ? '开始任务' : task.status === '进行中' ? '继续任务' : '查看任务')
-  return <HomeTaskCard title={task.name} goal={task.goal} index={index} register={registerItem} onOpen={onOpen} action={action}
+  return <HomeTaskCard title={task.name} goal={task.goal} onOpen={onOpen} action={action}
     status={task.status} overdue={overdue} progress={task.progress}
     footer={task.deadlineAt ? '截止 ' + formatDeadline(task.deadlineAt) : undefined} />
 }
