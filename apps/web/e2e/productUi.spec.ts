@@ -111,6 +111,48 @@ test('default product entry uses shared UI and stable file identities through re
   await expect(page.getByText(/演示统计|热力/)).toHaveCount(0)
 })
 
+test('PDF page turns retain the visible page and reuse confirmed reads', async ({ page }) => {
+  await openPersonalActivityFromHome(page)
+  const requestedPages: number[][] = []
+  let releaseNextPage = () => {}
+  const holdNextPage = new Promise<void>(resolve => { releaseNextPage = resolve })
+  await page.route('**/api/learning/pdf/*/read', async route => {
+    const { pages } = route.request().postDataJSON() as { pages: number[] }
+    requestedPages.push(pages)
+    if (pages[0] === 2) await holdNextPage
+    await route.continue()
+  })
+
+  try {
+    await page.getByRole('tab', { name: '学习资料', exact: true }).click()
+    await page.getByRole('group', { name: '资料分类' }).getByRole('button', { name: '个人 PDF', exact: true }).click()
+    await page.getByRole('region', { name: '个人 PDF', exact: true }).locator('input[type=file]')
+      .setInputFiles({ name: '翻页讲义.pdf', mimeType: 'application/pdf', buffer: fixedPdf() })
+    const reader = page.getByRole('region', { name: 'PDF 阅读区', exact: true })
+    const cover = reader.getByRole('img', { name: 'PDF 第 1 页固定页图', exact: true })
+    const secondPage = reader.getByRole('img', { name: 'PDF 第 2 页固定页图', exact: true })
+    const reading = reader.locator('.pdf-reading')
+    await expect(cover).toBeVisible()
+    const firstReadingId = await reading.getAttribute('data-pdf-reading-id')
+    expect(firstReadingId).toBeTruthy()
+
+    await reader.getByRole('button', { name: '下一页', exact: true }).click()
+    await expect(reader.getByRole('status').filter({ hasText: '正在读取第 2 页…' })).toBeVisible()
+    await expect(cover).toBeVisible()
+    await expect(secondPage).toHaveCount(0)
+    await expect(reading).toHaveAttribute('data-pdf-reading-id', firstReadingId!)
+    releaseNextPage()
+
+    await expect(secondPage).toBeVisible()
+    await reader.getByRole('button', { name: '上一页', exact: true }).click()
+    await expect(cover).toBeVisible()
+    await expect(reading).toHaveAttribute('data-pdf-reading-id', firstReadingId!)
+    expect(requestedPages).toEqual([[1], [2]])
+  } finally {
+    releaseNextPage()
+  }
+})
+
 test('browser history cannot bypass a refused local protection transaction', async ({ page }) => {
   await page.addInitScript(() => {
     const fault = { refuse: false }; Object.assign(window, { productUiQuota: fault })

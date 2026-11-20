@@ -20,6 +20,7 @@ import './PdfMaterials.css'
 type PdfSource = ReturnType<typeof pdfReferenceSourceSchema.parse>
 export type PdfOrigin = 'course' | 'personal'
 type ReadRequest = { requestId: string; documentId: string; pages: number[]; region: PdfRegion | null }
+const cachedPageReads = 12
 const documentStates: Record<PdfDocument['state'], string> = {
   received: '原文件已接收，页信息尚未准备完成。请核对并继续原请求。', ready: '可阅读',
   damaged: 'PDF 已损坏，无法读取。请检查原文件后添加有效副本。', encrypted: 'PDF 已加密，请添加解除密码后的副本。',
@@ -64,6 +65,7 @@ export function usePdfMaterials({ activity, spaceKey, namespace, authorized, rev
   const [error, setError] = useState('')
   const [loadError, setLoadError] = useState('')
   const [notice, setNotice] = useState('')
+  const pageReads = useRef(new Map<string, PdfReading>())
   useToastFeedback(error)
   useToastFeedback(notice, 'success')
   const alive = useRef(false), operation = useRef(false), readEpoch = useRef(0), listEpoch = useRef(0)
@@ -115,10 +117,11 @@ export function usePdfMaterials({ activity, spaceKey, namespace, authorized, rev
   useEffect(() => {
     alive.current = true
     void refresh()
-    return () => { alive.current = false; ++readEpoch.current; ++listEpoch.current }
+    return () => { alive.current = false; ++readEpoch.current; ++listEpoch.current; pageReads.current.clear() }
   }, [refresh])
   const previousAuthorized = useRef(authorized)
   useEffect(() => {
+    if (!authorized) pageReads.current.clear()
     if (authorized && !previousAuthorized.current) void refresh()
     previousAuthorized.current = authorized
   }, [authorized, refresh])
@@ -135,21 +138,34 @@ export function usePdfMaterials({ activity, spaceKey, namespace, authorized, rev
     setNotice('已加入当前问题草稿。')
   }
   const quotePendingRead = useRef(false)
-  async function read(input: ReadRequest, quote = false, expectedDocument = document) {
+  async function read(input: ReadRequest, quote = false, expectedDocument = document, retry = false) {
     if (!canWrite() || operation.current) return
+    const cache = pageReads.current
+    const cacheKey = expectedDocument && !input.region && !quote
+      ? JSON.stringify([expectedDocument.documentId, expectedDocument.sha256, input.pages]) : null
+    const cached = !retry && cacheKey ? cache.get(cacheKey) : undefined
+    if (cached && cacheKey) {
+      cache.delete(cacheKey); cache.set(cacheKey, cached)
+      setReading(cached); setReferenceReadingId(null); setPendingRead(null); setError(''); setNotice('')
+      return
+    }
     operation.current = true; setBusy(true); setError(''); setNotice(''); setPendingRead(input)
     quotePendingRead.current = quote
     const epoch = ++readEpoch.current
-    setReading(null)
-    setReferenceReadingId(null)
+    // Keep the last verified page and its identity visible until this read completes.
+    setReading(previous => previous?.documentId === input.documentId && previous.documentSha256 === expectedDocument?.sha256 ? previous : null)
     try {
       const fixed = pdfReadingSchema.parse(await api('/read', input))
       if (fixed.activityId !== activity.activityId || fixed.documentId !== input.documentId
         || (expectedDocument && fixed.documentSha256 !== expectedDocument.sha256)
         || JSON.stringify(fixed.requestedPages) !== JSON.stringify(input.pages)
         || JSON.stringify(fixed.region) !== JSON.stringify(input.region)) throw new Error('PDF 阅读响应与所选页或区域不一致。')
-      if (!alive.current || epoch !== readEpoch.current) return
-      setReading(fixed); setPendingRead(null)
+      if (!canWrite() || epoch !== readEpoch.current) return
+      if (cacheKey && availableReading(fixed)) {
+        cache.delete(cacheKey); cache.set(cacheKey, fixed)
+        if (cache.size > cachedPageReads) cache.delete(cache.keys().next().value!)
+      }
+      setReading(fixed); setReferenceReadingId(null); setPendingRead(null)
       if (quote && availableReading(fixed)) {
         // Registering the source is an effect; queue the explicit add until it is registered.
         quoteAfterRead.current = fixed.readingId
@@ -163,7 +179,7 @@ export function usePdfMaterials({ activity, spaceKey, namespace, authorized, rev
     try {
       await current.current.reveal(doc.courseSource ? 'course' : 'personal')
       if (!alive.current) return
-      setDocument(doc); setReading(null); setPendingRead(null); setError(''); setNotice('')
+      setDocument(doc); setReading(null); setReferenceReadingId(null); setPendingRead(null); setError(''); setNotice('')
       if (!doc.courseSource) setLastOpenedPersonalId(doc.documentId)
       operation.current = false; setBusy(false)
       if (doc.state === 'ready') await read({ requestId: crypto.randomUUID(), documentId: doc.documentId, pages: [1], region: null }, false, doc)
@@ -297,7 +313,7 @@ export function usePdfMaterials({ activity, spaceKey, namespace, authorized, rev
     refresh, upload, receive, openCourse, openDocument, locate,
     readPages: (pages: number[], region: PdfRegion | null = null, quote = false) => document
       ? read({ requestId: crypto.randomUUID(), documentId: document.documentId, pages, region }, quote) : Promise.resolve(),
-    retryRead: () => pendingRead ? read(pendingRead, quotePendingRead.current) : Promise.resolve(),
+    retryRead: () => pendingRead ? read(pendingRead, quotePendingRead.current, document, true) : Promise.resolve(),
     quote: () => reading && addReference(reading),
     closeDocument: () => {
       if (operation.current) return
@@ -500,6 +516,7 @@ export function PdfMaterials({ pdf, onBackToList }: {
     restoreZoomPosition.current?.()
     restoreZoomPosition.current = undefined
   }, [zoom, percent])
+  useLayoutEffect(() => { viewport.current?.scrollTo(0, 0) }, [doc?.documentId, reading?.readingId])
   const changeZoom = (next: PdfZoom) => {
     if (next === zoom) return
     if (viewport.current) restoreZoomPosition.current = keepPdfZoomPosition(viewport.current)
@@ -510,7 +527,6 @@ export function PdfMaterials({ pdf, onBackToList }: {
       setLocalError(`请输入 1 到 ${doc?.pageCount ?? 1} 之间的实际页码。`); return
     }
     setLocalError('')
-    viewport.current?.scrollTo(0, 0)
     void pdf.readPages(two ? [next, next + 1] : [next])
   }
   const startRegion = () => {
@@ -618,8 +634,11 @@ export function PdfMaterials({ pdf, onBackToList }: {
             onClick={() => void pdf.retryRead()}>核对并继续本次阅读</Button>}
           {reading?.pages.some(item => item.state === 'failed' || item.state === 'timeout') && <Button type="button" variant="outline"
             disabled={!canNavigate} onClick={() => void pdf.readPages(reading.requestedPages, reading.region)}>重新读取页图</Button>}
-          {pdf.busy && <p className="pdf-hint" role="status">正在读取 PDF…</p>}
+          {pdf.busy && !pdf.pendingRead && <p className="pdf-hint" role="status">正在读取 PDF…</p>}
         </div>
+        {pdf.busy && pdf.pendingRead && <p className="pdf-hint pdf-reading-status" role="status">
+          正在读取第 {pdf.pendingRead.pages.join('、')} 页…
+        </p>}
       </div>}
   </section>
 }

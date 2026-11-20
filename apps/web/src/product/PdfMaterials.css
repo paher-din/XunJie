@@ -166,7 +166,7 @@
 .pdf-zoom-stops:has(.pdf-zoom-stop:hover) .pdf-zoom-stop:not(:hover) .pdf-zoom-stop-tip { visibility: hidden; }
 .pdf-zoom-scale input:disabled, .pdf-zoom-stop:disabled { opacity: .5; cursor: default; }
 .pdf-zoom output { min-width: 4ch; color: var(--ink-soft); text-align: end; font-variant-numeric: tabular-nums; }
-.pdf-reader-body { display: flex; flex: 1; min-width: 0; min-height: 0; }
+.pdf-reader-body { position: relative; display: flex; flex: 1; min-width: 0; min-height: 0; }
 .pdf-reader-sidebar {
   flex: 0 0 clamp(152px, 24cqw, 192px);
   min-width: 0;
@@ -227,6 +227,18 @@
 }
 .pdf-muted, .pdf-hint, .pdf-page h3 span { color: var(--muted); font-size: 12px; font-weight: 400; }
 .pdf-hint { margin: 4px 0 0; overflow-wrap: anywhere; }
+.pdf-reading-status {
+  position: absolute;
+  inset-block-start: 12px;
+  inset-inline-end: 16px;
+  z-index: 1;
+  margin: 0;
+  padding: 4px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--raised);
+  pointer-events: none;
+}
 .pdf-reading {
   flex: 1;
   min-width: 0;
