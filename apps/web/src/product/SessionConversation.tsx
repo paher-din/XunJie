@@ -9,10 +9,12 @@ import { TeachingToolRecords } from './TeachingToolRecords'
 import { useSessionDraft } from './session-drafts'
 import { orderedAgentTrace } from './trace-order'
 import { AgentQuestionRecord } from './SessionQuestion'
+import { MessageCitations, type CitationRecord } from '@xunjie/ui/chat'
 
-export function SessionConversation({ controller, readOnly = false, onOpenWorkspace, onWorkspaceCreated, renderTool }: {
+export function SessionConversation({ controller, readOnly = false, onOpenWorkspace, onWorkspaceCreated, renderTool, onOpenCitation }: {
   renderTool?: (tool: AgentConversation['tools'][number]) => ReactNode
   controller: AgentSessionController; readOnly?: boolean; onOpenWorkspace?: (activityId: string) => void; onWorkspaceCreated?: () => void
+  onOpenCitation?: (citation: CitationRecord) => void | Promise<void>
 }) {
   const { conversation, busy, error } = controller
   const cardsSeen = useRef(new Set<string>())
@@ -29,6 +31,16 @@ export function SessionConversation({ controller, readOnly = false, onOpenWorksp
   const lastAssistants = new Map<string, string>()
   for (const message of messages) if (message.role === 'assistant') lastAssistants.set(message.turnId, message.messageId)
   const renderedCards = new Set<string>()
+  // Citations belong to the exact assistant response that produced them. Fall back to the
+  // message's Step only for older projections that predate attempt identity.
+  const citationsFor = (message: AgentConversation['messages'][number]) => {
+    if (message.role !== 'assistant') return []
+    const attemptId = message.attemptId
+      ?? (message.messageId.startsWith('assistant:') ? message.messageId.slice('assistant:'.length) : undefined)
+    return (conversation.citations ?? []).filter(item => item.turnId === message.turnId
+      && (item.attemptId ? item.attemptId === attemptId : item.stepId === message.stepId)
+      && (!item.inputId || !message.inputId || item.inputId === message.inputId))
+  }
   const cards = (runId: string) => conversation.workspaces.filter(item => item.turnId === runId && !renderedCards.has(item.toolCallId)).map(item => {
     const card = workspaceCard(item.workspace); if (!card || renderedCards.has(item.toolCallId)) return null
     renderedCards.add(item.toolCallId)
@@ -39,12 +51,13 @@ export function SessionConversation({ controller, readOnly = false, onOpenWorksp
       const input = message.inputId ? inputs.get(message.inputId) : undefined
       if (input?.state === 'removed') return null
       const lastAssistant = lastAssistants.get(message.turnId) === message.messageId
+      const messageCitations = citationsFor(message)
       return <div key={message.messageId} data-message-id={message.messageId} data-turn-id={message.turnId} data-state={message.state}>
         {message.role === 'user' ? <>
           {input ? <SessionUserMessage input={input} at={message.editedAt ?? message.createdAt} controller={controller} readOnly={readOnly} />
             : <UserMessage text={message.text} at={message.editedAt ?? message.createdAt} busy={busy || readOnly} />}
           {<SessionTrace controller={controller} runId={message.turnId} inputId={input?.inputId} renderTool={renderTool} />}
-        </> : <>{!messages.some(item => item.turnId === message.turnId && item.role === 'user') && messages.find(item => item.turnId === message.turnId && item.role === 'assistant')?.messageId === message.messageId && <SessionTrace controller={controller} runId={message.turnId} renderTool={renderTool} />}<AgentMessage reveal={!initial.current?.messages.has(message.messageId)} message={{ role: 'agent', text: message.text, at: message.createdAt, phase: message.state }} markdownVariant="astryx" showStopActions={false}>{lastAssistant ? cards(message.turnId) : null}</AgentMessage></>}
+        </> : <>{!messages.some(item => item.turnId === message.turnId && item.role === 'user') && messages.find(item => item.turnId === message.turnId && item.role === 'assistant')?.messageId === message.messageId && <SessionTrace controller={controller} runId={message.turnId} renderTool={renderTool} />}<AgentMessage reveal={!initial.current?.messages.has(message.messageId)} message={{ role: 'agent', text: message.text, at: message.createdAt, phase: message.state }} markdownVariant="astryx" showStopActions={false}>{lastAssistant ? cards(message.turnId) : null}{messageCitations.length ? <MessageCitations citations={messageCitations} onOpen={onOpenCitation} /> : null}</AgentMessage></>}
       </div>
     })}
     {conversation.turns.filter(run => !messages.some(message => message.turnId === run.turnId))
@@ -100,7 +113,10 @@ function SessionTrace({ controller, runId, inputId, renderTool }: { controller: 
   const lastInput = conversation.inputs.filter(input => input.turnId === runId && input.state !== 'removed').at(-1)
   const active = (!inputId || lastInput?.inputId === inputId) && !!run && run.state === 'active'
   const failure = run?.state === 'failed' ? ['budget_exhausted', 'budget-exhausted', 'input-budget-exhausted', 'output-budget-exhausted'].includes(run.reason)
-    ? '本次回答已达到预算上限，原问题和内容已保留；可以继续回答。' : '这次回答未能完成，原问题和内容已保留；可以稍后继续。' : ''
+    ? '本次回答已达到预算上限，原问题和内容已保留。'
+    : ['context-capacity-exceeded', 'context-capacity-preflight'].includes(run.reason)
+      ? '当前模型容纳不了这次回答所需的上下文。可以缩小引用范围，或换用上下文更大的模型。'
+      : '这次回答未能完成，原问题和内容已保留，可以稍后继续。' : ''
   if (!thinking.length && !tools.length && !active) return failure ? <p role="status" className="learning-error">{failure}</p> : null
   return <><AgentTrace grouped active={active} label="思考与执行" aria-label="思考与执行记录" data-turn-id={runId}>
     {!thinking.length && active && !conversation.questions.some(question => question.turnId === runId && question.state === 'pending') && <AgentThinking text="正在理解当前问题并整理可用信息。" active />}

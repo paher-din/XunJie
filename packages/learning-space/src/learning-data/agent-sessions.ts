@@ -64,6 +64,18 @@ export function createAgentSessions(storage: OwnedStorage, host: AgentSessionHos
     await checkWorkspace(identity, session.workspace);
     return session;
   }
+  /**
+   * Host-only trusted metadata read for controlled technical inspection. It deliberately does
+   * not authorize the actor and never checks same-subject; the product host must first pass its
+   * own inspection permission check against this metadata. It is not part of the student session
+   * route contract.
+   */
+  async function readForInspection(sessionId: string): Promise<AgentSession> {
+    z.uuid().parse(sessionId);
+    const { rows: [row] } = await storage.read('SELECT * FROM agent_session_directory WHERE session_id=$1', [sessionId]);
+    if (!row) throw new StorageError('missing');
+    return directorySession(row);
+  }
   /** Includes metadata tombstones; only currently authorized workspace references are visible. */
   async function list(value: SpaceIdentity): Promise<AgentSession[]> {
     const identity = await authorize(value);
@@ -137,7 +149,7 @@ export function createAgentSessions(storage: OwnedStorage, host: AgentSessionHos
       return agentSessionSchema.parse({ ...session, state: 'ready', readyAt: now, updatedAt: now });
     });
   }
-  return { create, read, list, update, markReady, validate: () => validateAgentSessions(storage) };
+  return { create, read, readForInspection, list, update, markReady, validate: () => validateAgentSessions(storage) };
 }
 
 /** Pure recovery check: no current member binding, host authorization or Agent calls. */

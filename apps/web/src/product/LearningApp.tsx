@@ -26,6 +26,8 @@ import { skillCatalogCacheKey, skillCatalogSchema } from './skills'
 import { learningSubjectRequest } from './learningTransport'
 import { useAgentSessionHistory } from './useAgentSession'
 import type { AgentSession } from '@xunjie/contracts/agent-sessions'
+import type { ExperimentReference } from './experiment-reference'
+import type { CourseCitationDocument, CourseCitationLocation } from './ProductAgent'
 import { startSchoolAuthorization, rememberSchoolConnection, restoreSchoolConnection, schoolAuthorizationReturnUrl, returnToSchoolClient,
   type PendingSchoolConnection } from './school-authorization'
 
@@ -159,6 +161,8 @@ function LearningView() {
   const routeSessionId = new URLSearchParams(route.search).get('session') ?? undefined
   const routeActivityId = new URLSearchParams(route.search).get('activity')
   const requestedArtifactId = new URLSearchParams(route.search).get('artifact')
+  const requestedExperimentId = new URLSearchParams(route.search).get('experiment')
+  const requestedExperimentKey = new URLSearchParams(route.search).get('component')
   const [context, setContext] = useState<Context | null>(null)
   const api = (path: string, body?: unknown, space?: string, signal?: AbortSignal) =>
     requestLearning(path, body, space, signal, context?.clientNamespace)
@@ -564,7 +568,8 @@ function LearningView() {
     if (coursePendingKey) localStorage.removeItem(coursePendingKey)
     setCoursePending(null); setError(''); setNotice('')
   }
-  async function openActivity(activityId: string, _asConversation = false, sourceKey = key) {
+  async function openActivity(activityId: string, _asConversation = false, sourceKey = key,
+    experiment?: { requestId: string; bindingKey: string }) {
     if (!context?.identities.some(item => item.key === sourceKey)) return
     void Promise.all([loadReferences(), loadActivityPage()]).catch(() => {})
     await protectActivity()
@@ -572,6 +577,8 @@ function LearningView() {
     const params = new URLSearchParams(currentSearch.current)
     params.set('activity', activityId); params.set('space', sourceKey); params.delete('course'); params.delete('artifact')
     params.delete('view'); params.delete('session')
+    params.delete('experiment'); params.delete('component')
+    if (experiment) { params.set('experiment', experiment.requestId); params.set('component', experiment.bindingKey) }
     navigate({ pathname: route.pathname, search: params.toString() })
   }
   async function changeStatus(activity: LearningActivity) {
@@ -599,6 +606,43 @@ function LearningView() {
     for (let index = 0; index < binary.length; index++) data[index] = binary.charCodeAt(index)
     const url = URL.createObjectURL(new Blob([data], { type: content.mediaType }))
     rememberMaterial({ title: content.title, url })
+  }
+  async function openCourseMaterialSource(source: CourseCitationLocation): Promise<CourseCitationDocument> {
+    if (!context || !contextVerified) throw new Error('原学习身份当前不可访问。')
+    const candidates = context.identities.filter(item => source.identity
+      ? item.identity.kind === source.identity.kind && item.identity.environmentId === source.identity.environmentId
+        && item.identity.spaceId === source.identity.spaceId && item.identity.principalId === source.identity.principalId
+      : item.identity.kind === 'school')
+    const original = source.sourceId?.startsWith('school:') ? candidates.find(item => item.key === source.sourceId)
+      : candidates.length === 1 ? candidates[0] : undefined
+    if (!original) throw new Error('原学习身份当前不可访问。')
+    const read = (path: string) => learningSubjectRequest(original.identity, original.key, context.clientNamespace, path)
+    if (source.pdfReading) {
+      await learningSubjectRequest(original.identity, original.key, context.clientNamespace, 'course-pdf-reading', source.pdfReading)
+    }
+    const detail = courseReleaseSchema.parse(await read('releases/' + encodeURIComponent(source.releaseId)))
+    if (detail.releaseId !== source.releaseId || source.contentDigest && detail.contentDigest !== source.contentDigest
+      || !detail.materials.some(item => item.materialId === source.materialId && item.sha256 === source.materialSha256))
+      throw new Error('课程资料的固定版本已变化。')
+    const content = courseMaterialContentSchema.parse(await read(
+      `releases/${encodeURIComponent(source.releaseId)}/materials/${encodeURIComponent(source.materialId)}`))
+    if (content.materialId !== source.materialId || content.sha256 !== source.materialSha256) throw new Error('课程资料的固定版本已变化。')
+    const binary = atob(content.contentBase64), bytes = new Uint8Array(binary.length)
+    for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index)
+    const digest = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)),
+      byte => byte.toString(16).padStart(2, '0')).join('')
+    if (digest !== source.materialSha256) throw new Error('课程资料正文校验失败。')
+    const mediaType = content.mediaType.toLowerCase().split(';')[0]?.trim()
+    if (mediaType === 'application/pdf') {
+      if (!source.page) throw new Error('课程 PDF 出处缺少固定页码。')
+      return { name: content.title, pdf: new Blob([bytes], { type: mediaType }), page: source.page }
+    }
+    if (!mediaType || !/^(?:text\/|application\/(?:json|xml|xhtml\+xml)$)/.test(mediaType)) throw new Error('这份课程资料不是可读文本。')
+    const text = new TextDecoder().decode(bytes)
+    if (source.from !== undefined && source.to !== undefined
+      && (!Number.isInteger(source.from) || !Number.isInteger(source.to) || source.from < 0
+        || source.to < source.from || source.to > text.length)) throw new Error('引用范围当前不可读取。')
+    return { name: content.title, text: text.slice(source.from, source.to) }
   }
 
   async function disconnectSchool(schoolKey: string) {
@@ -757,6 +801,7 @@ function LearningView() {
     await protectActivity()
     const params = new URLSearchParams(currentSearch.current)
     params.delete('activity'); params.delete('course'); params.delete('settings'); params.delete('artifact'); params.delete('session')
+    params.delete('experiment'); params.delete('component')
     if (page === 'agent') params.set('view', 'agent')
     else params.delete('view')
     const nextKey = page === 'agent' ? personalKey ?? key : key
@@ -771,6 +816,19 @@ function LearningView() {
   })
   const goHome = () => changePage('home')
   const openAgent = () => { prepareAgent(); conversationHistory.revalidate(); changePage('agent') }
+  const askHomeFromExperiment = (reference: ExperimentReference) => void action(async () => {
+    await protectActivity()
+    if (context) sessionStorage.setItem('xj.agent-experiment.' + context.clientNamespace, JSON.stringify(reference))
+    const params = new URLSearchParams(currentSearch.current)
+    params.delete('activity'); params.delete('course'); params.delete('settings'); params.delete('artifact'); params.delete('session')
+    params.set('view', 'agent')
+    if (personalKey) params.set('space', personalKey)
+    const search = params.toString(); approvedSearch.current = search ? '?' + search : ''
+    prepareAgent()
+    navigate({ pathname: route.pathname, search })
+    ++epoch.current; setBusy(false); setOpened(null); setRelease(null); rememberMaterial(null)
+    if (personalKey && personalKey !== key) setKey(personalKey)
+  })
   const openSettings = (tab: ProductSettingsTab | 'school' = 'account') => void action(async () => {
     void loadModelSettings().catch(() => {})
     // Warm the personal skill catalog so the Agent pane opens from cache instead of a cold read.
@@ -898,7 +956,9 @@ function LearningView() {
         requestedArtifactId={requestedArtifactId}
         nativeAvailable={context.profile === 'local'}
         workspaceRef={workspace} busy={busy} onBack={goHome} onStatus={() => void action(() => changeStatus(opened))}
-        onRefresh={() => void action(async generation => { await refreshContext(undefined, generation) })} onModels={openModels} account={schoolControls}
+        onRefresh={() => void action(async generation => { await refreshContext(undefined, generation) })} onModels={openModels}
+        onAskHome={askHomeFromExperiment} account={schoolControls}
+        requestedExperiment={requestedExperimentId && requestedExperimentKey ? { requestId: requestedExperimentId, bindingKey: requestedExperimentKey } : undefined}
         details={openCoursePdf => <>
           {opened.course ? <><CourseSections content={opened.course} level={3} busy={busy}
             requirementsContent={<CourseRequirementsReference course={opened.course} />}
@@ -918,7 +978,14 @@ function LearningView() {
     </div> : routeActivityId ? <div className="content" role="status">{error ? '学习活动暂时无法打开。' : ''}{error && <Button variant="outline" onClick={goHome}>返回首页</Button>}</div>
     : agentOpen && (!personalKey || key !== personalKey) ? <div className="content home-page"><p>请在本机客户端开始个人学习；学校课程请从首页进入。</p><Button onClick={goHome}>返回首页</Button></div> : agentOpen ? <Suspense fallback={<div className="content" role="status" aria-label="正在准备对话" />}><ProductAgent
       key={context.clientNamespace + identity.principalId + (routeSessionId ?? 'new')} identity={identity} spaceKey={key} namespace={context.clientNamespace}
-      sessionId={routeSessionId} session={conversationHistory.items.find(item => item.sessionId === routeSessionId)} onSession={sessionCreated} onWorkspace={id => void action(() => openActivity(id, false, personalKey))}
+      sessionId={routeSessionId} session={conversationHistory.items.find(item => item.sessionId === routeSessionId)} onSession={sessionCreated} onWorkspace={(id, source) => void action(async () => {
+        if (!source) return openActivity(id, false, personalKey)
+        const original = context.identities.find(item => item.identity.environmentId === source.environmentId
+          && item.identity.spaceId === source.spaceId && item.identity.principalId === source.principalId)
+        if (!original) { toast.error('原实验所属学习空间当前不可访问。'); return }
+        return openActivity(id, false, original.key, typeof source.requestId === 'string' && typeof source.bindingKey === 'string'
+          ? { requestId: source.requestId, bindingKey: source.bindingKey } : undefined)
+      })} onOpenCourseMaterial={openCourseMaterialSource}
       onWorkspaceCreated={refreshCreatedWorkspaces} onSettings={openModels} selection={modelSelection} readOnly={!!context.readOnly || !contextVerified} /></Suspense>
     : <>
       {(context.readOnly || authorize || coursePending) && <div className="content product-home-alerts">

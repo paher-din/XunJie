@@ -8,6 +8,7 @@ import { createAgentSessions, agentSessionMigration } from '@xunjie/learning-spa
 import { createLearningData, learningMigrations } from '@xunjie/learning-space';
 import { nativeFixture } from '../../storage/test/native-fixture.mjs';
 import { createSessionRuntimeHost } from '../dist/session-runtime.js';
+import { createProductAgent } from '../dist/product-agent.js';
 
 const connection = { routeId: randomUUID(), version: 1, maxOutputTokens: 4096, contextWindow: 1_000_000,
   protocol: 'openai-chat', parameterMode: 'plain', capabilities: {}, hasCredential: true, adapterState: 'ready' };
@@ -43,6 +44,7 @@ function mockGateway(onDispatch) {
           segment: { segmentId: [...segments.keys()][0], sequence: 0 } });
         return attempt; },
       read: async (_identity, attemptId) => attempts.get(attemptId),
+      readRecorded: async (_identity, attemptId) => attempts.get(attemptId),
       progress: async () => null, summary: async () => null, requestPayload: async () => ({}),
       cancel: async (_identity, attemptId) => attempts.get(attemptId),
     },
@@ -50,6 +52,70 @@ function mockGateway(onDispatch) {
     images: { upload: async () => ({}), read: async () => ({}) },
   };
 }
+
+test('attempt inspection reads a personal session with its own identity and reauthorizes its sources', async t => {
+  const pg = await nativeFixture();
+  const owner = { environmentId: randomUUID(), serviceId: randomUUID() };
+  const binding = await provisionStorage({ admin: pg.admin, owner, password: randomUUID(), migrations: agentRuntimeMigrations });
+  const storage = await openStorage({ binding, migrations: agentRuntimeMigrations,
+    backend: createFileBackend({ id: 'inspection', root: join(pg.root, 'inspection') }) });
+  const student = { environmentId: owner.environmentId, spaceId: randomUUID(), principalId: randomUUID(),
+    kind: 'personal', name: '学生' };
+  const inspector = { ...student, principalId: randomUUID(), kind: 'school', name: '学校排查者' };
+  const session = { sessionId: randomUUID(), identity: student, scenario: 'student-assistant', state: 'ready',
+    owner: { target: owner }, createdAt: new Date().toISOString() };
+  let revoked = false, dispatches = 0, recordedReads = 0, inspections = 0;
+  const gateway = mockGateway(() => { dispatches++; });
+  const recorded = gateway.checks.readRecorded;
+  gateway.checks.readRecorded = async (...args) => { recordedReads++; return recorded(...args); };
+  const host = createProductAgent({ storage, models: gateway, authorize: async () => {},
+    async authorizeInspection(actor, target) {
+      // The host hook receives the full target metadata, not only an id.
+      if (actor.kind !== 'school' || actor.principalId !== inspector.principalId
+        || target.session.identity.principalId !== student.principalId
+        || !target.session.sessionId) throw Object.assign(new Error('forbidden'), { code: 'forbidden' });
+      inspections++;
+    },
+    inspectSession: async id => id === session.sessionId ? session : Promise.reject(Object.assign(new Error('missing'), { code: 'missing' })),
+    directory: { read: async (actor, id) => {
+      if (id !== session.sessionId || actor.principalId !== student.principalId || actor.kind !== 'personal')
+        throw Object.assign(new Error('forbidden'), { code: 'forbidden' });
+      return session;
+    }, readForInspection: async () => session },
+    scene: async () => ({
+      student: { localPersonalIdentity: student, localLearningTarget: { ...owner, version: 1 },
+        historySource: async () => !revoked },
+      tools: async () => [],
+      experimentMaterials: async () => [{ materialId: 'M-inspection', sourceId: 'fixed-evidence',
+        kind: 'system-observation', author: 'system', label: '固定结果', version: 'v1', range: null,
+        digest: 'evidence-digest', content: 'fixed proof', readState: 'included', citationAllowed: true,
+        source: { kind: 'experiment-reference', executionRef: randomUUID() } }],
+    }),
+  });
+  t.after(async () => { await host.close(); await storage.close(); await pg.close(); });
+  await host.local.initialize({ sessionId: session.sessionId, identity: student, scenario: session.scenario, createdAt: session.createdAt });
+  const receipt = await host.local.submit(student, { sessionId: session.sessionId, requestId: randomUUID(), text: '核对实验', context: {} });
+  await host.drain();
+  const view = await host.inspect(inspector, session.sessionId, { turnId: receipt.turnId });
+  assert.equal(view.turnId, receipt.turnId);
+  assert.equal(view.assembly.materials[0].sourceId, 'fixed-evidence');
+  assert.equal(view.result.text, '回答');
+  assert.equal(view.capacity.dispatchable, true);
+  assert.equal(view.attemptId, view.attempt.attemptId);
+  assert.ok(Array.isArray(view.tools));
+  assert.ok(Array.isArray(view.citations));
+  // A normal student, a non-managing school member and any other subject are forbidden; the
+  // injected hook above intentionally encodes only this allowed inspector.
+  await assert.rejects(host.inspect(student, session.sessionId, { attemptId: view.attemptId }), { code: 'forbidden' });
+  await assert.rejects(host.inspect({ ...inspector, principalId: randomUUID() }, session.sessionId, { attemptId: view.attemptId }),
+    { code: 'forbidden' });
+  revoked = true;
+  await assert.rejects(host.inspect(inspector, session.sessionId, { attemptId: view.attemptId }), { code: 'forbidden' });
+  // The revoked source passes the host inspection gate but is rejected by history reauthorization.
+  assert.equal(inspections, 2);
+  assert.equal(dispatches, 1);
+  assert.equal(recordedReads, 1);
+});
 
 test('the product host selects the saved scene and wakes the direct runner without creating a home workspace', async t => {
   const pg = await nativeFixture(), storages = [];

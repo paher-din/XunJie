@@ -6,45 +6,59 @@ import { createFileBackend, openStorage, provisionStorage } from '@xunjie/storag
 import { nativeFixture } from '../../storage/test/native-fixture.mjs';
 import { createAgentRuntime, createAgentStore, agentRuntimeMigrations, validateAgentRuntime } from '../dist/index.js';
 
-const connection = { routeId: randomUUID(), version: 1, maxOutputTokens: 4096, contextWindow: 1_000_000,
-  protocol: 'openai-chat', parameterMode: 'plain', capabilities: {}, hasCredential: true, adapterState: 'ready' };
+const connection = { connectionId: randomUUID(), name: '测试模型', routeId: randomUUID(), version: 1,
+  maxOutputTokens: 4096, contextWindow: 1_000_000, protocol: 'chat-completions', baseUrl: 'https://example.test/v1',
+  path: '/chat/completions', modelId: 'test-model', dialect: 'standard', parameterMode: 'plain', enabled: true,
+  capabilities: { text: 'verified', images: 'unknown', tools: 'verified', strictSchema: 'unknown' },
+  hasCredential: true, adapterState: 'ready' };
 /** A scripted Gateway: each dispatch returns the next queued response. */
 function mockGateway(responses, faults = {}) {
   const queue = [...responses];
   const segments = new Map();
   const attempts = new Map();
   const settles = [];
+  const segmentConnections = [];
+  const segmentInputs = [];
+  const forcedClosed = new Set();
+  let selected = connection;
   let sequence = 0;
-  const segment = (segmentId, seq) => ({ sessionId: undefined, segmentId, formatVersion: 1, sequence: seq,
-    connection, prefixDigest: '0'.repeat(64), resultRef: null, pending: false, closed: false, pendingTools: [] });
+  const segment = (segmentId, seq, projectionId = null) => ({ sessionId: undefined, segmentId, formatVersion: 1, sequence: seq,
+    connection: selected, prefixDigest: '0'.repeat(64), projectionId, resultRef: null, pending: false, closed: false, pendingTools: [] });
+  const receives = [];
   return {
-    calls: { dispatched: [] }, settles,
+    calls: { dispatched: [] }, settles, segmentConnections, segmentInputs, receives, segments,
+    setConnection(value) { selected = value; },
     selection: {
       read: async () => ({ selected: true, version: 1 }),
-      snapshot: async () => ({ choice: { connection }, source: { kind: 'personal', ownerScope: 's', feeSource: 'f' } }),
-      pin: async () => ({ choice: { connection }, source: { kind: 'personal', ownerScope: 's', feeSource: 'f' } }),
+      snapshot: async () => ({ choice: { connection: selected }, source: { kind: 'personal', ownerScope: 's', feeSource: 'f' } }),
+      pin: async () => ({ choice: { connection: selected }, source: { kind: 'personal', ownerScope: 's', feeSource: 'f' } }),
       pinSource: async () => ({}), pinned: async () => ({}), resolveChoice: async () => ({}),
     },
     segments: {
-      create: async (_identity, input) => { const s = segment(input.segmentId, sequence); segments.set(input.segmentId, s); return s; },
-      read: async (_identity, segmentId) => segments.get(segmentId),
+      create: async (_identity, input) => { const s = segment(input.segmentId, sequence, input.projectionId ?? null); segmentConnections.push(s.connection); segmentInputs.push(input); segments.set(input.segmentId, s); return s; },
+      read: async (_identity, segmentId) => { const value = segments.get(segmentId);
+        return value && forcedClosed.has(segmentId) ? { ...value, closed: true } : value; },
       settle: async (_identity, segmentId, input) => { settles.push(input); const s = segments.get(segmentId); s.sequence = input.expectedSequence + 1; s.pendingTools = []; return s; },
       close: async (_identity, segmentId) => { const s = segments.get(segmentId); s.closed = true; return { ...s, boundary: { owner: { environmentId: 'e', serviceId: 's' }, segmentId, sequence: s.sequence, routeId: connection.routeId, resultRef: null } }; },
     },
     checks: {
-      receive: async (_identity, input) => { const a = { attemptId: input.attemptId, state: 'accepted', physicalRequestEnded: false, dispatched: false, cancelRequested: false, text: '', usage: { state: 'unknown' }, requestRef: randomUUID(), resultRef: null, reason: '', upstreamStopped: 'unknown', createdAt: new Date().toISOString(), purpose: 'learning', connection, limits: input.limits }; attempts.set(input.attemptId, a); return a; },
+      receive: async (_identity, input) => { receives.push(input); const a = { attemptId: input.attemptId, state: 'accepted', physicalRequestEnded: false, dispatched: false, cancelRequested: false, text: '', usage: { state: 'unknown' }, requestRef: randomUUID(), resultRef: null, reason: '', upstreamStopped: 'unknown', createdAt: new Date().toISOString(), purpose: 'learning', connection, limits: input.limits }; attempts.set(input.attemptId, a); return a; },
       dispatch: async (_identity, attemptId) => { const a = attempts.get(attemptId);
         if (faults.dispatchFailures) { faults.dispatchFailures--; throw new Error('temporarily unavailable'); }
         const r = queue.shift() ?? { text: '完成', toolIntents: [] };
+        await r.beforeReply?.();
         if (r.unknown) { Object.assign(a, { state: 'unknown', physicalRequestEnded: false, dispatched: true, text: '', toolIntents: [],
           usage: { state: 'unknown' }, resultRef: null }); return a; }
         Object.assign(a, { state: 'completed', physicalRequestEnded: true, dispatched: true, text: r.text, toolIntents: r.toolIntents ?? [], usage: { state: 'final', inputTokens: 10, outputTokens: 5 }, resultRef: randomUUID(), segment: { segmentId: r.segmentId ?? [...segments.keys()][0], sequence: 0 } });
+        { const current = segments.get(a.segment.segmentId); if (current) { current.sequence += 1; current.headAttemptId = attemptId; } }
         return a; },
       read: async (_identity, attemptId) => attempts.get(attemptId),
       progress: async () => null, summary: async () => null, requestPayload: async () => ({}),
+      ...(faults.capacity ? { capacity: async (_identity, attemptId, remaining) => faults.capacity(attemptId, remaining) } : {}),
       cancel: async (_identity, attemptId) => attempts.get(attemptId),
     },
     results: { retain: async () => null },
+    forceCloseSegments() { for (const segmentId of segments.keys()) forcedClosed.add(segmentId); },
     images: { upload: async () => ({}), read: async () => ({}) },
   };
 }
@@ -53,19 +67,27 @@ function echoTool(name = 'echo') {
     supportsBackground: false,
     async execute(call) { return { kind: 'completed', outcome: 'success', summary: 'echo:' + (call.input.value ?? '') }; } };
 }
+function largeTool(name = 'large', readback = true) {
+  return { definition: { name, description: '返回大结果', inputSchema: { type: 'object', properties: { value: { type: 'string' } } } },
+    supportsBackground: false,
+    async execute(call) {
+      return { kind: 'completed', outcome: 'success', summary: 'x'.repeat(3000) + String(call.input.value ?? ''),
+        ...(readback ? { data: { source: { kind: 'work', objectId: randomUUID(), contentId: randomUUID() } } } : {}) };
+    } };
+}
 function scenario(tools) {
   return { id: 'test', version: 1,
     async context() { return { system: '测试助手', facts: {}, sources: [] }; },
     async tools() { return tools; } };
 }
-async function harness(responses, tools = [echoTool()], faults = {}, budget = undefined) {
+async function harness(responses, tools = [echoTool()], faults = {}, budget = undefined, scenarioOverride = undefined) {
   const postgres = await nativeFixture();
   const owner = { environmentId: randomUUID(), serviceId: randomUUID() };
   const binding = await provisionStorage({ admin: postgres.admin, owner, password: randomUUID(), migrations: agentRuntimeMigrations });
   const backend = createFileBackend({ id: 'agent', root: join(postgres.root, 'res') });
   const storage = await openStorage({ binding, migrations: agentRuntimeMigrations, backend });
   const gateway = mockGateway(responses, faults);
-  const runtime = createAgentRuntime(storage, { authorize: async () => {}, scenario: scenario(tools), gateway, ...(budget ? { budget } : {}) });
+  const runtime = createAgentRuntime(storage, { authorize: async () => {}, scenario: scenarioOverride ?? scenario(tools), gateway, ...(budget ? { budget } : {}) });
   const identity = { kind: 'personal', name: '学生', environmentId: owner.environmentId, spaceId: randomUUID(), principalId: randomUUID() };
   const session = { sessionId: randomUUID(), identity, scenario: 'test', createdAt: new Date().toISOString() };
   await runtime.initialize(session);
@@ -74,6 +96,266 @@ async function harness(responses, tools = [echoTool()], faults = {}, budget = un
     async close() { await runtime.close(); await storage.close(); await postgres.close(); } };
 }
 const input = (sessionId, text) => ({ requestId: randomUUID(), sessionId, text, context: {} });
+
+test('撤权切断旧原生段，移除旧工具正文并拒绝原调用 ID 的出处', async () => {
+  let revoked = false;
+  const source = { kind: 'work', objectId: randomUUID(), contentId: randomUUID() };
+  const tool = { ...echoTool(), async execute() {
+    return { kind: 'completed', outcome: 'success', summary: 'revoked-text-marker', data: { source } };
+  } };
+  const assistant = { ...scenario([tool]), async authorizeHistory(_input, history) {
+    return revoked ? history.filter(entry => !entry.sources?.length) : [...history];
+  } };
+  const handle = await harness([
+    { text: '', toolIntents: [{ callId: 'private-call', name: 'echo', arguments: {} }] },
+    { text: 'revoked-answer-marker', toolIntents: [] },
+    { text: '', toolIntents: [{ callId: 'cite-call', name: 'cite_source', arguments: { claim: '旧依据', toolCallId: 'private-call' } }] },
+    { text: '来源不可用', toolIntents: [] },
+  ], [tool], {}, undefined, assistant);
+  try {
+    const { runtime, identity, session, gateway } = handle;
+    await runtime.submit(identity, input(session.sessionId, '读取原资料'));
+    await handle.settle();
+    const initialSegmentCount = gateway.segmentInputs.length;
+    revoked = true;
+    const next = await runtime.submit(identity, input(session.sessionId, '核对出处'));
+    await handle.settle();
+    assert.ok(gateway.segmentInputs.length > initialSegmentCount);
+    const rebuilt = gateway.segmentInputs.slice(initialSegmentCount);
+    assert.ok(rebuilt.every(segment => !JSON.stringify(segment.portable).includes('revoked-')));
+    const snapshot = await runtime.sessionSnapshot(identity, session.sessionId);
+    assert.equal(snapshot.turns.find(turn => turn.turnId === next.turnId)?.state, 'completed');
+    assert.equal(snapshot.toolCalls.find(call => call.name === 'cite_source')?.result?.outcome, 'error');
+  } finally { await handle.close(); }
+});
+
+test('派发前已提交的原生来源在下一 Turn 失效时触发重建并清空旧回执', async () => {
+  const source = { kind: 'work', objectId: randomUUID(), contentId: randomUUID() };
+  const material = { materialId: 'M-native', sourceId: 'native-source', kind: 'student-work', author: 'student',
+    label: 'v7', version: 'v7', range: null, digest: 'digest', content: 'source-marker', readState: 'included',
+    source, citationAllowed: true };
+  let revoked = false;
+  const assistant = { ...scenario([]),
+    async context() { return { system: '测试助手', facts: {}, sources: [], materials: revoked ? [] : [material] }; },
+    async authorizeHistory(_input, history) {
+      return revoked ? history.filter(entry => !entry.sources?.length) : [...history];
+    } };
+  const h = await harness([{ unknown: true }, { text: '重建后回答', toolIntents: [] }], [], {}, undefined, assistant);
+  try {
+    await h.runtime.submit(h.identity, input(h.session.sessionId, '第一轮丢失回执'));
+    await h.settle();
+    let state = (await h.storage.read('SELECT state FROM agent_runtime_sessions WHERE session_id=$1',
+      [h.session.sessionId])).rows[0].state;
+    assert.equal(state.nativeHistorySources.length, 1, '请求发出前先保存原生来源回执');
+    const initialSegments = h.gateway.segmentInputs.length;
+    revoked = true;
+    await h.runtime.submit(h.identity, input(h.session.sessionId, '来源已撤回'));
+    await h.settle();
+    state = (await h.storage.read('SELECT state FROM agent_runtime_sessions WHERE session_id=$1',
+      [h.session.sessionId])).rows[0].state;
+    assert.equal(state.nativeHistorySources.length, 0);
+    assert.ok(h.gateway.segmentInputs.length > initialSegments, '撤权后必须新建原生段');
+    const rebuilt = h.gateway.segmentInputs.at(-1);
+    assert.ok(rebuilt.previousSegmentId);
+    assert.equal(JSON.stringify(rebuilt.portable).includes('source-marker'), false);
+  } finally { await h.close(); }
+});
+
+test('压缩候选在最终请求容量核验失败时不采用、不派发', async () => {
+  let capacityCalls = 0;
+  const compact = {
+    provider: { id: 'test-summary', version: 1, prompt: () => ({ system: '摘要', text: '摘要输入' }),
+      parse: () => ({ facts: [] }) },
+    maxPerTurn: 1,
+    select(history) {
+      const messages = history.slice(0, 1), remainder = history.slice(1);
+      return { messages, remainder, sourceDigest: 'a'.repeat(64), retainedDigest: 'b'.repeat(64),
+        sourceVersions: { retainedIds: ['context'] }, policy: { maxSummaryTokens: 64 } };
+    },
+  };
+  const compactScenario = { ...scenario([]), compaction: compact };
+  const h = await harness([{ text: '第一轮完成', toolIntents: [] }, { text: '摘要', toolIntents: [] }], [], {
+    capacity: () => [2, 4, 5].includes(++capacityCalls)
+      ? { dispatchable: false, reason: 'context-window', requestFingerprint: 'c'.repeat(64), bytes: 1000,
+        inputEstimateTokens: 1000, outputReserveTokens: 64, safetyMarginTokens: 100, contextWindow: 100,
+        transportLimitBytes: 1_000_000 }
+      : { dispatchable: true, reason: 'ok', requestFingerprint: 'd'.repeat(64), bytes: 1000,
+        inputEstimateTokens: 100, outputReserveTokens: 64, safetyMarginTokens: 100, contextWindow: 100_000,
+        transportLimitBytes: 1_000_000 },
+  }, undefined, compactScenario);
+  try {
+    await h.runtime.submit(h.identity, input(h.session.sessionId, '产生历史' + '旧'.repeat(1024)));
+    await h.settle();
+    const before = h.gateway.segmentInputs.length;
+    const priorAdoption = (await h.storage.read('SELECT state FROM agent_runtime_sessions WHERE session_id=$1',
+      [h.session.sessionId])).rows[0].state.compactionAdoption;
+    const receipt = await h.runtime.submit(h.identity, input(h.session.sessionId, '触发压缩'));
+    await h.settle();
+    const snap = await h.runtime.sessionSnapshot(h.identity, h.session.sessionId);
+    assert.equal(snap.turns.find(turn => turn.turnId === receipt.turnId).state, 'failed');
+    assert.ok(h.gateway.segmentInputs.length > before);
+    const attempts = snap.attempts.filter(item => item.stepId === snap.steps.find(step => step.turnId === receipt.turnId).stepId);
+    assert.ok(attempts.some(item => item.error === 'context-window'));
+    assert.equal(attempts.filter(item => item.attemptNo >= 100 && item.state === 'completed').length, 1);
+    const state = (await h.storage.read('SELECT state FROM agent_runtime_sessions WHERE session_id=$1',
+      [h.session.sessionId])).rows[0].state;
+    assert.equal(state.compactionAdoption, priorAdoption, '拒绝的候选不得成为会话历史');
+  } finally { await h.close(); }
+});
+
+test('最终请求进入 80% 压力区时先做一次同步压缩，再由新请求重新核验', async () => {
+  let capacityCalls = 0;
+  const compact = {
+    provider: { id: 'pressure-summary', version: 1,
+      prompt: () => ({ system: '摘要', text: '摘要输入' }),
+      parse: () => ({ facts: [] }) },
+    maxPerTurn: 1,
+    select(history) {
+      const messages = history.slice(0, 1), remainder = history.slice(1);
+      if (!messages.length) return null;
+      return { messages, remainder, sourceDigest: 'a'.repeat(64), retainedDigest: 'b'.repeat(64),
+        sourceVersions: { retainedIds: ['context'] }, policy: { maxSummaryTokens: 64 } };
+    },
+  };
+  const pressureScenario = { ...scenario([]), compaction: compact };
+  const ok = reason => ({ dispatchable: true, reason, requestFingerprint: 'd'.repeat(64), bytes: capacityCalls > 2 ? 900 : 1000,
+    inputEstimateTokens: 100, outputReserveTokens: 64, safetyMarginTokens: 3200, pressure: 0.5,
+    pressureState: 'ok', contextWindow: 64_000, transportLimitBytes: 1_000_000 });
+  const h = await harness([
+    { text: '产生历史', toolIntents: [] },
+    { text: '摘要结果', toolIntents: [] },
+    { text: '压缩后回答', toolIntents: [] },
+  ], [], { capacity: () => {
+    capacityCalls += 1;
+    return capacityCalls === 2
+      ? { ...ok('ok'), pressure: 0.8, pressureState: 'compact' }
+      : ok('ok');
+  } }, undefined, pressureScenario);
+  try {
+    await h.runtime.submit(h.identity, input(h.session.sessionId, '第一轮' + 'x'.repeat(2000)));
+    await h.settle();
+    const receipt = await h.runtime.submit(h.identity, input(h.session.sessionId, '触发压力'));
+    await h.settle();
+    const snap = await h.runtime.sessionSnapshot(h.identity, h.session.sessionId);
+    assert.equal(snap.turns.find(turn => turn.turnId === receipt.turnId).state, 'completed');
+    const mainAttempts = snap.attempts.filter(item => item.attemptNo < 100
+      && item.stepId === snap.steps.find(step => step.turnId === receipt.turnId).stepId);
+    assert.deepEqual(mainAttempts.map(item => item.error), ['context-pressure', null]);
+    assert.ok(snap.attempts.some(item => item.attemptNo >= 100), '执行了一次真实摘要尝试');
+    const { rows: [row] } = await h.storage.read('SELECT state FROM agent_runtime_sessions WHERE session_id=$1',
+      [h.session.sessionId]);
+    assert.ok(row.state.compactionAdoption);
+  } finally { await h.close(); }
+});
+
+test('旧历史超过 64,000 字符时，低于最终请求的 80% 仍正常派发', async () => {
+  let selections = 0;
+  const compaction = { provider: { id: 'unexpected-summary', version: 1 },
+    maxPerTurn: 2, select() { selections++; return null; } };
+  const h = await harness([{ text: 'x'.repeat(70_000), toolIntents: [] }, { text: '继续回答', toolIntents: [] }],
+    [], { capacity: () => ({ dispatchable: true, reason: 'ok', requestFingerprint: 'd'.repeat(64),
+      bytes: 240_000, inputEstimateTokens: 80_000, outputReserveTokens: 64, safetyMarginTokens: 100_000,
+      contextWindow: 1_000_000, pressureState: 'ok', pressure: 0.089, transportLimitBytes: 1_000_000 }) },
+    undefined, { ...scenario([]), compaction });
+  try {
+    await h.runtime.submit(h.identity, input(h.session.sessionId, '建立历史'));
+    await h.settle();
+    const next = await h.runtime.submit(h.identity, input(h.session.sessionId, '继续'));
+    await h.settle();
+    const snapshot = await h.runtime.sessionSnapshot(h.identity, h.session.sessionId);
+    assert.equal(snapshot.turns.find(item => item.turnId === next.turnId).state, 'completed');
+    assert.equal(selections, 0);
+    assert.equal(snapshot.attempts.length, 2);
+  } finally { await h.close(); }
+});
+
+test('旧工具反馈已缩短时，摘要仍按原始历史基线合法采用', async () => {
+  let capacityCalls = 0;
+  const compaction = {
+    provider: { id: 'projection-summary', version: 1,
+      prompt: () => ({ system: '摘要', text: '摘要输入' }),
+      parse: () => ({ facts: [] }) },
+    maxPerTurn: 1,
+    select(history) {
+      if (history.length < 2) return null;
+      return { messages: history.slice(0, -1), remainder: history.slice(-1), sourceDigest: 'a'.repeat(64),
+        retainedDigest: 'b'.repeat(64), sourceVersions: { retainedIds: ['context'] }, policy: { maxSummaryTokens: 64 } };
+    },
+  };
+  const h = await harness([
+    { text: '调用旧工具', toolIntents: [{ callId: 'compact-old', name: 'large', arguments: { value: 'OLD_TAIL' } }] },
+    { text: '旧工具完成', toolIntents: [] },
+    { text: '第二轮工具', toolIntents: [{ callId: 'compact-recent', name: 'large', arguments: { value: 'RECENT_TAIL' } }] },
+    { text: '近期工具完成', toolIntents: [] },
+    { text: '摘要结果', toolIntents: [] },
+    { text: '摘要后回答', toolIntents: [] },
+  ], [largeTool(), echoTool('read_work')], { capacity: () => {
+    capacityCalls++;
+    return { dispatchable: true, reason: 'ok', requestFingerprint: 'd'.repeat(64),
+      bytes: capacityCalls === 5 ? 9000 : 2500, inputEstimateTokens: capacityCalls === 5 ? 3000 : 834,
+      outputReserveTokens: 64, safetyMarginTokens: 400, pressure: capacityCalls === 5 ? 0.85 : 0.23,
+      pressureState: capacityCalls === 5 ? 'compact' : 'ok', contextWindow: 4000, transportLimitBytes: 1_000_000 };
+  } }, undefined,
+  { ...scenario([largeTool(), echoTool('read_work')]), compaction });
+  try {
+    await h.runtime.submit(h.identity, input(h.session.sessionId, '第一轮'));
+    await h.settle();
+    await h.runtime.submit(h.identity, input(h.session.sessionId, '第二轮'));
+    await h.settle();
+    const receipt = await h.runtime.submit(h.identity, input(h.session.sessionId, '第三轮'));
+    await h.settle();
+    const snap = await h.runtime.sessionSnapshot(h.identity, h.session.sessionId);
+    assert.equal(snap.turns.find(turn => turn.turnId === receipt.turnId).state, 'completed');
+    const { rows: [row] } = await h.storage.read('SELECT state FROM agent_runtime_sessions WHERE session_id=$1',
+      [h.session.sessionId]);
+    assert.ok(row.state.compactionAdoption, '合法摘要必须采用');
+    assert.ok(row.state.history.some(entry => entry.text.startsWith('已核对来源的历史摘要')));
+  } finally { await h.close(); }
+});
+
+for (const interruption of ['history-changed', 'stop']) {
+  test(`压缩生成期间 ${interruption} 不采用摘要`, async () => {
+    let entered, release, attempts = 0;
+    const started = new Promise(resolve => { entered = resolve; });
+    const held = new Promise(resolve => { release = resolve; });
+    const compaction = {
+      provider: { id: 'suspended-summary', version: 1, prompt: () => ({ system: '摘要', text: '摘要输入' }),
+        parse: () => ({ facts: [] }) }, maxPerTurn: 1,
+      select(history) {
+        return { messages: history.slice(0, 1), remainder: history.slice(1), sourceDigest: 'a'.repeat(64),
+          retainedDigest: 'b'.repeat(64), sourceVersions: { retainedIds: ['context'] }, policy: { maxSummaryTokens: 64 } };
+      },
+    };
+    const h = await harness([{ text: '第一轮完成', toolIntents: [] },
+      { text: '摘要完成', toolIntents: [], beforeReply: async () => { entered(); await held; } },
+      { text: '按原记录回答', toolIntents: [] }], [], { capacity: () => {
+      const pressure = ++attempts === 2 ? 0.8 : 0.25;
+      return { dispatchable: true, reason: 'ok', requestFingerprint: 'd'.repeat(64), bytes: 5000,
+        inputEstimateTokens: 1667, outputReserveTokens: 64, safetyMarginTokens: 3200, pressure,
+        pressureState: pressure === 0.8 ? 'compact' : 'ok', contextWindow: 64_000, transportLimitBytes: 1_000_000 };
+    } }, undefined, { ...scenario([]), compaction });
+    try {
+      await h.runtime.submit(h.identity, input(h.session.sessionId, '历史' + 'x'.repeat(2000)));
+      await h.settle();
+      const next = await h.runtime.submit(h.identity, input(h.session.sessionId, '整理历史'));
+      await Promise.race([started, waitFor(() => false, 3500)]);
+      if (interruption === 'stop') {
+        await h.runtime.stop(h.identity, h.session.sessionId, next.turnId, randomUUID());
+      } else {
+        await h.storage.request({ requestId: randomUUID(), fingerprint: 'fixture-change-history' }, async tx => {
+          await tx.query("UPDATE agent_runtime_sessions SET state=jsonb_set(state,'{history,0,text}',to_jsonb('edited-source'::text)) WHERE session_id=$1", [h.session.sessionId]);
+          return null;
+        });
+      }
+      release();
+      await h.settle();
+      const { rows: [row] } = await h.storage.read('SELECT state FROM agent_runtime_sessions WHERE session_id=$1', [h.session.sessionId]);
+      assert.equal(row.state.compactionAdoption, undefined);
+      assert.ok(row.state.history.length > 0);
+      if (interruption === 'history-changed') assert.equal(row.state.history[0].text, 'edited-source');
+    } finally { release(); await h.close(); }
+  });
+}
 
 test('编辑提问前的消息会退休旧回应，不把旧回答重新带入新模型上下文', async () => {
   const ask = { definition: { name: 'ask', description: 'Ask the student', inputSchema: { type: 'object', properties: {} } },
@@ -157,6 +439,243 @@ test('主模型暂时失败再成功：同一 Step 多 Attempt，工具只执行
     assert.equal(snap.toolCalls.length, 1, '只有成功响应派发工具');
     assert.equal(snap.toolCalls[0].result.summary, 'echo:retry');
     assert.equal(snap.turns.find(t => t.turnId === receipt.turnId).state, 'completed');
+    const readStore = createAgentStore(h.storage, { ownerInstanceId: 'recent-step-reader' });
+    const recent = await readStore.recentCompletedSteps(h.session.sessionId, 2);
+    assert.equal(recent.length, 2);
+    assert.equal(new Set(recent.map(step => step.stepId)).size, 2, 'Attempt 重试不额外占用一个近期 Step');
+    assert.deepEqual(new Set(recent.map(step => step.stepId)), new Set(snap.steps.map(step => step.stepId)));
+  } finally { await h.close(); }
+});
+
+test('一个 Turn 的 Step 与工具后继续沿用开始时固定的模型；下一 Turn 才切换', async () => {
+  const first = { ...connection, routeId: randomUUID() };
+  const second = { ...connection, routeId: randomUUID() };
+  let h;
+  const switchTool = { ...echoTool(),
+    async execute(call) {
+      h.gateway.setConnection(second);
+      return { kind: 'completed', outcome: 'success', summary: 'echo:' + call.input.value };
+    } };
+  h = await harness([
+    { text: '调用工具', toolIntents: [{ callId: 'c1', name: 'echo', arguments: { value: 'one' } }] },
+    { text: '同一模型收尾', toolIntents: [] },
+    { text: '新 Turn 使用新模型', toolIntents: [] },
+  ], [switchTool]);
+  try {
+    h.gateway.setConnection(first);
+    const firstReceipt = await h.runtime.submit(h.identity, input(h.session.sessionId, '第一轮'));
+    await h.settle();
+    assert.deepEqual(h.gateway.segmentConnections.map(item => item.routeId), [first.routeId],
+      '同一 Turn 的多个 Step 复用一个原生段，即便学生设置已经改变');
+    const firstTurn = (await h.runtime.sessionSnapshot(h.identity, h.session.sessionId)).turns[0];
+    assert.equal(firstTurn.state, 'completed');
+    const secondReceipt = await h.runtime.submit(h.identity, input(h.session.sessionId, '第二轮'));
+    await h.settle();
+    const secondSnapshot = await h.runtime.sessionSnapshot(h.identity, h.session.sessionId);
+    assert.notEqual(secondReceipt.turnId, firstReceipt.turnId);
+    assert.equal(secondSnapshot.turns.find(turn => turn.turnId === secondReceipt.turnId)?.state, 'completed',
+      JSON.stringify(secondSnapshot.turns));
+    assert.deepEqual(h.gateway.segmentConnections.map(item => item.routeId), [first.routeId, second.routeId],
+      JSON.stringify(h.gateway.segmentConnections.map(item => item.routeId)));
+  } finally { await h.close(); }
+});
+
+test('旧工具反馈按 Step 窗口缩短，但保留最近交互且不改变持久历史', async () => {
+  const h = await harness([
+    { text: '调用旧工具', toolIntents: [{ callId: 'old-call', name: 'large', arguments: { value: 'OLD_TAIL_MARKER' } }] },
+    { text: '旧工具完成', toolIntents: [] },
+    { text: '调用近期工具', toolIntents: [{ callId: 'recent-call', name: 'large', arguments: { value: 'RECENT_TAIL_MARKER' } }] },
+    { text: '近期工具完成', toolIntents: [] },
+    { text: '第三轮追问', toolIntents: [] },
+  ], [largeTool(), echoTool('read_work')]);
+  try {
+    await h.runtime.submit(h.identity, input(h.session.sessionId, '第一轮'));
+    await h.settle();
+    await h.runtime.submit(h.identity, input(h.session.sessionId, '第二轮'));
+    await h.settle();
+    const afterSecond = h.gateway.receives.length;
+    const segmentsBefore = h.gateway.segmentInputs.length;
+    await h.runtime.submit(h.identity, input(h.session.sessionId, '第三轮'));
+    await h.settle();
+
+    assert.equal(h.gateway.segmentInputs.length, segmentsBefore, '反馈表示变化应复用同一原生段');
+    const projection = h.gateway.receives[afterSecond].input.historyProjection;
+    assert.equal(projection.replacements.length, 1, JSON.stringify(projection));
+    assert.equal(projection.replacements[0].callId, 'old-call');
+    assert.equal(projection.replacements[0].text.includes('OLD_TAIL_MARKER'), false);
+    assert.equal(projection.replacements[0].text.includes('早期工具反馈已压缩'), true);
+    assert.equal(JSON.parse(projection.replacements[0].text).readback[0].locator.kind, 'work');
+    assert.equal(projection.replacements.some(item => item.callId === 'recent-call'), false,
+      '最近两个已完成 Step 的反馈必须保持完整');
+
+    const { rows: [row] } = await h.storage.read('SELECT state FROM agent_runtime_sessions WHERE session_id=$1',
+      [h.session.sessionId]);
+    const old = row.state.history.find(item => item.nativeCallId === 'old-call');
+    assert.ok(old.text.includes('OLD_TAIL_MARKER'), '会话原件不得被投影覆盖');
+    assert.equal(old.feedbackCompressed, undefined);
+    assert.ok(row.state.feedbackCompressedEntries.length >= 1);
+    assert.equal(typeof row.state.feedbackDigest, 'string');
+  } finally { await h.close(); }
+});
+
+test('没有有效回读入口的超长旧工具反馈不缩短', async () => {
+  const h = await harness([
+    { text: '调用旧工具', toolIntents: [{ callId: 'old-no-readback', name: 'large', arguments: { value: 'NO_READBACK_TAIL' } }] },
+    { text: '旧工具完成', toolIntents: [] },
+    { text: '第二轮工具', toolIntents: [{ callId: 'next-call', name: 'large', arguments: { value: 'RECENT' } }] },
+    { text: '第二轮完成', toolIntents: [] },
+    { text: '第三轮追问', toolIntents: [] },
+  ], [largeTool('large', false)]);
+  try {
+    await h.runtime.submit(h.identity, input(h.session.sessionId, '第一轮'));
+    await h.settle();
+    await h.runtime.submit(h.identity, input(h.session.sessionId, '第二轮'));
+    await h.settle();
+    const afterSecond = h.gateway.receives.length;
+    await h.runtime.submit(h.identity, input(h.session.sessionId, '第三轮'));
+    await h.settle();
+    const projection = h.gateway.receives[afterSecond].input.historyProjection;
+    assert.deepEqual(projection.replacements, []);
+    const { rows: [row] } = await h.storage.read('SELECT state FROM agent_runtime_sessions WHERE session_id=$1',
+      [h.session.sessionId]);
+    assert.ok(row.state.history.find(item => item.nativeCallId === 'old-no-readback').text.includes('NO_READBACK_TAIL'));
+    assert.equal(row.state.feedbackDigest, undefined);
+  } finally { await h.close(); }
+});
+
+test('本步材料可由 cite_source 固定到具体判断和来源', async () => {
+  const material = { materialId: 'M-test', sourceId: 'source-test', kind: 'student-reference', author: 'student',
+    label: '固定作品 v7', version: 'v7', range: null, digest: 'digest-v7', content: 'module alu; endmodule',
+    readState: 'included', source: { kind: 'work', objectId: randomUUID(), contentId: randomUUID() }, citationAllowed: true };
+  const citeScenario = { id: 'test', version: 1,
+    async context() { return { system: '测试助手', facts: {}, sources: [], materials: [material] }; },
+    async tools() { return []; } };
+  const cited = await harness([{ text: '', toolIntents: [{ callId: 'cite-1', name: 'cite_source',
+    arguments: { materialId: 'M-test', claim: 'v7 的进位由第 5 位产生' } }] }, { text: '已记录出处', toolIntents: [] }],
+  [], {}, undefined, citeScenario);
+  try {
+    const receipt = await cited.runtime.submit(cited.identity, input(cited.session.sessionId, '请核对'));
+    await cited.settle();
+    const snap = await cited.runtime.sessionSnapshot(cited.identity, cited.session.sessionId);
+    assert.equal(snap.turns.find(turn => turn.turnId === receipt.turnId).state, 'completed');
+    assert.equal(snap.toolCalls[0].name, 'cite_source');
+    assert.equal(snap.toolCalls[0].result.kind, 'completed');
+    assert.equal(snap.toolCalls[0].result.outcome, 'success', JSON.stringify(snap.toolCalls[0].result));
+    assert.equal(snap.toolCalls[0].result.data.citation.claim, 'v7 的进位由第 5 位产生');
+    assert.equal(snap.toolCalls[0].result.data.citation.label, '固定作品 v7');
+  } finally { await cited.close(); }
+});
+
+test('模型写在正文里的引用标记会转成真实出处并从可见回答中移除', async () => {
+  const material = { materialId: 'M-inline', sourceId: 'source-inline', kind: 'student-reference', author: 'student',
+    label: '固定作品 v7', version: 'v7', range: null, digest: 'digest-inline', content: 'module alu; endmodule',
+    readState: 'included', source: { kind: 'work', objectId: randomUUID(), contentId: randomUUID() }, citationAllowed: true };
+  const inlineScenario = { id: 'test', version: 1,
+    async context() { return { system: '测试助手', facts: {}, sources: [], materials: [material] }; },
+    async tools() { return []; } };
+  const h = await harness([{ text: '结论来自 <cite_source materialId="M-inline" claim="v7 的进位由第 5 位产生"/>',
+    toolIntents: [] }], [], {}, undefined, inlineScenario);
+  try {
+    await h.runtime.submit(h.identity, input(h.session.sessionId, '请核对'));
+    await h.settle();
+    const events = await h.runtime.events(h.identity, h.session.sessionId);
+    const answer = events.filter(event => event.kind === 'assistant').at(-1);
+    assert.doesNotMatch(answer.body.text, /cite_source/);
+    assert.equal(answer.body.text, '结论来自');
+    const inline = events.find(event => event.kind === 'inline-citations');
+    assert.deepEqual(inline?.body.citations, [{ claim: 'v7 的进位由第 5 位产生', materialId: 'M-inline' }]);
+  } finally { await h.close(); }
+});
+
+test('同一 Turn 已发送的固定材料只保留引用，且仍可作为出处', async () => {
+  const material = { materialId: 'M-static-repeat', sourceId: 'source-static-repeat', kind: 'student-work',
+    author: 'student', label: 'alu.sv v7', version: 'v7', range: { kind: 'work-file' }, digest: 'digest-repeat',
+    content: 'MATERIAL_BODY_MARKER', readState: 'included',
+    source: { kind: 'work', objectId: randomUUID(), contentId: randomUUID() }, citationAllowed: true };
+  const repeatedScenario = { id: 'test', version: 1,
+    async context() { return { system: '测试助手', facts: {}, sources: [], materials: [material] }; },
+    async tools() { return [echoTool()]; } };
+  const h = await harness([
+    { text: '调用工具', toolIntents: [{ callId: 'c-repeat', name: 'echo', arguments: { value: 'one' } }] },
+    { text: '', toolIntents: [{ callId: 'cite-repeat', name: 'cite_source',
+      arguments: { materialId: 'M-static-repeat', claim: 'v7 的进位需要检查' } }] },
+    { text: '已按固定版本回答', toolIntents: [] },
+  ], [echoTool()], {}, undefined, repeatedScenario);
+  try {
+    await h.runtime.submit(h.identity, input(h.session.sessionId, '连续核对同一版本'));
+    await h.settle();
+    const snap = await h.runtime.sessionSnapshot(h.identity, h.session.sessionId);
+    assert.equal(snap.toolCalls.find(call => call.name === 'cite_source').result.outcome, 'success');
+    const sends = h.gateway.receives.map(receive => receive.input.text);
+    assert.ok(sends[0].includes('MATERIAL_BODY_MARKER'));
+    assert.equal(sends[1].includes('MATERIAL_BODY_MARKER'), false);
+    assert.match(sends[1], /正文未重复发出/);
+  } finally { await h.close(); }
+});
+
+test('同一原生段的新 Turn 也不重复装入已可见的固定作品正文', async () => {
+  const material = { materialId: 'M-cross-turn', sourceId: 'source-cross-turn', kind: 'student-work',
+    author: 'student', label: 'alu.sv v7', version: 'v7', range: { kind: 'work-file' }, digest: 'digest-cross-turn',
+    content: 'CROSS_TURN_BODY_MARKER', readState: 'included',
+    source: { kind: 'work', objectId: randomUUID(), contentId: randomUUID() }, citationAllowed: true };
+  const repeatedScenario = { id: 'test', version: 1,
+    async context() { return { system: '测试助手', facts: {}, sources: [], materials: [material] }; },
+    async tools() { return []; } };
+  const h = await harness([{ text: '第一轮完成', toolIntents: [] },
+    { text: '第二轮完成', toolIntents: [] }], [], {}, undefined, repeatedScenario);
+  try {
+    await h.runtime.submit(h.identity, input(h.session.sessionId, '第一轮'));
+    await h.settle();
+    const secondStart = h.gateway.receives.length;
+    await h.runtime.submit(h.identity, input(h.session.sessionId, '第二轮'));
+    await h.settle();
+    assert.ok(h.gateway.receives[0].input.text.includes('CROSS_TURN_BODY_MARKER'));
+    assert.equal(h.gateway.receives[secondStart].input.text.includes('CROSS_TURN_BODY_MARKER'), false);
+    assert.match(h.gateway.receives[secondStart].input.text, /正文未重复发出/);
+    assert.equal(h.gateway.segmentInputs.length, 1, '相同模型、规则和工具应继续复用原生段');
+  } finally { await h.close(); }
+});
+
+test('压力预检关闭旧段后，新原生段重新内联固定选区正文', async () => {
+  const material = { materialId: 'M-reselect', sourceId: 'source-reselect', kind: 'student-work',
+    author: 'student', label: 'alu.sv v7', version: 'v7', range: { kind: 'work-file' }, digest: 'digest-reselect',
+    content: 'RESELECT_BODY_MARKER', readState: 'included',
+    source: { kind: 'work', objectId: randomUUID(), contentId: randomUUID() }, citationAllowed: true };
+  const selectedScenario = { id: 'test', version: 1,
+    async context() { return { system: '测试助手', facts: {}, sources: [], materials: [material] }; },
+    async tools() { return [echoTool()]; } };
+  let h, capacityCalls = 0, closeNext = false;
+  const faults = { capacity: () => {
+    capacityCalls++;
+    if (closeNext) {
+      closeNext = false;
+      h.gateway.forceCloseSegments();
+      return { dispatchable: true, reason: 'ok', requestFingerprint: 'd'.repeat(64), bytes: 1000,
+        inputEstimateTokens: 100, outputReserveTokens: 64, safetyMarginTokens: 3200, pressure: 0.8,
+        pressureState: 'compact', contextWindow: 64_000, transportLimitBytes: 1_000_000 };
+    }
+    return { dispatchable: true, reason: 'ok', requestFingerprint: 'd'.repeat(64), bytes: 1000,
+      inputEstimateTokens: 100, outputReserveTokens: 64, safetyMarginTokens: 3200, pressure: 0.5,
+      pressureState: 'ok', contextWindow: 64_000, transportLimitBytes: 1_000_000 };
+  } };
+  h = await harness([
+    { text: '调用工具', toolIntents: [{ callId: 'keep-call', name: 'echo', arguments: { value: 'keep' } }] },
+    { text: '第一轮完成', toolIntents: [] },
+    { text: '重建后回答', toolIntents: [] },
+  ], [echoTool()], faults, undefined, selectedScenario);
+  try {
+    await h.runtime.submit(h.identity, input(h.session.sessionId, '第一轮'));
+    await h.settle();
+    const segmentsBefore = h.gateway.segmentInputs.length;
+    closeNext = true;
+    const result = await h.runtime.submit(h.identity, input(h.session.sessionId, '按固定选区继续'));
+    await h.settle();
+    assert.equal(h.gateway.segmentInputs.length, segmentsBefore + 1, '关闭的旧段不能继续续接');
+    const latest = h.gateway.receives.at(-1).input.text;
+    assert.equal(latest.split('RESELECT_BODY_MARKER').length - 1, 1);
+    assert.equal(latest.indexOf('按固定选区继续') < latest.indexOf('RESELECT_BODY_MARKER'), true);
+    const snap = await h.runtime.sessionSnapshot(h.identity, h.session.sessionId);
+    assert.equal(snap.toolCalls.length, 1, '重建不会重新执行已完成工具');
   } finally { await h.close(); }
 });
 
@@ -204,14 +723,24 @@ const waitFor = async (fn, timeout = 4000) => { const end = Date.now() + timeout
 
 test('steering：批次中途的新消息在整个 Step 完成后才被下一 Step 接纳', async () => {
   const b = blockingTool();
+  const base = scenario([b.tool]);
+  const scene = { ...base, async context(input) {
+    const prepared = await base.context(input);
+    return { ...prepared, materials: input.inputs.filter(entry => entry.context.marker).map(entry => ({
+      materialId: 'M-' + entry.inputId, sourceId: 'reference:' + entry.inputId, inputId: entry.inputId,
+      kind: 'student-reference', author: 'student', label: '固定选区', version: 'v7', range: null,
+      digest: entry.context.marker, content: entry.context.marker, readState: 'included', source: {}, citationAllowed: false,
+    })) };
+  } };
   const h = await harness([
     { text: '调用阻塞工具', toolIntents: [{ callId: 'c1', name: 'block', arguments: {} }] },
     { text: '看到补充', toolIntents: [] },
-  ], [b.tool]);
+  ], [b.tool], {}, undefined, scene);
   try {
     const r1 = await h.runtime.submit(h.identity, input(h.session.sessionId, '第一条'));
     await waitFor(() => b.started.length === 1);
-    const r2 = await h.runtime.submit(h.identity, input(h.session.sessionId, '补充消息'));
+    const r2 = await h.runtime.submit(h.identity, { ...input(h.session.sessionId, '补充消息甲'), context: { marker: 'selection-marker-a' } });
+    const r3 = await h.runtime.submit(h.identity, { ...input(h.session.sessionId, '补充消息乙'), context: { marker: 'selection-marker-b' } });
     assert.equal(r2.turnId, r1.turnId, '活跃 Turn 的新消息是 steering，不新建 Turn');
     let snap = await h.runtime.sessionSnapshot(h.identity, h.session.sessionId);
     assert.equal(snap.inputs.find(i => i.inputId === r2.inputId).state, 'pending', '批次进行中仍 pending');
@@ -221,7 +750,8 @@ test('steering：批次中途的新消息在整个 Step 完成后才被下一 St
     assert.equal(snap.turns[0].state, 'completed');
     assert.equal(snap.inputs.find(i => i.inputId === r2.inputId).state, 'adopted');
     assert.equal(snap.steps.length, 2);
-    assert.deepEqual(snap.steps[1].snapshot.inputIds, [r2.inputId], '第二 Step 才接纳 steering');
+    assert.deepEqual(snap.steps[1].snapshot.inputIds, [r2.inputId, r3.inputId], '第二 Step 按顺序接纳 steering');
+    assert.match(h.gateway.receives.at(-1).input.text, /补充消息甲[\s\S]*selection-marker-a[\s\S]*补充消息乙[\s\S]*selection-marker-b/);
   } finally { await h.close(); }
 });
 

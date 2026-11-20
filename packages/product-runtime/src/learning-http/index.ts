@@ -25,9 +25,10 @@ import type { createModelGateway } from '@xunjie/model-gateway';
 import { routeModels } from '@xunjie/model-gateway/wire';
 import { ModelCapabilityError } from '@xunjie/model-gateway/capabilities';
 import { TeachingSkillImportError } from '@xunjie/learning-space/skill-packages';
-import { routeAgentSessions, type SessionHttpPort } from './sessions-http.js';
+import { routeAgentInspection, routeAgentSessions, type SessionHttpPort, type SessionInspectionPort } from './sessions-http.js';
 import type { PersonalProjectsPort } from '@xunjie/contracts/student-learning';
 import { agentSourceDescriptionSchema } from '@xunjie/contracts/agent-dependencies';
+import { agentInputSchema, type AgentInput } from '@xunjie/contracts/agent-runtime';
 
 export async function readLearningBody(request: IncomingMessage, limit = 65536): Promise<Record<string, unknown>> {
   if (!request.headers['content-type']?.startsWith('application/json')) throw new StorageError('invalid');
@@ -80,6 +81,10 @@ export function createLearningEntry(options: {
   projects?: Pick<PersonalProjectsPort, 'readForActivity'>;
   agentSources?(identity: SpaceIdentity): Promise<z.infer<typeof agentSourceDescriptionSchema>>;
   agentSessions?(identity: SpaceIdentity): Promise<SessionHttpPort>;
+  /** Host-only technical inspection; no student session route reaches this port. */
+  agentInspection?: SessionInspectionPort['inspect'];
+  authorizeExperimentInput?(identity: SpaceIdentity, school: SpaceIdentity, loginId: string, input: AgentInput): Promise<void>;
+  readCoursePdfCitation?(identity: SpaceIdentity, input: unknown): Promise<unknown>;
   bindAgent?(input: unknown): Promise<unknown>;
   bindModelDevice?(input: unknown): Promise<unknown>;
   courseExecutionDesign?(operation: 'compile' | 'prepare' | 'read', input: unknown): Promise<unknown>;
@@ -207,6 +212,27 @@ export function createLearningEntry(options: {
       const remote = request.headers['x-xj-space'];
       if (readOnly && typeof remote === 'string' && remote.startsWith('school:')) throw new StorageError('forbidden');
       if (environment.profile === 'school' && (route.startsWith('client/') || typeof remote === 'string' && remote.startsWith('school:'))) throw new StorageError('forbidden');
+      if (route === 'course-pdf-reading' && method === 'POST') {
+        if (!options.readCoursePdfCitation) throw new StorageError('unavailable');
+        const identity = typeof remote === 'string' && remote.startsWith('school:')
+          ? (await options.client?.list())?.find(item => item.key === remote)?.identity : await current(request);
+        if (!identity || request.headers['x-xj-expected-subject'] !==
+          [identity.environmentId, identity.spaceId, identity.principalId].join('.')) throw new StorageError('forbidden');
+        sendLearning(response, 200, await options.readCoursePdfCitation(identity, await readLearningBody(request)));
+        return true;
+      }
+      if (/^agent-inspections(?:\/|$)/.test(route)) {
+        if (method !== 'GET') throw new StorageError('missing');
+        if (!options.agentInspection) throw new StorageError('unavailable');
+        const identity = await current(request);
+        const expected = request.headers['x-xj-expected-subject'];
+        if (expected !== undefined && expected !== [identity.environmentId, identity.spaceId, identity.principalId].join('.'))
+          throw new StorageError('forbidden');
+        result = await routeAgentInspection({ inspect: options.agentInspection }, identity, route, method,
+          new URL(request.url!, endpoint).search, request.headers['x-xj-agent-contract']);
+        sendLearning(response, 200, result);
+        return true;
+      }
       if (/^agent-sessions(?:\/|$)/.test(route) || route === 'agent-sources') {
         if (request.headers['x-xj-agent-contract'] !== '3') throw new StorageError('incompatible');
         let identity: SpaceIdentity;
@@ -227,8 +253,19 @@ export function createLearningEntry(options: {
         }
         if (!options.agentSessions) throw new StorageError('unavailable');
         const host = await options.agentSessions(identity);
-        result = await routeAgentSessions(host, identity, route, method ?? 'GET',
-          method === 'POST' ? await readLearningBody(request, /\/pdf(?:\/|$)/.test(route) ? 29*1024*1024 : 16_000_000) : undefined,
+        const body = method === 'POST' ? await readLearningBody(request, /\/pdf(?:\/|$)/.test(route) ? 29*1024*1024 : 16_000_000) : undefined;
+        const submit = /^agent-sessions\/([0-9a-f-]{36})\/inputs$/.exec(route);
+        if (body && submit && identity.kind === 'personal' && spaces && options.authorizeExperimentInput && session(request)) {
+          const input = agentInputSchema.parse(body);
+          if (input.sessionId === submit[1] && Array.isArray(input.context.experimentReferences)) {
+            const school = await spaces.schoolSession(session(request)).catch(error => {
+              if (error instanceof StorageError && error.code === 'forbidden') return null;
+              throw error;
+            });
+            if (school) await options.authorizeExperimentInput(identity, school.member, school.loginId, input);
+          }
+        }
+        result = await routeAgentSessions(host, identity, route, method ?? 'GET', body,
           new URL(request.url!, endpoint).search, '3');
         sendLearning(response, 200, result);
         return true;
@@ -325,7 +362,7 @@ export function createLearningEntry(options: {
       } else if (route === 'logout' && method === 'POST') {
         await readLearningBody(request);
         if (readOnly) recoverySessions.delete(session(request));
-        else await spaces.logout(session(request));
+        else await spaces.logout(session(request), personalProfile ? 'local-school-account' : 'browser');
         response.setHeader('set-cookie', `${cookieName}=${cookieFlags}; Max-Age=0`);
         result = { loggedOut: true };
       } else if (route.startsWith('manage/') && method === 'POST') {
@@ -591,6 +628,11 @@ export function createLearningEntry(options: {
           result = await executions.history(identity, parts[1]!, parts[3]);
         else if (parts.length === 4 && parts[3] === 'artifact' && method === 'GET')
           result = await executions.artifact(identity, parts[1]!, parts[2]!);
+        else if (parts.length === 4 && parts[3] === 'visibility' && method === 'GET')
+          result = await learning.executionRecords.visibility(identity, parts[1]!, parts[2]!);
+        else if (parts.length === 4 && parts[3] === 'displayed' && method === 'POST')
+          result = await learning.executionRecords.markDisplayed(identity, parts[1]!, parts[2]!,
+            z.object({ contentId: z.uuid() }).strict().parse(await readLearningBody(request)).contentId);
         else if (parts.length === 3 && parts[2] === 'sessions' && method === 'GET')
           result = await executions.sessions(identity, parts[1]!);
         else if ((parts.length === 3 || parts.length === 4) && parts[2] === 'checkpoints' && method === 'GET')

@@ -8,6 +8,8 @@ export type { RuntimeResources, DatabaseConfiguration, DatabaseBinding } from '.
 export { resolveCredential } from './postgres.js';
 export { createProductRuntimeHost } from './host.js';
 export { createProductLearningApplication, createLearningRecoveryTargets } from './learning-entry.js';
+export { createProductAgent } from './product-agent.js';
+export type { ProductAgentOptions, ProductAgentScene } from './product-agent.js';
 export * from './connections.js';
 export { createNativeChannelWorker } from './native-channel-worker.js';
 export { createNativeChannelExecutor, nativeChannelNode } from './native-channel-executor.js';

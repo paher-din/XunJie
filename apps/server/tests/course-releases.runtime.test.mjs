@@ -423,9 +423,19 @@ test('existing owners upgrade to course schema without losing autonomous state',
       await spaces.bindMember(member, { ...dataOwner, version: 1 });
       const learning = createLearningData(dataStorage, spaces);
       legacy = await learning.create(member, { requestId: randomUUID(), goal: '升级前建立的活动', question: '', references: [] });
-      legacyWorks = await learning.works.sync(member, legacy.activityId, { requestId: randomUUID(), baseRevision: 0,
-        files: [{ objectId: randomUUID(), contentId: randomUUID(), name: 'before.txt', kind: 'text',
-          encoding: 'utf8', mediaType: 'text/plain', value: 'Existing WP02 work.' }] });
+      const file = { objectId: randomUUID(), contentId: randomUUID(), name: 'before.txt', kind: 'text',
+        encoding: 'utf8', mediaType: 'text/plain', value: 'Existing WP02 work.' };
+      await learning.works.registerBasis(member, legacy.activityId, file);
+      const { value: _value, ...metadata } = file;
+      const manifest = JSON.stringify([metadata]);
+      // Seed the published V2 head using its original tables. The current sync
+      // operation also checks teaching artifacts, which did not exist in V2.
+      await dataStorage.request({ requestId: randomUUID(), fingerprint: file.contentId }, async tx => {
+        await tx.query('INSERT INTO work_heads VALUES($1,1,$2)', [legacy.activityId, manifest]);
+        await tx.query('INSERT INTO work_versions VALUES($1,1,$2)', [legacy.activityId, manifest]);
+        return null;
+      });
+      legacyWorks = { revision: 1, files: [file] };
       for (const storage of [spaceStorage, dataStorage]) {
         const participant = storage.participant();
         await participant.closeWrites(); await participant.closeDispatch();

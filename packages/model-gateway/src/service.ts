@@ -6,13 +6,16 @@ import { modelSegmentInputSchema, modelSessionAuthoritySchema, settleModelToolsS
   modelLearningInputSchema, modelImageInputSchema, modelImageRefSchema, modelSelectionSchema, modelChoiceSchema,
   modelAttemptSchema, modelConnectionSchema, modelProgressSchema, modelToolIntentSchema, modelSegmentBoundarySchema, modelSelectionSourceSchema } from '@xunjie/contracts/model-connections';
 import type { createModelGateway } from './index.js';
+import { nativeCapacitySchema } from './request-capacity.js';
+export { measureNativeCapacity } from './request-capacity.js';
 
 type Gateway = Awaited<ReturnType<typeof createModelGateway>>;
 /** Node-only learning boundary; no configuration, credentials or native resource access. */
 export type LearningModelPort = {
   selection: Pick<Gateway['selection'], 'read' | 'snapshot' | 'resolveChoice' | 'pin' | 'pinSource' | 'pinned'>;
   segments: Pick<Gateway['segments'], 'create' | 'read' | 'settle' | 'close'>;
-  checks: Pick<Gateway['checks'], 'receive' | 'read' | 'requestPayload' | 'progress' | 'summary' | 'dispatch' | 'cancel'>;
+  checks: Pick<Gateway['checks'], 'receive' | 'read' | 'requestPayload' | 'progress' | 'summary' | 'dispatch' | 'cancel'>
+    & Partial<Pick<Gateway['checks'], 'capacity' | 'readRecorded'>>;
   results: Pick<Gateway['results'], 'retain'>;
   images: Pick<Gateway['images'], 'upload' | 'read'>;
 };
@@ -32,6 +35,7 @@ const argumentSchemas = {
   'checks.receive': z.tuple([modelLearningInputSchema]),
   'checks.read': z.tuple([z.uuid()]),
   'checks.requestPayload': z.tuple([z.uuid()]),
+  'checks.capacity': z.tuple([z.uuid(), z.number().int().nonnegative()]),
   'checks.progress': z.tuple([z.uuid()]),
   'checks.summary': z.tuple([z.uuid()]),
   'checks.dispatch': z.tuple([z.uuid(), modelSessionAuthoritySchema.optional()]),
@@ -115,6 +119,7 @@ const nativeRequest = z.union([
 const learningAttempt = modelAttemptSchema.extend({ createdAt: z.iso.datetime() }).refine(value => value.purpose === 'learning');
 const segment = z.object({ sessionId: z.uuid().optional(), segmentId: z.uuid(), formatVersion: z.literal(1), sequence: z.number().int().nonnegative(),
   connection: modelConnectionSchema, prefixDigest: z.string().regex(/^[a-f0-9]{64}$/), resultRef: z.uuid().nullable(),
+  projectionId: z.string().regex(/^[a-f0-9]{64}$/).nullable(),
   pending: z.boolean(), closed: z.boolean(), pendingTools: z.array(modelToolIntentSchema) }).strict();
 const image = modelImageRefSchema.extend({ resourceId: z.uuid(), mediaType: z.literal('image/png'), byteLength: z.number().int().nonnegative().max(262144),
   sha256: z.string().regex(/^[a-f0-9]{64}$/), source: modelImageRefSchema.extend({ transformation: z.string().min(1).max(200) }).optional() });
@@ -129,6 +134,7 @@ const resultSchemas = {
   'segments.close': segment.extend({ boundary: modelSegmentBoundarySchema }),
   'checks.receive': learningAttempt, 'checks.read': learningAttempt, 'checks.dispatch': learningAttempt, 'checks.cancel': learningAttempt,
   'checks.requestPayload': nativeRequest,
+  'checks.capacity': nativeCapacitySchema,
   'checks.progress': modelProgressSchema.nullable(),
   'checks.summary': z.object({ source: z.literal('model-native'), text: z.string().max(16000), truncated: z.boolean() }).strict().nullable(),
   'results.retain': z.null(), 'images.upload': image, 'images.read': image,
@@ -204,6 +210,10 @@ export function createLearningModelService(models: LearningModelPort, authorize:
         case 'checks.receive': result = await models.checks.receive(identity, ...argumentSchemas['checks.receive'].parse(request.args)); break;
         case 'checks.read': result = await models.checks.read(identity, ...argumentSchemas['checks.read'].parse(request.args)); break;
         case 'checks.requestPayload': result = await models.checks.requestPayload(identity, ...argumentSchemas['checks.requestPayload'].parse(request.args)); break;
+        case 'checks.capacity': {
+          if (!models.checks.capacity) throw new StorageError('incompatible');
+          result = await models.checks.capacity(identity, ...argumentSchemas['checks.capacity'].parse(request.args)); break;
+        }
         case 'checks.progress': result = await models.checks.progress(identity, ...argumentSchemas['checks.progress'].parse(request.args)); break;
         case 'checks.summary': result = await models.checks.summary(identity, ...argumentSchemas['checks.summary'].parse(request.args)); break;
         case 'checks.dispatch': throw new StorageError('invalid'); // handled asynchronously above
@@ -253,6 +263,7 @@ export function createLearningModelClient(call: LearningModelCall): LearningMode
       receive: (identity, ...args) => invoke('checks.receive', identity, args) as ReturnType<LearningModelPort['checks']['receive']>,
       read: (identity, ...args) => invoke('checks.read', identity, args) as ReturnType<LearningModelPort['checks']['read']>,
       requestPayload: (identity, ...args) => invoke('checks.requestPayload', identity, args) as ReturnType<LearningModelPort['checks']['requestPayload']>,
+      capacity: (identity, ...args) => invoke('checks.capacity', identity, args) as ReturnType<NonNullable<LearningModelPort['checks']['capacity']>>,
       progress: (identity, ...args) => invoke('checks.progress', identity, args) as ReturnType<LearningModelPort['checks']['progress']>,
       summary: (identity, ...args) => invoke('checks.summary', identity, args) as ReturnType<LearningModelPort['checks']['summary']>,
       dispatch: (identity, ...args) => invoke('checks.dispatch', identity, args) as ReturnType<LearningModelPort['checks']['dispatch']>,

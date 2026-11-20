@@ -36,6 +36,7 @@
 | DeepSeek Harness 的 session log、上下文投影、持久屏障与 WP07 取舍 | [Session log 源码研究](references/2026-11-05-harness-session-log-research.md) |
 | 内核比较的可复现代码、故障情形与实际结果 | [隔离接入探针](references/probes/2026-10-27-agent-kernel/README.md) |
 | Robert 已明确的要求、工程决定与待验证项 | [需求与决策记录](student-agent-decisions.md) |
+| 主页与工作区 Agent 的上下文工程实施顺序、接口、两批交付与验收门禁 | [上下文工程实施方案](context-engineering-implementation-plan.md) |
 | 已确认的学生主动性设置与无扰检测路线、验证方法 | [跨课程主动引导方案](references/2026-10-23-proactive-guidance-proposal.md) |
 | 活动恢复、学习证据、学生画像纠正与教师共享边界 | [连续教学方案](references/2026-10-23-continuous-learning-proposal.md) |
 | 自动保存、实验输入、固定引用、待发动作与同浏览器恢复 | 工作区交互与状态决议及[可操作原型](../../apps/web/prototypes/workspace-state.README.md) |

@@ -37,11 +37,13 @@ export function ProductComposerDock({ children, atBottom = true, onBackToBottom 
 
 const effortLabels = { auto: '默认', none: '关闭', enabled: '开启', minimal: '最低', low: '低', medium: '中', high: '高', xhigh: '更高', max: '最高' } as const satisfies Record<ModelReasoningEffort, string>
 
-export function ProductPromptInput({ selection, readOnly, onModelSettings, onModelSelected, applyingModel, contextUsage, files, skills, ...input }:
+export function ProductPromptInput({ selection, readOnly, onModelSettings, onModelSelected, applyingModel, modelLocked = false, contextUsage, files, skills, ...input }:
   Pick<PromptInputProps, 'value' | 'onChange' | 'onSend' | 'canSend' | 'autoFocus' | 'submitting' | 'inputRef' | 'textareaProps' | 'sendLabel'
     | 'busy' | 'onStop' | 'onResume' | 'resumeLabel' | 'actionDisabled'> & {
   selection: ModelSelectionController; readOnly: boolean; onModelSettings?: () => void
   onModelSelected?: Parameters<ModelSelectionController['choose']>[1]; applyingModel?: boolean; contextUsage?: { model: { connectionId: string; version: number }; tokens: number; lowerBound: boolean }
+  /** A Turn fixes its model; the next Turn adopts any later picker change. */
+  modelLocked?: boolean
   files: PromptFiles; skills?: DraftSkillsController
 }) {
   const picker = useAgentModelPicker(selection)
@@ -102,7 +104,7 @@ export function ProductPromptInput({ selection, readOnly, onModelSettings, onMod
   const effort = effortLabels[selected?.reasoningEffort ?? connection?.reasoningEffort ?? profile?.defaultEffort ?? 'auto']
   const measured = contextUsage && contextUsage.model.connectionId === connection?.connectionId
     && contextUsage.model.version === connection.version ? contextUsage : undefined
-  const modelBusy = readOnly || input.submitting || selection.busy || applyingModel
+  const modelBusy = readOnly || input.submitting || selection.busy || applyingModel || modelLocked
 
   const skillStatus = skills?.loading ? '正在读取技能…' : skills?.error || (!visibleSkills.length
     ? query ? '没有匹配的技能' : '还没有可用技能，可在设置中导入。' : undefined)

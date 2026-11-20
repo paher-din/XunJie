@@ -51,12 +51,13 @@ import { createSessionMaterials } from '@xunjie/learning-space/learning-data/ses
 import { createPersonalProjects } from '@xunjie/learning-space/learning-data/personal-projects';
 import { createProjectMaterials } from '@xunjie/learning-space/learning-data/project-materials';
 import { createLearningQuery, learningObjectVersion, type LearningQuerySource, type LearningQuerySourceResult, type OwnerConversationRead, type OwnerConversation } from '@xunjie/learning-space/learning-data/learning-query';
+import { readFixedExperiment } from '@xunjie/learning-space/learning-data/execution-visibility';
 import { createProductAgent } from './product-agent.js';
 import { createLearningSpaceTaskOwner } from './workspace-agent-tasks.js';
 import { createAgentSessionClient, createAgentSessionService } from '@xunjie/agents/transport/session-service';
 import { agentSessionsCapability } from '@xunjie/contracts/agent-service';
 import { canonicalDigest, operationId } from '@xunjie/storage/identity';
-import type { AgentDispatchPermit } from '@xunjie/contracts/agent-runtime';
+import type { AgentDispatchPermit, AgentInput } from '@xunjie/contracts/agent-runtime';
 import { isTerminalExecutionState, agentExecutionAssociationSchema } from '@xunjie/contracts/execution';
 import type { CreationQuestionsPort } from '@xunjie/agents/student-assistant/creation-policy';
 import { personalProjectContentSchema } from '@xunjie/contracts/student-learning';
@@ -77,6 +78,8 @@ import { createDocumentTools } from '@xunjie/agents/capabilities/documents/index
 import { createStudentFacts } from '@xunjie/agents/capabilities/student-facts/index';
 import type { ChunkConnectionSource } from '@xunjie/storage/chunk-channel';
 import { sameAgentSubject } from '@xunjie/contracts/agent-service';
+import { experimentReferenceSchema } from '@xunjie/contracts/experiment-references';
+import { coursePdfCitationSourceSchema, learningReferenceSchema } from '@xunjie/contracts/student-learning';
 
 const modelTaskContext = { identity: spaceIdentitySchema,
   binding: z.object({ grantId: z.uuid(), installationId: z.uuid() }).strict() };
@@ -120,6 +123,7 @@ export async function createProductLearningApplication(context: {
   const opened: OwnedStorage[] = [];
   const owners: RecoveryOwner[] = [];
   let sessionAgent: ReturnType<typeof createProductAgent> | undefined;
+  let sessionInspection: ReturnType<typeof createProductAgent>['inspect'] | undefined;
   let standaloneAgent: ReturnType<typeof createStandaloneAgentApplication> | undefined;
   try {
     async function owner(unit: 'space-course' | 'learning-data' | 'model-connection' | 'teaching-agent' | 'tool-execution', migrations: typeof spaceMigrations) {
@@ -396,7 +400,7 @@ export async function createProductLearningApplication(context: {
           || !await matchesInstallation(fixed, origin.installationId)) throw new StorageError('forbidden');
         const read = ['selection.read', 'selection.snapshot', 'selection.resolve', 'selection.pinned', 'selection.pin', 'segments.read',
           'segments.create', 'segments.settle', 'segments.close', 'checks.read', 'checks.progress', 'checks.summary',
-          'checks.requestPayload', 'images.read', 'checks.cancel'].includes(request.operation);
+          'checks.requestPayload', 'checks.capacity', 'images.read', 'checks.cancel'].includes(request.operation);
         if (!read) {
           if (!origin.authority || origin.authority.sessionId !== session.sessionId) throw new StorageError('forbidden');
           await assertSessionPermit(identity, origin.authority);
@@ -417,7 +421,7 @@ export async function createProductLearningApplication(context: {
         if (!source.sourceInstallationId) throw new StorageError('forbidden');
         const read = ['selection.read', 'selection.snapshot', 'selection.resolve', 'selection.pinned', 'selection.pin', 'segments.read',
           'segments.create', 'segments.settle', 'segments.close', 'checks.read', 'checks.progress', 'checks.summary',
-          'checks.requestPayload', 'images.read'].includes(request.operation);
+          'checks.requestPayload', 'checks.capacity', 'images.read'].includes(request.operation);
         const stable = { request, source: { environmentId: source.sourceEnvironmentId, serviceId: source.sourceServiceId,
           installationId: source.sourceInstallationId, grantId: source.grantId }, sessionId: session.sessionId };
         const authority = 'permit' in call ? call.permit : undefined;
@@ -528,7 +532,8 @@ export async function createProductLearningApplication(context: {
       if (!data || !learning || !personalProjects) throw new StorageError('unavailable');
       await authorizeSessionIdentity(identity);
       return { sourceId, identity, target: { ...data.storage.owner, version: 1 }, learning, personalProjects,
-        courses: { owner: { ...space!.storage.owner, version: 1 }, listCourses: courses.listCourses, readRelease: courses.readRelease },
+        courses: { owner: { ...space!.storage.owner, version: 1 }, listCourses: courses.listCourses,
+          readRelease: courses.readRelease, readMaterial: courses.readMaterial },
         ownerConversationRead: conversationProvider() };
     }
     async function querySources(): Promise<LearningQuerySourceResult> {
@@ -537,7 +542,8 @@ export async function createProductLearningApplication(context: {
       await spaces.authorize(personal);
       const owner = { ...data.storage.owner, version: 1 as const };
       const sources: LearningQuerySource[] = [{ sourceId: 'local-personal', identity: personal, target: owner, learning, personalProjects,
-        courses: { owner: { ...space!.storage.owner, version: 1 }, listCourses: courses.listCourses, readRelease: courses.readRelease },
+        courses: { owner: { ...space!.storage.owner, version: 1 }, listCourses: courses.listCourses,
+          readRelease: courses.readRelease, readMaterial: courses.readMaterial },
         ownerConversationRead: conversationProvider(),
       }];
       const unavailable: LearningQuerySourceResult['unavailable'][number][] = [];
@@ -555,7 +561,106 @@ export async function createProductLearningApplication(context: {
       }
       return { sources, unavailable };
     }
-    const learningQuery = createLearningQuery({ sources: querySources });
+    async function pdfReadingReceipt(requestId: string, fingerprint: string, write: boolean) {
+      if (!data) throw new StorageError('unavailable');
+      if (write) await data.storage.request({ requestId, fingerprint }, async () => true);
+      return (await data.storage.receipt(requestId, fingerprint))?.result === true;
+    }
+    const learningQuery = createLearningQuery({ sources: querySources, pdfReadingReceipt });
+    async function readCoursePdfCitation(identity: SpaceIdentity, input: unknown) {
+      const fixed = coursePdfCitationSourceSchema.parse(input);
+      const source = identity.environmentId === environment.environmentId
+        ? await localQuerySource(identity, fixed.reference.sourceId) : await connectedSchool().querySource(identity);
+      const query = createLearningQuery({ sources: async () => [source], pdfReadingReceipt });
+      const detail = await query.readLearning({ reference: fixed.reference, page: fixed.page,
+        readingId: fixed.readingId, range: fixed.range });
+      if (!detail.pdf) throw new StorageError(detail.missing.includes('pdf-out-of-range') ? 'missing' : 'unavailable');
+      return detail.pdf;
+    }
+    const experimentGrantKey = (identity: SpaceIdentity, sessionId: string, originRequestId: string | null,
+      { activityId, requestId, executionRef, inputDigest, source }: z.infer<typeof experimentReferenceSchema>) =>
+      canonicalDigest({ subject: [identity.environmentId, identity.spaceId, identity.principalId], sessionId, originRequestId,
+        ref: { activityId, requestId, executionRef, inputDigest, source } });
+    const experimentGrantId = (key: string) => operationId('agent-experiment-access:' + key);
+    const experimentLoginKey = (identity: SpaceIdentity, sessionId: string, loginId: string,
+      ref: z.infer<typeof experimentReferenceSchema>) => canonicalDigest({ experiment: experimentGrantKey(identity, sessionId, null, ref), loginId });
+    async function authorizeExperimentInput(identity: SpaceIdentity, school: SpaceIdentity, loginId: string, input: AgentInput) {
+      if (!data || !directory || identity.kind !== 'personal' || school.kind !== 'school'
+        || school.environmentId !== environment.environmentId) return;
+      const session = await directory.read(identity, input.sessionId);
+      if (session.scenario !== 'student-assistant' || session.deleted || session.archived) throw new StorageError('forbidden');
+      const refs = input.context.experimentReferences;
+      for (const value of Array.isArray(refs) ? refs.slice(0, 4) : []) {
+        const parsed = experimentReferenceSchema.safeParse(value);
+        if (!parsed.success) continue;
+        const fixed = parsed.data.source;
+        if (fixed.kind !== 'component' || fixed.environmentId !== school.environmentId
+          || fixed.spaceId !== school.spaceId || fixed.principalId !== school.principalId) continue;
+        const key = experimentGrantKey(identity, input.sessionId, input.requestId, parsed.data);
+        await data.storage.request({ requestId: experimentGrantId(key), fingerprint: key }, async () => ({ version: 1 }));
+        const loginKey = experimentLoginKey(identity, input.sessionId, loginId, parsed.data);
+        await data.storage.request({ requestId: experimentGrantId(loginKey), fingerprint: loginKey }, async () => ({ version: 1 }));
+      }
+    }
+    async function readExperiment(identity: SpaceIdentity, sessionId: string, value: unknown, originRequestId?: string) {
+      const ref = experimentReferenceSchema.parse(value);
+      const fixed = ref.source;
+      if (fixed.kind !== 'component' || fixed.origin !== 'execution-result' || fixed.activityId !== ref.activityId
+        || fixed.requestId !== ref.requestId || fixed.executionRef !== ref.executionRef) throw new StorageError('invalid');
+      const sameSubject = identity.environmentId === fixed.environmentId && identity.spaceId === fixed.spaceId
+        && identity.principalId === fixed.principalId;
+      let source: LearningQuerySource | undefined;
+      if (sameSubject) source = await localQuerySource(identity, 'current-subject');
+      else if (identity.kind === 'personal' && fixed.environmentId === environment.environmentId) {
+        if (!originRequestId) throw new StorageError('forbidden');
+        const key = experimentGrantKey(identity, sessionId, originRequestId, ref);
+        if (!await data?.storage.receipt(experimentGrantId(key), key)) throw new StorageError('forbidden');
+        const fixedIdentity = await spaces.lookup(fixed.spaceId, fixed.principalId);
+        if (fixedIdentity.kind === 'school') {
+          const logins = await spaces.activeSchoolSessions(fixedIdentity);
+          let allowed = false;
+          for (const loginId of logins) {
+            const loginKey = experimentLoginKey(identity, sessionId, loginId, ref);
+            if (await data?.storage.receipt(experimentGrantId(loginKey), loginKey)) { allowed = true; break; }
+          }
+          if (!allowed) throw new StorageError('forbidden');
+          source = await localQuerySource(fixedIdentity, 'fixed-subject');
+        }
+      } else if (identity.kind === 'personal') {
+        source = (await querySources()).sources.find(candidate =>
+          candidate.identity.environmentId === fixed.environmentId && candidate.identity.spaceId === fixed.spaceId
+          && candidate.identity.principalId === fixed.principalId);
+      }
+      if (!source?.learning.executionRecords) throw new StorageError('forbidden');
+      const activity = await source.learning.open(source.identity, ref.activityId);
+      const { identity: actor, learning } = source;
+      const { read: readRecord, wasDisplayed } = learning.executionRecords!;
+      return { ref, ...await readFixedExperiment({ activity, reference: ref, works: learning.works,
+        readRecord: requestId => readRecord(actor, activity.activityId, requestId),
+        ...(wasDisplayed ? { wasDisplayed: record => wasDisplayed(actor, activity.activityId, record) } : {}) }) };
+    }
+    async function experimentMaterials(input: ScenarioInput): Promise<import('@xunjie/agent-runtime').ContextMaterial[]> {
+      const refs = (input.inputs ?? []).flatMap(entry => Array.isArray(entry.context.experimentReferences)
+        ? entry.context.experimentReferences.map(raw => ({ raw, originRequestId: entry.requestId, inputId: entry.inputId })) : []).slice(0, 4);
+      return Promise.all(refs.map(async ({ raw, originRequestId, inputId }, index) => {
+        const sourceId = 'experiment:' + canonicalDigest(raw);
+        const base = { materialId: 'M-' + canonicalDigest(sourceId).slice(0, 24), sourceId, inputId,
+          kind: 'system-observation' as const, author: 'system' as const, label: '工作区实验 ' + (index + 1), range: null };
+        try {
+          const { ref, reveal, facts } = await readExperiment(input.identity, input.sessionId, raw, originRequestId);
+          return { ...base, version: ref.executionRef, digest: canonicalDigest(facts), content: JSON.stringify(facts),
+            readState: 'included', source: { ...ref, kind: 'experiment-reference', statusOnly: !reveal,
+              ...(originRequestId ? { originRequestId } : {}) }, citationAllowed: reveal };
+        } catch {
+          const fixed = experimentReferenceSchema.safeParse(raw);
+          return { ...base, version: fixed.success ? fixed.data.executionRef : null,
+            digest: canonicalDigest(null), content: null, readState: 'failed',
+            source: fixed.success ? { ...fixed.data, kind: 'experiment-reference', statusOnly: true,
+              ...(originRequestId ? { originRequestId } : {}) } : {},
+            citationAllowed: false, readReason: '原实验当前不可访问或无法核实，请从工作区核对。' };
+        }
+      }));
+    }
     const projectMaterials = data && sessionMaterials ? createProjectMaterials(data.storage, {
       openActivity: workspaceOpen, materials: sessionMaterials,
       async assertDispatch() {
@@ -610,6 +715,76 @@ export async function createProductLearningApplication(context: {
 
           const personal = await spaces.readPersonal();
           if (!personal || !data || !directory || !personalProjects || !projectMaterials) throw new StorageError('unavailable');
+          const historySource = async (identity: import('@xunjie/contracts/spaces').SpaceIdentity,
+            sessionId: string, source: import('@xunjie/agent-runtime').Facts): Promise<boolean> => {
+            const string = (key: string) => typeof source[key] === 'string' ? source[key] as string : null;
+            const scope = source.scope && typeof source.scope === 'object' && !Array.isArray(source.scope)
+              ? source.scope as { kind?: unknown; sessionId?: unknown; activityId?: unknown } : null;
+            const fixedScope = scope?.kind === 'workspace' && typeof scope.activityId === 'string'
+              ? { kind: 'workspace' as const, activityId: scope.activityId }
+              : { kind: 'session' as const, sessionId: scope?.kind === 'session' && typeof scope.sessionId === 'string'
+                ? scope.sessionId : sessionId };
+            const kind = string('kind');
+            if (kind === 'student-answer') return true;
+            if (kind === 'project-receipt') return !!(await personalProjects.read(identity, z.uuid().parse(source.projectId)));
+            if (kind === 'material-list' && Array.isArray(source.references)) {
+              for (const ref of source.references) {
+                if (!ref || typeof ref !== 'object' || Array.isArray(ref) || !await historySource(identity, sessionId, ref)) return false;
+              }
+              return true;
+            }
+            if (kind === 'tool-call') {
+              const nested = source.source;
+              return !!nested && typeof nested === 'object' && !Array.isArray(nested)
+                && historySource(identity, sessionId, nested as import('@xunjie/agent-runtime').Facts);
+            }
+            if (kind === 'experiment-reference') {
+              const { kind: _kind, statusOnly, originRequestId: _origin, ...fixed } = source;
+              const result = await readExperiment(identity, sessionId, fixed, string('originRequestId') ?? undefined);
+              return result.reveal || statusOnly === true;
+            }
+            const pdfSource = coursePdfCitationSourceSchema.safeParse(source);
+            if (pdfSource.success) {
+              const fixed = pdfSource.data;
+              const detail = await learningQuery.readLearning({ reference: fixed.reference, page: fixed.page,
+                readingId: fixed.readingId, range: fixed.range });
+              return !!detail.pdf && detail.provenance?.course?.helpPolicy.questions !== 'disabled';
+            }
+            const learningRef = learningReferenceSchema.safeParse(source);
+            if (learningRef.success) {
+              const detail = await learningQuery.readLearning({ reference: learningRef.data, range: { offset: 0, length: 1 } });
+              return !detail.missing.some(reason => reason === 'prediction-required' || reason === 'course-policy')
+                && detail.provenance?.course?.helpPolicy.questions !== 'disabled';
+            }
+            if (kind === 'personal-material') {
+              const materialId = string('materialId') ?? string('objectId');
+              if (!materialId) return false;
+              const fixed = await sessionMaterials!.personal.material(identity, fixedScope, materialId);
+              const version = Number(source.version);
+              return !fixed.removedAt && (!Number.isInteger(version) || fixed.versions.some(item =>
+                item.version === version && (!string('sha256') || item.sha256 === string('sha256'))));
+            }
+            if (kind === 'pdf') {
+              const documentId = string('documentId') ?? string('objectId');
+              if (!documentId) return false;
+              const fixed = await sessionMaterials!.pdf.document(identity, fixedScope, documentId);
+              const sha = string('sha256') ?? string('documentSha256');
+              return !sha || fixed.sha256 === sha;
+            }
+            if (kind === 'work') {
+              const activityId = string('activityId'), contentId = string('contentId');
+              if (!activityId || !contentId) return false;
+              const file = await learning!.works.content(identity, activityId, contentId);
+              return (!string('objectId') || file.objectId === string('objectId'))
+                && (!string('contentId') || file.contentId === contentId);
+            }
+            if (kind === 'course-material' || kind === 'course-field') {
+              if (!string('sourceId') || !string('objectId') || !string('version')) return false;
+              await learningQuery.readLearning({ reference: source as never, range: { offset: 0, length: 1 } });
+              return true;
+            }
+            return false;
+          };
           return { localPersonalIdentity: personal, localLearningTarget: { ...data.storage.owner, version: 1 }, query: learningQuery,
             projects: personalProjects, questions: creationQuestions,
             workspaceSessions: {
@@ -624,7 +799,7 @@ export async function createProductLearningApplication(context: {
                   return session.workspace ? { sessionId, activityId: session.workspace.activityId, target: session.workspace.target, ready: session.state === 'ready' } : null;
                 } catch (error) { if (error instanceof StorageError && error.code === 'missing') return null; throw error; }
               },
-            }, materials: projectMaterials };
+            }, materials: projectMaterials, historySource };
     }
     const studentFacts = learning && directory ? createStudentFacts({ activity: workspaceOpen,
       async sources(identity) {
@@ -660,15 +835,48 @@ export async function createProductLearningApplication(context: {
         ...(models ? { models } : {}) });
       if (enabled.has('teaching-agent')) sessionAgent = standaloneAgent.agent;
     }
-    const sessionGateways = new Map<string, import('@xunjie/model-gateway/service').LearningModelPort>();
     if (agent && models && directory && sessionMaterials && personalProjects && projectMaterials && enabled.has('teaching-agent')) {
+      const gatewayForSession = async (identity: SpaceIdentity, sessionId: string) =>
+        identity.environmentId === environment.environmentId ? models
+          : (await connectedSchool().dependenciesForSession(identity, sessionId)).models;
       sessionAgent = createProductAgent({ storage: agent.storage, directory,
-        models(_identity, sessionId) {
-          const gateway = sessionGateways.get(sessionId);
-          if (!gateway) throw new StorageError('unavailable');
-          return gateway;
-        },
+        models: gatewayForSession,
         authorize: authorizeSessionIdentity,
+        inspectSession: sessionId => localDirectory!.readForInspection(sessionId),
+        async authorizeInspection(identity, target) {
+          if (identity.environmentId !== environment.environmentId || identity.kind !== 'school'
+            || !await spaces.hasMemberPermission(identity, 'course.manage')) throw new StorageError('forbidden');
+          // A school manager may inspect only the local personal learner. Every home session still
+          // needs a fixed course activity relationship; course.manage alone never opens all sessions.
+          const personal = await spaces.readPersonal().catch(() => null);
+          if (!personal || !sameAgentSubject(target.session.identity, personal) || !learning)
+            throw new StorageError('forbidden');
+          const managed = await courses.listCourses(identity, true);
+          const courseIds = new Set(managed.courses.map(course => course.courseId));
+          for (const activityId of target.activityIds) {
+            try {
+              const activity = await learning.readForInspection(target.session.identity, activityId);
+              let courseId = activity.course?.courseId
+                ?? await courses.courseForActivity(target.session.identity, activityId);
+              let accessIdentity = target.session.identity;
+              if (!courseId) {
+                // A device study copy retains its original school activity (and identity) here;
+                // that is the only existing fact proving which course the copy belongs to.
+                const source = await learning.studyCopies.sourceActivity(target.session.identity, activityId)
+                  .catch(() => null);
+                if (source?.course) { courseId = source.course.courseId; accessIdentity = source.identity; }
+              }
+              if (!courseId || !courseIds.has(courseId)) continue;
+              // Current course eligibility is rechecked for the target, so a withdrawn course
+              // closes inspection even when the historical activity body still names it.
+              if (await courses.hasAccess(accessIdentity, courseId)) return;
+            } catch (error) {
+              if (!(error instanceof StorageError)) throw error;
+              // A withdrawn/missing activity is not evidence of access; keep checking the rest.
+            }
+          }
+          throw new StorageError('forbidden');
+        },
         workspaceRequest: projectWorkspaceRequest,
         readOnly: true,
         remote: sessionRuntimeFor,
@@ -676,9 +884,7 @@ export async function createProductLearningApplication(context: {
           await sessionMaterials.releaseDeleted(session.identity, { requestId: operationId('delete-session-materials:' + session.sessionId), sessionId: session.sessionId });
         },
         async scene(session) {
-          const gateway = session.identity.environmentId === environment.environmentId ? models
-            : (await connectedSchool().dependenciesForSession(session.identity, session.sessionId)).models;
-          sessionGateways.set(session.sessionId, gateway);
+          const gateway = await gatewayForSession(session.identity, session.sessionId);
           const documents = createDocumentTools({ materials: sessionMaterials, models: gateway,
             scope: session.scenario === 'student-assistant' ? { kind: 'session', sessionId: session.sessionId }
               : { kind: 'workspace', activityId: z.uuid().parse(session.workspace?.activityId) },
@@ -689,20 +895,27 @@ export async function createProductLearningApplication(context: {
             : [...workspaceToolNames, ...documents.map(tool => tool.definition.name), 'student_ask'];
           const skills = sessionSkills ? createSkillTools({ owner: { ...data!.storage.owner, version: 1 }, skills: sessionSkills,
             toolNames: async () => toolNames }) : undefined;
-          const contextExtension = sessionSkills ? async (input: ScenarioInput) =>
-            selectedSkillInstruction(await sessionSkills.resolveSession(input.identity, input.sessionId, toolNames)) : undefined;
+          const contextExtension = async (input: ScenarioInput) => {
+            const parts: string[] = [];
+            if (sessionSkills) {
+              const skill = selectedSkillInstruction(await sessionSkills.resolveSession(input.identity, input.sessionId, toolNames));
+              if (skill) parts.push(skill);
+            }
+            return parts.length ? parts.join('\n\n') : undefined;
+          };
           if (session.scenario === 'student-assistant') {
             return { student: await studentToolsHost(), documents, ...(skills ? { skills } : {}),
-              ...(contextExtension ? { contextExtension } : {}) };
+              contextExtension, experimentMaterials };
           }
           return { workspace: await workspaceOptions(session), documents, ...(skills ? { skills } : {}),
-            ...(contextExtension ? { contextExtension } : {}) };
+            contextExtension };
         },
         taskOwner: createLearningSpaceTaskOwner({ storage: executionModule?.storage ?? data!.storage,
           executions: independentExecution?.executions ?? learning!.executions,
           sessionIdOfTurn: taskSessionIdOfTurn,
         }),
       });
+      sessionInspection = sessionAgent.inspect;
     }
     async function sessionRuntimeFor(session: AgentSession) {
       if (sessionAgent && agent && session.owner.target.environmentId === agent.storage.owner.environmentId
@@ -795,6 +1008,7 @@ export async function createProductLearningApplication(context: {
         await port.assertDispatch(identity, permit);
       },
       async source(identity) { return localQuerySource(identity, 'owner:' + data.storage.owner.serviceId); },
+      pdfReadingReceipt,
       modelsForSession: modelsForPeer,
       async tools(identity, session, source, call) {
         // The data owner serves the tools it can actually execute; the kernel-local question is merged on the host.
@@ -1035,8 +1249,9 @@ export async function createProductLearningApplication(context: {
         }, isOpen);
         if (schoolClient && models && isOpen()) await schoolClient.pollModelTasks(isOpen);
       },
-      handle: createLearningEntry({ environment, spaces, ...(learning ? { learning } : {}), courses,
-        ...(sessionHttp ? { agentSessions: async () => sessionHttp } : {}),
+      handle: createLearningEntry({ environment, spaces, ...(learning ? { learning, readCoursePdfCitation } : {}), courses,
+        ...(sessionHttp ? { agentSessions: async () => sessionHttp, authorizeExperimentInput } : {}),
+        ...(sessionInspection ? { agentInspection: sessionInspection } : {}),
         async agentSources(identity) {
           if (identity.environmentId !== environment.environmentId) {
             const source = await connectedSchool().querySource(identity);

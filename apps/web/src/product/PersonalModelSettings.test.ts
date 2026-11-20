@@ -1,20 +1,19 @@
+// @vitest-environment jsdom
+// @vitest-environment-options {"url":"https://settings.invalid","pretendToBeVisual":true}
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import 'fake-indexeddb/auto'
-import { createRequire } from 'node:module'
 import { act, createElement, Fragment } from 'react'
-import type { Root } from 'react-dom/client'
+import { createRoot, type Root } from 'react-dom/client'
+import * as feedback from '@xunjie/ui/feedback'
 import type { ModelAttempt, ModelConnection, ModelProvider, SaveModelProvider } from '@xunjie/contracts/model-connections'
 import type { SpaceIdentity } from '@xunjie/contracts/spaces'
 import type { ModelSelectionController } from './ModelSelection'
 import { LearningReadCache } from './learning-read-cache'
+import { PersonalModelSettings } from './PersonalModelSettings'
 
 // Use the real React/Radix tree. Only the browser host, transport and polling clock
 // are controlled; SSR cannot exercise the interleaved actions behind STD-02/SPC-02.
-const { JSDOM } = createRequire(import.meta.url)('jsdom')
-let dom: ReturnType<typeof JSDOM>, root: Root
-let PersonalModelSettings: typeof import('./PersonalModelSettings').PersonalModelSettings
-let createRoot: typeof import('react-dom/client').createRoot
-let feedback: typeof import('@xunjie/ui/feedback')
+let root: Root
 const identity: SpaceIdentity = { environmentId: crypto.randomUUID(), spaceId: crypto.randomUUID(), principalId: crypto.randomUUID(), kind: 'personal', name: '测试用户' }
 const initial: ModelConnection = { connectionId: crypto.randomUUID(), name: '原配置', baseUrl: 'https://synthetic.invalid/v1',
   protocol: 'chat-completions', path: '/chat/completions', modelId: 'synthetic', dialect: 'standard', parameterMode: 'plain', enabled: true,
@@ -54,8 +53,8 @@ const click = async (label: string, scope?: ParentNode) => {
 const field = (label: string) => document.querySelector<HTMLInputElement>(`input[aria-label="${label}"]`)!
 async function type(label: string, value: string) {
   await act(async () => {
-    Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, 'value')!.set!.call(field(label), value)
-    field(label).dispatchEvent(new dom.window.Event('input', { bubbles: true })); await settle()
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(field(label), value)
+    field(label).dispatchEvent(new Event('input', { bubbles: true })); await settle()
   })
 }
 const poll = async () => {
@@ -142,7 +141,7 @@ it('keeps idle settings quiet and refreshes after returning to the window', asyn
   const before = count()
   await act(async () => { vi.advanceTimersByTime(4000); await settle() })
   expect(count()).toBe(before)
-  await act(async () => { window.dispatchEvent(new dom.window.Event('focus')); await settle() })
+  await act(async () => { window.dispatchEvent(new Event('focus')); await settle() })
   expect(count()).toBe(before + 2)
 })
 
@@ -177,21 +176,11 @@ it('shows supplier configuration without waiting for slower test history', async
   }
 })
 
-beforeAll(async () => {
-  dom = new JSDOM('<!doctype html><html><body></body></html>', { url: 'https://settings.invalid', pretendToBeVisual: true })
-  for (const name of ['window', 'document', 'navigator', 'HTMLElement', 'HTMLInputElement', 'HTMLTextAreaElement', 'HTMLSelectElement',
-    'Element', 'Node', 'NodeFilter', 'Event', 'MouseEvent', 'FocusEvent', 'CustomEvent', 'MutationObserver', 'DocumentFragment'])
-    vi.stubGlobal(name, dom.window[name])
-  vi.stubGlobal('getComputedStyle', dom.window.getComputedStyle.bind(dom.window))
-  vi.stubGlobal('requestAnimationFrame', dom.window.requestAnimationFrame.bind(dom.window))
-  vi.stubGlobal('cancelAnimationFrame', dom.window.cancelAnimationFrame.bind(dom.window))
+beforeAll(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
   vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
-  dom.window.matchMedia ??= vi.fn().mockReturnValue({ matches: false, addEventListener() {}, removeEventListener() {} })
-  dom.window.HTMLElement.prototype.scrollIntoView ??= vi.fn()
-  ;({ createRoot } = await import('react-dom/client'))
-  feedback = await import('@xunjie/ui/feedback')
-  ;({ PersonalModelSettings } = await import('./PersonalModelSettings'))
+  window.matchMedia ??= vi.fn().mockReturnValue({ matches: false, addEventListener() {}, removeEventListener() {} })
+  HTMLElement.prototype.scrollIntoView ??= vi.fn()
 })
 beforeEach(async () => {
   vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
@@ -264,7 +253,7 @@ afterEach(async () => {
   await act(async () => { feedback.toast.dismiss(); root.unmount(); await settle() })
   document.body.innerHTML = ''; vi.useRealTimers()
 })
-afterAll(() => { dom.window.close(); vi.unstubAllGlobals() })
+afterAll(() => { vi.unstubAllGlobals() })
 
 it.each(['passed', 'failed'] as const)('tests the saved supplier with a credential reference and reports the %s result only as a notification', async status => {
   connectionStatus = status
@@ -448,14 +437,14 @@ describe('personal model settings recovery through real React controls', () => {
   it('adds a second model with its own effort and retains the existing model in one save', async () => {
     await click('添加模型'); await type('搜索或输入模型 ID', 'gpt-5.2')
     await act(async () => {
-      document.querySelector('input[aria-label="搜索或输入模型 ID"]')!.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); await settle()
+      document.querySelector('input[aria-label="搜索或输入模型 ID"]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); await settle()
     })
     await act(async () => {
       document.querySelector<HTMLButtonElement>('[aria-label="模型 ID的默认思考强度"]')!.click(); await settle()
     })
     await act(async () => {
       const option = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find(item => item.textContent?.trim() === '高 · high')!
-      option.dispatchEvent(new dom.window.MouseEvent('pointerdown', { bubbles: true, button: 0 })); option.click(); await settle()
+      option.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })); option.click(); await settle()
     })
     expect(document.querySelector('[role="dialog"]')!.textContent).not.toContain('方言')
     expect(document.querySelector('[role="dialog"]')!.textContent).not.toContain('参数模式')

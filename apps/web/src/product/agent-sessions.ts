@@ -141,7 +141,8 @@ export function mergeAgentConversation(previous: AgentConversation | null, next:
     thinking: merged(previous.thinking ?? [], next.thinking ?? [], item => item.messageId), contextUsage: next.contextUsage ?? previous.contextUsage,
     turns: merged(previous.turns, next.turns, item => item.turnId), inputs: merged(previous.inputs, next.inputs, item => item.inputId),
     questions: merged(previous.questions, next.questions, item => item.questionId), tools: merged(previous.tools, next.tools, item => item.toolCallId),
-    workspaces: merged(previous.workspaces, next.workspaces, item => item.toolCallId) })
+    workspaces: merged(previous.workspaces, next.workspaces, item => item.toolCallId),
+    citations: merged(previous.citations ?? [], next.citations ?? [], item => item.citation.citationId) })
 }
 export function workspaceCard(value: unknown): { activityId: string; title: string; goal?: string; target: LearningTarget } | null {
   const schema = z.object({ activityId: z.uuid(), title: z.string().min(1).optional(), goal: z.string().optional(),

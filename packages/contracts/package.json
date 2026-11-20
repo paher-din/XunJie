@@ -136,6 +136,18 @@
       "types": "./dist/agent-service.d.ts",
       "import": "./dist/agent-service.js"
     },
+    "./agent-citations": {
+      "types": "./dist/agent-citations.d.ts",
+      "import": "./dist/agent-citations.js"
+    },
+    "./experiment-references": {
+      "types": "./dist/experiment-references.d.ts",
+      "import": "./dist/experiment-references.js"
+    },
+    "./course-help": {
+      "types": "./dist/course-help.d.ts",
+      "import": "./dist/course-help.js"
+    },
     "./agent-dependencies": {
       "types": "./dist/agent-dependencies.d.ts",
       "import": "./dist/agent-dependencies.js"

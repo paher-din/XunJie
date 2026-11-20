@@ -10,6 +10,7 @@ import type { ReliableWorkspace } from '../../reliable-workspace'
 import type { LocalAction } from '../../reliable-workspace/action-store'
 import type { ExecutionRecord } from '../../tool-execution/ledger'
 import { runtimeAction } from '../../tool-execution/runtime-action'
+import type { ComponentResultLocation } from '../../product/RuntimeTool'
 import { useActivitySession } from '../../product/ActivitySession'
 import { AluExperimentTool } from './AluExperimentTool'
 import { defaultAluState, encodeEnabledBasis, type AluState } from './state'
@@ -36,7 +37,7 @@ async function compare(button: HTMLButtonElement, submitted: AnyExecutionAction[
   })
 }
 
-async function experiment(patch: Partial<AluState> = {}, split = false, version = 2) {
+async function experiment(patch: Partial<AluState> = {}, split = false, version = 2, located = false, gated = false, checkLocation = false) {
   const componentId = crypto.randomUUID(), scaffoldResourceId = crypto.randomUUID(), checkScaffoldId = crypto.randomUUID()
   const ports = { type: 'object', properties: Object.fromEntries(['A', 'B', 'M', 'S', 'Cin'].map(key => [key, { type: 'number' }])) }
   const operation = (operationId: string) => ({ operationId, effect: 'execute',
@@ -67,6 +68,8 @@ async function experiment(patch: Partial<AluState> = {}, split = false, version 
   const key = JSON.stringify(['school', crypto.randomUUID(), crypto.randomUUID(), crypto.randomUUID(), activityId])
   const [, environmentId, spaceId, principalId] = JSON.parse(key)
   const activity = { activityId, identity: { environmentId, spaceId, principalId }, course: { releaseId: crypto.randomUUID(), requirements: '公开 ALU 规则', components: [binding],
+    ...(gated ? { helpPolicy: { version: 1, questions: 'allowed', scope: 'course',
+      predictionGate: { formatVersion: 1, hideResultsBeforePrediction: true } } } : {}),
     executionPlan: { planId: 'alu-browser', planVersion: 2, planDigest: 'd'.repeat(64), components: [] } } } as unknown as LearningActivity
   const code: WorkFile = { objectId: crypto.randomUUID(), contentId: crypto.randomUUID(), name: 'alu.sv', kind: 'code',
     encoding: 'utf8', mediaType: 'text/plain', value: 'module alu; endmodule' }
@@ -78,12 +81,15 @@ async function experiment(patch: Partial<AluState> = {}, split = false, version 
   let snapshot = { ready: true, files: [code, stateFile()], conflict: null }
   const listeners = new Set<() => void>(), runListeners = new Set<() => void>()
   let readOnly = false
+  let writes = 0
   const workspace = { key, snapshot: () => snapshot, subscribe: (listener: () => void) => { listeners.add(listener); return () => listeners.delete(listener) },
     isReadOnly: () => readOnly, accessDenied: () => false, change: (files: WorkFile[]) => {
+      writes++
       if (readOnly) throw new Error('Read-only recovery')
       snapshot = { ...snapshot, files }; state = JSON.parse(files.find(file => file.kind === 'state')!.value).content
       listeners.forEach(listener => listener())
-    }, trackInput: async (task: Promise<unknown>) => task, leave: async () => {} } as unknown as ReliableWorkspace
+    }, trackInput: async (task: Promise<unknown>) => task, leave: async () => {}, flush: async () => {} } as unknown as ReliableWorkspace
+  const enabledA = state.A
   const enabledAction = await runtimeAction(workspace, activity, binding, 'browser-execution', { operationId: 'run-single' })
   const enabled: ExecutionRecord = { requestId: enabledAction.requestId, inputDigest: '1'.repeat(64), executionRef: crypto.randomUUID(),
     action: enabledAction, query: { state: 'succeeded', statusKnowledge: 'confirmed', output: { output: { f: '1000', cout: '0', observationState: 'complete' } } },
@@ -92,22 +98,42 @@ async function experiment(patch: Partial<AluState> = {}, split = false, version 
     definitionDigest: binding.definition.digest, activationRevision: 1 }), activationRevision: 1, ...patch }
   if (patch.selectedObservation === 'enabled') state = { ...state, selectedObservation: enabled.requestId }
   snapshot = { ...snapshot, files: [code, stateFile()] }
-  let runs = { ready: true, records: [enabled], error: '' }
+  const checkRequestId = crypto.randomUUID()
+  const checkAction = structuredClone(enabledAction) as any
+  checkAction.requestId = checkRequestId
+  checkAction.execution.operation.operationId = 'check-all'
+  checkAction.execution.parameters = {}
+  const checkRecord: ExecutionRecord = { ...enabled, requestId: checkRequestId, action: checkAction,
+    executionRef: crypto.randomUUID(), query: { state: 'succeeded', statusKnowledge: 'confirmed',
+      output: { output: { f: '1000', cout: '0' } } } } as unknown as ExecutionRecord
+  let runs = { ready: true, records: checkLocation ? [checkRecord, enabled] : [enabled], error: '' }
   const submitted: AnyExecutionAction[] = []
   let releaseSubmit: (() => void) | undefined
   const submitBarrier = new Promise<void>(resolve => { releaseSubmit = resolve })
   const execution = { snapshot: () => runs, subscribe: (listener: () => void) => { runListeners.add(listener); return () => runListeners.delete(listener) },
     receiver: { identity: { receiverId: 'browser-execution' } }, submit: async (action: AnyExecutionAction) => { submitted.push(action); await submitBarrier },
-    artifact: async () => null, query: async () => null }
+    artifact: async () => null, query: async () => null,
+    visibility: async (requestId: string) => runs.records.some(record => record.requestId === requestId
+      && record.action.execution.operation.operationId === 'check-all')
+      ? { reveal: true, phase: 'submitted', state: 'succeeded', statusKnowledge: 'confirmed',
+        workIds: snapshot.files.map(file => file.contentId).sort() }
+      : ({ reveal: state.feedbackPolicy === 'live' || !!state.caseRequestId && runs.records.some(
+        record => record.requestId === state.caseRequestId) || state.A !== enabledA
+        || snapshot.files[0]?.contentId !== code.contentId,
+        phase: state.feedbackPolicy === 'live' ? 'free-observation' : 'pending', state: 'succeeded', statusKnowledge: 'confirmed',
+        workIds: snapshot.files.map(file => file.contentId).sort() }) }
   let actionsState = { items: [] as LocalAction[] }
   const actionListeners = new Set<() => void>()
   const actions = { subscribe: (listener: () => void) => { actionListeners.add(listener); return () => actionListeners.delete(listener) }, snapshot: () => actionsState }
   vi.mocked(useActivitySession).mockReturnValue({ workspace, execution, actions } as unknown as ReturnType<typeof useActivitySession>)
   root = createRoot(container)
   const props = { activity, binding, spaceKey: 'school', namespace: 'new', authorized: true }
+  const location: ComponentResultLocation | undefined = checkLocation
+    ? { requestId: checkRequestId, token: 'opened-check-from-citation' }
+    : located ? { requestId: enabled.requestId, token: 'opened-from-citation' } : undefined
   await act(async () => { root!.render(<WorkspaceReferencesProvider workspaceKey={key} onSubmit={() => {}}>
-    {split && <AluExperimentTool {...props} compact />}<AluExperimentTool {...props} /></WorkspaceReferencesProvider>) })
-  return { submitted, enabled, release: () => releaseSubmit!(), read: () => state,
+    {split && <AluExperimentTool {...props} compact />}<AluExperimentTool {...props} {...(location ? { location } : {})} /></WorkspaceReferencesProvider>) })
+  return { submitted, enabled, checkRequestId, writes: () => writes, release: () => releaseSubmit!(), read: () => state,
     isolate: () => { readOnly = true; snapshot = { ...snapshot }; listeners.forEach(listener => listener()) },
     files: () => snapshot.files,
     seedNotes: () => {
@@ -126,6 +152,7 @@ async function experiment(patch: Partial<AluState> = {}, split = false, version 
         query: { ...enabled.query, output: { ...enabled.query.output!, output: { f: '1000', cout: '0', observationState: 'complete' } } } }, ...runs.records] }
       runListeners.forEach(listener => listener())
     },
+    editCode: () => workspace.change([{ ...code, contentId: crypto.randomUUID(), value: code.value + ' // v8' }, stateFile()]),
     patch: (next: Partial<AluState>) => { state = { ...state, ...next }; workspace.change([code, stateFile()]) },
     reject: () => { const action = submitted[0]!
       actionsState = { items: [{ key: `${key}:${action.requestId}`, scope: key, input: action, phase: 'failed',
@@ -136,6 +163,45 @@ async function experiment(patch: Partial<AluState> = {}, split = false, version 
 }
 
 describe('ALU view coordination and result ownership', () => {
+  it('opens a cited experiment as a read-only view without rewriting the student state', async () => {
+    const env = await experiment({}, false, 3, true)
+    const before = JSON.stringify(env.read())
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
+    expect(env.writes()).toBe(0)
+    expect(JSON.stringify(env.read())).toBe(before)
+    expect(container.querySelector('[data-execution-request-id]')?.getAttribute('data-execution-request-id')).toBe(env.enabled.requestId)
+    expect(container.querySelector('.alu-readout-value')?.textContent).toContain('F=1000')
+  })
+  it('uses the owner prediction gate before showing an old cited result', async () => {
+    const env = await experiment({}, false, 3, true, true)
+    const button = (label: string) => [...container.querySelectorAll('button')].find(node => node.textContent === label)!
+    expect(container.querySelector('.alu-readout-value')?.textContent).toContain('F=1000')
+    await act(async () => button('新用例').click())
+    expect(container.querySelector('.alu-readout-value')?.textContent ?? '').not.toContain('F=1000')
+    expect(container.textContent).toContain('原实验状态：已完成')
+    expect(container.textContent).toContain('结果当前已隐藏')
+    expect(container.textContent).not.toContain('本结果曾向学生展示')
+    expect(env.read().feedbackPolicy).toBe('hold')
+    await act(async () => env.patch({ A: env.read().A + 1 }))
+    expect(container.querySelector('.alu-readout-value')?.textContent).toContain('F=1000')
+    expect(container.querySelector('.alu-readout-inputs')?.textContent).toContain('原输入')
+    await act(async () => env.patch({ A: env.read().A - 1 }))
+    expect(container.querySelector('.alu-readout-value')?.textContent).not.toContain('F=1000')
+    await act(async () => env.editCode())
+    expect(container.querySelector('.alu-readout-value')?.textContent).toContain('F=1000')
+    expect(container.querySelector('.alu-readout-inputs')?.textContent).toContain('原输入')
+    await act(async () => env.patch({}))
+    await compare(button('运行并比较'), env.submitted)
+    await act(async () => env.release())
+    await act(async () => env.complete())
+    expect(container.querySelector('[aria-label="预测与实际比较"]')?.textContent).toContain('1000')
+  })
+  it('shows a cited check-all when the owner reports the prediction already submitted', async () => {
+    const env = await experiment({}, false, 3, false, true, true)
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
+    expect(container.querySelector(`[data-check-request-id="${env.checkRequestId}"]`)).not.toBeNull()
+    expect(container.textContent).not.toContain('结果当前已隐藏')
+  })
   it('browses an earlier restored case without changing the read-only workspace or executing again', async () => {
     const env = await experiment({}, false, 3)
     const button = (label: string) => [...container.querySelectorAll('button')].find(node => node.textContent === label)!

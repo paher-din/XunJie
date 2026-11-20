@@ -156,6 +156,18 @@ export function createLearningData(storage: OwnedStorage, authority: SpaceAuthor
     await courseAuthorize(identity, activity);
     return activity;
   }
+  /**
+   * Host-only fixed activity metadata for a controlled inspection authorization decision. It does
+   * not grant course access; the product host separately rechecks the course/member facts and
+   * never exposes this method through a student route.
+   */
+  async function readForInspection(identity: SpaceIdentity, activityId: string): Promise<LearningActivity> {
+    await access(identity); z.uuid().parse(activityId);
+    const { rows: [row] } = await storage.read(`SELECT body FROM activities
+      WHERE space_environment_id=$1 AND space_id=$2 AND principal_id=$3 AND id=$4`, [...scope(identity), activityId]);
+    if (!row) return fail('missing');
+    return activitySchema.parse(row.body);
+  }
   async function list(identity: SpaceIdentity): Promise<LearningActivity[]> {
     await access(identity);
     const { rows } = await storage.read(`SELECT body FROM activities WHERE space_environment_id=$1 AND space_id=$2 AND principal_id=$3
@@ -326,7 +338,7 @@ export function createLearningData(storage: OwnedStorage, authority: SpaceAuthor
         await courses.verifyComponentReference(identity, { releaseId: activity.course.releaseId,
           key: action.execution.instance.key, definitionDigest: action.execution.instance.definitionDigest });
       } } } : {}) });
-  return { create, createCourse, courseResult, list, open, receipt, setStatus, artifacts: createTeachingArtifacts(storage, open, assertArtifactAdoption), works, pdf, materials, search, drafts, intents, executions, executionRecords,
+  return { create, createCourse, courseResult, list, open, readForInspection, receipt, setStatus, artifacts: createTeachingArtifacts(storage, open, assertArtifactAdoption), works, pdf, materials, search, drafts, intents, executions, executionRecords,
     studyCopies: createStudyCopies(storage), schoolDeliveries: createSchoolDeliveries(storage, { activity: open }),
     agentPreferences: createAgentPreferences(storage, access),
     conversationArchives: createConversationArchives(storage, access),

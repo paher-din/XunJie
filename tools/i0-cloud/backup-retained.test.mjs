@@ -317,7 +317,8 @@ test('unsafe source objects, destination traversal and collisions fail before ar
     const { settings } = writeBackupConfig(root);
     const material = join(root, 'materials'); mkdirSync(material);
     writeFileSync(join(root, 'config.json'), '{}');
-    symlinkSync(join(root, 'config.json'), join(material, 'linked.json'));
+    if (process.platform === 'win32') symlinkSync(dirname(settings.courseDatabaseFile), join(material, 'linked'), 'junction');
+    else symlinkSync(join(root, 'config.json'), join(material, 'linked.json'));
     settings.directories = [{ source: material, path: 'recovery' }];
     writeFileSync(join(root, 'backup-config.json'), JSON.stringify(settings));
     await assert.rejects(createEncryptedBackup(backupOptions(root)), /SOURCE_UNSAFE_OBJECT/);

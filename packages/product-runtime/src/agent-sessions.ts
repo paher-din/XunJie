@@ -13,6 +13,8 @@ export interface AgentSessionDirectory {
   list(identity: SpaceIdentity): Promise<AgentSession[]>;
   update(identity: SpaceIdentity, input: UpdateAgentSession): Promise<AgentSession>;
   markReady(identity: SpaceIdentity, input: MarkAgentSessionReady): Promise<AgentSession>;
+  /** Host-only metadata read used by the inspection port; never forwarded to a student session route. */
+  readForInspection?(sessionId: string): Promise<AgentSession>;
 }
 export interface AgentSessionApplicationHost {
   directory: AgentSessionDirectory;

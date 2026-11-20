@@ -121,12 +121,17 @@ function coldCheckout(receiver, localStartup = false) {
 }
 
 test('a real captured scene restores from a cold checkout only after explicit dependency preparation', async t => {
-  const receiver = join(root, 'cold-source'), target = join(root, 'cold-restored'), home = join(root, 'cold-home');
+  const parent = join(root, 'cold-parent'), receiver = join(parent, 'cold-source');
+  const target = join(root, 'cold-restored'), home = join(root, 'cold-home');
+  // A checkout nested below another installation must still use its own dependencies.
+  const outsideDriver = join(parent, 'node_modules', 'better-sqlite3');
+  mkdirSync(outsideDriver, { recursive: true });
+  writeFileSync(join(outsideDriver, 'index.js'), "throw new Error('loaded a dependency outside the receiver');");
   coldCheckout(receiver);
   t.after(() => { if (existsSync(target)) git(receiver, ['worktree', 'remove', '--force', target]); });
   const args = ['repro', 'restore', file, '--target', target], original = readFileSync(join(receiver, 'README.md'));
   const missing = await launchCli(home, args, {}, receiver).result;
-  assert.equal(missing.envelope.failure.code, 'DEPENDENCIES_NOT_READY');
+  assert.equal(missing.envelope.failure?.code, 'DEPENDENCIES_NOT_READY');
   assert.equal(existsSync(target), false);
   assert.equal(existsSync(environmentPaths(home, environmentId(target)).root), false);
   assert.equal(existsSync(join(receiver, 'node_modules')), false);

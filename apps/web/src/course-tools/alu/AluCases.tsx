@@ -13,6 +13,7 @@ import { useWorkspaceReferences } from '../../components/workspace/references'
 import { useActivitySession } from '../../product/ActivitySession'
 import { stateLabel, type ExecutionRecord } from '../../tool-execution/ledger'
 import type { ResultRecord } from '../../tool-execution/store'
+import type { ComponentResultLocation } from '../../product/RuntimeTool'
 import { AluWaveform } from './AluWaveform'
 import { comparisonText, editCase, priorCaseSources, readCaseDraft } from './cases'
 import { controlsOf, type AluState } from './state'
@@ -73,14 +74,15 @@ export function AluCaseEditor({ activity, binding, state, stateFile, records, en
   </section>
 }
 
-export function AluCaseResults({ activity, binding, state, records, fallbackRecord, suppressed, canWrite, writeState, selectState }: CaseProps & {
-  fallbackRecord?: ExecutionRecord; suppressed: boolean; selectState: WriteState
+export function AluCaseResults({ activity, binding, state, records, record, locatedRecord, locatedRange,
+  locationToken, locationPending, onLocateResult, suppressed, canWrite, writeState, selectState }: CaseProps & {
+  record?: ExecutionRecord; locatedRecord?: ExecutionRecord; locatedRange?: ReferenceSnapshot['range'];
+  locationToken?: string; locationPending: boolean; onLocateResult(value: ComponentResultLocation): void;
+  suppressed: boolean; selectState: WriteState
 }) {
   const { execution, workspace } = useActivitySession(), references = useWorkspaceReferences()
   const works = useSyncExternalStore(workspace.subscribe, workspace.snapshot)
   const cases = records.filter(record => record.action.protocolVersion === 3 && aluCaseFromAction(record.action))
-  const selected = records.find(record => record.requestId === state.selectedCase)
-  const record = state.selectedCase ? selected : fallbackRecord
   const capture = record?.action.protocolVersion === 3 ? aluCaseFromAction(record.action) : null
   const observation = !!record && isAluObservationAction(record.action)
   const recordLabel = record ? `${record.action.execution.initiator.kind === 'agent' ? 'Agent 验证'
@@ -89,21 +91,13 @@ export function AluCaseResults({ activity, binding, state, records, fallbackReco
     { requestId: '', artifact: null, loading: false, error: '' })
   const saving = useRef(false)
   const host = useRef<HTMLElement>(null)
-  const pending = useRef<{ requestId: string; contentId: string; typeId: string; noteFile?: WorkFile; wave?: AluWaveRange;
+  const pending = useRef<{ token: string; requestId: string; contentId: string; typeId: string; noteFile?: WorkFile;
     resolve(result: LocateResult): void } | null>(null)
-  const selectionKey = JSON.stringify([activity.activityId, binding.definition.digest, state.selectedCase, state.selectedObservation,
-    state.selectedCheck, state.waveSelection, state.feedbackPolicy, state.inputRevision, state.activationRevision])
-  const latest = useRef({ records, files: works.files, selectionKey }); latest.current = { records, files: works.files, selectionKey }
-  const locateRevision = useRef(0)
-  const alive = useRef(true)
-  useEffect(() => { alive.current = true; return () => {
-    alive.current = false
-    locateRevision.current++
+  useEffect(() => () => {
     pending.current?.resolve({ ok: false, reason: '来源视图已关闭；引用副本仍保留。' })
-  } }, [])
+  }, [])
   const locate = async (reference: ReferenceSnapshot, target: ExecutionRecord, noteFile?: WorkFile): Promise<LocateResult> => {
     const unavailable: LocateResult = { ok: false, reason: '原结果或引用范围暂不可定位；引用副本仍保留，未重新运行。' }
-    const revision = ++locateRevision.current, initialSelection = latest.current.selectionKey
     pending.current?.resolve(unavailable)
     pending.current = null
     try {
@@ -113,41 +107,24 @@ export function AluCaseResults({ activity, binding, state, records, fallbackReco
       if (reference.source?.kind !== 'component' || reference.source.objectId !== (noteFile?.objectId ?? target.requestId)
         || !noteFile && (reference.source.requestId !== target.requestId || reference.source.executionRef !== target.executionRef)) return unavailable
       if (noteFile ? normalized.typeId !== 'alu-reflection' : !['alu-observation', 'alu-waveform'].includes(normalized.typeId)) return unavailable
-      const retained = await execution.artifact(target.requestId)
-      if (!retained || retained.requestId !== target.requestId || !alive.current || locateRevision.current !== revision
-        || latest.current.selectionKey !== initialSelection) return unavailable
-      const fresh = latest.current.records.find(item => item.requestId === target.requestId)
-      if (!fresh || fresh.query.statusKnowledge !== 'confirmed' || !fresh.query.output
-        || fresh.query.output.contentId !== target.query.output?.contentId || fresh.executionRef !== target.executionRef
-        || noteFile && !latest.current.files.some(file => file.objectId === noteFile.objectId && file.contentId === noteFile.contentId)) return unavailable
-      let wave: AluWaveRange | undefined
-      if (normalized.typeId === 'alu-waveform') {
-        const vcd = retained.resources?.find(resource => resource.name === 'trace.vcd')?.text
-        if (typeof vcd !== 'string') return unavailable
-        wave = normalizeAluWaveRange(vcd, { signalIds: normalized.target.signalIds as string[],
-          fromTick: normalized.target.fromTick as string, toTick: normalized.target.toTick as string })
-        const copy = JSON.parse(describeAluVcdRange(vcd, wave)) as { signals: { changes: unknown[] }[] }
-        if (wave.signalIds.length > 64 || copy.signals.reduce((sum, signal) => sum + signal.changes.length, 0) > 4096) return unavailable
-      }
+      if (target.query.statusKnowledge !== 'confirmed' || !target.query.output
+        || reference.source.contentId !== (noteFile?.contentId ?? target.query.output.contentId)) return unavailable
+      const token = crypto.randomUUID(), contentId = target.query.output.contentId
       return await new Promise<LocateResult>(resolve => {
-        pending.current = { requestId: target.requestId, contentId: fresh.query.output!.contentId, typeId: normalized.typeId, noteFile, wave, resolve }
-        if (!selectState(previous => ({ ...previous, selectedCase: target.action.protocolVersion === 3 && aluCaseFromAction(target.action) ? target.requestId : '',
-          selectedObservation: target.requestId, selectedObservationRevision: -1, feedbackPolicy: 'live',
-          ...(wave ? { waveSelection: JSON.stringify({ requestId: target.requestId, range: wave }) } : {}) }), true)) {
-          pending.current = null
-          resolve(unavailable)
-        }
+        pending.current = { token, requestId: target.requestId, contentId, typeId: normalized.typeId, noteFile, resolve }
+        onLocateResult({ token, requestId: target.requestId, range })
       })
     } catch { return unavailable }
   }
   useEffect(() => {
     const request = pending.current
     if (!request) return
-    if (suppressed || record?.requestId !== request.requestId || record.query.statusKnowledge !== 'confirmed'
+    if (locationToken === request.token && locationPending) return
+    if (locationToken !== request.token || suppressed || record?.requestId !== request.requestId || record.query.statusKnowledge !== 'confirmed'
       || record.query.output?.contentId !== request.contentId
       || request.noteFile && !works.files.some(file => file.objectId === request.noteFile!.objectId && file.contentId === request.noteFile!.contentId)) {
       pending.current = null
-      request.resolve({ ok: false, reason: '来源选择已变化；引用副本仍保留。' })
+      request.resolve({ ok: false, reason: '原结果当前不可显示；引用副本仍保留。' })
       return
     }
     if (loaded.requestId !== request.requestId || loaded.loading) return
@@ -155,13 +132,13 @@ export function AluCaseResults({ activity, binding, state, records, fallbackReco
       : request.typeId === 'alu-reflection' ? Array.from(host.current?.querySelectorAll<HTMLElement>('[data-note-id]') ?? []).find(item => item.dataset.noteId === request.noteFile?.objectId)
       : host.current?.querySelector<HTMLElement>('table[aria-label="预测与实际比较"]')
     let waveVisible = true
-    if (request.wave) {
+    if (request.typeId === 'alu-waveform') {
       try {
         const text = loaded.artifact?.resources?.find(resource => resource.name === 'trace.vcd')?.text
-        const selectedWave = JSON.parse(state.waveSelection)
-        waveVisible = typeof text === 'string' && selectedWave.requestId === request.requestId
-          && JSON.stringify(selectedWave.range) === JSON.stringify(request.wave)
-          && JSON.stringify(normalizeAluWaveRange(text, request.wave)) === JSON.stringify(request.wave)
+        const range = locatedRange?.target as unknown as AluWaveRange
+        const wave = normalizeAluWaveRange(text ?? '', range)
+        const copy = JSON.parse(describeAluVcdRange(text ?? '', wave)) as { signals: { changes: unknown[] }[] }
+        waveVisible = wave.signalIds.length <= 64 && copy.signals.reduce((sum, signal) => sum + signal.changes.length, 0) <= 4096
       } catch { waveVisible = false }
     }
     pending.current = null
@@ -192,6 +169,9 @@ export function AluCaseResults({ activity, binding, state, records, fallbackReco
   }
   let selection: AluWaveRange | null = null
   try { const saved = JSON.parse(state.waveSelection); if (saved.requestId === record?.requestId) selection = saved.range } catch { /* No selection yet. */ }
+  if (locatedRecord && locatedRange?.typeId === 'alu-waveform') {
+    selection = locatedRange.target as unknown as AluWaveRange
+  }
   const notes: { file: WorkFile; note: AluReflection }[] = []
   for (const file of works.files) if (file.mediaType === ALU_REFLECTION_MEDIA_TYPE) {
     try { notes.push({ file, note: parseAluReflectionFile(file) }) } catch { /* The original owner's error remains visible in workspace status. */ }
@@ -231,9 +211,10 @@ export function AluCaseResults({ activity, binding, state, records, fallbackReco
         locate={reference => locate(reference, original, item.file)} />
     })}
     <header className="alu-section-head"><h2>比较与解释</h2>
-      {cases.length > 0 && <label>用例记录<SelectField label="用例记录" value={suppressed ? '' : state.selectedCase}
-        onChange={value => selectState(previous => ({ ...previous, selectedCase: value, caseRequestId: '',
-          selectedObservation: value, selectedObservationRevision: -1, feedbackPolicy: 'live' }))}
+      {cases.length > 0 && <label>用例记录<SelectField label="用例记录" value={suppressed ? '' : locatedRecord
+        ? capture ? locatedRecord.requestId : '' : state.selectedCase}
+        onChange={value => selectState(previous => ({ ...previous, selectedCase: value,
+          selectedObservation: value, selectedObservationRevision: -1 }))}
         options={[{ value: '', label: '当前观察' }, ...cases.map((item, index) => ({ value: item.requestId,
           label: `${cases.length - index} · ${new Date(item.createdAt).toLocaleTimeString('zh-CN')} · ${stateLabel(item.query)}` }))]} /></label>}
     </header>

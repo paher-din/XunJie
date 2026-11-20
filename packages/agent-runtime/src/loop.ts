@@ -1,14 +1,17 @@
-import { operationId } from '@xunjie/storage/identity';
+import { canonicalDigest, operationId } from '@xunjie/storage/identity';
 import type { AgentTurn, AgentStep, AgentToolCall, AgentNotification, AgentToolResult } from '@xunjie/contracts/agent-runtime';
 import type { ModelToolResult, ModelImageRef } from '@xunjie/contracts/model-connections';
 import type { AgentStore, AgentSessionInput } from './store.js';
 import type { ModelGatewaySource } from './model.js';
-import type { AgentScenario, AgentTool, ModelPort, ToolContext, AskInput, AskOutcome, Facts, ScenarioInput, Json, ToolEffectReference } from './ports.js';
-import { buildContext, type TaskFactsPort } from './context.js';
+import type { AgentScenario, AgentTool, ContextMaterial, HistoryEntry, ModelPort, ToolContext, AskInput, AskOutcome,
+  Facts, ScenarioInput, Json, ToolEffectReference } from './ports.js';
+import { buildContext, toolMaterial, type TaskFactsPort } from './context.js';
 import { createToolRegistry, executeTools } from './tools.js';
-import { appendHistory, conversationHistory } from './history.js';
+import { appendHistory, conversationHistory, historyDigest } from './history.js';
 import { budgetExhausted } from './budgets.js';
-import { AgentError } from './errors.js';
+import { AgentError, ContextCapacityError, ContextPressureError } from './errors.js';
+import { createCitationTool } from './citations.js';
+import { ensureTurnRuntime } from './runtime-config.js';
 
 export interface LoopDependencies {
   store: AgentStore; model: ModelPort; gateway: ModelGatewaySource; scenario: AgentScenario;
@@ -26,13 +29,55 @@ export interface LoopDependencies {
 }
 const MAX_TOOLS_PER_RESPONSE = 8;
 const asJson = (value: unknown): Json => JSON.parse(JSON.stringify(value)) as Json;
+const sourceString = (source: Facts, key: string) => typeof source[key] === 'string' ? String(source[key]) : '';
+/** A source is compactable only when this Step actually exposes a reader for its fixed identity. */
+function hasFixedReadback(source: Facts, tools: ReadonlySet<string>): boolean {
+  const kind = sourceString(source, 'kind');
+  if (kind === 'work') return tools.has('read_work') && !!sourceString(source, 'objectId') && !!sourceString(source, 'contentId');
+  if (kind === 'component' || kind === 'experiment-reference') return (tools.has('read_result') || tools.has('execution_query'))
+    && !!sourceString(source, 'requestId');
+  if (kind === 'course-material') return tools.has('read_material') && !!sourceString(source, 'materialId')
+    && !!sourceString(source, 'materialSha256');
+  if (kind === 'personal-material') return tools.has('read_personal_material') && !!sourceString(source, 'materialId')
+    && !!sourceString(source, 'version');
+  if (kind === 'pdf') return (tools.has('read_pdf') || tools.has('read_pdf_text'))
+    && !!sourceString(source, 'documentId') && !!sourceString(source, 'documentSha256');
+  if (kind === 'tool-call') {
+    const nested = source.source;
+    return !!nested && typeof nested === 'object' && !Array.isArray(nested)
+      && hasFixedReadback(nested as Facts, tools);
+  }
+  return false;
+}
 
 /** The single readable main loop: runTurn → runStep → generate → executeTools. */
 export async function runTurn(deps: LoopDependencies, turnId: string): Promise<void> {
   const { store } = deps;
   deps.armTurn(turnId, (await store.budgetOf(turnId)).budget.deadline);
   try {
+    const sessionId = await turnSession(store, turnId);
+    const session = await store.session(sessionId);
+    try {
+      await ensureTurnRuntime(store, { scenario: { id: deps.scenario.id, version: deps.scenario.version },
+        gateway: deps.gateway }, session.identity, sessionId, turnId);
+    } catch (error) {
+      // A legacy/import-only Turn may legitimately have nothing to generate. Context history
+      // still needs to be assembled; the actual model call fails explicitly with no selection.
+      if (!(error instanceof AgentError) || error.code !== 'model-not-selected') throw error;
+    }
     await runTurnLoop(deps, turnId);
+  } catch (error) {
+    if (error instanceof AgentError && error.code === 'cancelled') return;
+    const sessionId = await turnSession(store, turnId).catch(() => null);
+    if (sessionId) {
+      const turn = await store.turn(sessionId, turnId).catch(() => null);
+      if (turn?.state === 'active') {
+        const reason = error instanceof AgentError ? error.code : 'internal-error';
+        await store.finishTurn(turnId, 'failed', reason).catch(() => {});
+      }
+    }
+    if (error instanceof AgentError) return;
+    throw error;
   } finally { deps.disarmTurn(turnId); }
 }
 async function runTurnLoop(deps: LoopDependencies, turnId: string): Promise<void> {
@@ -84,19 +129,98 @@ async function runStep(deps: LoopDependencies, turn: AgentTurn, step: AgentStep,
   const visibleAnswerInputIds = (Array.isArray(persisted.answerInbox) ? persisted.answerInbox as Facts[] : [])
     .map(item => item.inputId).filter((id): id is string => typeof id === 'string');
   const scenarioInput: ScenarioInput = { identity: session.identity, sessionId, turnId: turn.turnId, stepId: step.stepId,
-    inputIds: inputs.map(i => i.inputId), sessionState: { ...persisted, workspaceInputs: asJson(workspaceInputs) } };
+    inputIds: inputs.map(i => i.inputId),
+    inputs: inputs.map(input => ({ inputId: input.inputId, requestId: input.input.requestId,
+      text: input.input.text, context: input.input.context as Facts })),
+    sessionState: { ...persisted, workspaceInputs: asJson(workspaceInputs) } };
   const { budget, usage, counts } = await store.budgetOf(turn.turnId);
-  const plan = await buildContext({ store, gateway: deps.gateway, scenario, taskFacts: deps.taskFacts, budget, spent: usage, signal }, scenarioInput, { inputs, notifications });
-  const registry = createToolRegistry(plan.tools);
-  const response = await model.generate({
-    identity: session.identity, sessionId, turnId: turn.turnId, stepId: step.stepId,
-    system: plan.system, tools: plan.tools.map(t => t.definition), history: plan.history,
-    text: plan.text, images: plan.images, toolResults: [], budget, spent: usage, signal,
-    onProgress: progress => deps.onProgress(sessionId, turn.turnId, step.stepId, progress.attemptId, progress),
-  });
+  let plan = await buildContext({ store, gateway: deps.gateway, scenario, taskFacts: deps.taskFacts, budget, spent: usage, signal }, scenarioInput, { inputs, notifications });
+  // The tool definition is stable for the whole Turn. Adding or removing it between Steps
+  // would change the native prefix and force a second segment even when the route is fixed.
+  const generate = async (options: { smallerThanBytes?: number; allowPressureCompaction?: boolean } = {}) => {
+    await store.recordStepContext(step.stepId, {
+      ruleVersions: asJson(plan.ruleVersions), materials: asJson(plan.materials.map(materialMetadata)),
+      rebuildMaterials: asJson(plan.rebuildMaterials.map(materialMetadata)),
+      systemDigest: canonicalDigest(plan.system), historyDigest: historyDigest(plan.history),
+      historySources: asJson(plan.history.flatMap(entry => entry.sources ?? [])),
+      segmentEpoch: plan.segmentEpoch, compacted: plan.compacted,
+      toolNames: [...plan.tools.map(tool => tool.definition.name), 'cite_source'],
+    });
+    return model.generate({
+      identity: session.identity, sessionId, turnId: turn.turnId, stepId: step.stepId,
+      system: plan.system, tools: [...plan.tools, createCitationTool(plan.materials)].map(tool => tool.definition), history: plan.history,
+      text: plan.text, rebuildText: plan.rebuildText, images: plan.images, toolResults: [], budget, spent: usage, signal,
+      historyProjection: plan.historyProjection,
+      historySources: materialsAsHistorySources(plan.materials),
+      rebuildHistorySources: materialsAsHistorySources(plan.rebuildMaterials),
+      factsDigest: plan.factsDigest,
+      segmentEpoch: plan.segmentEpoch,
+      ...(scenario.authorizeHistory ? { async verifyContext() {
+        const current = await store.sessionState(sessionId);
+        const sources = Array.isArray(current.nativeHistorySources)
+          ? current.nativeHistorySources as unknown as NonNullable<HistoryEntry['sources']> : [];
+        const entries = [...plan.history, ...sources.map((source, index): HistoryEntry => ({
+          id: 'dispatch-source:' + index, version: 1, role: 'user', text: '', sources: [source],
+        }))];
+        if (historyDigest(await scenario.authorizeHistory!(scenarioInput, entries)) !== historyDigest(entries))
+          throw new AgentError('context-changed');
+      } } : {}),
+      ...(plan.adoptCompaction ? { adoptContext: plan.adoptCompaction } : {}),
+      ...(options.smallerThanBytes !== undefined ? { smallerThanBytes: options.smallerThanBytes } : {}),
+      allowPressureCompaction: options.allowPressureCompaction ?? !plan.compacted,
+      onProgress: progress => deps.onProgress(sessionId, turn.turnId, step.stepId, progress.attemptId, progress),
+    });
+  };
+  let response;
+  try { response = await generate();
+  } catch (error) {
+    if (error instanceof ContextPressureError) {
+      const compacted = await buildContext({ store, gateway: deps.gateway, scenario, taskFacts: deps.taskFacts,
+        budget, spent: usage, signal, compactionBasis: error.capacity }, scenarioInput, { inputs, notifications });
+      plan = compacted;
+      try {
+        response = await generate({ allowPressureCompaction: false,
+          ...(plan.compacted ? { smallerThanBytes: error.capacity.bytes } : {}) });
+      } catch (candidateError) {
+        if (!plan.compacted || !(candidateError instanceof ContextCapacityError) || candidateError.sent) throw candidateError;
+        plan = await buildContext({ store, gateway: deps.gateway, scenario, taskFacts: deps.taskFacts,
+          budget, spent: usage, signal }, scenarioInput, { inputs, notifications });
+        response = await generate({ allowPressureCompaction: false });
+      }
+    } else {
+      if (!(error instanceof AgentError) || !['context-capacity-exceeded', 'context-capacity-preflight'].includes(error.code)) throw error;
+      const rejectedCandidate = plan.compacted && error.code === 'context-capacity-preflight';
+      if (plan.compacted && !rejectedCandidate) throw error;
+      // One bounded retry, only after a real synchronous reduction. The provider never repeats the same payload.
+      plan = await buildContext({ store, gateway: deps.gateway, scenario, taskFacts: deps.taskFacts,
+        budget, spent: usage, signal,
+        ...(!rejectedCandidate && error instanceof ContextCapacityError && error.capacity ? { compactionBasis: error.capacity } : {}),
+      }, scenarioInput, { inputs, notifications });
+      if (!rejectedCandidate && !plan.compacted) {
+        await store.recordStepContext(step.stepId, {
+          ruleVersions: plan.ruleVersions as never[], materials: plan.materials.map(materialMetadata) as never[],
+          systemDigest: canonicalDigest(plan.system), historyDigest: historyDigest(plan.history),
+          segmentEpoch: plan.segmentEpoch, failure: 'context-capacity-exceeded',
+        } as Facts).catch(() => {});
+        throw error;
+      }
+      response = await generate({ ...(!rejectedCandidate && error instanceof ContextCapacityError ? { smallerThanBytes: error.bytes } : {}),
+        allowPressureCompaction: !plan.compacted });
+    }
+  }
+  const dispatchedMaterials = response.rebuilt ? plan.rebuildMaterials : plan.materials;
+  const plannedCitation = createCitationTool(dispatchedMaterials);
+  const plannedTools = [...plan.tools, plannedCitation];
+  const plannedToolNames = new Set(plannedTools.map(tool => tool.definition.name));
+  const registry = createToolRegistry(plannedTools);
+  const historySources = materialsAsHistorySources(dispatchedMaterials);
+  const responseSources = [...new Map([...plan.history.flatMap(entry => entry.sources ?? []), ...historySources]
+    .map(source => [source.sourceId, source])).values()];
+  const normalized = normalizeInlineCitations(response.text, dispatchedMaterials);
+  const text = normalized.text;
   const intents = response.toolIntents;
   if (intents.length > MAX_TOOLS_PER_RESPONSE) {
-    await store.saveResponse(step.stepId, response.attemptId, { text: response.text, toolIntents: [], resultRef: response.responseRef, ...(response.contextUsage ? { contextUsage: response.contextUsage } : {}) }, []);
+    await store.saveResponse(step.stepId, response.attemptId, { text, toolIntents: [], resultRef: response.responseRef, ...(response.contextUsage ? { contextUsage: response.contextUsage } : {}) }, []);
     throw new AgentError('protocol-error'); // whole response rejected; zero dispatch
   }
   const toolCalls: { toolCallId: string; nativeCallId: string; name: string; input: Facts; executionMode: 'foreground' | 'background' }[] = [];
@@ -109,16 +233,20 @@ async function runStep(deps: LoopDependencies, turn: AgentTurn, step: AgentStep,
       nativeCallId: intent.callId, name: intent.name, input, executionMode: mode });
   }
   if (counts.toolCalls + toolCalls.length > budget.maxToolCalls) {
-    await store.saveResponse(step.stepId, response.attemptId, { text: response.text, toolIntents: asJson(intents) as never, resultRef: response.responseRef, ...(response.contextUsage ? { contextUsage: response.contextUsage } : {}) }, toolCalls);
+    await store.saveResponse(step.stepId, response.attemptId, { text, toolIntents: asJson(intents) as never, resultRef: response.responseRef, ...(response.contextUsage ? { contextUsage: response.contextUsage } : {}) }, toolCalls);
     for (const call of toolCalls) await store.saveToolResult(call.toolCallId, { kind: 'not_started', reason: 'budget_exhausted' }, null);
     await store.completeStep(step.stepId);
     throw new AgentError('budget-exhausted');
   }
-  await store.saveResponse(step.stepId, response.attemptId, { text: response.text, toolIntents: asJson(intents) as never, resultRef: response.responseRef, ...(response.contextUsage ? { contextUsage: response.contextUsage } : {}) }, toolCalls);
+  await store.saveResponse(step.stepId, response.attemptId, { text, toolIntents: asJson(intents) as never, resultRef: response.responseRef, ...(response.contextUsage ? { contextUsage: response.contextUsage } : {}) }, toolCalls);
+  if (normalized.citations.length) await store.appendEvent(sessionId, 'inline-citations', {
+    turnId: turn.turnId, stepId: step.stepId, attemptId: response.attemptId, citations: normalized.citations });
   const state = await store.sessionState(sessionId);
   const history = appendHistory(conversationHistory(state), [
-    ...inputs.map(i => ({ id: i.inputId, version: i.version, role: 'user' as const, text: i.input.text })),
-    { id: response.attemptId, version: 1, role: 'assistant' as const, text: response.text, ...(response.responseRef ? { resultRef: response.responseRef } : {}) },
+    ...inputs.map(i => ({ id: i.inputId, version: i.version, role: 'user' as const, text: i.input.text, turnId: turn.turnId })),
+    { id: response.attemptId, version: 1, role: 'assistant' as const, text, turnId: turn.turnId,
+      ...(response.responseRef ? { resultRef: response.responseRef } : {}),
+      ...(responseSources.length ? { sources: responseSources } : {}) },
   ]);
   await store.setSessionState(sessionId, { ...state, history: asJson(history) as Facts }, turn.turnId);
 
@@ -134,15 +262,62 @@ async function runStep(deps: LoopDependencies, turn: AgentTurn, step: AgentStep,
     const feedback: ModelToolResult[] = results.map(call => ({ callId: call.nativeCallId, ...feedbackOf(call.result) }));
     const settled = await model.settleTools(session.identity, response.segmentId, response.segmentSequence, feedback);
     const after = await store.sessionState(sessionId);
-    const toolHistory = results.map(call => ({ id: call.toolCallId, version: 1, role: 'user' as const,
-      text: JSON.stringify({ tool: call.name, kind: call.result?.kind,
-        summary: call.result && 'summary' in call.result ? call.result.summary : call.result && 'reason' in call.result ? call.result.reason : '',
-        ...effectReferences(call.result) }) }));
+    const toolHistory = results.map(call => {
+      const toolSources = materialsAsHistorySources(toolMaterial(call));
+      return { id: call.toolCallId, version: 1, role: 'user' as const, turnId: turn.turnId, stepId: step.stepId,
+        kind: 'tool-result' as const,
+        attemptId: response.attemptId,
+        nativeCallId: call.nativeCallId,
+        readback: toolSources.some(source => hasFixedReadback(source.source, plannedToolNames)),
+        text: JSON.stringify({ tool: call.name, kind: call.result?.kind, outcome: feedbackOf(call.result).outcome,
+          summary: call.result && 'summary' in call.result ? call.result.summary : call.result && 'reason' in call.result ? call.result.reason : '',
+          ...effectReferences(call.result) }),
+        ...(call.result?.kind === 'completed' && call.result.images?.length ? { images: call.result.images } : {}),
+        sources: [...historySources, ...toolSources] };
+    });
     await store.setSessionState(sessionId, { ...after, segment: { segmentId: settled.segmentId, sequence: settled.sequence, closed: false },
       history: asJson(appendHistory(conversationHistory(after), toolHistory)) as Facts }, turn.turnId);
   }
   await store.completeStep(step.stepId);
   return savedCalls.length > 0;
+}
+function materialMetadata(material: ContextMaterial) {
+  const { content, ...rest } = material;
+  return { ...rest, contentBytes: Buffer.byteLength(content ?? '', 'utf8'),
+    contentDigest: content === null ? null : canonicalDigest(content) };
+}
+/**
+ * Some models render the internal citation tool as an XML-like marker in prose. Keep only
+ * markers that name a material actually sent in this Step, retain their claim and material
+ * identity as structured evidence, and remove every marker from the visible conversation.
+ */
+function normalizeInlineCitations(text: string, materials: readonly ContextMaterial[],
+  ): { text: string; citations: { claim: string; materialId: string }[] } {
+  const allowed = new Set(materials.filter(material => material.citationAllowed
+    && material.readState === 'included').map(material => material.materialId));
+  const citations: { claim: string; materialId: string }[] = [];
+  const seen = new Set<string>();
+  const attributes = (value: string) => Object.fromEntries([...value.matchAll(/([a-zA-Z][a-zA-Z0-9_-]*)="([^"]*)"/g)]
+    .map(match => [match[1]!, match[2]!.replaceAll('&quot;', '"').replaceAll('&amp;', '&')
+      .replaceAll('&lt;', '<').replaceAll('&gt;', '>')]));
+  const clean = text.replace(/<cite_source\b([^>]*)>/gi, (_match, raw: string) => {
+    const value = attributes(raw), materialId = value.materialId, claim = value.claim?.trim();
+    if (!materialId || !claim || !allowed.has(materialId) || citations.length >= MAX_TOOLS_PER_RESPONSE) return '';
+    const key = JSON.stringify({ claim, materialId });
+    if (seen.has(key)) return '';
+    seen.add(key);
+    citations.push({ claim, materialId });
+    return '';
+  }).split('</cite_source>').join('').replace(/[ \t]+\n/g, '\n').replace(/(?:\n\s*){3,}/g, '\n\n').trim();
+  return { text: clean, citations };
+}
+function materialsAsHistorySources(materials: readonly ContextMaterial[]) {
+  const sources = new Map<string, NonNullable<HistoryEntry['sources']>[number]>();
+  for (const material of materials) if (material.readState === 'included' || material.readState === 'reference-only')
+    sources.set(material.sourceId, { sourceId: material.sourceId, label: material.label, source: material.source,
+      ...(material.readState === 'included' && material.content !== null ? { inlineDigest: material.digest } : {}),
+      ...(material.range ? { range: material.range } : {}) });
+  return [...sources.values()];
 }
 function feedbackOf(result: AgentToolResult | null): { outcome: 'success' | 'error' | 'not-executed'; text: string; images: ModelImageRef[] } {
   if (!result) return { outcome: 'not-executed', text: '工具未执行', images: [] };

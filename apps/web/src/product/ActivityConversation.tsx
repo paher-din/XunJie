@@ -9,7 +9,8 @@ import { TeachingToolRecords } from './TeachingToolRecords'
 import { ArtifactCard, ArtifactPreview } from '../teaching-artifacts/ArtifactCard'
 import type { TeachingToolLocator } from './TeachingToolRecords'
 import type { TeachingArtifactsController } from '../teaching-artifacts/useTeachingArtifacts'
-export function ActivityConversation(props: { activity: LearningActivity; spaceKey: string; namespace: string; onModels?: () => void; onActiveChange?: (active: boolean) => void; onLocateTool?: TeachingToolLocator; focusQuestionId?: string | null; onQuestionFocused?: () => void; artifacts?: TeachingArtifactsController; onOpenArtifact?: (id: string) => Promise<void> }) {
+import type { CitationRecord } from '@xunjie/ui/chat'
+export function ActivityConversation(props: { activity: LearningActivity; spaceKey: string; namespace: string; onModels?: () => void; onActiveChange?: (active: boolean) => void; onLocateTool?: TeachingToolLocator; onOpenCitation?: (citation: CitationRecord) => void | Promise<void>; focusQuestionId?: string | null; onQuestionFocused?: () => void; artifacts?: TeachingArtifactsController; onOpenArtifact?: (id: string) => Promise<void> }) {
   const root = useRef<HTMLDivElement>(null)
   const { agent, workspace, viewActive = true } = useActivitySession()
   const scope = agent ? agent.client.scope + ':' + agent.sessionId : ''
@@ -45,7 +46,7 @@ export function ActivityConversation(props: { activity: LearningActivity; spaceK
         ? <p role="alert" className="learning-error">这次页面未能完成，原内容和输入仍保留。{toolDetail(tool)}</p> : null
       const record = presentation.records.get(tool.toolCallId)
       return record ? <TeachingToolRecords embedded records={[record]} onLocate={props.onLocateTool} /> : null
-    }} /> : <p role="status" aria-label="正在打开工作区对话" />}
+    }} onOpenCitation={props.onOpenCitation} /> : <p role="status" aria-label="正在打开工作区对话" />}
     {presentation.previews.map(preview => <ArtifactPreview key={preview.key} preview={preview} />)}
     {props.artifacts?.entries.map(entry => <ArtifactCard key={entry.artifact.artifactId} entry={entry} controller={props.artifacts!}
       onOpen={props.onOpenArtifact ? () => props.onOpenArtifact!(entry.artifact.artifactId) : undefined} />)}

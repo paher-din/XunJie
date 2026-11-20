@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { teachingSkillLoadedSchema } from './agent-skills.js';
+import { agentCitationSchema } from './agent-citations.js';
 import { spaceIdentitySchema, type SpaceIdentity } from './spaces.js';
 import { agentInputSchema, agentRuntimeSessionSchema, agentTurnSchema, agentEventSchema, agentInputReceiptSchema,
   agentQuestionSchema, agentQuestionResponseSchema, agentQuestionReceiptSchema, agentToolCallSchema, agentStepSchema,
@@ -80,6 +81,8 @@ export type AgentAcceptedRequest = z.infer<typeof agentAcceptedRequestSchema>;
 
 export const agentConversationMessageSchema = z.object({
   messageId: z.string().min(1).max(300), turnId: z.uuid(), inputId: z.uuid().optional(),
+  /** Assistant messages keep the Step/Attempt that produced this exact answer, never a Turn aggregate. */
+  stepId: z.uuid().optional(), attemptId: z.uuid().optional(),
   role: z.enum(['user', 'assistant']), text: z.string(), createdAt: z.iso.datetime(), editedAt: z.iso.datetime().optional(),
   state: z.enum(['streaming', 'settled', 'failed', 'stopped']),
 }).strict();
@@ -105,6 +108,8 @@ export const agentConversationSchema = z.object({
   turns: z.array(agentTurnSchema), inputs: z.array(agentConversationInputSchema), questions: z.array(agentQuestionSchema),
   tools: z.array(agentConversationToolSchema),
   workspaces: z.array(z.object({ toolCallId: z.uuid(), turnId: z.uuid(), workspace: facts }).strict()),
+  citations: z.array(z.object({ citation: agentCitationSchema, toolCallId: z.uuid().optional(), turnId: z.uuid(),
+    stepId: z.uuid(), attemptId: z.uuid().optional(), inputId: z.uuid().optional() }).strict()).optional(),
 }).strict();
 export type AgentConversation = z.infer<typeof agentConversationSchema>;
 

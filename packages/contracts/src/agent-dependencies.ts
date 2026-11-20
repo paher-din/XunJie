@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { spaceIdentitySchema, learningTargetSchema } from './spaces.js';
-import { learningPageSchema, learningSearchSchema, learningReadSchema, learningReferenceSchema, learningProvenanceSchema } from './student-learning.js';
+import { coursePdfReadingIdentitySchema, learningPageSchema, learningSearchSchema, learningReadSchema, learningReferenceSchema, learningProvenanceSchema } from './student-learning.js';
 import { activitySchema, workFileSchema } from './learning-data.js';
 import { agentDispatchPermitSchema, agentToolResultSchema, agentExecutionModeSchema } from './agent-runtime.js';
 import { modelToolSchema, modelToolIntentSchema, modelToolResultSchema } from './model-connections.js';
@@ -43,7 +43,8 @@ const queryPage = z.object({ items: z.array(z.object({ reference: learningRefere
   unavailable: z.array(z.object({ sourceId: z.string(), kind: learningReferenceSchema.shape.kind, code: z.string() }).strict()) }).strict();
 const queryDetail = z.object({ reference: learningReferenceSchema, provenance: learningProvenanceSchema.optional(), text: z.string(), range: z.object({
   offset: z.number().int().nonnegative(), length: z.number().int().nonnegative(), total: z.number().int().nonnegative(),
-  nextOffset: z.number().int().nonnegative().nullable() }).strict(), missing: z.array(z.string()), role: z.literal('source-data') }).strict();
+  nextOffset: z.number().int().nonnegative().nullable() }).strict(), missing: z.array(z.string()),
+  pdf: coursePdfReadingIdentitySchema.optional(), role: z.literal('source-data') }).strict();
 export const agentDependencyModelMethodSchema = z.enum(['selection.read', 'selection.snapshot', 'selection.resolve',
   'selection.pin', 'selection.pinSource', 'selection.pinned', 'segments.create', 'segments.read', 'segments.settle', 'segments.close',
   'checks.receive', 'checks.read', 'checks.requestPayload', 'checks.progress', 'checks.summary', 'checks.dispatch', 'checks.cancel',
@@ -98,7 +99,7 @@ const callArgs = moduleArgs.extend({ call: agentDependencyToolCallSchema });
 export const agentWorkspaceDataMethodSchema = z.enum(['open', 'works.content', 'works.inspectVersion', 'drafts.verifyReferences',
   'pdf.read', 'pdf.reading', 'pdf.find', 'materials.original', 'materials.readRange',
   'artifacts.list', 'artifacts.read', 'artifacts.revision', 'artifacts.receipt', 'artifacts.publish',
-  'executions.read', 'executions.artifact', 'executions.controlReceipt', 'executions.agent.dispatch', 'executions.agent.control',
+  'records.read', 'executions.read', 'executions.artifact', 'executions.controlReceipt', 'executions.agent.dispatch', 'executions.agent.control',
   'executions.agent.original', 'executions.agent.read', 'executions.agent.status', 'executions.agent.cleanupStatus', 'executions.agent.cleanup']);
 export const agentWorkspaceCourseMethodSchema = z.enum(['referenceText', 'verifyComponentReference', 'readComponent', 'readComponentAlgorithm', 'readMaterial']);
 export const agentDependencyDataResultSchemas = {
@@ -108,6 +109,7 @@ export const agentDependencyDataResultSchemas = {
   'materials.original': personalMaterialVersionContentSchema, 'materials.readRange': personalMaterialReadResultSchema,
   'artifacts.list': z.array(teachingArtifactSchema), 'artifacts.read': teachingArtifactSchema,
   'artifacts.revision': teachingArtifactRevisionSchema, 'artifacts.receipt': teachingArtifactReceiptSchema.nullable(), 'artifacts.publish': teachingArtifactReceiptSchema,
+  'records.read': executionRecordSchema.nullable(),
   'executions.read': executionQuerySchema.nullable(), 'executions.artifact': executionArtifactSchema.nullable(),
   'executions.controlReceipt': executionControlReceiptSchema.nullable(), 'executions.agent.dispatch': executionQuerySchema.nullable(),
   'executions.agent.control': executionQuerySchema, 'executions.agent.read': executionQuerySchema.nullable(), 'executions.agent.cleanup': executionQuerySchema.nullable(),

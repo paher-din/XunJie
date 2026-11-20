@@ -116,6 +116,28 @@ it('uses v3 progress for inert page previews and locates the original material f
   expect(host.querySelectorAll('[data-command-id="' + materialCommandId + '"]')).toHaveLength(1)
 })
 
+it('shows each citation only under the assistant response that produced it', async () => {
+  const f = await fixture(), stepOld = id(), stepNew = id(), attemptOld = id(), attemptNew = id()
+  const at = (offset = 0) => new Date(Date.now() + offset).toISOString()
+  const citation = (claim: string, stepId: string, attemptId: string) => ({
+    citation: { citationId: id(), claim, label: '固定作品', source: { kind: 'work', objectId: id(), contentId: id() },
+      range: null, version: 'v1', digest: 'digest' }, turnId: f.turnId, stepId, attemptId })
+  f.conversation.messages = [
+    { messageId: 'assistant:' + attemptOld, turnId: f.turnId, role: 'assistant', stepId: stepOld, attemptId: attemptOld,
+      text: '旧尝试回答', createdAt: at(0), state: 'failed' },
+    { messageId: 'assistant:' + attemptNew, turnId: f.turnId, role: 'assistant', stepId: stepNew, attemptId: attemptNew,
+      text: '最终回答', createdAt: at(1), state: 'settled' },
+  ]
+  f.conversation.citations = [citation('旧尝试出处', stepOld, attemptOld), citation('最终回答出处', stepNew, attemptNew)]
+  await f.render()
+  const old = host.querySelector('[data-message-id="assistant:' + attemptOld + '"]')!
+  const final = host.querySelector('[data-message-id="assistant:' + attemptNew + '"]')!
+  expect(old.textContent).toContain('旧尝试出处')
+  expect(old.textContent).not.toContain('最终回答出处')
+  expect(final.textContent).toContain('最终回答出处')
+  expect(final.textContent).not.toContain('旧尝试出处')
+})
+
 it('locates the fixed read_work file from its real result.file', async () => {
   const f = await fixture(), commandId = id()
   f.artifacts.entries = []

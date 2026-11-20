@@ -30,6 +30,8 @@ export interface LearningToolsHost {
     adopt(identity: SpaceIdentity, input: { requestId: string; activityId: string; sourceSessionId: string; references: PersonalProjectMaterialReference[] }): Promise<ProjectMaterialsReceipt>;
     receipt(identity: SpaceIdentity, requestId: string): Promise<ProjectMaterialsReceipt | null>;
   };
+  /** Reauthorize a historical source before it re-enters a home-session model request. */
+  historySource?(identity: SpaceIdentity, sessionId: string, source: Facts): Promise<boolean>;
 }
 const same = (a: unknown, b: unknown) => canonicalDigest(a) === canonicalDigest(b);
 const subject = (identity: Omit<SpaceIdentity, 'name'>) => [identity.environmentId, identity.spaceId, identity.principalId, identity.kind];
@@ -42,7 +44,7 @@ export const learningToolNames: readonly string[] = Object.keys(schemas);
 const descriptions: Record<ToolName, string> = {
   list_learning_tasks: '分页列出宿主当前获准的个人和学校学习任务。缺失截止时间如实标明。',
   search_learning: '在当前获准 owner 中搜索学习任务、作品、实验记录和对话；对话仅作来源资料。',
-  read_learning: '按稳定来源、对象和版本重新授权并分段读取。历史引用不代表当前访问权限。',
+  read_learning: '按稳定来源、对象和版本重新授权并分段读取。课程 PDF 用 page 指定实际页码，返回固定 readingId 和该页文本。历史引用不代表当前访问权限。',
   create_personal_project: '在 student_ask 确认（purpose=create_personal_project）获得真实同意后，创建一个本机个人自主学习项目及独立工作区。提交 proposalKey 与标题、目标、阶段和固定资料引用；同一提案重试返回原项目。',
 };
 const inputSchemaOf = (name: ToolName) => z.toJSONSchema(schemas[name], { io: 'input',
@@ -86,7 +88,12 @@ export function createLearningTools(host: LearningToolsHost): AgentTool[] {
     let result: unknown;
     if (name === 'read_learning') {
       const input = learningReadSchema.parse(call.input);
-      const detail = await host.query.readLearning({ ...input, range: { ...input.range, length: Math.min(input.range.length, 4000) } });
+      const detail = await host.query.readLearning({ ...input, range: { ...input.range, length: Math.min(input.range.length, 3000) } });
+      if (detail.pdf && detail.text) return projectResult(json({ ...detail,
+        commonSource: { kind: 'course-pdf', reference: detail.reference, ...detail.pdf },
+        page: detail.pdf.page, start: detail.range.offset, end: detail.range.offset + detail.range.length,
+      }), JSON.stringify(detail));
+      if (input.page) return projectResult(json(detail), JSON.stringify(detail), 'error');
       result = detail.provenance?.course?.helpPolicy.questions === 'disabled' ? { ...detail, text: '',
         range: { offset: input.range.offset, length: 0, total: 0, nextOffset: null },
         missing: [...new Set([...detail.missing, 'course-agent-help-disabled'])] } : detail;

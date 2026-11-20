@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { StorageError, type Migration, type OwnedStorage, type OwnedTransaction } from '@xunjie/storage';
+import { operationId } from '@xunjie/storage/identity';
 import { storageOwnerSchema } from '@xunjie/contracts/storage';
 import { activitySchema, type LearningActivity } from '@xunjie/contracts/learning-data';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
@@ -13,6 +14,7 @@ import type { createWorks } from './works.js';
 import { verifyPlannedExecution } from './plan.js';
 import { verifyRuntimeBasis, verifyEnabledRuntimeSource, verifyAluCasePriorSource } from './runtime-basis.js';
 import { aluCaseFromAction } from '@xunjie/contracts/alu-learning';
+import { executionReveal, type ExecutionReveal } from './execution-visibility.js';
 
 /** Facts and resource replicas only. None of these tables is an executor's command queue. */
 export const executionRecordMigration: Migration = { version: 28, name: 'source-owned-execution-records', sql: `
@@ -231,7 +233,7 @@ export async function readSyncedExecutionArtifact(storage: OwnedStorage, record:
 
 export function createExecutionRecords(storage: OwnedStorage, options: {
   activity(identity: SpaceIdentity, activityId: string): Promise<LearningActivity>;
-  works: Pick<ReturnType<typeof createWorks>, 'registerBasis'>;
+  works: Pick<ReturnType<typeof createWorks>, 'registerBasis' | 'read'>;
 }) {
   async function activity(identity: SpaceIdentity, activityId: string) {
     const value = activitySchema.parse(await options.activity(identity, z.uuid().parse(activityId)));
@@ -241,6 +243,37 @@ export function createExecutionRecords(storage: OwnedStorage, options: {
   }
   async function read(identity: SpaceIdentity, activityId: string, requestId: string) {
     return readSyncedExecutionRecord(storage, await activity(identity, activityId), requestId);
+  }
+  function displayReceipt(activityId: string, record: ExecutionRecord) {
+    const fingerprint = hash({ activityId, requestId: record.requestId, executionRef: record.executionRef,
+      inputDigest: record.inputDigest, contentId: record.query.output?.contentId });
+    return { requestId: operationId('student-execution-display:' + fingerprint), fingerprint };
+  }
+  async function wasDisplayed(identity: SpaceIdentity, activityId: string, record: ExecutionRecord) {
+    const current = await activity(identity, activityId);
+    if (!same(command(record.actionText).scope, scopeOf(current)) || !record.query.output) return false;
+    const key = displayReceipt(activityId, record);
+    return (await storage.receipt(key.requestId, key.fingerprint))?.result === true;
+  }
+  async function visibility(identity: SpaceIdentity, activityId: string, requestId: string) {
+    const current = await activity(identity, activityId);
+    const record = await readSyncedExecutionRecord(storage, current, requestId);
+    if (!record) return null;
+    const head = await options.works.read(identity, activityId);
+    const policy: ExecutionReveal = await executionReveal({ activity: current, record, current: head,
+      readRecord: value => read(identity, activityId, value), wasDisplayed: value => wasDisplayed(identity, activityId, value) });
+    return { ...policy, state: record.query.state, statusKnowledge: record.query.statusKnowledge,
+      workIds: head.files.filter(file => file.kind === 'state' || file.kind === 'code').map(file => file.contentId).sort() };
+  }
+  async function markDisplayed(identity: SpaceIdentity, activityId: string, requestId: string, contentId: string) {
+    const current = await activity(identity, activityId);
+    const record = await readSyncedExecutionRecord(storage, current, requestId);
+    if (!record || record.query.output?.contentId !== contentId) return fail('missing');
+    const policy = await executionReveal({ activity: current, record, works: options.works,
+      readRecord: value => read(identity, activityId, value) });
+    if (!policy.reveal || record.query.statusKnowledge !== 'confirmed' || record.query.state !== 'succeeded') return fail('forbidden');
+    await storage.request(displayReceipt(activityId, record), async () => true);
+    return { recorded: true as const };
   }
   async function sync(identity: SpaceIdentity, activityId: string, value: unknown, trusted: TrustedExecutionSource): Promise<ExecutionRecord> {
     const currentActivity = await activity(identity, activityId), event = executionRecordEventSchema.parse(value);
@@ -355,7 +388,7 @@ export function createExecutionRecords(storage: OwnedStorage, options: {
     const record = await read(identity, activityId, requestId);
     return record ? readSyncedExecutionArtifact(storage, record) : null;
   }
-  return { sync, read, history, artifact };
+  return { sync, read, visibility, wasDisplayed, markDisplayed, history, artifact };
 }
 async function retainObservations(tx: OwnedTransaction, requestId: string, query: ExecutionQuery) {
   for (const observation of query.session?.observations ?? []) {
