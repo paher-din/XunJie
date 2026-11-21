@@ -17,7 +17,7 @@ export type LearningModelPort = {
   checks: Pick<Gateway['checks'], 'receive' | 'read' | 'requestPayload' | 'progress' | 'summary' | 'dispatch' | 'cancel'>
     & Partial<Pick<Gateway['checks'], 'capacity' | 'readRecorded'>>;
   results: Pick<Gateway['results'], 'retain'>;
-  images: Pick<Gateway['images'], 'upload' | 'read'>;
+  images: Pick<Gateway['images'], 'upload' | 'read' | 'readAttachment'>;
 };
 
 // Explicit tuples prevent additional arguments from becoming hidden owner/dispatch overrides.
@@ -43,6 +43,7 @@ const argumentSchemas = {
   'results.retain': z.tuple([z.object({ requestId: z.uuid(), resultRef: z.uuid(), consumer: z.enum(['run', 'activity', 'delivery']), consumerId: z.uuid() }).strict()]),
   'images.upload': z.tuple([modelImageInputSchema, z.uuid().optional()]),
   'images.read': z.tuple([modelImageRefSchema]),
+  'images.readAttachment': z.tuple([modelImageRefSchema, modelImageAttachmentScopeSchema]),
 };
 // Native requests are reconstructed JSON, not arbitrary SDK objects. Validate the supported
 // protocol grammar before a remote request can enter the Agent's snapshot/log metadata.
@@ -139,6 +140,7 @@ const resultSchemas = {
   'checks.progress': modelProgressSchema.nullable(),
   'checks.summary': z.object({ source: z.literal('model-native'), text: z.string().max(16000), truncated: z.boolean() }).strict().nullable(),
   'results.retain': z.null(), 'images.upload': image, 'images.read': image,
+  'images.readAttachment': z.object({ sha256: image.shape.sha256, dataBase64: modelImageInputSchema.shape.dataBase64 }).strict(),
 };
 /** Shared by clients and durable device receipts. No successful network value bypasses its operation schema. */
 export function parseLearningModelResult(operation: LearningModelOperation, value: unknown): unknown {
@@ -222,6 +224,7 @@ export function createLearningModelService(models: LearningModelPort, authorize:
         case 'results.retain': result = await models.results.retain(identity, ...argumentSchemas['results.retain'].parse(request.args)); break;
         case 'images.upload': result = await models.images.upload(identity, ...argumentSchemas['images.upload'].parse(request.args)); break;
         case 'images.read': result = await models.images.read(identity, ...argumentSchemas['images.read'].parse(request.args)); break;
+        case 'images.readAttachment': result = await models.images.readAttachment(identity, ...argumentSchemas['images.readAttachment'].parse(request.args)); break;
       }
       // Make in-process and network callers observe the same JSON values (including void).
       return { ok: true, value: parseLearningModelResult(operation, result === undefined ? null : JSON.parse(JSON.stringify(result))) };
@@ -276,6 +279,7 @@ export function createLearningModelClient(call: LearningModelCall): LearningMode
     images: {
       upload: (identity, ...args) => invoke('images.upload', identity, args) as ReturnType<LearningModelPort['images']['upload']>,
       read: (identity, ...args) => invoke('images.read', identity, args) as ReturnType<LearningModelPort['images']['read']>,
+      readAttachment: (identity, ...args) => invoke('images.readAttachment', identity, args) as ReturnType<LearningModelPort['images']['readAttachment']>,
     },
   };
 }

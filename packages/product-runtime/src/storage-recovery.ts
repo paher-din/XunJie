@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import { isAbsolute, join } from 'node:path';
 import pg from 'pg';
-import { finalizeStorageRestore, openStorage, prepareStorageRestore, provisionStorage } from '@xunjie/storage';
+import { finalizeStorageRestore, formerMigrationVersions, openStorage, prepareStorageRestore, provisionStorage } from '@xunjie/storage';
 import type { BlobBackend, DatabaseConnection, Migration, OwnedStorage, StorageBinding } from '@xunjie/storage';
 import type { StorageManifest, StorageOwner } from '@xunjie/contracts/storage';
 import type { RuntimeResources } from './postgres.js';
@@ -36,8 +36,8 @@ function restoreMigrations(source: readonly Migration[], target: readonly Migrat
     let expected = target[index];
     if (!same(item, expected) || expected?.version !== item.version) {
       if (index !== source.length - 1) throw new RecoveryError('incompatible-schema');
-      const alternatives = target.filter(candidate => candidate.formerVersion === item.version
-        && Number.isInteger(candidate.formerVersion) && candidate.version > item.version && same(item, candidate));
+      const alternatives = target.filter(candidate => formerMigrationVersions(candidate).includes(item.version)
+        && candidate.version > item.version && same(item, candidate));
       if (alternatives.length !== 1) throw new RecoveryError('incompatible-schema');
       expected = alternatives[0];
     }

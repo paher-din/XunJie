@@ -22,6 +22,39 @@ export function markdownSource(text: string, start = 0, end = text.length) {
 type TextRun = { node: Text; start?: number; end?: number; sourceOffset?: (offset: number) => number }
 const textRuns = new WeakMap<Element, { text: string; runs: TextRun[] }>()
 
+function renderedSource(source: ReturnType<typeof markdownSource>, syntax: string) {
+  const hidden: [number, number][] = [], verbatim: [number, number][] = []
+  for (const range of syntax.split(';')) {
+    const [start, end, kind] = range.split(',')
+    if (kind) (kind === 'hidden' ? hidden : verbatim).push([Number(start), Number(end)])
+  }
+  let raw = source.text
+  for (const [start, end] of hidden) raw = raw.slice(0, start) + '\0'.repeat(end - start) + raw.slice(end)
+  const offsets: { end: number; adjustment: number; start: number }[] = []
+  const decoder = document.createElement('textarea')
+  let adjustment = 0
+  const text = raw.replace(/&(?:#[0-9]+|#x[0-9a-f]+|[a-z][a-z0-9]+);/gi, (entity, start: number) => {
+    if (verbatim.some(([left, right]) => start >= left && start < right)) return entity
+    decoder.innerHTML = entity
+    const decoded = decoder.value
+    if (decoded !== entity) {
+      offsets.push({ start, end: start - adjustment + decoded.length, adjustment: adjustment + entity.length - decoded.length })
+      adjustment += entity.length - decoded.length
+    }
+    return decoded
+  })
+  return { text, originalOffset(offset: number) {
+    let low = 0, high = offsets.length
+    while (low < high) {
+      const middle = (low + high) >>> 1
+      if (offsets[middle].end <= offset) low = middle + 1
+      else high = middle
+    }
+    const mapped = offset + (offsets[low - 1]?.adjustment ?? 0)
+    return source.originalOffset(offsets[low] ? Math.min(mapped, offsets[low].start) : mapped)
+  } }
+}
+
 function markdownTextRuns(root: HTMLElement, text: string): TextRun[] {
   const preview = root.querySelector('.course-reader-markdown')
   if (!preview) return []
@@ -29,7 +62,7 @@ function markdownTextRuns(root: HTMLElement, text: string): TextRun[] {
   if (cached?.text === text) return cached.runs
   const runs = Array.from(preview.querySelectorAll<HTMLElement>('[data-markdown-start]')).flatMap(block => {
     const start = Number(block.dataset.markdownStart), end = Number(block.dataset.markdownEnd)
-    const source = markdownSource(text, start, end)
+    const source = renderedSource(markdownSource(text, start, end), block.dataset.markdownSyntax ?? '')
     const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT)
     const nodes: Text[] = []
     for (let node = walker.nextNode() as Text | null; node; node = walker.nextNode() as Text | null) {

@@ -47,8 +47,8 @@ const queryDetail = z.object({ reference: learningReferenceSchema, provenance: l
   pdf: coursePdfReadingIdentitySchema.optional(), role: z.literal('source-data') }).strict();
 export const agentDependencyModelMethodSchema = z.enum(['selection.read', 'selection.snapshot', 'selection.resolve',
   'selection.pin', 'selection.pinSource', 'selection.pinned', 'segments.create', 'segments.read', 'segments.settle', 'segments.close',
-  'checks.receive', 'checks.read', 'checks.requestPayload', 'checks.progress', 'checks.summary', 'checks.dispatch', 'checks.cancel',
-  'images.upload', 'images.read']);
+  'checks.receive', 'checks.read', 'checks.requestPayload', 'checks.capacity', 'checks.progress', 'checks.summary', 'checks.dispatch', 'checks.cancel',
+  'images.upload', 'images.read', 'images.readAttachment']);
 export const agentDependencyMaterialResultSchemas = {
   'personal.list': scopedPersonalMaterialSchema.array(), 'personal.material': scopedPersonalMaterialSchema,
   'personal.original': scopedPersonalMaterialVersionContentSchema, 'personal.versionContent': scopedPersonalMaterialVersionContentSchema,
@@ -190,7 +190,7 @@ export function isAgentDependencyRead(call: AgentDependencyCall): boolean {
   if (call.operation === 'materials.read') return !['pdf.read', 'pdf.find'].includes(call.args.method);
   if (call.operation.startsWith('tools.')) return ['tools.describe', 'tools.list', 'tools.validateAnswer'].includes(call.operation);
   if (call.operation === 'model') return ['selection.read', 'selection.snapshot', 'selection.resolve', 'selection.pinned',
-    'segments.read', 'checks.read', 'checks.requestPayload', 'checks.progress', 'checks.summary', 'images.read'].includes(call.args.method);
+    'segments.read', 'checks.read', 'checks.requestPayload', 'checks.capacity', 'checks.progress', 'checks.summary', 'images.read', 'images.readAttachment'].includes(call.args.method);
   if (call.operation === 'workspace.data') return !['pdf.read', 'pdf.find', 'artifacts.publish', 'executions.agent.dispatch', 'executions.agent.control', 'executions.agent.cleanup'].includes(call.args.method);
   if (call.operation === 'workspace.course') return true;
   if (call.operation === 'tasks') return call.args.method !== 'cancel';

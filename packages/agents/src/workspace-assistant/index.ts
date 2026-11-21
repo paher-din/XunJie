@@ -5,7 +5,7 @@ import type { AgentScenario, AgentTool, Facts, MessageImages, ScenarioInput } fr
 import { activitySchema } from '@xunjie/contracts/learning-data';
 import { actionInputSchema, type ActionInput } from '@xunjie/contracts/action-intents';
 import { PDF_LIMITS, pdfReferenceTargetSchema } from '@xunjie/contracts/pdf-materials';
-import type { QuestionReferenceInput } from '@xunjie/contracts/question-drafts';
+import { questionReferenceSourceSchema, type QuestionReferenceInput } from '@xunjie/contracts/question-drafts';
 import { personalProjectSchema, type PersonalProject } from '@xunjie/contracts/student-learning';
 import { sameAgentSubject } from '@xunjie/contracts/agent-service';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
@@ -301,6 +301,13 @@ async function reauthorizeHistorySource(options: WorkspaceToolOptions, input: Sc
   const string = (key: string) => typeof source[key] === 'string' ? source[key] as string : null;
   const kind = string('kind');
   if (kind === 'student-answer') return true;
+  if (kind === 'image') {
+    const reference = questionReferenceSourceSchema.parse(source);
+    if (reference.kind !== 'image' || reference.activityId !== activityId || !options.models) return false;
+    const { imageId, version, sha256 } = reference.image;
+    const fixed = await options.models.images.readAttachment(input.identity, { imageId, version }, { kind: 'workspace', activityId });
+    return fixed.sha256 === sha256;
+  }
   if (kind === 'work') {
     const objectId = string('objectId'), contentId = string('contentId');
     if (!objectId || !contentId) return false;

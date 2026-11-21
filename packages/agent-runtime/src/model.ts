@@ -147,8 +147,9 @@ export function createModelAdapter(source: ModelGatewaySource, store: AgentStore
         segment = ensured.segment;
         segmentPorts.set(segment.segmentId, gateway);
       }
+      const rebuilt = ensured.fresh || segment.sequence === 0;
       const allImages = input.messageImages
-        ? await resolveMessageImages(input.identity, input.messageImages, segment.segmentId, modelAllowsImages(segment.connection), gateway, images)
+        ? await resolveMessageImages(input.identity, input.messageImages, segment.segmentId, modelAllowsImages(segment.connection), gateway, images, rebuilt)
         : images;
       const attemptNoActual = (await store.attemptsOf(input.stepId)).length + 1;
       const attemptId = operationId('agent-attempt:' + input.stepId + ':' + attemptNoActual);
@@ -157,7 +158,6 @@ export function createModelAdapter(source: ModelGatewaySource, store: AgentStore
         reserved: { inputTokens: attemptInputReserve, outputTokens: attemptMaxOutput } });
       const permit = { sessionId: input.sessionId, runId: input.turnId, stepId: input.stepId, operationId: attemptId, generation: 1 };
       const timeoutMs = Math.min(input.budget.maxCallMs, Math.max(250, Date.parse(input.budget.deadline) - Date.now()));
-      const rebuilt = ensured.fresh || segment.sequence === 0;
       const text = rebuilt ? input.rebuildText ?? input.text : input.text;
       const historySources = rebuilt ? input.rebuildHistorySources ?? input.historySources : input.historySources;
       let fact: ModelAttempt;

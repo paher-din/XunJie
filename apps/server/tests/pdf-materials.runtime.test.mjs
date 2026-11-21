@@ -18,7 +18,12 @@ test('activity PDF removal survives restart and preserves the fixed reading and 
   assert.equal(document.pageCount, 2);
   assert.deepEqual(document.pageLabels, ['Cover', '7']);
   assert.deepEqual(await api(route, input), document, 'lost confirmation reuses the exact upload');
-  const reading = await api(route + '/read', { requestId: randomUUID(), documentId: input.documentId, pages: [2], region: null });
+  const previewId = randomUUID();
+  const preview = await api(route + '/read', { requestId: previewId, documentId: input.documentId, pages: [2], region: null, preview: true });
+  assert.equal(preview.readingId, previewId);
+  assert.equal(await api(route + '/reads/' + previewId), null, 'prefetch never creates a fixed reading');
+  const reading = await api(route + '/read', { requestId: previewId, documentId: input.documentId, pages: [2], region: null });
+  assert.deepEqual(reading.pages, preview.pages, 'an explicit reading can reuse the same rendered pages');
   assert.equal(reading.pages[0].page, 2);
   assert.match(reading.pages[0].text, /Fixed evidence: 37 volts/);
   assert.equal(reading.pages[0].textOrigin, 'native');

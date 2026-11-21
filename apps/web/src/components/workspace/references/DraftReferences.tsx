@@ -102,7 +102,7 @@ function DraftReferencesSession({ workspaceKey, draft, actions, children, delive
     if (!images || !files.length || uploading.current || creating.current || !draft.snapshot().ready || draft.isReadOnly()) return
     if (inputs().filter(reference => reference.source.kind === 'image').length + files.length > MODEL_MESSAGE_IMAGE_LIMIT
       || inputs().length + files.length > 64) {
-      setNotice(`每条消息最多附带 ${MODEL_MESSAGE_IMAGE_LIMIT} 张图片，请先移除部分附件或引用。`); return
+      toast.warning(`每条消息最多附带 ${MODEL_MESSAGE_IMAGE_LIMIT} 张图片，请先移除部分附件或引用。`); return
     }
     uploading.current = true; setAddingImages(true); setNotice(''); setOpen(true)
     try {
@@ -117,7 +117,7 @@ function DraftReferencesSession({ workspaceKey, draft, actions, children, delive
           source: { kind: 'image', activityId: images.activityId, image }, sourceName: image.name, copy: image.name,
           range: { kind: 'text', start: 0, end: image.name.length } }])
       }
-    } catch (error) { setNotice(error instanceof Error && !('code' in error) ? error.message : '图片添加失败，请重新添加。') }
+    } catch (error) { toast.error(error instanceof Error && !('code' in error) ? error.message : '图片添加失败，请重新添加。') }
     finally { uploading.current = false; setAddingImages(false) }
   }
   const ask = () => {

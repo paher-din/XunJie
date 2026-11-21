@@ -137,13 +137,23 @@ test('default product entry uses shared UI and stable file identities through re
   await expect(page.getByText(/演示统计|热力/)).toHaveCount(0)
 })
 
-test('PDF page turns preload the next page and reuse confirmed reads', async ({ page }) => {
+test('the workspace shows an error when an image attachment cannot be decoded', async ({ page }) => {
+  await openPersonalActivityFromHome(page)
+  await page.getByRole('button', { name: '打开对话', exact: true }).click()
+  const composer = page.getByRole('complementary', { name: '问题与引用', exact: true })
+  await expect(composer.getByRole('textbox', { name: '你的问题', exact: true })).toBeEnabled()
+  await composer.locator('input[type=file]').setInputFiles({ name: 'broken.png', mimeType: 'image/png', buffer: Buffer.from('not a PNG') })
+  await expect(page.getByText('无法读取这张图片。', { exact: true })).toBeVisible()
+})
+
+test('PDF page turns preload and reuse a transient next-page preview', async ({ page }) => {
   await openPersonalActivityFromHome(page)
   const requestedPages: number[][] = []
   let releaseNextPage = () => {}
   const holdNextPage = new Promise<void>(resolve => { releaseNextPage = resolve })
   await page.route('**/api/learning/pdf/*/read', async route => {
-    const { pages } = route.request().postDataJSON() as { pages: number[] }
+    const { pages, preview } = route.request().postDataJSON() as { pages: number[]; preview?: boolean }
+    expect(preview).toBe(true)
     requestedPages.push(pages)
     if (pages[0] === 2) await holdNextPage
     await route.continue()
@@ -255,11 +265,15 @@ test('personal material rows open by name and removing a PDF preserves its exist
   await library.locator('input[type=file]').setInputFiles({ name: pdfName, mimeType: 'application/pdf', buffer: fixedPdf() })
   const pageImage = reader.getByRole('img', { name: 'PDF 第 1 页固定页图', exact: true })
   await expect(pageImage).toBeVisible()
-  const readingId = await reader.locator('.pdf-reading').getAttribute('data-pdf-reading-id')
+  const reading = reader.locator('.pdf-reading')
+  const readingId = await reading.getAttribute('data-pdf-reading-id')
   expect(readingId).toBeTruthy()
   const tools = reader.getByRole('button', { name: 'PDF 工具侧栏', exact: true })
   if (await tools.getAttribute('aria-expanded') !== 'true') await tools.click()
   await reader.getByRole('button', { name: '引用此页', exact: true }).click()
+  const citation = page.getByRole('button', { name: /^定位引用 \d+：待移除的讲义\.pdf/ })
+  await expect(citation).toBeVisible()
+  await expect(reading).toHaveAttribute('data-pdf-reading-id', readingId!)
   await reader.getByRole('button', { name: '返回 PDF 列表', exact: true }).click()
   await library.getByRole('button', { name: pdfName + '的更多操作', exact: true }).click()
   await page.getByRole('menuitem', { name: '移除', exact: true }).click()
@@ -267,7 +281,7 @@ test('personal material rows open by name and removing a PDF preserves its exist
   await library.getByRole('button', { name: '刷新 PDF 列表', exact: true }).click()
   await expect(library.getByText('还没有添加 PDF。', { exact: false })).toBeVisible()
 
-  await page.getByRole('button', { name: /^定位引用 \d+：待移除的讲义\.pdf/ }).click()
+  await citation.click()
   await expect(pageImage).toBeVisible()
   await expect(reader.locator('.pdf-reading')).toHaveAttribute('data-pdf-reading-id', readingId!)
   await reader.getByRole('button', { name: '返回 PDF 列表', exact: true }).click()

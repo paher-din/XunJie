@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import DOMPurify from 'dompurify'
 import katex from 'katex'
-import { Marked, Renderer, Tokenizer } from 'marked'
+import { Marked, Renderer, Tokenizer, type Token, type Tokens } from 'marked'
 import 'katex/dist/katex.min.css'
 import { markdownSource } from './courseMarkdownSelection'
 
@@ -92,6 +92,41 @@ const markdown = new Marked({
   },
 })
 
+function linkLabelEnd(raw: string) {
+  let brackets = 1
+  for (let index = 1; index < raw.length; index++) {
+    if (raw[index] === '\\') index++
+    else if (raw[index] === '[') brackets++
+    else if (raw[index] === ']' && --brackets === 0) return index
+  }
+  return -1
+}
+
+/** Marked tokens distinguish visible link labels from destinations, including reference links. */
+function sourceSyntax(block: Token) {
+  const ranges: [number, number, 'hidden' | 'verbatim'][] = []
+  function visit(tokens: readonly Token[], start: number, end: number) {
+    let cursor = start
+    for (const token of tokens) {
+      const at = block.raw.indexOf(token.raw, cursor)
+      if (at < 0 || at + token.raw.length > end) continue
+      cursor = at + token.raw.length
+      if (token.type === 'codespan' || token.type === 'code' || token.type === 'html') ranges.push([at, cursor, 'verbatim'])
+      const labelEnd = token.type === 'link' && token.raw.startsWith('[') ? linkLabelEnd(token.raw) : -1
+      if (labelEnd > 0) ranges.push([at + labelEnd, cursor, 'hidden'])
+      if (token.type === 'list') visit(token.items, at, cursor)
+      else if (token.type === 'table') {
+        const { header, rows } = token as Tokens.Table
+        visit([header, ...rows].flatMap(row => row.flatMap(cell => cell.tokens)), at, cursor)
+      }
+      else if ('tokens' in token && Array.isArray(token.tokens)) visit(token.tokens, at + (labelEnd > 0 ? 1 : 0),
+        labelEnd > 0 ? at + labelEnd : cursor)
+    }
+  }
+  visit([block], 0, block.raw.length)
+  return ranges.map(range => range.join(',')).join(';')
+}
+
 export default function CourseMarkdown({ text, preservePlainText = false }: { text: string; preservePlainText?: boolean }) {
   const html = useMemo(() => {
     try {
@@ -106,10 +141,10 @@ export default function CourseMarkdown({ text, preservePlainText = false }: { te
         const block = markdown.parser([token])
         if (start < 0) return block
         cursor = start + token.raw.length
-        return block && `<div data-markdown-start="${source.originalOffset(start)}" data-markdown-end="${source.originalOffset(cursor)}">${block}</div>`
+        return block && `<div data-markdown-start="${source.originalOffset(start)}" data-markdown-end="${source.originalOffset(cursor)}" data-markdown-syntax="${sourceSyntax(token)}">${block}</div>`
       })
       return DOMPurify.sanitize(blocks.join(''), {
-        ADD_ATTR: ['target', 'draggable', 'data-markdown-start', 'data-markdown-end'],
+        ADD_ATTR: ['target', 'draggable', 'data-markdown-start', 'data-markdown-end', 'data-markdown-syntax'],
         ALLOW_DATA_ATTR: false,
         FORBID_TAGS: ['img', 'audio', 'video', 'iframe', 'object', 'embed', 'style', 'form'],
       })

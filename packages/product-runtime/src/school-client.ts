@@ -984,6 +984,8 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     }
     if (route === 'models/images') {
       const input = modelImageInputSchema.parse(body);
+      if (input.attachmentScope)
+        return localStudyMode(connection) || connection.localBinding ? localCall(input) : remoteCall(input);
       return routeBound('image', input.imageId, input, async () => {
         const selected = modelSelectionSchema.parse(await models.selection.read(identity, personal));
         return { destination: selected.selected?.kind === 'school' ? 'school' : 'local' };

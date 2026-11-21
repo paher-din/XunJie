@@ -14,14 +14,19 @@ export function storageNames(owner: StorageOwner) {
   return { schema: `xjs_${hash}`, role: `xju_${hash}`, migrator: `xjm_${hash}`, lock: BigInt('0x' + hash.slice(0, 15)).toString() };
 }
 
+export function formerMigrationVersions(migration: Migration): readonly number[] {
+  const former = migration.formerVersion;
+  return former === undefined ? [] : typeof former === 'number' ? [former] : former;
+}
+
 export function migrationPlan(migrations: readonly Migration[]) {
   const formerVersions = new Set<number>();
   if (migrations.some((item, index) => {
     if (item.version !== index + 1 || !item.name || !item.sql.trim()) return true;
-    if (item.formerVersion === undefined) return false;
-    if (!Number.isInteger(item.formerVersion) || item.formerVersion < 1 || item.formerVersion >= item.version
-      || formerVersions.has(item.formerVersion)) return true;
-    formerVersions.add(item.formerVersion);
+    for (const former of formerMigrationVersions(item)) {
+      if (!Number.isInteger(former) || former < 1 || former >= item.version || formerVersions.has(former)) return true;
+      formerVersions.add(former);
+    }
     return false;
   })) throw new StorageError('incompatible');
   return migrations.map(item => ({ ...item, checksum: digest(`${item.version}\n${item.name}\n${item.sql}`) }));
@@ -30,17 +35,17 @@ export function migrationPlan(migrations: readonly Migration[]) {
 type PlannedMigration = ReturnType<typeof migrationPlan>[number];
 interface RecordedMigration { version: number; name: string; checksum: string; }
 /** Only a complete canonical prefix or a prefix with one explicitly displaced tail is a history. */
-function displacedTail(plan: readonly PlannedMigration[], recorded: readonly RecordedMigration[]): PlannedMigration | undefined {
+function displacedTail(plan: readonly PlannedMigration[], recorded: readonly RecordedMigration[]) {
   const matches = (row: RecordedMigration, item: PlannedMigration | undefined) =>
     item !== undefined && row.version === item.version && row.name === item.name && row.checksum === item.checksum;
   if (recorded.every((row, index) => matches(row, plan[index]))) return undefined;
   const tail = recorded.at(-1);
   if (!tail || tail.version !== recorded.length
     || !recorded.slice(0, -1).every((row, index) => matches(row, plan[index]))) throw new StorageError('incompatible');
-  const alternatives = plan.filter(item => item.formerVersion === tail.version && item.name === tail.name
+  const alternatives = plan.filter(item => formerMigrationVersions(item).includes(tail.version) && item.name === tail.name
     && digest(`${tail.version}\n${item.name}\n${item.sql}`) === tail.checksum);
   if (alternatives.length !== 1) throw new StorageError('incompatible');
-  return alternatives[0];
+  return { migration: alternatives[0]!, formerVersion: tail.version };
 }
 
 export async function inspectPostgres(client: pg.Client | pg.PoolClient): Promise<void> {
@@ -144,8 +149,8 @@ export async function provisionStorage(options: {
       // Keep the original applied_at and all prior entries. The exact old checksum was
       // verified above; relocating and filling the missing prefix share this transaction.
       await client.query('UPDATE _storage_migrations SET version=$1,checksum=$2 WHERE version=$3',
-        [displaced.version, displaced.checksum, displaced.formerVersion]);
-      applied.delete(displaced.formerVersion!); applied.add(displaced.version);
+        [displaced.migration.version, displaced.migration.checksum, displaced.formerVersion]);
+      applied.delete(displaced.formerVersion); applied.add(displaced.migration.version);
     }
     for (const item of plan.filter(item => !applied.has(item.version))) {
       await client.query(item.sql);

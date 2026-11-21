@@ -23,6 +23,7 @@ export const pdfMaterialMigration: Migration = { version: 23, name: 'fixed-pdf-m
 ` };
 const hash = (bytes: Uint8Array | string) => createHash('sha256').update(bytes).digest('hex');
 const digest = (value: unknown) => hash(JSON.stringify(value));
+const readInput = pdfReadInputSchema.extend({ preview: z.literal(true).optional() });
 
 /** Fixed originals and derived pages stay with their actual session or workspace data owner. */
 type DocumentFor<S> = S extends string ? PdfDocument : ScopedPdfDocument;
@@ -43,6 +44,22 @@ export function createPdfMaterials(storage: OwnedStorage, options: MaterialScope
 export function createPdfMaterials(storage: OwnedStorage, host: WorkspaceMaterialOpen | MaterialScopeOptions,
   courses?: CourseBindingAuthority): PdfMaterials | PdfMaterials<string> {
   const access = createMaterialScopeAccess(storage, host);
+  const pageCache = new Map<string, ReturnType<typeof renderPdf>>();
+  function renderPages(source: { document: ScopedPdfDocument; bytes: Uint8Array }, pages: number[], region: z.infer<typeof pdfReadInputSchema>['region']) {
+    if (region) return renderPdf(source.bytes, pages, region);
+    const key = JSON.stringify([source.document.documentId, source.document.sha256, pages]);
+    let result = pageCache.get(key);
+    if (!result) {
+      result = renderPdf(source.bytes, pages, null);
+      const pending = result;
+      const forget = () => { if (pageCache.get(key) === pending) pageCache.delete(key); };
+      void result.then(items => { if (items.some(item => item.state !== 'ready')) forget(); }, forget);
+    }
+    pageCache.delete(key);
+    pageCache.set(key, result);
+    if (pageCache.size > 12) pageCache.delete(pageCache.keys().next().value!);
+    return result;
+  }
   async function document(identity: SpaceIdentity, value: MaterialScopeInput, documentId: string): Promise<ScopedPdfDocument> {
     const { scope } = await access.open(identity, value); z.uuid().parse(documentId);
     const { rows: [row] } = await storage.read(`SELECT body FROM pdf_documents WHERE document_id=$1 AND ${materialScopeColumn(scope)}=$2`, [documentId, materialScopeId(scope)]);
@@ -140,7 +157,21 @@ export function createPdfMaterials(storage: OwnedStorage, host: WorkspaceMateria
   }
   async function read(identity: SpaceIdentity, scopeInput: MaterialScopeInput, value: unknown): Promise<ScopedPdfReading> {
     const { scope } = await access.open(identity, scopeInput);
-    const input = pdfReadInputSchema.parse(value), fingerprint = digest({ ...materialScopeKey(scope), input });
+    const { preview, ...input } = readInput.parse(value);
+    const makeReading = async (source: Awaited<ReturnType<typeof original>>) => scopedPdfReadingSchema.parse({
+      readingId: input.requestId, ...materialPlacement(scope), documentId: input.documentId,
+      documentSha256: source.document.sha256, documentName: source.document.name,
+      coordinates: 'rotated-cropbox-top-left-normalized', requestedPages: input.pages, region: input.region,
+      pages: await renderPages(source, input.pages, input.region),
+    });
+    if (preview) {
+      const source = await original(identity, scope, input.documentId);
+      if (source.document.state !== 'ready' || source.document.removedAt || input.region) throw new StorageError('invalid');
+      const result = await makeReading(source);
+      await access.open(identity, scope);
+      return result;
+    }
+    const fingerprint = digest({ ...materialScopeKey(scope), input });
     const prior = await storage.receipt('pdf-read:' + input.requestId, fingerprint);
     if (prior) {
       const saved = await reading(identity, scope, input.requestId);
@@ -158,11 +189,7 @@ export function createPdfMaterials(storage: OwnedStorage, host: WorkspaceMateria
     let retained: Uint8Array | null = null;
     try { retained = await storage.readResource(input.requestId); }
     catch (error) { if (!(error instanceof StorageError) || !['missing', 'resource-gone'].includes(error.code)) throw error; }
-    const body = retained ? scopedPdfReadingSchema.parse(JSON.parse(Buffer.from(retained).toString('utf8')))
-      : scopedPdfReadingSchema.parse({ readingId: input.requestId, ...materialPlacement(scope), documentId: input.documentId,
-        documentSha256: source.document.sha256, documentName: source.document.name,
-        coordinates: 'rotated-cropbox-top-left-normalized', requestedPages: input.pages, region: input.region,
-        pages: await renderPdf(source.bytes, input.pages, input.region) });
+    const body = retained ? scopedPdfReadingSchema.parse(JSON.parse(Buffer.from(retained).toString('utf8'))) : await makeReading(source);
     if (body.readingId !== input.requestId || !materialHasScope(body, scope) || body.documentId !== input.documentId
       || digest(body.requestedPages) !== digest(input.pages) || digest(body.region) !== digest(input.region)
       || body.documentSha256 !== source.document.sha256) throw new StorageError('corrupt');

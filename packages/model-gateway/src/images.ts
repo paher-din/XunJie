@@ -5,6 +5,7 @@ import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import { modelImageInputSchema, modelImageRefSchema } from '@xunjie/contracts/model-connections';
 import type { ModelImageAttachmentScope, ModelImageRef } from '@xunjie/contracts/model-connections';
 import { modelScopeOf } from './selection.js';
+import { canonicalDigest } from '@xunjie/storage/identity';
 
 type Image = ModelImageRef & { resourceId: string; mediaType: 'image/png'; byteLength: number; sha256: string;
   attachmentScope?: ModelImageAttachmentScope;
@@ -97,5 +98,12 @@ export function createModelImages(storage: OwnedStorage, authorize: (identity: S
       if (image.mediaType !== 'image/png' || image.byteLength !== bytes.length || image.sha256 !== createHash('sha256').update(bytes).digest('hex')) throw new StorageError('corrupt');
     }
   }
-  return { upload, read, materialize, validate };
+  async function readAttachment(identity: SpaceIdentity, reference: ModelImageRef, scope: ModelImageAttachmentScope) {
+    const image = await read(identity, reference);
+    if (!image.attachmentScope || canonicalDigest(image.attachmentScope) !== canonicalDigest(scope)) throw new StorageError('forbidden');
+    const bytes = Buffer.from(await storage.readResource(image.resourceId));
+    if (image.byteLength !== bytes.length || image.sha256 !== createHash('sha256').update(bytes).digest('hex')) throw new StorageError('corrupt');
+    return { sha256: image.sha256, dataBase64: bytes.toString('base64') };
+  }
+  return { upload, read, readAttachment, materialize, validate };
 }

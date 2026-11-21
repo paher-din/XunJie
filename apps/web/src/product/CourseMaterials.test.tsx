@@ -66,3 +66,24 @@ it('maps a rendered selection across inline formatting back to the correct occur
   const start = text.indexOf('再记录。')
   expect(renderedMarkdownRange(root, text, start, start + '再记录。'.length)?.toString()).toBe('再记录。')
 })
+
+it('maps Markdown labels and decoded entities without selecting hidden destinations', () => {
+  const text = '[**manual**](https://example.org/manual)\r\n\r\nFish &amp; Chips and `&amp;`.'
+  const root = preview(text)
+  const label = root.querySelector('a strong')!.firstChild!
+  const selection = document.createRange()
+  selection.selectNodeContents(label)
+  expect(selectedMarkdownOffsets(root, text, selection)).toEqual({ start: 3, end: 9 })
+  expect(renderedMarkdownRange(root, text, 3, 9)?.toString()).toBe('manual')
+  const destination = text.lastIndexOf('manual')
+  expect(renderedMarkdownRange(root, text, destination, destination + 6)).toBeNull()
+
+  const paragraph = root.querySelectorAll('p')[1]
+  selection.setStart(paragraph.firstChild!, 5)
+  selection.setEnd(paragraph.firstChild!, 6)
+  const start = text.indexOf('&amp;')
+  expect(selectedMarkdownOffsets(root, text, selection)).toEqual({ start, end: start + 5 })
+  expect(renderedMarkdownRange(root, text, start, start + 5)?.toString()).toBe('&')
+  const literal = text.lastIndexOf('&amp;')
+  expect(renderedMarkdownRange(root, text, literal, literal + 5)?.toString()).toBe('&amp;')
+})

@@ -428,6 +428,10 @@ export function createAgentDependencyService(options: AgentDependencyServiceOpti
           await segment(input.segmentId);
         } else if (method === 'images.upload' && args[1] !== undefined) {
           await segment(args[1]);
+        } else if (method === 'images.readAttachment') {
+          const scope = session.workspace ? { kind: 'workspace', activityId: session.workspace.activityId }
+            : { kind: 'session', sessionId: session.sessionId };
+          if (canonicalDigest(args[1]) !== canonicalDigest(scope)) throw new StorageError('forbidden');
         } else if (method.startsWith('checks.')) {
           const fact = await models.checks.read(call.identity, z.uuid().parse(args[0]));
           if (fact.purpose !== 'learning' || fact.authority?.permit.sessionId !== session.sessionId || !fact.segment) throw new StorageError('forbidden');

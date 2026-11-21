@@ -97,8 +97,8 @@ export function usePdfMaterials({ activity, spaceKey, namespace, authorized, rev
     return bytes
   }, [api, activity.activityId])
   const canWrite = useCallback(() => alive.current && current.current.authorized && !current.current.readOnly, [])
-  const fetchReading = useCallback(async (input: ReadRequest, expectedDocument: PdfDocument | null, signal?: AbortSignal) => {
-    const fixed = pdfReadingSchema.parse(await api('/read', input, signal))
+  const fetchReading = useCallback(async (input: ReadRequest, expectedDocument: PdfDocument | null, preview: boolean, signal?: AbortSignal) => {
+    const fixed = pdfReadingSchema.parse(await api('/read', preview ? { ...input, preview: true } : input, signal))
     if (fixed.activityId !== activity.activityId || fixed.documentId !== input.documentId || fixed.readingId !== input.requestId
       || (expectedDocument && fixed.documentSha256 !== expectedDocument.sha256)
       || JSON.stringify(fixed.requestedPages) !== JSON.stringify(input.pages)
@@ -112,7 +112,7 @@ export function usePdfMaterials({ activity, spaceKey, namespace, authorized, rev
     if (pageReads.current.has(key)) return
     const controller = new AbortController()
     const input = { requestId: crypto.randomUUID(), documentId: doc.documentId, pages, region: null }
-    const result = fetchReading(input, doc, controller.signal).then(fixed => availableReading(fixed) ? fixed : null, () => null)
+    const result = fetchReading(input, doc, true, controller.signal).then(fixed => availableReading(fixed) ? fixed : null, () => null)
     const pending = { key, controller, result }
     preloading.current = pending
     void result.then(fixed => {
@@ -205,7 +205,7 @@ export function usePdfMaterials({ activity, spaceKey, namespace, authorized, rev
     try {
       let fixed = prefetched ? await prefetched.result : null
       if (!canWrite() || epoch !== readEpoch.current) return
-      fixed ??= await fetchReading(input, expectedDocument)
+      fixed ??= await fetchReading(input, expectedDocument, !quote && !input.region)
       if (!canWrite() || epoch !== readEpoch.current) return
       if (cacheKey && availableReading(fixed)) rememberPageRead(cache, cacheKey, fixed)
       setReading(fixed); setReferenceReadingId(null); setPendingRead(null)
@@ -383,7 +383,11 @@ export function usePdfMaterials({ activity, spaceKey, namespace, authorized, rev
     readPages: (pages: number[], region: PdfRegion | null = null, quote = false) => document
       ? read({ requestId: crypto.randomUUID(), documentId: document.documentId, pages, region }, quote) : Promise.resolve(),
     retryRead: () => pendingRead ? read(pendingRead, quotePendingRead.current, document, true) : Promise.resolve(),
-    quote: () => reading && addReference(reading),
+    quote: () => {
+      if (!reading || !availableReading(reading)) return
+      if (reading.readingId === referenceReadingId || reading.region) return addReference(reading)
+      return read({ requestId: reading.readingId, documentId: reading.documentId, pages: reading.requestedPages, region: null }, true)
+    },
     attachPageImages: () => reading && !reading.region && addPageImages(reading),
     closeDocument: () => {
       if (operation.current) return

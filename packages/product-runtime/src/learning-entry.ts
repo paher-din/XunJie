@@ -37,6 +37,7 @@ import type { CapabilityHandler } from './connections.js';
 import { createConnectionAuthority, RuntimeConnectionError } from './connections.js';
 import { createMemberAgentBindings } from '@xunjie/learning-space';
 import { learningModelRequestSchema, createLearningModelService, createLearningModelClient } from '@xunjie/model-gateway/service';
+import { modelImageInputSchema } from '@xunjie/contracts/model-connections';
 import { createPairedLearningModels } from '@xunjie/model-gateway/paired-learning';
 import { createExecutionOwner, executionOwnerMigrations, validateExecutionOwner, createCourseExecutionDesign } from '@xunjie/learning-space';
 import type { PairedModelOrigin } from '@xunjie/model-gateway/paired-learning';
@@ -401,7 +402,12 @@ export async function createProductLearningApplication(context: {
         const read = ['selection.read', 'selection.snapshot', 'selection.resolve', 'selection.pinned', 'selection.pin', 'segments.read',
           'segments.create', 'segments.settle', 'segments.close', 'checks.read', 'checks.progress', 'checks.summary',
           'checks.requestPayload', 'checks.capacity', 'images.read', 'checks.cancel'].includes(request.operation);
-        if (!read) {
+        const attached = request.operation === 'images.upload' && origin.segmentId
+          ? modelImageInputSchema.parse(request.args[0]).attachmentScope : undefined;
+        const scope = session.workspace ? { kind: 'workspace', activityId: session.workspace.activityId }
+          : { kind: 'session', sessionId: session.sessionId };
+        const sessionAttachment = attached && canonicalDigest(attached) === canonicalDigest(scope);
+        if (!read && !sessionAttachment) {
           if (!origin.authority || origin.authority.sessionId !== session.sessionId) throw new StorageError('forbidden');
           await assertSessionPermit(identity, origin.authority);
         }
@@ -417,7 +423,8 @@ export async function createProductLearningApplication(context: {
     function modelsForPeer(identity: SpaceIdentity, session: AgentSession, source: Readonly<ChunkConnectionSource>, call: Readonly<AgentDependencyCall>) {
       if (!models || !localModelService) throw new StorageError('unavailable');
       return createLearningModelClient(async request => {
-        if (identity.kind !== 'school' || !paired) return localModelService(request);
+        // Draft uploads belong to the learning subject, before a model segment is selected.
+        if (identity.kind !== 'school' || !paired || request.operation === 'images.readAttachment') return localModelService(request);
         if (!source.sourceInstallationId) throw new StorageError('forbidden');
         const read = ['selection.read', 'selection.snapshot', 'selection.resolve', 'selection.pinned', 'selection.pin', 'segments.read',
           'segments.create', 'segments.settle', 'segments.close', 'checks.read', 'checks.progress', 'checks.summary',
@@ -817,6 +824,7 @@ export async function createProductLearningApplication(context: {
           const dependencies = identity.environmentId === environment.environmentId ? undefined
             : await connectedSchool().dependenciesForSession(identity, session.sessionId);
           if (dependencies) sessionDependencies.set(session.sessionId, dependencies);
+          const workspaceModels = dependencies?.models ?? models;
           return { workspace: async () => workspaceOpen(identity, session.workspace!.activityId),
             learning: identity.environmentId === environment.environmentId ? { ...learning!, executions: independentExecution?.executions ?? learning!.executions }
               : { ...dependencies!.learning, executions: deviceExecutions ?? dependencies!.learning.executions },
@@ -827,7 +835,7 @@ export async function createProductLearningApplication(context: {
               if (!source.sourceInstallationId) throw new StorageError('forbidden');
               return { sourceEnvironmentId: source.sourceEnvironmentId, sourceServiceId: source.sourceServiceId,
                 sourceInstallationId: source.sourceInstallationId, grantId: source.grantId };
-            })() : undefined, environment: () => executionEnvironment(identity), ...(models ? { models } : {}) };
+            })() : undefined, environment: () => executionEnvironment(identity), ...(workspaceModels ? { models: workspaceModels } : {}) };
     }
     if (agent && !data) {
       const dependencies = createAgentDependencyClient(call => connectedSchool().agentDependency(call.identity, call));

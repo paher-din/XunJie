@@ -177,7 +177,11 @@ export interface GenerateInput {
   rebuildText?: string;
   factsDigest?: string;
   historyProjection?: HistoryProjection;
-  messageImages?: { resolve(route: MessageImageRoute): Promise<MessageImages | undefined>; assertActive(): Promise<void> };
+  messageImages?: {
+    resolve(route: MessageImageRoute): Promise<MessageImages | undefined>;
+    restore?(route: MessageImageRoute): Promise<MessageImages | undefined>;
+    assertActive(): Promise<void>;
+  };
   toolResults: readonly ModelToolResult[];
   budget: AgentTurnBudget;
   spent: { inputTokens: number; outputTokens: number; inputReserved: number; outputReserved: number };

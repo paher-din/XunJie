@@ -7,6 +7,8 @@ export const AGENT_IMAGE_ACCEPT = 'image/png,image/jpeg,image/webp,.png,.jpg,.jp
 export const IMAGE_MODEL_HINT = '请选择支持图片输入的模型。'
 export type AgentImageSource = File | { name: string; dataBase64: string }
 const previews = new ReliableRecordStore<{ key: string; src: string }>('agentImages')
+type ImageUpload = { key: string; imageId: string } & ({ dataBase64: string } | { image: ModelMessageImage })
+const uploads = new ReliableRecordStore<ImageUpload>('agentImages')
 const previewKey = (subject: string, image: ModelMessageImage) => JSON.stringify([subject, image.imageId, image.sha256])
 
 export const isAgentImage = (file: File) => /^image\//i.test(file.type) || /\.(png|jpe?g|webp)$/i.test(file.name)
@@ -44,14 +46,19 @@ export async function uploadAgentImage(subject: string, attachmentScope: ModelIm
   if (!isPage) for (let offset = 0; offset < bytes.length; offset += 32768)
     chunks.push(String.fromCharCode(...bytes.subarray(offset, offset + 32768)))
   const dataBase64 = isPage ? source.dataBase64 : btoa(chunks.join(''))
-  const imageId = crypto.randomUUID(), name = source.name.trim().slice(0, 240) || '粘贴的图片'
-  const result = await upload({ requestId: imageId, imageId, mediaType: 'image/png', dataBase64, attachmentScope }) as Record<string, unknown>
+  const name = source.name.trim().slice(0, 240) || '粘贴的图片'
+  const uploadKey = JSON.stringify(['upload', subject, attachmentScope, name, sha256])
+  const saved = await uploads.change(uploadKey, previous => previous ?? { key: uploadKey, imageId: crypto.randomUUID(), dataBase64 })
+  if ('image' in saved) return saved.image
+  const { imageId } = saved
+  const result = await upload({ requestId: imageId, imageId, mediaType: 'image/png', dataBase64: saved.dataBase64, attachmentScope }) as Record<string, unknown>
   const image = modelMessageImageSchema.parse({ imageId: result.imageId, version: result.version, sha256: result.sha256, name })
   const confirmed = modelImageAttachmentScopeSchema.safeParse(result.attachmentScope)
   if (image.imageId !== imageId || image.sha256 !== sha256 || !confirmed.success
     || JSON.stringify(confirmed.data) !== JSON.stringify(attachmentScope)) throw new Error('图片回执与所选附件不一致。')
   const key = previewKey(subject, image)
-  await previews.change(key, () => ({ key, src: 'data:image/png;base64,' + dataBase64 })).catch(() => {})
+  await previews.change(key, () => ({ key, src: 'data:image/png;base64,' + saved.dataBase64 }))
+  await uploads.change(uploadKey, () => ({ key: uploadKey, imageId, image }))
   return image
 }
 

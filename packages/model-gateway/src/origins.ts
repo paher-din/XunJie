@@ -34,7 +34,7 @@ export const modelOriginSuccessionMigration: Migration = { version: 18, name: 'm
 // Evidence is admitted only from the authenticated host permit, never from an Agent request.
 export const modelOriginSuccessionSchema = z.object({ formatVersion: z.literal(1), backupId: z.uuid(),
   sourceEnvironmentId: z.uuid(), sourceServiceId: z.uuid(), sourceInstallationId: z.uuid(), targetInstallationId: z.uuid() }).strict();
-export const modelOriginRecoveryOperationSchema = z.enum(['checks.read', 'checks.progress', 'checks.summary', 'checks.requestPayload', 'checks.cancel']);
+export const modelOriginRecoveryOperationSchema = z.enum(['checks.read', 'checks.progress', 'checks.summary', 'checks.requestPayload', 'checks.capacity', 'checks.cancel']);
 type RecoveryOperation = z.infer<typeof modelOriginRecoveryOperationSchema>;
 const successionSchema = z.array(modelOriginSuccessionSchema).min(1).max(64);
 const recipientSchema = z.object({ formatVersion: z.literal(1), backupId: z.uuid(), modelOwner: storageOwnerSchema,
