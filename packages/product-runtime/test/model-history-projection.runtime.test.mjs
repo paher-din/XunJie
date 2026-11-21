@@ -17,13 +17,13 @@ const protocolRoutes = {
   messages: { baseUrl: port => `http://127.0.0.1:${port}`, path: '/v1/messages' },
 };
 
-test('Agent Step 和正式 read_work 向 Gateway 发送固定选区，并替换老化的 6 KiB 反馈', { timeout: 60_000 }, async t => {
+test('Agent Step 和正式 read_work 向 Gateway 发送固定选区，并把窗口外超过 8 KiB 的反馈替换为带 readWith 的摘要', { timeout: 60_000 }, async t => {
   const payloads = [], storages = [];
   let rejected = 0;
   let withoutCompactablePrefix = false;
   const files = [
     { name: 'question.c', value: 'SELECTED_MARKER\nOUTSIDE_MARKER' },
-    { name: 'fixed.c', value: 'x'.repeat(6144) + 'WORK_READ_TAIL' },
+    { name: 'fixed.c', value: 'x'.repeat(1500) + 'WORK_READ_TAIL' + '旧'.repeat(2500) },
   ].map(file => ({ ...file, objectId: randomUUID(), contentId: randomUUID(), kind: 'code', encoding: 'utf8', mediaType: 'text/plain' }));
   const [selection, work] = files;
   const upstream = createServer(async (request, response) => {
@@ -126,17 +126,34 @@ test('Agent Step 和正式 read_work 向 Gateway 发送固定选区，并替换�
   };
   const first = await send('请解释选区 ' + 'old context '.repeat(600));
   await send('继续核对');
+  await send('预热一');
+  await send('预热二');
   const final = await send('再次核对');
-  assert.equal(payloads.length, 4);
+  assert.equal(payloads.length, 6);
   assert.equal(payloads[0].split('SELECTED_MARKER').length - 1, 1);
   assert.ok(payloads.every(payload => !payload.includes('OUTSIDE_MARKER')));
   assert.equal(payloads[1].split('SELECTED_MARKER').length - 1, 1, 'the tool-only continuation keeps a single selection');
-  for (const payload of payloads.slice(1, 3)) assert.equal(payload.split('WORK_READ_TAIL').length - 1, 1);
-  assert.doesNotMatch(payloads[3], /WORK_READ_TAIL/);
-  assert.equal(payloads[3].split('早期工具反馈已压缩').length - 1, 1);
+  const firstCompressed = payloads.findIndex(payload => payload.includes('早期工具反馈已压缩'));
+  assert.equal(firstCompressed, 5, '第 5 个已完成 Step 出现后，旧反馈才离开窗口');
+  for (const payload of payloads.slice(1, firstCompressed)) assert.equal(payload.split('WORK_READ_TAIL').length - 1, 1);
+  for (const payload of payloads.slice(firstCompressed)) {
+    assert.doesNotMatch(payload, /WORK_READ_TAIL/);
+    assert.equal(payload.split('早期工具反馈已压缩').length - 1, 1);
+  }
+  const finalPayloadText = payloads.at(-1);
+  const compressedMessage = JSON.parse(finalPayloadText).messages.find(message => message.role === 'tool'
+    && String(message.content).includes('早期工具反馈已压缩'));
+  assert.ok(compressedMessage, '最终协议载荷中应包含压缩后的工具反馈');
+  const compressed = JSON.parse(compressedMessage.content);
+  assert.equal(compressedMessage.tool_call_id, 'fixed-work-call');
+  assert.deepEqual(compressed.readback[0].readWith, { formatVersion: 1, tool: 'read_work',
+    arguments: { objectId: work.objectId, contentId: work.contentId, offset: 0, length: work.value.length } });
   assert.equal(final.toolCalls.length, 1);
-  const earlier = first.attempts.at(-1);
-  assert.deepEqual(await gateway.checks.requestPayload(identity, earlier.attemptId), JSON.parse(payloads[1]));
+  assert.deepEqual(final.toolCalls[0], first.toolCalls[0]);
+  const original = await gateway.checks.requestPayload(identity, first.attempts.at(-1).attemptId);
+  assert.deepEqual(original, JSON.parse(payloads[1]));
+  assert.match(JSON.stringify(original), /WORK_READ_TAIL/);
+  assert.deepEqual(await gateway.checks.requestPayload(identity, final.attempts.at(-1).attemptId), JSON.parse(finalPayloadText));
 
   await t.test('供应商返回上下文超限后，只派发一个确实更小的候选', async () => {
     const initial = payloads.length;
