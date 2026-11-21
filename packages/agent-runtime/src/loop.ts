@@ -12,6 +12,7 @@ import { budgetExhausted } from './budgets.js';
 import { AgentError, ContextCapacityError, ContextPressureError } from './errors.js';
 import { createCitationTool } from './citations.js';
 import { ensureTurnRuntime } from './runtime-config.js';
+import { z } from 'zod';
 
 export interface LoopDependencies {
   store: AgentStore; model: ModelPort; gateway: ModelGatewaySource; scenario: AgentScenario;
@@ -150,6 +151,23 @@ async function runStep(deps: LoopDependencies, turn: AgentTurn, step: AgentStep,
       identity: session.identity, sessionId, turnId: turn.turnId, stepId: step.stepId,
       system: plan.system, tools: [...plan.tools, createCitationTool(plan.materials)].map(tool => tool.definition), history: plan.history,
       text: plan.text, rebuildText: plan.rebuildText, images: plan.images, toolResults: [], budget, spent: usage, signal,
+      ...(scenario.messageImages ? { messageImages: {
+        resolve: route => inputs.length ? scenario.messageImages!(scenarioInput, inputs.map(item => item.input.context), route) : Promise.resolve(undefined),
+        async restore(route) {
+          const ids = plan.history.flatMap(entry => entry.role === 'user' && (!entry.kind || entry.kind === 'message') && z.uuid().safeParse(entry.id).success
+            ? [entry.id] : []);
+          const visible = new Map(plan.history.map(entry => [entry.id, entry.version]));
+          const adopted = (await store.adoptedInputs(sessionId, ids)).filter(entry => visible.get(entry.inputId) === entry.version);
+          if (!adopted.length) return undefined;
+          const previous = adopted.map(item => ({ inputId: item.inputId, requestId: item.input.requestId,
+            text: item.input.text, context: item.input.context as Facts }));
+          return scenario.messageImages!({ ...scenarioInput, inputIds: previous.map(item => item.inputId), inputs: previous },
+            previous.map(item => item.context), route);
+        },
+        async assertActive() {
+          if (signal.aborted || !await deps.isActive(turn.turnId)) throw new AgentError('cancelled');
+        },
+      } } : {}),
       historyProjection: plan.historyProjection,
       historySources: materialsAsHistorySources(plan.materials),
       rebuildHistorySources: materialsAsHistorySources(plan.rebuildMaterials),

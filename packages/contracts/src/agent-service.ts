@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { teachingSkillLoadedSchema } from './agent-skills.js';
 import { agentCitationSchema } from './agent-citations.js';
+import { modelMessageImagesSchema } from './model-connections.js';
 import { spaceIdentitySchema, type SpaceIdentity } from './spaces.js';
 import { agentInputSchema, agentRuntimeSessionSchema, agentTurnSchema, agentEventSchema, agentInputReceiptSchema,
   agentQuestionSchema, agentQuestionResponseSchema, agentQuestionReceiptSchema, agentToolCallSchema, agentStepSchema,
@@ -90,6 +91,7 @@ export const agentConversationInputSchema = z.object({
   canEdit: z.boolean().optional(),
   inputId: z.uuid(), turnId: z.uuid(), version: z.number().int().positive(),
   state: z.enum(['pending', 'adopted', 'removed', 'deferred']), text: z.string(), createdAt: z.iso.datetime(),
+  images: modelMessageImagesSchema.optional(),
 }).strict();
 export const agentConversationToolSchema = z.object({
   toolCallId: z.uuid(), turnId: z.uuid(), stepId: z.uuid(), name: z.string().min(1).max(200),

@@ -156,6 +156,56 @@ test('one workspace call durably captures A while later edits B continue and rel
   expect(result.files[0].value).toBe('后来持续写 B')
 })
 
+test('workspace discussion keeps the composer visible with many action records', async ({ page }) => {
+  const config = await driver(page)
+  await page.evaluate(async config => {
+    const { openActionWorkspace } = await import(config.moduleUrl)
+    const session = await openActionWorkspace(config)
+    session.actions.suspend()
+    try {
+      for (let index = 1; index <= 12; index++) {
+        session.draft.change(`保留的原问题 ${index}`, [])
+        const requestId = crypto.randomUUID()
+        await session.actions.create({ requestId, receiver: { receiverId: 'controlled-agent', location: 'remote', kind: 'question' } })
+        await session.actions.cancel(requestId)
+      }
+    } finally { session.dispose() }
+  }, config)
+  await page.goto(endpoint + '/?activity=' + config.activityId)
+  await page.getByRole('button', { name: '打开对话', exact: true }).click()
+  const panel = page.getByRole('complementary', { name: '问题与引用' })
+  const question = panel.getByRole('textbox', { name: '你的问题', exact: true })
+  const toggle = panel.getByText('待发与接收记录', { exact: true })
+  const history = panel.getByRole('region', { name: '待发与接收记录', exact: true })
+  await expect(toggle).toBeVisible()
+  await expect(history).toBeHidden()
+  await expect(panel.getByText('待核对', { exact: true })).toHaveCount(0)
+  await expect(panel.getByText('围绕当前作业提问')).toBeVisible()
+  if (evidenceDirectory()) await panel.screenshot({ path: evidencePath('153/workspace-discussion.png') })
+
+  await page.setViewportSize({ width: 420, height: 900 })
+  await page.emulateMedia({ colorScheme: 'dark' })
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+  const trigger = toggle.locator('..')
+  await trigger.focus()
+  await trigger.press('Enter')
+  await expect(history.getByText('已取消', { exact: true })).toHaveCount(12)
+  const row = history.locator('summary').filter({ hasText: /^保留的原问题 12/ })
+  await row.click()
+  await expect(history.getByRole('heading', { name: '本次固定内容' })).toBeVisible()
+  await history.getByRole('button', { name: '恢复为独立草稿', exact: true }).click()
+  await expect(history.getByRole('textbox', { name: '取回的问题' })).toHaveValue('保留的原问题 12')
+  expect(await history.evaluate(element => element.scrollHeight > element.clientHeight)).toBe(true)
+  expect(await panel.getByRole('log').evaluate(element => element.clientHeight)).toBeGreaterThan(120)
+  expect(await panel.evaluate(element => element.getBoundingClientRect().right)).toBeLessThanOrEqual(420)
+  await question.fill('继续写新的问题')
+  await expect(question).toBeInViewport()
+  if (evidenceDirectory()) await panel.screenshot({ path: evidencePath('153/workspace-discussion-dark.png') })
+  await toggle.click()
+  await expect(history).toBeHidden()
+  await expect(question).toHaveValue('继续写新的问题')
+})
+
 test('production composer shows pending facts and late acceptance keeps the newer question', async ({ page }) => {
   const config = await driver(page)
   const originalFile = { objectId: randomUUID(), contentId: randomUUID(), name: 'continue.c', kind: 'code',
@@ -208,13 +258,31 @@ test('production composer shows pending facts and late acceptance keeps the newe
 
 test('rejected contents recover as an independent draft and merge only after an explicit choice', async ({ page }) => {
   const config = await driver(page)
+  const requestId = await page.evaluate(async config => {
+    const { openActionWorkspace } = await import(config.moduleUrl)
+    const session = await openActionWorkspace(config)
+    window.actionIntentDriver = session
+    session.draft.change('拒绝此问题', [])
+    const requestId = crypto.randomUUID()
+    await session.actions.create({ requestId, receiver: { receiverId: 'controlled-agent', location: 'remote', kind: 'question' } })
+    return requestId
+  }, config)
+  try {
+    await expect.poll(() => page.evaluate(async id => (await window.actionIntentDriver!.actions.read(id))?.phase, requestId)).toBe('failed')
+  } finally {
+    await page.evaluate(() => { window.actionIntentDriver?.dispose(); delete window.actionIntentDriver })
+  }
   await page.goto(endpoint + '/?activity=' + config.activityId)
   await page.getByRole('button', { name: '打开对话', exact: true }).click()
-  const question = page.getByRole('textbox', { name: '你的问题', exact: true })
-  await expect(question).toBeEnabled(); await question.fill('拒绝此问题')
-  await page.getByRole('button', { name: '发送问题', exact: true }).click()
-  const records = page.getByRole('region', { name: '待发与接收记录', exact: true })
+  const panel = page.getByRole('complementary', { name: '问题与引用' })
+  const question = panel.getByRole('textbox', { name: '你的问题', exact: true })
+  const records = panel.getByRole('region', { name: '待发与接收记录', exact: true })
+  await expect(panel.getByText('待核对', { exact: true })).toBeVisible()
+  await expect(records).toBeHidden()
+  await panel.getByText('待发与接收记录', { exact: true }).click()
   await expect(records).toContainText('未被接受')
+  await records.locator('summary').filter({ hasText: '拒绝此问题' }).click()
+  if (evidenceDirectory()) await panel.screenshot({ path: evidencePath('153/workspace-discussion-review.png') })
   await question.fill('后来独立写下的新问题')
   await records.getByRole('button', { name: '恢复为独立草稿', exact: true }).click()
   await expect(records.getByRole('textbox', { name: '取回的问题', exact: true })).toHaveValue('拒绝此问题')

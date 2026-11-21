@@ -3,10 +3,12 @@ import { crc32, inflateSync } from 'node:zlib';
 import { StorageError, type OwnedStorage, type OwnedTransaction } from '@xunjie/storage';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import { modelImageInputSchema, modelImageRefSchema } from '@xunjie/contracts/model-connections';
-import type { ModelImageRef } from '@xunjie/contracts/model-connections';
+import type { ModelImageAttachmentScope, ModelImageRef } from '@xunjie/contracts/model-connections';
 import { modelScopeOf } from './selection.js';
+import { canonicalDigest } from '@xunjie/storage/identity';
 
 type Image = ModelImageRef & { resourceId: string; mediaType: 'image/png'; byteLength: number; sha256: string;
+  attachmentScope?: ModelImageAttachmentScope;
   source?: ModelImageRef & { transformation: string } };
 function validatePng(bytes: Buffer) {
   if (bytes.length > 262144 || !bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) throw new StorageError('invalid');
@@ -55,7 +57,8 @@ export function createModelImages(storage: OwnedStorage, authorize: (identity: S
     if (image.version !== reference.version) throw new StorageError('conflict');
     return image;
   }
-  async function upload(identity: SpaceIdentity, value: unknown) {
+  // The session transport uses the segment to select the image owner. Storage retains the same upload receipt.
+  async function upload(identity: SpaceIdentity, value: unknown, _segmentId?: string) {
     assertWritable(); await authorize(identity);
     const input = modelImageInputSchema.parse(value), bytes = Buffer.from(input.dataBase64, 'base64');
     if (bytes.toString('base64') !== input.dataBase64) throw new StorageError('invalid');
@@ -67,7 +70,8 @@ export function createModelImages(storage: OwnedStorage, authorize: (identity: S
     const resource = await storage.stageResource({ uploadId: input.imageId, scope: 'model-image:' + input.imageId,
       bytes, mediaType: 'image/png', contentVersion: 1 });
     const body: Image = { imageId: input.imageId, version: 1, mediaType: 'image/png', byteLength: bytes.length, sha256,
-      resourceId: resource.resourceId, ...(input.source ? { source: input.source } : {}) };
+      resourceId: resource.resourceId, ...(input.source ? { source: input.source } : {}),
+      ...(input.attachmentScope ? { attachmentScope: input.attachmentScope } : {}) };
     return (await storage.request({ requestId: 'model-image:' + input.requestId, fingerprint: hash }, async tx => {
       await tx.query('INSERT INTO model_images VALUES($1,$2,$3)', [input.imageId, scope, body]);
       await tx.reference('model-image:' + input.imageId, resource.resourceId);
@@ -94,5 +98,12 @@ export function createModelImages(storage: OwnedStorage, authorize: (identity: S
       if (image.mediaType !== 'image/png' || image.byteLength !== bytes.length || image.sha256 !== createHash('sha256').update(bytes).digest('hex')) throw new StorageError('corrupt');
     }
   }
-  return { upload, read, materialize, validate };
+  async function readAttachment(identity: SpaceIdentity, reference: ModelImageRef, scope: ModelImageAttachmentScope) {
+    const image = await read(identity, reference);
+    if (!image.attachmentScope || canonicalDigest(image.attachmentScope) !== canonicalDigest(scope)) throw new StorageError('forbidden');
+    const bytes = Buffer.from(await storage.readResource(image.resourceId));
+    if (image.byteLength !== bytes.length || image.sha256 !== createHash('sha256').update(bytes).digest('hex')) throw new StorageError('corrupt');
+    return { sha256: image.sha256, dataBase64: bytes.toString('base64') };
+  }
+  return { upload, read, readAttachment, materialize, validate };
 }

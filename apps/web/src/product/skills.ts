@@ -4,7 +4,7 @@ import type { SpaceIdentity } from '@xunjie/contracts/spaces'
 import { teachingSkillListSchema,
   teachingSkillImportSchema, teachingSkillImportFailureSchema, teachingSkillLimits, teachingSkillPathSchema, type TeachingSkillImport } from '@xunjie/contracts/agent-skills'
 import { learningSubjectRequest } from './learningTransport'
-import { AgentSessionsClient } from './agent-sessions'
+import { AgentSessionRequestError, AgentSessionsClient } from './agent-sessions'
 import { sessionSkillStateSchema, sessionSkillSelectSchema } from '@xunjie/contracts/agent-skills'
 import type { LearningReadCache } from './learning-read-cache'
 
@@ -29,7 +29,7 @@ export function useSkillCatalog(identity: SpaceIdentity, spaceKey: string, names
   const current = useRef(scope), live = useRef(false), reads = useRef(0)
   const client = useRef({})
   current.current = scope
-  const [state, setState] = useState<{ scope: string; data: SkillCatalog | null; loading: boolean; error: string; epoch: number }>(() => {
+  const [state, setState] = useState<{ scope: string; data: SkillCatalog | null; loading: boolean; error: string; epoch: number; recoverable?: boolean }>(() => {
     // Seed the first paint from the shared cache so a reopened pane never flashes a cold-load spinner.
     const cached = cache?.peek<SkillCatalog>(spaceKey, cacheKey) ?? null
     return { scope, data: cached, loading: !cached, error: '', epoch: 0 }
@@ -58,10 +58,12 @@ export function useSkillCatalog(identity: SpaceIdentity, spaceKey: string, names
       const data = cache ? await cache.read(spaceKey, cacheKey, load, { maxAgeMs: 0 }) : await load()
       if (active()) setState({ scope, data, loading: false, error: '', epoch })
       return data
-    } catch {
+    } catch (cause) {
       // A silent revalidation keeps the confirmed list it already shows; only a first read surfaces failure.
       if (active()) setState(previous => ({ ...previous, scope, loading: false,
-        ...(silent && previous.data ? {} : { error: '暂时无法加载技能。' }) }))
+        ...(silent && previous.data ? {} : { error: '暂时无法加载技能。',
+          recoverable: cause instanceof AgentSessionRequestError ? cause.status >= 500
+            : cause instanceof Error && (cause.name === 'TimeoutError' || cause.name === 'TypeError') }) }))
       return null
     }
   }, [scope, sessionId, request, cache, spaceKey, cacheKey])
@@ -96,6 +98,14 @@ export function useSkillCatalog(identity: SpaceIdentity, spaceKey: string, names
     window.addEventListener('focus', refresh)
     return () => { live.current = false; reads.current++; catalogChanges.delete(changed); window.removeEventListener('focus', refresh) }
   }, [scope, reload, enabled, cache, spaceKey, cacheKey])
+  const retryRead = enabled && !!sessionId && state.scope === scope && !!state.error && state.recoverable
+  useEffect(() => {
+    if (!retryRead) return
+    const timer = setTimeout(() => {
+      if (!document.hidden) void reload({ silent: true })
+    }, 5000)
+    return () => clearTimeout(timer)
+  }, [retryRead, scope, reload])
   return { ...(state.scope === scope ? state : { data: null, loading: true, error: '' }), reload, request, apply,
     // An older rendered controller cannot fix pins while its catalog is being replaced.
     isCurrent: () => live.current && current.current === scope && state.scope === scope && !!state.data

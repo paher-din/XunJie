@@ -67,6 +67,7 @@ import type { createStudyCopies } from '@xunjie/learning-space';
 
 const connectionProfileSchema = z.object({ version: z.literal(1), localStudy: z.boolean(), connectionId: z.uuid(),
   identity: spaceIdentitySchema, target: learningTargetSchema, account: schoolAccountSchema }).strict();
+const schoolRegistrationsReadyKey = 'school-registrations-ready';
 const grantSchema = z.object({ token: z.string().min(40).max(200), identity: spaceIdentitySchema,
   target: learningTargetSchema, connectionId: z.uuid(), capabilities: z.tuple([z.literal('activity:read'), z.literal('activity:write')]),
   account: schoolAccountSchema.optional(), localStudy: z.object({ version: z.literal(1) }).strict().optional(),
@@ -170,10 +171,14 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       return current;
     });
   }
+  async function hasSchoolRegistrations(connection: Connection) {
+    return await local!.studyCopies!.cached(connection.grant!.identity, schoolRegistrationsReadyKey) === true;
+  }
   async function assertStudyIdentity(connection: Connection) {
     if (!connection.grant || !(await list({ rememberCleanup: false })).some(item => item.key === 'school:' + connection.requestId
       && subject(item.identity) === subject(connection.grant!.identity))) throw new StorageError('forbidden');
-    if (!await local!.studyCopies!.hasIdentity(connection.grant.identity)) throw new StorageError('unavailable');
+    if (!await local!.studyCopies!.hasIdentity(connection.grant.identity) && !await hasSchoolRegistrations(connection))
+      throw new StorageError('unavailable');
   }
   function studyCourses(connection: Connection) {
     return createDownloadedCourses(local!.studyCopies!, async identity => {
@@ -263,6 +268,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     const operation = (async () => {
       const latest = await read(connection.requestId);
       if (latest.localStudy?.imported && await local!.studyCopies!.hasIdentity(latest.grant!.identity)) return;
+      if (await hasSchoolRegistrations(latest)) return;
       const ready = await local!.studyCopies!.cached<{ digest: string }>(latest.grant!.identity, 'study-copy-ready');
       if (ready && await local!.studyCopies!.hasIdentity(latest.grant!.identity)) {
         await update(latest.requestId, async () => {
@@ -275,7 +281,21 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
         catch (error) { if (!(error instanceof StorageError) || error.code !== 'unavailable') throw error; }
         return;
       }
-      const transfer = studyTransferSchema.parse(await call(latest, 'study-transfer', undefined, true));
+      let transfer;
+      try { transfer = studyTransferSchema.parse(await call(latest, 'study-transfer', undefined, true)); }
+      catch (error) {
+        if (!(error instanceof StorageError) || error.code !== 'conflict'
+          || confirmedProfile(latest)?.localStudy !== true) throw error;
+        // The one-time export returns conflict after it is acknowledged. A new device
+        // can download the retained registrations under its own grant without acknowledging an export.
+        const activities = z.array(activitySchema).parse(await call(latest, 'activities', undefined, true));
+        const identity = latest.grant!.identity, copies = local!.studyCopies!;
+        await copies.importActivities(identity, activities);
+        for (const activity of activities) await downloadActivity(latest, activity);
+        await studyLearning(latest).validate();
+        await copies.cache(identity, schoolRegistrationsReadyKey, true);
+        return;
+      }
       const imported = await local!.studyCopies!.importScope(latest.grant!.identity, transfer);
       const importedLearning = studyLearning(latest);
       await importedLearning.validate();
@@ -964,6 +984,8 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     }
     if (route === 'models/images') {
       const input = modelImageInputSchema.parse(body);
+      if (input.attachmentScope)
+        return localStudyMode(connection) || connection.localBinding ? localCall(input) : remoteCall(input);
       return routeBound('image', input.imageId, input, async () => {
         const selected = modelSelectionSchema.parse(await models.selection.read(identity, personal));
         return { destination: selected.selected?.kind === 'school' ? 'school' : 'local' };

@@ -8,6 +8,7 @@ import { useActivitySession } from '../../product/ActivitySession'
 import { runtimePreparation } from '../../component-preparation/runtime'
 import { runtimeAction } from '../../tool-execution/runtime-action'
 import { componentStateMediaType, readComponentState } from '../../tool-execution/action'
+import type { ExecutionController } from '../../tool-execution/controller'
 import type { ExecutionRecord } from '../../tool-execution/ledger'
 import { ExecutionPanel } from '../../product/ExecutionPanel'
 import type { ComponentResultLocation } from '../../product/RuntimeTool'
@@ -84,6 +85,24 @@ function readingOf(record: ExecutionRecord | undefined, waiting: boolean): AluRe
   return { state: 'incomplete', f: f || undefined, cout: cout || undefined }
 }
 
+type RecordLookupOutcome = 'found' | 'missing' | 'unverified'
+
+function useRecordLookup(execution: ExecutionController, requestId: string) {
+  const [attempt, setAttempt] = useState(0)
+  const [result, setResult] = useState<{ requestId: string; attempt: number; outcome: RecordLookupOutcome }>()
+  useEffect(() => {
+    if (!requestId) { setResult(undefined); return }
+    let active = true
+    const finish = (outcome: RecordLookupOutcome) => {
+      if (active) setResult({ requestId, attempt, outcome })
+    }
+    void execution.query(requestId).then(record => finish(record ? 'found' : 'missing'), () => finish('unverified'))
+    return () => { active = false }
+  }, [execution, requestId, attempt])
+  const problem = requestId && result?.requestId === requestId && result.outcome !== 'found' ? result.outcome : undefined
+  return { problem, retrying: !!problem && result?.attempt !== attempt, retry: () => setAttempt(value => value + 1) }
+}
+
 export function AluExperimentTool({ activity, binding, spaceKey, namespace, authorized, compact = false, location }: {
   activity: LearningActivity
   binding: ComponentBinding
@@ -158,6 +177,10 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
   const basis = parseEnabledBasis(alu.enabledBasis)
   const records = runs.records.filter(record => record.action.execution.instance.instanceId === instanceId
     && record.action.scope.activityId === activity.activityId)
+  const canLookUpRecord = authorized && !workspace.accessDenied() && runs.ready && work.ready && actionFacts.ready
+  // A selection can already point to a saved action while its execution record is being accepted.
+  const awaitingAcceptance = (requestId: string) => actionFacts.items.some(item => item.input.requestId === requestId
+    && !['accepted', 'failed', 'cancelled'].includes(item.phase))
   const enabledRecord = basis ? records.find(record => record.requestId === basis.requestId) : undefined
   const pendingCheck = actionFacts.items.some(item => isExecutionAction(item.input)
     && item.input.execution.instance.instanceId === instanceId && item.input.execution.operation.operationId === 'check-all'
@@ -175,13 +198,12 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
 
   // A pointer names a local or historical record. If the service still has it, query once; never rerun.
   useEffect(() => {
-    for (const requestId of [basis?.requestId, alu.pendingActivation, alu.selectedObservation, alu.selectedCheck,
-      alu.selectedCase, alu.reflectionFor].filter(Boolean) as string[]) {
+    for (const requestId of [basis?.requestId, alu.pendingActivation, alu.selectedCase, alu.reflectionFor].filter(Boolean) as string[]) {
       if (records.some(record => record.requestId === requestId) || queried.current.has(requestId)) continue
       queried.current.add(requestId)
       void execution.query(requestId).catch(() => { /* The original pointer stays; the user may retry. */ })
     }
-  }, [basis?.requestId, alu.pendingActivation, alu.selectedObservation, alu.selectedCheck, alu.selectedCase, alu.reflectionFor, records, execution])
+  }, [basis?.requestId, alu.pendingActivation, alu.selectedCase, alu.reflectionFor, records, execution])
 
   const contentForBinding = (state: AluState) => manifest.stateShape.type === 'object'
     ? Object.fromEntries(Object.keys(manifest.stateShape.properties).map(key => [key, state[key as keyof AluState]])) : state
@@ -470,6 +492,8 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
     ? records.find(record => record.action.execution.operation.operationId === 'check-all' && sameCodeBasis(record, enabledRecord))
     : undefined
   const selectedCheckRecord = alu.selectedCheck ? records.find(record => record.requestId === alu.selectedCheck) : undefined
+  const checkLookup = useRecordLookup(execution,
+    canLookUpRecord && !selectedCheckRecord && !awaitingAcceptance(alu.selectedCheck) ? alu.selectedCheck : '')
   const locatedCheck = locatedResult?.action.execution.operation.operationId === 'check-all' ? locatedResult : undefined
   const selectedCase = records.find(record => record.requestId === alu.selectedCase)
   const submittedCase = records.find(record => record.requestId === alu.caseRequestId)
@@ -529,6 +553,8 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
     ? { index: resultLocation.range.target.index, token: resultLocation.token } : counterexampleLocation
 
   const selectedObservationRecord = alu.selectedObservation ? records.find(record => record.requestId === alu.selectedObservation) : undefined
+  const observationLookup = useRecordLookup(execution,
+    canLookUpRecord && !selectedObservationRecord && !awaitingAcceptance(alu.selectedObservation) ? alu.selectedObservation : '')
   const observationHistory = alu.selectedObservationRevision === -1 && !!selectedObservationRecord
   const observationCurrent = !!selectedObservationRecord && !observationHistory
     && alu.selectedObservationRevision === alu.inputRevision
@@ -648,15 +674,17 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
       : !authorized ? '当前身份没有这个活动的实验权限。'
       : preparationNote || '正在确认实验能力…'}</p>}
     {!ready && preparationDetails && <details><summary>准备详情</summary><pre>{preparationDetails}</pre></details>}
-    {basis && !enabledRecord && <p role="status" className="alu-hint">正在读取原启用依据；若本机与服务都没有这条记录，不会自动重跑。
+    {runs.ready && basis && !enabledRecord && <p role="status" className="alu-hint">正在读取原启用依据；若本机与服务都没有这条记录，不会自动重跑。
       <button type="button" className="ws-btn ghost" onClick={() => {
         queried.current.delete(basis.requestId)
         void execution.query(basis.requestId).catch(() => toast.error('原启用依据暂时无法核实；不会自动重跑。'))
       }}>核对启用依据</button>
     </p>}
     {basis && enabledRecord && !enabledUsable && <p role="alert" className="alu-alert">原启用依据当前不可用（{enabledRecord.query.reason?.detail ?? '执行未成功或状态未核实'}）。请运行当前作品后再观察。</p>}
-    {alu.selectedObservation && !selectedObservationRecord && <p role="status" className="alu-hint">所选观察记录暂不可读，原选择仍保留，未重新运行或改选其他结果。
-      <button className="ws-btn ghost" onClick={() => void execution.query(alu.selectedObservation)}>核对原观察</button>
+    {observationLookup.problem &&
+      <p role="status" className="alu-hint">{observationLookup.retrying ? '正在核对所选观察记录…'
+        : observationLookup.problem === 'missing' ? '暂时找不到所选观察记录。你可以核对原观察，或返回当前输入。' : '暂时无法核对所选观察记录。'}
+      <button type="button" className="ws-btn ghost" disabled={observationLookup.retrying} onClick={observationLookup.retry}>核对原观察</button>
       <button className="ws-btn ghost" onClick={() => writeState(previous => ({ ...previous, selectedObservation: '', selectedObservationRevision: -1 }))}>返回当前输入</button>
     </p>}
 
@@ -725,7 +753,9 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
         <p role="status" className="alu-notice">已有更新的检查记录。
           <button type="button" className="ws-btn ghost" onClick={() => selectState(previous => ({ ...previous, selectedCheck: '', selectedCheckBasis: '' }))}>查看最新检查</button></p>}
       {checkMismatch && <p role="alert" className="alu-alert">这份报告对应另一份已启用作品，不是当前作品的检查；请核对运行记录。</p>}
-      {alu.selectedCheck && !selectedCheckRecord && <p role="status">所选检查记录暂不可读，原选择仍保留，未改选其他报告。</p>}
+      {checkLookup.problem && <p role="status" className="alu-hint">{checkLookup.retrying ? '正在核对所选检查记录…'
+        : checkLookup.problem === 'missing' ? '暂时找不到所选检查记录。原选择仍保留。' : '暂时无法核对所选检查记录。'}
+        <button type="button" className="ws-btn ghost" disabled={checkLookup.retrying} onClick={checkLookup.retry}>核对原检查</button></p>}
       {(!predictionHeld || locatedCheck) && displayCheckRecord?.query.statusKnowledge === 'unknown' && <p role="status">检查结果尚未确认，原记录仍保留，不显示通过。
         <button className="ws-btn ghost" onClick={() => void queryRecord(displayCheckRecord)}>核对状态</button>
         <button className="ws-btn ghost" onClick={() => void stopCheck(displayCheckRecord)}>停止检查</button></p>}

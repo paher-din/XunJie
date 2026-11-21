@@ -286,7 +286,7 @@ export const chatEntries: CatalogEntry[] = [
     states: [{ id: 'active', name: '正在思考', component: () => <Frame><AgentThinking text="先核对问题中的已知条件，再比较可行的解法。" active /></Frame>, height: 350 },
       { id: 'settled', name: '已完成，可重新展开', component: () => <Frame><AgentThinking text="已核对问题中的条件，下面给出解释。" active={false} /></Frame>, height: 350 }] },
   { id: 'prompt-model-picker', name: 'PromptModelPicker', description: '复用输入框的模型菜单；型号、供应商和选用由调用方提供。', importPath,
-    source: 'packages/ui/src/chat/PromptModelPicker.tsx', exampleSource, props: ['model/models/onChange/disabled', 'open/onOpenChange'], dependencies: ['Icon'], states: [
+    source: 'packages/ui/src/chat/PromptModelPicker.tsx', exampleSource, props: ['model/models/onChange/disabled', 'open/onOpenChange', 'align'], dependencies: ['Icon', 'Base UI Menu'], states: [
       { id: 'ready', name: '选用模型／键盘操作', component: ModelPickerDemo }, { id: 'disabled', name: '不可切换', component: () => <ModelPickerDemo disabled /> },
       { id: 'empty', name: '暂无模型', component: () => <ModelPickerDemo empty /> },
     ] },

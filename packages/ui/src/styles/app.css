@@ -3406,7 +3406,21 @@ h3 {
   transform-origin: calc(100% - 28px) calc(100% + 8px);
   animation: menu-pop 0.24s cubic-bezier(0.3, 1, 0.35, 1);
 }
-.prompt-model-menu.closing {
+.prompt-model-positioner { z-index: 80; }
+.prompt-model-positioner[data-anchor-hidden] { visibility: hidden; }
+.prompt-model-positioner .prompt-model-menu {
+  position: static;
+  width: max-content;
+  min-width: min(262px, var(--available-width));
+  max-width: min(360px, var(--available-width));
+  max-height: var(--available-height);
+  overflow: auto;
+  overscroll-behavior: contain;
+  outline: none;
+  transform-origin: var(--transform-origin);
+}
+.prompt-model-menu.closing,
+.prompt-model-menu[data-ending-style] {
   animation: menu-out 0.15s cubic-bezier(0.3, 1, 0.35, 1) both;
 }
 @keyframes menu-pop {
@@ -3458,7 +3472,7 @@ h3 {
     translate: 0 0;
   }
 }
-.prompt-model-item:hover {
+.prompt-model-item:is(:hover, [data-highlighted]) {
   background: var(--hover-bg);
 }
 .prompt-model-item .mi-icon {
@@ -3472,6 +3486,7 @@ h3 {
   gap: 2px;
   flex: 1;
   min-width: 0;
+  overflow-wrap: anywhere;
 }
 .prompt-model-item .mi-name {
   font-size: 13px;

@@ -8,6 +8,19 @@
 .activity-submission-choice { display: flex; align-items: center; gap: 8px; padding-block: 8px; font-size: 13px; overflow-wrap: anywhere; }
 .activity-submission-choice input { flex: none; accent-color: var(--primary); }
 .activity-submission-choice span, .activity-submission-records time { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.activity-submission-choice.activity-submission-result {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 4px 8px;
+  border-block-end: 1px solid var(--line);
+  cursor: pointer;
+}
+.activity-submission-result:hover, .activity-submission-result:focus-within { background: var(--hover-bg); }
+.activity-submission-result input { margin-block-start: 3px; }
+.activity-submission-result-copy { display: grid; gap: 2px; }
+.activity-submission-result-copy strong { color: var(--ink); font-size: 13px; font-weight: 500; }
+.activity-submission-result time { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 .activity-submission-section details { padding-block: 8px; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
 .activity-submission-section summary { cursor: pointer; color: var(--ink-soft); font-size: 13px; }
 .activity-submission-section summary:hover { color: var(--ink); }
@@ -25,4 +38,6 @@
 @media (max-width: 640px) {
   .activity-submission-dialog { padding: 16px; }
   .activity-submission-records li, .activity-submission-choice { flex-wrap: wrap; }
+  .activity-submission-choice.activity-submission-result { grid-template-columns: auto minmax(0, 1fr); }
+  .activity-submission-result time { grid-column: 2; }
 }

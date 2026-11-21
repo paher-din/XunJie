@@ -7,7 +7,7 @@ import type { ModelSelectionController } from './ModelSelection'
 import { useAgentModelPicker } from './AgentModelPicker'
 
 export interface PromptFiles {
-  items: { id: string; name: string; size?: number; progress?: number }[]
+  items: { id: string; name: string; size?: number; progress?: number; attachmentKind?: PromptAttachmentKind; src?: string }[]
   busy: boolean; error: string
   add(files: File[]): void | Promise<void>
   remove(id: string): void
@@ -39,7 +39,7 @@ const effortLabels = { auto: '默认', none: '关闭', enabled: '开启', minima
 
 export function ProductPromptInput({ selection, readOnly, onModelSettings, onModelSelected, applyingModel, modelLocked = false, contextUsage, files, skills, ...input }:
   Pick<PromptInputProps, 'value' | 'onChange' | 'onSend' | 'canSend' | 'autoFocus' | 'submitting' | 'inputRef' | 'textareaProps' | 'sendLabel'
-    | 'busy' | 'onStop' | 'onResume' | 'resumeLabel' | 'actionDisabled'> & {
+    | 'busy' | 'onStop' | 'onResume' | 'resumeLabel' | 'actionDisabled' | 'pasteImages'> & {
   selection: ModelSelectionController; readOnly: boolean; onModelSettings?: () => void
   onModelSelected?: Parameters<ModelSelectionController['choose']>[1]; applyingModel?: boolean; contextUsage?: { model: { connectionId: string; version: number }; tokens: number; lowerBound: boolean }
   /** A Turn fixes its model; the next Turn adopts any later picker change. */
@@ -114,10 +114,11 @@ export function ProductPromptInput({ selection, readOnly, onModelSettings, onMod
         remove: disabled || option?.fixed || skills.loading || skills.error ? undefined : () => skills.choose(selectedSkills.filter(item => item.skillId !== skill.skillId)) }
     }) : []
   const attachments: PromptAttachment[] = files.items.map(file => ({ id: file.id, name: file.name,
-    size: file.size ?? 0, kind: promptAttachmentKind(file.name), ...(file.progress !== undefined ? { progress: file.progress } : {}) }))
+    size: file.size ?? 0, kind: file.attachmentKind ?? promptAttachmentKind(file.name), ...(file.src ? { src: file.src } : {}),
+    ...(file.progress !== undefined ? { progress: file.progress } : {}) }))
   return <PromptInput {...input} inputRef={editor} attachments={attachments} showAttachments
     onAddFiles={selected => { if (!disabled) void files.add(selected) }} onRemoveAttachment={files.remove}
-    attachmentTitle="添加 UTF-8 文本、代码文件或 PDF"
+    attachmentTitle={input.pasteImages ? '添加图片、UTF-8 文本、代码文件或 PDF' : '添加 UTF-8 文本、代码文件或 PDF'}
     canSend={input.canSend && !files.busy && !selection.busy && !skills?.loading && !skills?.error && menu !== 'slash'}
     onChange={value => { input.onChange(value); updateCommand(value, editor.current?.selectionStart ?? value.length) }}
     textareaProps={{ ...input.textareaProps,

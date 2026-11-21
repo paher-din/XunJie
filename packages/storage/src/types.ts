@@ -9,10 +9,10 @@ export interface DatabaseConnection {
 export interface StorageBinding { owner: StorageOwner; schema: string; migratorRole: string; connection: DatabaseConnection; }
 export interface Migration {
   version: number; name: string; sql: string;
-  /** A published branch used this earlier tail version with exactly the same name and SQL.
+  /** Earlier published tail versions with exactly the same name and SQL.
    * Provisioning may relocate that journal entry and apply missing migrations; opening stays strict.
    */
-  formerVersion?: number;
+  formerVersion?: number | readonly number[];
 }
 export interface QueryResult<T> { rows: T[]; rowCount: number; }
 /** A host-liveness lock held on one dedicated connection, independent of the transaction pool. */

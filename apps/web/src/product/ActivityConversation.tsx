@@ -1,5 +1,6 @@
 import type { LearningActivity } from '@xunjie/contracts/learning-data'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { AgentEmptyState } from '@xunjie/ui/chat'
 import { useActivitySession } from './ActivitySession'
 import { SessionConversation } from './SessionConversation'
 import type { AgentEvent } from '@xunjie/contracts/agent-runtime'
@@ -40,7 +41,12 @@ export function ActivityConversation(props: { activity: LearningActivity; spaceK
     const target = root.current?.querySelector<HTMLElement>(`[data-question-id="${CSS.escape(props.focusQuestionId)}"]`)
     if (target) { target.focus(); target.scrollIntoView?.({ block: 'nearest' }); props.onQuestionFocused?.() }
   }, [props.focusQuestionId, agent?.conversation, props.onQuestionFocused])
+  const conversation = agent?.conversation
+  const empty = conversation && !agent?.active && !agent?.error && !conversation.messages.length && !conversation.turns.length
+    && !conversation.workspaces.length && !presentation.previews.length && !props.artifacts?.entries.length
+    && !workspace.isReadOnly() && props.activity.status === 'open'
   return <div ref={root}>
+    {empty && <AgentEmptyState title="围绕当前作业提问" description="可以问课程要求、学习资料或你的作品。" />}
     {agent ? <SessionConversation controller={agent} readOnly={workspace.isReadOnly() || props.activity.status !== 'open'} renderTool={tool => {
       if (presentation.generatingPage(tool.name)) return toolFailed(tool)
         ? <p role="alert" className="learning-error">这次页面未能完成，原内容和输入仍保留。{toolDetail(tool)}</p> : null

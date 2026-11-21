@@ -20,7 +20,7 @@ let opening: Promise<IDBDatabase> | undefined
 export function openWorkspaceDatabase(): Promise<IDBDatabase> {
   if (!opening) {
     opening = new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open('xunjie-reliable-works-v1', 11)
+      const request = indexedDB.open('xunjie-reliable-works-v1', 12)
       request.onupgradeneeded = () => {
         const db = request.result
         if (!db.objectStoreNames.contains('workspaces')) db.createObjectStore('workspaces', { keyPath: 'key' })
@@ -43,6 +43,7 @@ export function openWorkspaceDatabase(): Promise<IDBDatabase> {
         if (!db.objectStoreNames.contains('pdfMaterials')) db.createObjectStore('pdfMaterials', { keyPath: 'key' }).createIndex('scope', 'scope')
         // v11: personal text notes keep their immutable save/update/remove requests beside the other reliable work.
         if (!db.objectStoreNames.contains('personalMaterials')) db.createObjectStore('personalMaterials', { keyPath: 'key' }).createIndex('scope', 'scope')
+        if (!db.objectStoreNames.contains('agentImages')) db.createObjectStore('agentImages', { keyPath: 'key' })
       }
       request.onsuccess = () => {
         const db = request.result

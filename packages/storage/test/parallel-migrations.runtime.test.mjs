@@ -65,6 +65,31 @@ test('failure while applying the missing migration rolls back the relocation, DD
   } finally { await old?.close(); await fixture.close(); }
 });
 
+test('the same published tail is recognized at either of its former versions', { timeout: 60000 }, async () => {
+  const fixture = await nativeFixture();
+  const extra = { version: 3, name: 'new-runtime-records', sql: 'CREATE TABLE feature_c(id text PRIMARY KEY);' };
+  const target = [base, addition, extra, { ...parallel, version: 4, formerVersion: [2, 3] }];
+  try {
+    for (const version of [2, 3]) {
+      const options = { admin: fixture.admin, owner: { environmentId: randomUUID(), serviceId: randomUUID() }, password: randomUUID() };
+      const migrations = [...target.slice(0, version - 1), { ...parallel, version }];
+      const binding = await provisionStorage({ ...options, migrations });
+      const backend = createFileBackend({ id: 'files', root: join(fixture.root, 'objects-' + version) });
+      const previous = await openStorage({ binding, backend, migrations });
+      try {
+        await previous.request({ requestId: 'keep', fingerprint: 'original' }, tx => tx.query("INSERT INTO feature_b VALUES('keep')"));
+        await closeGates(previous);
+      } finally { await previous.close(); }
+      await provisionStorage({ ...options, migrations: target });
+      const current = await openStorage({ binding, backend, migrations: target });
+      try {
+        assert.equal((await journal(current)).at(-1).checksum, checksum(target.at(-1)));
+        assert.deepEqual((await current.read('SELECT * FROM feature_b')).rows, [{ id: 'keep' }]);
+      } finally { await current.close(); }
+    }
+  } finally { await fixture.close(); }
+});
+
 test('relocation refuses edited SQL, prefix damage, mixed histories and ambiguous former-version registrations', { timeout: 60000 }, async () => {
   const fixture = await nativeFixture(), admin = new pg.Client(fixture.admin); let old;
   await admin.connect();

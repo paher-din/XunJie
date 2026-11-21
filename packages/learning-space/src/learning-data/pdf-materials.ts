@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { StorageError, type Migration, type OwnedStorage } from '@xunjie/storage';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import type { CourseBindingAuthority } from '@xunjie/contracts/courses';
-import { PDF_LIMITS, pdfReadingSchema, pdfReadInputSchema, pdfUploadSchema,
+import { PDF_LIMITS, pdfReadingSchema, pdfReadInputSchema, pdfUploadSchema, pdfRemoveInputSchema,
   pdfReferenceCopy, pdfReferenceTargetSchema, pdfCourseInputSchema, pdfFindInputSchema, pdfSearchResultSchema, type PdfDocument, type PdfReading } from '@xunjie/contracts/pdf-materials';
 import { scopedPdfDocumentSchema, scopedPdfReadingSchema, scopedPdfSearchResultSchema,
   type ScopedPdfDocument, type ScopedPdfReading, type ScopedPdfSearchResult } from '@xunjie/contracts/pdf-materials';
@@ -23,6 +23,7 @@ export const pdfMaterialMigration: Migration = { version: 23, name: 'fixed-pdf-m
 ` };
 const hash = (bytes: Uint8Array | string) => createHash('sha256').update(bytes).digest('hex');
 const digest = (value: unknown) => hash(JSON.stringify(value));
+const readInput = pdfReadInputSchema.extend({ preview: z.literal(true).optional() });
 
 /** Fixed originals and derived pages stay with their actual session or workspace data owner. */
 type DocumentFor<S> = S extends string ? PdfDocument : ScopedPdfDocument;
@@ -32,6 +33,7 @@ export interface PdfMaterials<S extends MaterialScopeInput = MaterialScopeInput>
   original(identity: SpaceIdentity, scope: S, documentId: string): Promise<{ document: DocumentFor<S>; bytes: Uint8Array }>;
   list(identity: SpaceIdentity, scope: S): Promise<DocumentFor<S>[]>;
   upload(identity: SpaceIdentity, scope: S, value: unknown): Promise<DocumentFor<S>>;
+  remove(identity: SpaceIdentity, scope: S, documentId: string, value: unknown): Promise<DocumentFor<S>>;
   importCourse(identity: SpaceIdentity, scope: S, value: unknown): Promise<DocumentFor<S>>;
   reading(identity: SpaceIdentity, scope: S, readingId: string): Promise<ReadingFor<S> | null>;
   read(identity: SpaceIdentity, scope: S, value: unknown): Promise<ReadingFor<S>>;
@@ -42,6 +44,22 @@ export function createPdfMaterials(storage: OwnedStorage, options: MaterialScope
 export function createPdfMaterials(storage: OwnedStorage, host: WorkspaceMaterialOpen | MaterialScopeOptions,
   courses?: CourseBindingAuthority): PdfMaterials | PdfMaterials<string> {
   const access = createMaterialScopeAccess(storage, host);
+  const pageCache = new Map<string, ReturnType<typeof renderPdf>>();
+  function renderPages(source: { document: ScopedPdfDocument; bytes: Uint8Array }, pages: number[], region: z.infer<typeof pdfReadInputSchema>['region']) {
+    if (region) return renderPdf(source.bytes, pages, region);
+    const key = JSON.stringify([source.document.documentId, source.document.sha256, pages]);
+    let result = pageCache.get(key);
+    if (!result) {
+      result = renderPdf(source.bytes, pages, null);
+      const pending = result;
+      const forget = () => { if (pageCache.get(key) === pending) pageCache.delete(key); };
+      void result.then(items => { if (items.some(item => item.state !== 'ready')) forget(); }, forget);
+    }
+    pageCache.delete(key);
+    pageCache.set(key, result);
+    if (pageCache.size > 12) pageCache.delete(pageCache.keys().next().value!);
+    return result;
+  }
   async function document(identity: SpaceIdentity, value: MaterialScopeInput, documentId: string): Promise<ScopedPdfDocument> {
     const { scope } = await access.open(identity, value); z.uuid().parse(documentId);
     const { rows: [row] } = await storage.read(`SELECT body FROM pdf_documents WHERE document_id=$1 AND ${materialScopeColumn(scope)}=$2`, [documentId, materialScopeId(scope)]);
@@ -58,8 +76,25 @@ export function createPdfMaterials(storage: OwnedStorage, host: WorkspaceMateria
   }
   async function list(identity: SpaceIdentity, value: MaterialScopeInput) {
     const { scope } = await access.open(identity, value);
-    const { rows } = await storage.read(`SELECT document_id FROM pdf_documents WHERE ${materialScopeColumn(scope)}=$1 ORDER BY created_at,document_id`, [materialScopeId(scope)]);
+    const { rows } = await storage.read(`SELECT document_id FROM pdf_documents WHERE ${materialScopeColumn(scope)}=$1
+      AND body->>'removedAt' IS NULL ORDER BY created_at,document_id`, [materialScopeId(scope)]);
     return Promise.all(rows.map(row => document(identity, scope, String(row.document_id))));
+  }
+  async function remove(identity: SpaceIdentity, value: MaterialScopeInput, documentId: string, input: unknown) {
+    const { requestId } = pdfRemoveInputSchema.parse(input);
+    const { scope } = await access.open(identity, value);
+    const doc = await document(identity, scope, documentId);
+    if (scope.kind !== 'workspace' || doc.courseSource) throw new StorageError('forbidden');
+    const fingerprint = digest({ ...materialScopeKey(scope), documentId });
+    await storage.request({ requestId: 'pdf-remove:' + requestId, fingerprint }, async tx => {
+      const { activity } = await access.lock(tx, identity, scope);
+      if (activity?.status !== 'open') throw new StorageError('forbidden');
+      // Existing reference and original records must remain readable.
+      await tx.query(`UPDATE pdf_documents SET body=body || jsonb_build_object('removedAt', $2::text)
+        WHERE document_id=$1 AND activity_id=$3 AND body->>'removedAt' IS NULL`, [documentId, new Date().toISOString(), scope.activityId]);
+      return null;
+    });
+    return document(identity, scope, documentId);
   }
   async function receive(identity: SpaceIdentity, value: MaterialScopeInput, input: z.infer<typeof pdfUploadSchema>, courseSource?: PdfDocument['courseSource']) {
     const { scope } = await access.open(identity, value);
@@ -82,14 +117,14 @@ export function createPdfMaterials(storage: OwnedStorage, host: WorkspaceMateria
       });
     }
     const current = await document(identity, scope, input.documentId);
-    if (current.state !== 'received') return current;
+    if (current.state !== 'received' || current.removedAt) return current;
     // The original is already durable. Interrupted inspection can be resumed under the same identity.
     const metadata = await inspectPdf(bytes);
     const result = scopedPdfDocumentSchema.parse({ ...current, ...metadata });
     await access.open(identity, scope);
     await storage.request({ requestId: 'pdf-inspect:' + input.requestId, fingerprint }, async tx => {
       await access.lock(tx, identity, scope);
-      await tx.query('UPDATE pdf_documents SET body=$2 WHERE document_id=$1', [input.documentId, result]); return result;
+      await tx.query('UPDATE pdf_documents SET body=body || $2::jsonb WHERE document_id=$1', [input.documentId, result]); return result;
     });
     return document(identity, scope, input.documentId);
   }
@@ -122,7 +157,21 @@ export function createPdfMaterials(storage: OwnedStorage, host: WorkspaceMateria
   }
   async function read(identity: SpaceIdentity, scopeInput: MaterialScopeInput, value: unknown): Promise<ScopedPdfReading> {
     const { scope } = await access.open(identity, scopeInput);
-    const input = pdfReadInputSchema.parse(value), fingerprint = digest({ ...materialScopeKey(scope), input });
+    const { preview, ...input } = readInput.parse(value);
+    const makeReading = async (source: Awaited<ReturnType<typeof original>>) => scopedPdfReadingSchema.parse({
+      readingId: input.requestId, ...materialPlacement(scope), documentId: input.documentId,
+      documentSha256: source.document.sha256, documentName: source.document.name,
+      coordinates: 'rotated-cropbox-top-left-normalized', requestedPages: input.pages, region: input.region,
+      pages: await renderPages(source, input.pages, input.region),
+    });
+    if (preview) {
+      const source = await original(identity, scope, input.documentId);
+      if (source.document.state !== 'ready' || source.document.removedAt || input.region) throw new StorageError('invalid');
+      const result = await makeReading(source);
+      await access.open(identity, scope);
+      return result;
+    }
+    const fingerprint = digest({ ...materialScopeKey(scope), input });
     const prior = await storage.receipt('pdf-read:' + input.requestId, fingerprint);
     if (prior) {
       const saved = await reading(identity, scope, input.requestId);
@@ -140,11 +189,7 @@ export function createPdfMaterials(storage: OwnedStorage, host: WorkspaceMateria
     let retained: Uint8Array | null = null;
     try { retained = await storage.readResource(input.requestId); }
     catch (error) { if (!(error instanceof StorageError) || !['missing', 'resource-gone'].includes(error.code)) throw error; }
-    const body = retained ? scopedPdfReadingSchema.parse(JSON.parse(Buffer.from(retained).toString('utf8')))
-      : scopedPdfReadingSchema.parse({ readingId: input.requestId, ...materialPlacement(scope), documentId: input.documentId,
-        documentSha256: source.document.sha256, documentName: source.document.name,
-        coordinates: 'rotated-cropbox-top-left-normalized', requestedPages: input.pages, region: input.region,
-        pages: await renderPdf(source.bytes, input.pages, input.region) });
+    const body = retained ? scopedPdfReadingSchema.parse(JSON.parse(Buffer.from(retained).toString('utf8'))) : await makeReading(source);
     if (body.readingId !== input.requestId || !materialHasScope(body, scope) || body.documentId !== input.documentId
       || digest(body.requestedPages) !== digest(input.pages) || digest(body.region) !== digest(input.region)
       || body.documentSha256 !== source.document.sha256) throw new StorageError('corrupt');
@@ -185,7 +230,7 @@ export function createPdfMaterials(storage: OwnedStorage, host: WorkspaceMateria
       truncated, textOrigin: 'native', ocr: 'not-performed', imagesSent: false, coordinates: 'utf16-code-units' });
   }
   return { upload: (identity: SpaceIdentity, scope: MaterialScopeInput, value: unknown) => receive(identity, scope, pdfUploadSchema.parse(value)),
-    importCourse, list, document, original, read, reading, find };
+    importCourse, list, document, original, read, reading, find, remove };
 }
 
 /** A pure owner read, also used by isolated restore; it cannot create or render a page. */

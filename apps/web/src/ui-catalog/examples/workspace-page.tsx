@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import {
   WorkspaceChatInput, WorkspaceChatPaneView, WorkspaceDockedChat, WorkspaceFloatingChat, WorkspaceHeader,
   WorkspaceMissingTask, WorkspacePinnedCardsColumn, WorkspacePinnedGeneratedCard, WorkspacePinnedLearningCard,
-  WorkspaceResourceLibrary, WorkspaceResourceList, WorkspaceResourceRow, WorkspaceTaskIntro, WorkspaceToast, WorkspaceToolkitPending,
+  WorkspaceResourceLibrary, WorkspaceResourceList, WorkspaceResourceMenu, WorkspaceResourceRow, WorkspaceTaskIntro, WorkspaceToast, WorkspaceToolkitPending,
 } from '@xunjie/ui/workspace'
 import { Button } from '@xunjie/ui/foundation'
 import { GenCard, type ChatMessageData, type GenCardData, type GenHostFactory } from '@xunjie/ui/chat'
@@ -162,9 +162,11 @@ function ResourceLibraryDemo({ empty = false }: { empty?: boolean }) {
     actions={<Button type="button" variant="outline" onClick={() => setNotice('已触发示例添加')}>添加笔记</Button>}>
     {empty ? <p className="detail">还没有个人笔记。</p> : <WorkspaceResourceList label="示例资料列表">
       <WorkspaceResourceRow name="课前阅读.pdf" detail="3 页" current onOpen={() => setNotice('已打开示例 PDF')} />
-      <WorkspaceResourceRow name="实验记录" detail="第 2 版 · Markdown" actions={
-        <Button type="button" variant="outline" onClick={() => setNotice('已打开示例笔记')}>打开</Button>
-      } />
+      <WorkspaceResourceRow name="实验记录" detail="第 2 版 · Markdown" onOpen={() => setNotice('已打开示例笔记')}
+        actions={<WorkspaceResourceMenu name="实验记录" items={[
+          { label: '更新', onSelect: () => setNotice('已触发示例更新') },
+          { label: '移除', onSelect: () => setNotice('已触发示例移除') },
+        ]} />} />
     </WorkspaceResourceList>}
     {notice && <output>{notice}</output>}
   </WorkspaceResourceLibrary>
@@ -187,4 +189,5 @@ export const workspacePageEntries: CatalogEntry[] = [
   { id: 'workspace-resource-library', name: 'WorkspaceResourceLibrary', description: '资料页共用标题、操作栏与内容栏。', importPath: workspacePageViews, source: resourceSource, exampleSource, props: ['title, description, actions?, busy?, children'], dependencies: ['列表状态由宿主提供'], states: [{ id: 'list', name: '有资料', component: ResourceLibraryDemo }, { id: 'empty', name: '空列表', component: ResourceLibraryEmpty }] },
   { id: 'workspace-resource-list', name: 'WorkspaceResourceList', description: '共用文件行间距和列表语义。', importPath: workspacePageViews, source: resourceSource, exampleSource, props: ['label?, children'], dependencies: ['文件行由宿主传入'], states: [{ id: 'list', name: '资料列表', component: ResourceLibraryDemo }] },
   { id: 'workspace-resource-row', name: 'WorkspaceResourceRow', description: '统一文件名、详情和可选行内操作。', importPath: workspacePageViews, source: resourceSource, exampleSource, props: ['name, detail?, actions?, current?, disabled?, onOpen?'], dependencies: ['打开与管理操作由宿主提供'], states: [{ id: 'rows', name: '打开与行内操作', component: ResourceLibraryDemo }] },
+  { id: 'workspace-resource-menu', name: 'WorkspaceResourceMenu', description: '文件行的更多操作菜单。', importPath: workspacePageViews, source: resourceSource, exampleSource, props: ['name, disabled?, items'], dependencies: ['菜单命令由宿主提供'], states: [{ id: 'actions', name: '更多操作', component: ResourceLibraryDemo }] },
 ]

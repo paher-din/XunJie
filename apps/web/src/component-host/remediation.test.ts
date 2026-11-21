@@ -58,7 +58,7 @@ it('strict v1 consumers accept complete success/error envelopes and reject missi
   expect(componentHostMessageSchema.safeParse({ hostApiVersion: 1, ...context, replyTo: request.messageId, payload: {} }).success).toBe(false)
 })
 
-it('public workspace mutations protect component identities and reserved paths while ordinary rename works', () => {
+it('public workspace mutations protect component identities and reserved paths while ordinary rename works', async () => {
   const activityId = crypto.randomUUID()
   const workspace = new ReliableWorkspace('protected-files', { read: vi.fn(), receipt: vi.fn(), sync: vi.fn() }, { activityId, bindings: [binding] })
   const state = { objectId: crypto.randomUUID(), contentId: crypto.randomUUID(), name: 'components/notes.json', kind: 'state' as const,
@@ -67,7 +67,7 @@ it('public workspace mutations protect component identities and reserved paths w
       definitionDigest: binding.definition.digest, operationId: crypto.randomUUID(), content: { text: '原始状态' } }) }
   workspace.state = { ...workspace.state, files: [state], ready: true }
   expect(() => workspace.rename(state.objectId, 'renamed.json')).toThrow()
-  expect(() => workspace.remove(state.objectId)).toThrow()
+  await expect(workspace.remove(state.objectId)).rejects.toThrow('状态对象不可作为普通文件删除')
   expect(() => workspace.edit(state.objectId, '{}')).toThrow()
   expect(() => workspace.change([{ ...state, objectId: crypto.randomUUID() }])).toThrow()
   expect(() => workspace.create('components/notes.json', 'text')).toThrow()

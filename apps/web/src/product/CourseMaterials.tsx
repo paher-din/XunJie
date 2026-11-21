@@ -5,25 +5,21 @@ import { questionReferenceSourceId, type QuestionReferenceSource } from '@xunjie
 import { Button } from '@xunjie/ui/foundation'
 import { WorkspaceResourceLibrary } from '@xunjie/ui/workspace'
 import { cacheableMaterial, materialCache } from '../component-preparation/materials'
-import { locateTextRange, TextReferenceSource, useWorkspaceReferences, type LocateResult } from '../components/workspace/references'
+import { locateDomRange, locateTextRange, useTextReferenceSource, useWorkspaceReferences, type LocateResult } from '../components/workspace/references'
+import { renderedMarkdownRange, selectedMarkdownOffsets } from './courseMarkdownSelection'
 import { workspaceScope } from './learningTransport'
 import { materialLinks } from './material-links'
 import './course-material-reader.css'
 
 const CourseMarkdown = lazy(() => import('./CourseMarkdown').catch(() => ({
-  default: ({ text }: { text: string }) => <>
-    <p className="detail" role="status">排版预览暂不可用，刷新后可重试。以下为材料原文。</p>
-    <pre className="course-reader-plain">{text}</pre>
-  </>,
+  default: ({ text }: { text: string }) => <pre className="course-reader-plain">{text}</pre>,
 })))
 type CourseSource = Extract<QuestionReferenceSource, { kind: 'course-material' }>
-type Mode = 'preview' | 'source'
 export type CourseMaterialRange = { start: number; end: number; copy?: string }
 type Reading = {
   scope: string
   material: CourseMaterial
   source: CourseSource
-  mode: Mode
 } & ({ state: 'loading' } | { state: 'ready'; text: string } | { state: 'error'; reason: string })
 
 export function isCoursePdf(mediaType: string) {
@@ -71,7 +67,7 @@ export function useCourseMaterials({ activity, spaceKey, namespace, authorized, 
   access.current = { scope, authorized }
   useEffect(() => () => { ++sequence.current }, [scope, authorized])
 
-  async function show(materialId: string, mode: Mode, position?: { range?: CourseMaterialRange }): Promise<LocateResult> {
+  async function show(materialId: string, position?: { range?: CourseMaterialRange }): Promise<LocateResult> {
     if (!authorized) return { ok: false, reason: '请重新连接学习空间。引用副本仍保留。' }
     const material = course?.materials.find(item => item.materialId === materialId && cacheableMaterial(item.mediaType))
     if (!course || !material) return { ok: false, reason: '这份材料当前无法读取。引用副本仍保留。' }
@@ -84,7 +80,7 @@ export function useCourseMaterials({ activity, spaceKey, namespace, authorized, 
     if (!isCurrent()) return interrupted
     if (scroll.current) scroll.current.scrollTop = 0
 
-    const entry = { scope, material, source, mode }
+    const entry = { scope, material, source }
     let text: string
     if (currentReading?.state === 'ready' && sameSource(currentReading.source, source)) text = currentReading.text
     else {
@@ -108,14 +104,14 @@ export function useCourseMaterials({ activity, spaceKey, namespace, authorized, 
       await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
       if (!isCurrent()) return interrupted
       const container = scroll.current
-      const original = container?.querySelector<HTMLElement>('[data-course-material-original]')
-      if (original?.dataset.courseMaterialOriginal !== sourceId) continue
-      const target = original.querySelector<HTMLElement>('.wr-text-source')
-      if (!target || target.textContent !== text) continue
-      if (range && !locateTextRange(target, range.start, range.end, container ?? undefined))
-        return { ok: false, reason: '原选段当前无法定位。引用副本仍保留。' }
-      if (!range) target.focus()
-      return { ok: true }
+      const target = container?.querySelector<HTMLElement>('[data-course-material-body]')
+      if (!target || target.dataset.courseMaterialBody !== sourceId) continue
+      if (!range) { target.focus(); return { ok: true } }
+      if (target.textContent === text && locateTextRange(target, range.start, range.end, container ?? undefined)) return { ok: true }
+      if (!target.querySelector('.course-reader-markdown')) continue
+      const rendered = renderedMarkdownRange(target, text, range.start, range.end)
+      return rendered && locateDomRange(target, rendered, container ?? undefined)
+        ? { ok: true } : { ok: false, reason: '原选段当前无法在预览中定位。引用副本仍保留。' }
     }
     return isCurrent() ? { ok: false, reason: '已读取原文，当前无法打开原选段。' } : interrupted
   }
@@ -124,7 +120,7 @@ export function useCourseMaterials({ activity, spaceKey, namespace, authorized, 
     const item = course?.materials.find(material => material.materialId === source.materialId)
     if (!course || !item || !sameSource(sourceOf(course, item), source))
       return Promise.resolve({ ok: false, reason: '课程材料版本不一致。引用副本仍保留。' })
-    return show(item.materialId, 'source', { range })
+    return show(item.materialId, { range })
   }
 
   const latest = useRef(locate)
@@ -146,18 +142,36 @@ export function useCourseMaterials({ activity, spaceKey, namespace, authorized, 
 
   return {
     reading: currentReading, scroll,
-    open: (materialId: string) => show(materialId, 'preview'),
+    open: (materialId: string) => show(materialId),
     close: () => { ++sequence.current; setReading(null) },
-    retry: () => currentReading && show(currentReading.material.materialId, currentReading.mode),
+    retry: () => currentReading && show(currentReading.material.materialId),
     locate,
-    locateResult: (materialId: string, range?: CourseMaterialRange) => show(materialId, 'source', { range }),
-    setMode: (mode: Mode) => {
-      if (currentReading?.state !== 'ready' || currentReading.mode === mode) return
-      ++sequence.current
-      setReading(previous => previous?.state === 'ready' && previous.scope === scope ? { ...previous, mode } : previous)
-      if (scroll.current) scroll.current.scrollTop = 0
-    },
+    locateResult: (materialId: string, range?: CourseMaterialRange) => show(materialId, { range }),
   }
+}
+
+function CourseMaterialBody({ reading }: { reading: Extract<Reading, { state: 'ready' }> }) {
+  const markdown = /\.(md|markdown)$/i.test(reading.material.title)
+    || reading.material.mediaType.split(';', 1)[0].trim().toLowerCase() === 'text/markdown'
+  const links = markdown ? [] : materialLinks(reading.text)
+  const sourceId = questionReferenceSourceId(reading.source)
+  const body = useRef<HTMLDivElement>(null)
+  useTextReferenceSource(body, sourceId, reading.material.title, reading.text, reading.source, {
+    registerSource: false, renderedOffsets: markdown ? selectedMarkdownOffsets : undefined,
+  })
+  return <>
+    {links.length > 0 && <details className="course-reader-links">
+      <summary>打开补学资料来源</summary>
+      <ul>{links.map(link => <li key={link.href}><a href={link.href} target="_blank" rel="noopener noreferrer">{link.label}</a></li>)}</ul>
+    </details>}
+    <div className="course-reader-body" role="document" tabIndex={0} aria-label={reading.material.title}
+      data-course-material-body={sourceId} ref={body}>
+      {!reading.text.trim() ? <p className="detail">这份材料没有正文。</p>
+        : markdown ? <Suspense fallback={<p className="detail" role="status">正在排版…</p>}>
+          <CourseMarkdown text={reading.text} />
+        </Suspense> : <pre className="course-reader-plain">{reading.text}</pre>}
+    </div>
+  </>
 }
 
 export function CourseMaterialReader({ reader, library, title, description }: {
@@ -165,19 +179,10 @@ export function CourseMaterialReader({ reader, library, title, description }: {
 }) {
   const { reading } = reader
   if (!reading) return <WorkspaceResourceLibrary title={title} description={description}>{library}</WorkspaceResourceLibrary>
-  const markdown = /\.(md|markdown)$/i.test(reading.material.title)
-    || reading.material.mediaType.split(';', 1)[0].trim().toLowerCase() === 'text/markdown'
-  const links = reading.state === 'ready' && reading.mode === 'source' ? materialLinks(reading.text) : []
   return <section className="course-reader" aria-label="课程材料阅读">
     <header className="course-reader-header">
       <h2>{reading.material.title}</h2>
-      <div className="course-reader-actions">
-        <Button type="button" variant="outline" onClick={reader.close}>返回材料列表</Button>
-        {reading.state === 'ready' && <div className="course-reader-modes" role="group" aria-label="材料视图">
-          <Button type="button" variant="outline" aria-pressed={reading.mode === 'preview'} onClick={() => reader.setMode('preview')}>预览</Button>
-          <Button type="button" variant="outline" aria-pressed={reading.mode === 'source'} onClick={() => reader.setMode('source')}>原文与引用</Button>
-        </div>}
-      </div>
+      <Button type="button" variant="outline" onClick={reader.close}>返回材料列表</Button>
     </header>
     <div className="course-reader-scroll" ref={reader.scroll}>
       {reading.state === 'loading' ? <p className="detail" role="status">正在读取材料…</p>
@@ -185,19 +190,7 @@ export function CourseMaterialReader({ reader, library, title, description }: {
           <p role="alert">{reading.reason}</p>
           <Button type="button" variant="outline" onClick={() => void reader.retry()}>重新读取</Button>
         </div>
-        : reading.mode === 'source' ? <article className="course-reader-original" data-course-material-original={questionReferenceSourceId(reading.source)}>
-          <p className="detail">选中一段原文，即可引用到 Agent 提问。</p>
-          {links.length > 0 && <details className="course-reader-links">
-            <summary>打开补学资料来源</summary>
-            <ul>{links.map(link => <li key={link.href}><a href={link.href} target="_blank" rel="noopener noreferrer">{link.label}</a></li>)}</ul>
-          </details>}
-          <TextReferenceSource sourceId={questionReferenceSourceId(reading.source)} sourceName={reading.material.title}
-            text={reading.text} source={reading.source} registerSource={false} />
-        </article>
-        : !reading.text.trim() ? <p className="detail">这份材料没有正文。</p>
-        : markdown ? <Suspense fallback={<p className="detail" role="status">正在排版…</p>}>
-          <CourseMarkdown text={reading.text} />
-        </Suspense> : <pre className="course-reader-plain">{reading.text}</pre>}
+        : <CourseMaterialBody reading={reading} />}
     </div>
   </section>
 }

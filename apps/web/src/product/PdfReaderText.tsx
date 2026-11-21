@@ -1,4 +1,7 @@
 import { useEffect, useState, useRef, type RefObject } from 'react'
+import { toast } from '@xunjie/ui/feedback'
+import { Button } from '@xunjie/ui/foundation'
+import { Icon } from '@xunjie/ui/icons'
 import type { PdfDocument, PdfPage } from '@xunjie/contracts/pdf-materials'
 import type { openPdfText } from './pdfTextEngine'
 
@@ -86,7 +89,9 @@ export function PdfReaderText({ open, page, width, frame, onLayout }: {
 }
 
 const highlightName = 'xunjie-pdf-find'
+const activeHighlightName = 'xunjie-pdf-find-active'
 const matchLimit = 500
+const emptyFind = { matches: [] as Range[], index: 0, loading: false, unavailable: false }
 
 function findPageText(layer: HTMLElement, pattern: RegExp, limit: number, cropped: boolean): Range[] {
   const runs: { node: Text; start: number; end: number }[] = []
@@ -119,15 +124,21 @@ function findPageText(layer: HTMLElement, pattern: RegExp, limit: number, croppe
   return matches
 }
 
+function revealPdfMatch(area: HTMLDivElement, range: Range) {
+  const match = range.getBoundingClientRect(), bounds = area.getBoundingClientRect()
+  if (match.top < bounds.top + 52 || match.bottom > bounds.bottom - 12)
+    area.scrollBy({ top: match.top - bounds.top - 68 })
+  if (match.left < bounds.left + 12 || match.right > bounds.right - 12)
+    area.scrollBy({ left: match.left - bounds.left - 24 })
+}
+
 export function usePdfTextFind(viewport: RefObject<HTMLDivElement | null>, readingId: string | undefined,
   query: string, layout: number, cropped: boolean) {
-  const [result, setResult] = useState({ count: 0, loading: false, unavailable: false })
-  const firstMatch = useRef<Range | undefined>(undefined)
+  const [result, setResult] = useState(emptyFind)
   useEffect(() => {
-    firstMatch.current = undefined
     const value = query.trim()
     const area = viewport.current
-    if (!area || !value || !readingId) { setResult({ count: 0, loading: false, unavailable: false }); return }
+    if (!area || !value || !readingId) { setResult(emptyFind); return }
     const pattern = new RegExp(value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'giu')
     const matches: Range[] = []
     const layers = Array.from(area.querySelectorAll<HTMLElement>('.pdf-page-text'))
@@ -135,8 +146,7 @@ export function usePdfTextFind(viewport: RefObject<HTMLDivElement | null>, readi
       matches.push(...findPageText(layer, pattern, matchLimit - matches.length, cropped))
       if (matches.length >= matchLimit) break
     }
-    firstMatch.current = matches[0]
-    setResult({ count: matches.length, loading: layers.some(layer => layer.dataset.textState === 'loading'),
+    setResult({ matches, index: 0, loading: layers.some(layer => layer.dataset.textState === 'loading'),
       unavailable: layers.length > 0 && layers.every(layer => layer.dataset.textState === 'unavailable') })
     if (!globalThis.Highlight || !CSS.highlights) return
     const highlight = new Highlight(...matches)
@@ -145,13 +155,95 @@ export function usePdfTextFind(viewport: RefObject<HTMLDivElement | null>, readi
       if (CSS.highlights.get(highlightName) === highlight) CSS.highlights.delete(highlightName)
     }
   }, [viewport, readingId, query, layout, cropped])
-  return { ...result, count: result.count >= matchLimit ? `${matchLimit}+` : result.count, revealMatch() {
+
+  const active = result.matches[result.index]
+  useEffect(() => {
     const area = viewport.current
-    if (!area || !firstMatch.current) return
-    const match = firstMatch.current.getBoundingClientRect(), bounds = area.getBoundingClientRect()
-    if (match.top < bounds.top + 12 || match.bottom > bounds.bottom - 12)
-      area.scrollBy({ top: match.top - bounds.top - 24 })
-    if (match.left < bounds.left + 12 || match.right > bounds.right - 12)
-      area.scrollBy({ left: match.left - bounds.left - 24 })
-  } }
+    if (!area || !active) return
+    revealPdfMatch(area, active)
+    if (!globalThis.Highlight || !CSS.highlights) return
+    const highlight = new Highlight(active)
+    highlight.priority = 1
+    CSS.highlights.set(activeHighlightName, highlight)
+    return () => {
+      if (CSS.highlights.get(activeHighlightName) === highlight) CSS.highlights.delete(activeHighlightName)
+    }
+  }, [active, viewport])
+
+  const count = result.matches.length
+  return { count, total: count >= matchLimit ? `${matchLimit}+` : String(count),
+    position: result.index + 1, loading: result.loading, unavailable: result.unavailable,
+    step(delta: -1 | 1) {
+      if (count === 1 && active && viewport.current) revealPdfMatch(viewport.current, active)
+      setResult(previous => {
+        const length = previous.matches.length
+        return length > 1 ? { ...previous, index: (previous.index + delta + length) % length } : previous
+      })
+    } }
+}
+
+type CopySelection = { text: string; left: number; top: number; above: boolean }
+
+function findCopySelection(area: HTMLDivElement): CopySelection | null {
+  const selection = document.getSelection()
+  if (!selection || selection.isCollapsed || !selection.rangeCount || !selection.anchorNode || !selection.focusNode) return null
+  const layer = selection.anchorNode.parentElement?.closest('.pdf-page-text[data-text-state="ready"]')
+  if (!layer || !area.contains(layer) || !layer.contains(selection.focusNode)) return null
+  const frame = layer.closest('.pdf-page-image')
+  if (!frame) return null
+  const page = frame.getBoundingClientRect(), bounds = area.getBoundingClientRect()
+  const rect = Array.from(selection.getRangeAt(0).getClientRects()).find(rect =>
+    rect.width > 0 && rect.height > 0
+      && rect.right > Math.max(page.left, bounds.left) && rect.left < Math.min(page.right, bounds.right)
+      && rect.bottom > Math.max(page.top, bounds.top) && rect.top < Math.min(page.bottom, bounds.bottom))
+  const text = selection.toString()
+  if (!rect || !text.trim()) return null
+  const above = rect.top - bounds.top >= 48
+  return { text, above, left: Math.max(rect.left, page.left) - bounds.left,
+    top: (above ? rect.top - 6 : Math.min(rect.bottom + 6, bounds.bottom - 40)) - bounds.top }
+}
+
+export function PdfSelectionCopy({ viewport, readingId, scale, enabled }: {
+  viewport: RefObject<HTMLDivElement | null>; readingId?: string; scale: number; enabled: boolean
+}) {
+  const [selection, setSelection] = useState<CopySelection | null>(null)
+  useEffect(() => {
+    const area = viewport.current
+    if (!area || !enabled || !readingId) { setSelection(null); return }
+    let frame = 0, dragging = false
+    const sync = () => {
+      cancelAnimationFrame(frame)
+      if (!dragging) frame = requestAnimationFrame(() => setSelection(findCopySelection(area)))
+    }
+    const start = () => { dragging = true; setSelection(null); cancelAnimationFrame(frame) }
+    const end = () => { if (dragging) { dragging = false; sync() } }
+    const observer = new ResizeObserver(sync)
+    observer.observe(area)
+    area.addEventListener('pointerdown', start)
+    area.addEventListener('scroll', sync, { passive: true })
+    document.addEventListener('pointerup', end)
+    document.addEventListener('pointercancel', end)
+    document.addEventListener('selectionchange', sync)
+    sync()
+    return () => {
+      cancelAnimationFrame(frame)
+      observer.disconnect()
+      area.removeEventListener('pointerdown', start)
+      area.removeEventListener('scroll', sync)
+      document.removeEventListener('pointerup', end)
+      document.removeEventListener('pointercancel', end)
+      document.removeEventListener('selectionchange', sync)
+    }
+  }, [viewport, readingId, enabled, scale])
+  if (!enabled || !selection || !readingId) return null
+  return <Button type="button" variant="outline" className="pdf-selection-copy" aria-label="复制选中文字"
+    data-above={selection.above} style={{ left: `clamp(6px, ${selection.left}px, calc(100% - 86px))`, top: selection.top }}
+    onPointerDown={event => event.preventDefault()} onClick={async () => {
+      try {
+        await navigator.clipboard.writeText(selection.text)
+        toast.success('已复制选中文字')
+      } catch { toast.error('无法访问剪贴板，请使用浏览器的复制快捷键。') }
+    }}>
+    <Icon name="copy" size={14} />复制
+  </Button>
 }

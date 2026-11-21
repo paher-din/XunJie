@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { learningOwner, learningHttp } from './support/learning-owner.mjs';
 import { fixedPdf } from './fixtures/pdf-material.mjs';
 
-test('formal activity material upload retains a real PDF and its actual page order after restart', { timeout: 180000 }, async t => {
+test('activity PDF removal survives restart and preserves the fixed reading and draft', { timeout: 180000 }, async t => {
   const f = await learningOwner(t);
   const http = () => learningHttp(t, { identity: f.identity, spaces: f.spaces, data: f.data, target: f.target });
   let current = await http();
@@ -18,7 +18,12 @@ test('formal activity material upload retains a real PDF and its actual page ord
   assert.equal(document.pageCount, 2);
   assert.deepEqual(document.pageLabels, ['Cover', '7']);
   assert.deepEqual(await api(route, input), document, 'lost confirmation reuses the exact upload');
-  const reading = await api(route + '/read', { requestId: randomUUID(), documentId: input.documentId, pages: [2], region: null });
+  const previewId = randomUUID();
+  const preview = await api(route + '/read', { requestId: previewId, documentId: input.documentId, pages: [2], region: null, preview: true });
+  assert.equal(preview.readingId, previewId);
+  assert.equal(await api(route + '/reads/' + previewId), null, 'prefetch never creates a fixed reading');
+  const reading = await api(route + '/read', { requestId: previewId, documentId: input.documentId, pages: [2], region: null });
+  assert.deepEqual(reading.pages, preview.pages, 'an explicit reading can reuse the same rendered pages');
   assert.equal(reading.pages[0].page, 2);
   assert.match(reading.pages[0].text, /Fixed evidence: 37 volts/);
   assert.equal(reading.pages[0].textOrigin, 'native');
@@ -37,5 +42,18 @@ test('formal activity material upload retains a real PDF and its actual page ord
   await f.reopen(); current = await http();
   assert.deepEqual(await api(route + '/reads/' + reading.readingId), reading);
   assert.deepEqual(await api(route), [document]);
+  assert.deepEqual(await api(`drafts/${activity.activityId}`), savedDraft);
+  const other = await api('activities', { requestId: randomUUID(), goal: 'Another activity', question: '', references: [] });
+  const removePath = '/documents/' + document.documentId + '/remove';
+  const remove = { requestId: randomUUID() };
+  assert.equal((await call('pdf/' + other.activityId + removePath, remove)).status, 404);
+  const removed = await api(route + removePath, remove);
+  assert.ok(removed.removedAt);
+  assert.deepEqual(await api(route + removePath, remove), removed);
+  assert.deepEqual(await api(route, input), removed, 'replaying the upload cannot restore a removed entry');
+  await f.reopen(); current = await http();
+  assert.deepEqual(await api(route), []);
+  assert.deepEqual(await api(route + '/reads/' + reading.readingId), reading);
+  assert.deepEqual(await api(route + '/originals/' + document.documentId), { document: removed, dataBase64: input.dataBase64 });
   assert.deepEqual(await api(`drafts/${activity.activityId}`), savedDraft);
 });

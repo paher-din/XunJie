@@ -4,12 +4,26 @@ import { agentConversationSchema, type AgentConversation, type AgentSessionPort 
 import { agentCitationSchema } from '@xunjie/contracts/agent-citations';
 import { operationId } from '@xunjie/storage/identity';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
+import { modelMessageImagesSchema, type ModelMessageImage } from '@xunjie/contracts/model-connections';
+import { questionReferenceSourceSchema } from '@xunjie/contracts/question-drafts';
 import { importedAgentConversation } from './legacy-agent-history.js';
 
 type Message = AgentConversation['messages'][number];
 const record = (value: unknown): Record<string, unknown> =>
   value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
 const uuid = z.uuid();
+
+function inputImages(context: Record<string, unknown>): ModelMessageImage[] {
+  const references = record(record(context.action).draft).references;
+  if (!Array.isArray(references)) return modelMessageImagesSchema.safeParse(context.messageImages).data ?? [];
+  const images = references.flatMap(reference => {
+    const source = record(record(reference).source);
+    if (source.kind !== 'image') return [];
+    const parsed = questionReferenceSourceSchema.safeParse(source);
+    return parsed.data?.kind === 'image' ? [parsed.data.image] : [];
+  });
+  return modelMessageImagesSchema.safeParse(images).data ?? [];
+}
 
 /** Product projection over kernel facts: inputs, turns, tool calls and streamed assistant text. */
 export function createAgentConversationProjection(runtime: Pick<AgentSessionPort, 'events' | 'sessionSnapshot'>) {
@@ -187,8 +201,11 @@ export function createAgentConversationProjection(runtime: Pick<AgentSessionPort
       return agentConversationSchema.parse({ sessionId, lastSeq: events.at(-1)?.seq ?? after,
         messages: [...messages.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.messageId.localeCompare(b.messageId)),
         turns: [...archive?.turns ?? [], ...snapshot.turns],
-        inputs: [...archive?.inputs ?? [], ...snapshot.inputs.map(input => ({ inputId: input.inputId, turnId: input.turnId, version: input.version,
-          state: input.state, text: input.input.text, createdAt: input.createdAt, canEdit: input.inputId === editableInput }))],
+        inputs: [...archive?.inputs ?? [], ...snapshot.inputs.map(input => {
+          const images = input.state === 'removed' ? [] : inputImages(input.input.context);
+          return { inputId: input.inputId, turnId: input.turnId, version: input.version, state: input.state,
+            text: input.input.text, createdAt: input.createdAt, canEdit: input.inputId === editableInput, ...(images.length ? { images } : {}) };
+        })],
         questions: snapshot.questions.filter(question => !retired.has(question.turnId)), tools, workspaces,
         thinking: [...thinking.values()], ...(projectedCitations.length ? { citations: projectedCitations } : {}),
         ...(contextUsage ? { contextUsage } : {}), ...(after === 0 ? { reset: true } : {}) });

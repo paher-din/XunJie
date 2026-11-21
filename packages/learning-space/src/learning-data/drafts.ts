@@ -143,6 +143,10 @@ export function createQuestionDrafts(storage: OwnedStorage, options: {
     const used = new Set<string>();
     for (const reference of input.references) {
       const source = reference.source;
+      if (source.kind === 'image') {
+        if (source.activityId !== activity.activityId) return fail('invalid');
+        continue;
+      }
       if (source.kind === 'pdf') {
         await verifyPdfReference(storage, activity.activityId, reference);
         continue;

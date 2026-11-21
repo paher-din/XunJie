@@ -8,6 +8,7 @@ export function provisionStorage(options: {
   admin: DatabaseConnection; owner: StorageOwner; password: string; migrations: readonly Migration[];
 }): Promise<StorageBinding> { return provision(options); }
 export { openStorage } from './storage.js';
+export { formerMigrationVersions } from './database.js';
 export { prepareStorageRestore, finalizeStorageRestore } from './restore.js';
 export { StorageError } from './errors.js';
 export { supportedPostgresVersions, isSupportedPostgresVersion } from './postgres-policy.js';

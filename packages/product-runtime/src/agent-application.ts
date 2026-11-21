@@ -102,7 +102,7 @@ export function createStandaloneAgentApplication(options: {
       }
       if (!session.workspace) throw new StorageError('forbidden');
       const activity = activitySchema.parse(await ports.workspace());
-      return { workspace: { workspace: async () => ports.workspace(), learning: ports.learning, courses: ports.courses },
+      return { workspace: { workspace: async () => ports.workspace(), learning: ports.learning, courses: ports.courses, models: ports.models },
         tools: input => ports.tools({ sessionId: input.sessionId, turnId: input.turnId, stepId: input.stepId,
           toolCallId: operationId('agent-step-tools:' + input.stepId),
           context: { system: '', facts: { workspace: JSON.parse(JSON.stringify(activity)) }, sources: [] }, inputIds: [...input.inputIds], sessionState: input.sessionState }) };

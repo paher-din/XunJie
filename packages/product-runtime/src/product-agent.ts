@@ -158,6 +158,9 @@ export function createProductAgent(options: ProductAgentOptions) {
       return { ...prepared, facts: scene.modelFacts ? scene.modelFacts(prepared.facts) : prepared.facts };
     },
     async tools(input) { return (await sceneFor(input.identity, input.sessionId)).tools(input); },
+    async messageImages(input, contexts, route) {
+      return (await sceneFor(input.identity, input.sessionId)).messageImages?.(input, contexts, route);
+    },
     async authorizeHistory(input, history) {
       const scene = await sceneFor(input.identity, input.sessionId);
       if (!scene.authorizeHistory) return [...history];

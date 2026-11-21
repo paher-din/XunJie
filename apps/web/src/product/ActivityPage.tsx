@@ -1,9 +1,9 @@
 import { ChatViewport, BackToBottom } from '@xunjie/ui/chat'
 import * as Dialog from '@radix-ui/react-dialog'
 import { useConversationScroll } from './conversation-scroll'
-import { useCallback, useEffect, useImperativeHandle, useRef, useState, useSyncExternalStore, type ReactNode, type Ref, type RefObject } from 'react'
+import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode, type Ref, type RefObject } from 'react'
 import { toast } from '@xunjie/ui/feedback'
-import { StatusChip } from '@xunjie/ui/foundation'
+import { Button, StatusChip } from '@xunjie/ui/foundation'
 import { GuidancePresentation, SideDock, TaskInfo } from '@xunjie/ui/workspace'
 import { courseReleaseSchema } from '@xunjie/contracts/courses'
 import { workFileSchema, type LearningActivity } from '@xunjie/contracts/learning-data'
@@ -19,6 +19,7 @@ import { useActivitySession } from './ActivitySession'
 import { WorkspacePopover } from '../components/workspace/WorkspacePopover'
 import { SelectionToolbar, useWorkspaceReferences } from '../components/workspace/references'
 import { ActivityWorkspace, type ActivityWorkspaceHandle } from './ActivityWorkspace'
+import { WorkspaceStatus } from './WorkspaceStatus'
 import { ActivityActions } from './ActivityActions'
 import { ActivityConversation } from './ActivityConversation'
 import { ExecutionPanel } from './ExecutionPanel'
@@ -78,6 +79,26 @@ async function focusLocation(root: HTMLDivElement | null, selector: string) {
 }
 import { RuntimeTool, type ComponentResultLocation } from './RuntimeTool'
 
+function PanelLeftOpenIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      className="ui-icon icon-tone-neutral"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <g fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth={1.5}>
+        <path d="M22 11C22 7.22876 22 5.34315 20.8284 4.17157C19.6569 3 17.7712 3 14 3H10C6.22876 3 4.34315 3 3.17157 4.17157C2 5.34315 2 7.22876 2 11V13C2 16.7712 2 18.6569 3.17157 19.8284C4.34315 21 6.22876 21 10 21H14C17.7712 21 19.6569 21 20.8284 19.8284C22 18.6569 22 16.7712 22 13V11Z" />
+        <path d="M9 21L9 3" />
+        <path strokeLinejoin="round" d="M14.2113 9L16.7827 12L14.2113 15" />
+      </g>
+    </svg>
+  )
+}
+
 /** The existing workspace container consumes the reliable session; it owns only layout and focus. */
 export function ActivityPage({ activity, spaceKey, namespace, authorized, nativeAvailable, workspaceRef, busy, onBack, onStatus, onRefresh,
   onModels, onAskHome, details, courseResources, account, requestedArtifactId, requestedExperiment, selection, taskInfoEntryRef, taskProgress }: {
@@ -97,7 +118,32 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
   const course = activity.course
   const courseWorkspace = !!course
   const [detailsOpen, setDetailsOpen] = useState(courseWorkspace)
+  const [detailsMounted, setDetailsMounted] = useState(courseWorkspace)
+  const hasToggledDetails = useRef(false)
   useEffect(() => { if (project.project) setDetailsOpen(true) }, [project.project])
+  useEffect(() => {
+    if (detailsOpen) {
+      setDetailsMounted(true)
+      return
+    }
+    if (!detailsMounted) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setDetailsMounted(false)
+      return
+    }
+    const timer = window.setTimeout(() => setDetailsMounted(false), 240)
+    return () => window.clearTimeout(timer)
+  }, [detailsOpen, detailsMounted])
+  const detailsToggle = useRef<HTMLButtonElement>(null)
+  const detailsCollapse = useRef<HTMLButtonElement>(null)
+  const detailsRailToggle = useRef<HTMLButtonElement>(null)
+  const returnDetailsFocus = useRef(false)
+  useLayoutEffect(() => {
+    if (!returnDetailsFocus.current) return
+    returnDetailsFocus.current = false
+    const target = detailsOpen ? detailsCollapse.current : (courseWorkspace ? detailsRailToggle.current : detailsToggle.current)
+    target?.focus({ preventScroll: true })
+  }, [detailsOpen])
   const [dockPanel, setDockPanel] = useState<'task' | 'stash' | null>(null)
   const [releaseDeadline, setReleaseDeadline] = useState<{ releaseId: string; deadlineAt?: string }>()
   const deadline = releaseDeadline?.releaseId === course?.releaseId ? releaseDeadline : undefined
@@ -388,12 +434,12 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
         : <div key={binding.key} style={{ height: '100%' }} data-component-key={binding.key} tabIndex={-1}>
           <ComponentView activity={activity} binding={binding} spaceKey={spaceKey} namespace={namespace} authorized={authorized} /></div>)]))
   const pdfContent = pdf.document && !pdf.document.courseSource
-    ? <PdfMaterials pdf={pdf} onBackToList={pdf.closeDocument} />
+    ? <PdfMaterials pdf={pdf} active={tool === PDF_TOOL && resourceSection === 'pdf'} onBackToList={pdf.closeDocument} />
     : <PersonalPdfLibrary pdf={pdf} />
   let courseContent: ReactNode = null
   if (resourceTitle) {
     courseContent = coursePdfOpen && pdf.document?.courseSource
-      ? <PdfMaterials pdf={pdf} onBackToList={() => {
+      ? <PdfMaterials pdf={pdf} active={tool === PDF_TOOL && resourceSection === 'course'} onBackToList={() => {
         pdf.closeDocument()
         courseMaterials.close()
         setCoursePdfOpen(false)
@@ -432,20 +478,32 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
       }).catch(() => toast.error('当前输入尚未保护，请保留页面后继续。'))}>{entry.artifact.title}</button>)}
   </div>
   const detailsLabel = course ? '目标与要求' : '学习目标'
-  const detailsEntry = <button type="button" className="ws-btn ghost" aria-expanded={detailsOpen}
+  const detailsCovered = () => references.open && window.matchMedia('(width < 1024px)').matches
+  const openDetails = () => {
+    hasToggledDetails.current = true
+    if (detailsCovered()) references.setOpen(false)
+    setDetailsOpen(true)
+  }
+  const personalDetailsEntry = !courseWorkspace && <button ref={detailsToggle} type="button" className="ws-btn ghost product-task-details-toggle" aria-expanded={detailsOpen}
     aria-controls={detailsOpen ? 'activity-details' : undefined} onClick={() => {
-      if (window.matchMedia('(width < 1024px)').matches && references.open) { references.setOpen(false); setDetailsOpen(true) }
-      else setDetailsOpen(value => !value)
+      hasToggledDetails.current = true
+      if (detailsOpen && !detailsCovered()) setDetailsOpen(false)
+      else openDetails()
     }}><IconText name="clipboard-text">{detailsLabel}</IconText></button>
+  const detailsContent = <>
+    {project.project ? <PersonalProjectPlan project={project.project} /> : details}
+    {project.error && <p role="alert">项目清单暂时无法读取。<button type="button" onClick={() => void project.retry()}>重试</button></p>}
+  </>
+  const detailsShellVisible = detailsOpen || detailsMounted
   return <div ref={root} className={'ws ws-organized product-workspace' + (references.open ? ' discussion-open' : '')}>
     <header className="ws-head">
       <button type="button" className="ws-navbtn" aria-label="返回活动列表" onClick={onBack}><Icon name="arrow-left" size={18} /></button>
       <div className="product-activity-title"><span>{activity.course?.courseName ?? '自主学习'}</span><h1 id="activity-title">{title}</h1></div>
       <div className="ws-head-utilities">
         <ActivitySubmission activity={activity} spaceKey={spaceKey} namespace={namespace} authorized={authorized}
-          workspace={workspace} artifacts={artifacts.entries} beforeFreeze={() => waitForComposerComposition(scope)}
+          workspace={workspace} execution={execution} artifacts={artifacts.entries} beforeFreeze={() => waitForComposerComposition(scope)}
           isComposing={() => [...artifacts.guards.values()].some(guard => guard.composing)} />
-        {detailsEntry}
+        {personalDetailsEntry}
         <button ref={ask} type="button" className="ws-btn ghost" aria-label={references.open ? '问题与引用' : '打开对话'}
           aria-expanded={references.open} onClick={() => references.setOpen(!references.open)}><IconText name="chat-round-dots">询问 Agent</IconText></button>
         {latestExperimentReference && onAskHome && <button type="button" className="ws-btn ghost"
@@ -460,14 +518,74 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
       </div>
     </header>
     {readOnly && <div role="status" className="product-workspace-notice">这是还原校验副本，作品与学习对话只读，不会启动 Agent 或实验；请由维护者完成接管后继续。</div>}
-    <div className="ws-commandbar"><div className="ws-head-tabs" ref={setTabsSlot} />
-      <span className="product-workspace-caption">{tool === PDF_TOOL ? '学习资料' : '当前作品'}
-        {activity.status === 'closed' ? ' · 活动已关闭' : ''}</span></div>
+    <div className="ws-commandbar">
+      <div className="ws-head-tabs" ref={setTabsSlot} />
+      <WorkspaceStatus closed={activity.status === 'closed'} hasTools={!!course?.components?.length} />
+    </div>
     <div className="ws-body" data-task-dock={courseWorkspace || undefined}>
-      {detailsOpen && <aside id="activity-details" className="product-task-details" aria-label={detailsLabel}>
-        {project.project ? <PersonalProjectPlan project={project.project} /> : details}
-        {project.error && <p role="alert">项目清单暂时无法读取。<button type="button" onClick={() => void project.retry()}>重试</button></p>}
-      </aside>}
+      {courseWorkspace && (
+        <button
+          ref={detailsRailToggle}
+          type="button"
+          className="product-task-details-rail-toggle"
+          aria-expanded={detailsOpen}
+          aria-controls={detailsOpen ? 'activity-details' : undefined}
+          aria-label={detailsOpen ? `收起${detailsLabel}` : `展开${detailsLabel}`}
+          data-tip={detailsOpen ? `收起${detailsLabel}` : `展开${detailsLabel}`}
+          onClick={() => {
+            hasToggledDetails.current = true
+            if (detailsOpen && !detailsCovered()) setDetailsOpen(false)
+            else openDetails()
+          }}
+        >
+          {detailsOpen
+            ? <Icon name="panel-left-close" size={16} variant="linear" tone="neutral" />
+            : <PanelLeftOpenIcon size={16} />}
+        </button>
+      )}
+      {detailsShellVisible && <div className="product-task-details-shell" data-open={detailsOpen ? 'true' : 'false'}
+        data-animate={hasToggledDetails.current || undefined}>
+        {detailsOpen ? (
+          <aside id="activity-details" className="product-task-details" aria-label={detailsLabel}>
+            <div className="product-task-details-bar">
+              <span className="product-task-details-label">{detailsLabel}</span>
+              {!courseWorkspace && (
+                <button
+                  ref={detailsCollapse}
+                  type="button"
+                  className="product-task-details-collapse"
+                  aria-label={`收起${detailsLabel}`}
+                  data-tip={`收起${detailsLabel}`}
+                  onClick={() => {
+                    hasToggledDetails.current = true
+                    returnDetailsFocus.current = true
+                    setDetailsOpen(false)
+                  }}
+                >
+                  <Icon name="panel-left-close" size={16} variant="linear" tone="neutral" />
+                </button>
+              )}
+            </div>
+            <div className="product-task-details-body">
+              {detailsContent}
+            </div>
+          </aside>
+        ) : (
+          <div className="product-task-details" aria-hidden="true" inert={true}>
+            <div className="product-task-details-bar">
+              <span className="product-task-details-label">{detailsLabel}</span>
+              {!courseWorkspace && (
+                <button type="button" className="product-task-details-collapse" tabIndex={-1} aria-hidden="true">
+                  <Icon name="panel-left-close" size={16} variant="linear" tone="neutral" />
+                </button>
+              )}
+            </div>
+            <div className="product-task-details-body">
+              {detailsContent}
+            </div>
+          </div>
+        )}
+      </div>}
       {layoutReady && <CenterToolArea ref={center} taskId={namespace + ':' + activity.activityId} tools={tools} toolBodies={toolBodies}
         {...(experimentTool ? { initialTool: experimentTool } : {})}
         genCards={artifacts.entries.flatMap(entry => entry.revision ? [{ cardId: entry.artifact.artifactId, title: entry.artifact.title,
@@ -488,19 +606,28 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
           <ActivityWorkspace activity={activity} spaceKey={spaceKey} namespace={namespace} authorized={authorized} location={workLocation} /></>} />}
       <aside className="product-discussion" aria-label="问题与引用" inert={!references.open}
         style={references.open ? undefined : { display: 'none' }}>
-        <header className="product-discussion-header"><h2>与 Agent 对话</h2><button type="button" onClick={() => { references.setOpen(false); ask.current?.focus() }}>收起对话</button></header>
+        <header className="product-discussion-header">
+          <h2><Icon name="chat-round-dots" size={17} />与 Agent 对话</h2>
+          <Button type="button" variant="outline" onClick={() => { references.setOpen(false); ask.current?.focus() }}>
+            <Icon name="close" size={14} />收起对话
+          </Button>
+        </header>
+        <ActivityActions activity={activity} />
         <ChatViewport scrollerRef={conversationScroll.scroller} onScroll={conversationScroll.onScroll} onJump={conversationScroll.onJump}
           busy={conversationActive} phase={conversationActive ? 'streaming' : undefined} padSuggestions={false} queued={false}>
-        <ActivityConversation activity={activity} spaceKey={spaceKey} namespace={namespace} onModels={onModels}
-          onActiveChange={setConversationActive} onLocateTool={locateTool} onOpenCitation={openCitation}
-          focusQuestionId={focusQuestionId} onQuestionFocused={questionFocused} artifacts={artifacts} onOpenArtifact={openArtifact} />
-        {agentSessionError && <p role="alert">{agentSessionError}<button type="button" onClick={retryAgentSession}>重新打开对话</button></p>}
+          <ActivityConversation activity={activity} spaceKey={spaceKey} namespace={namespace} onModels={onModels}
+            onActiveChange={setConversationActive} onLocateTool={locateTool} onOpenCitation={openCitation}
+            focusQuestionId={focusQuestionId} onQuestionFocused={questionFocused} artifacts={artifacts} onOpenArtifact={openArtifact} />
+          {agentSessionError && <p role="alert" className="learning-error product-discussion-error">
+            {agentSessionError}<Button type="button" variant="outline" onClick={retryAgentSession}>重新打开对话</Button>
+          </p>}
         </ChatViewport>
         <div className="product-discussion-input">
-        {!conversationScroll.atBottom && <BackToBottom onClick={conversationScroll.backToBottom} />}
-        <ActivityPromptComposer activity={activity} spaceKey={spaceKey} namespace={namespace} authorized={authorized}
-          selection={selection} onModels={onModels} active={conversationActive} generating={conversationActive}
-          sending={sending} closeFocusRef={ask} /><ActivityActions /></div>
+          {!conversationScroll.atBottom && <BackToBottom onClick={conversationScroll.backToBottom} />}
+          <ActivityPromptComposer activity={activity} spaceKey={spaceKey} namespace={namespace} authorized={authorized}
+            selection={selection} onModels={onModels} active={conversationActive} generating={conversationActive}
+            sending={sending} closeFocusRef={ask} />
+        </div>
       </aside>
       {course && <SideDock taskButtonRef={taskInfoEntryRef} openPanel={dockPanel} onOpenPanelChange={setDockPanel}
         taskInfo={<TaskInfo name={title} course={course.courseName}

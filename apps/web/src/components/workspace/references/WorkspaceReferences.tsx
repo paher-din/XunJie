@@ -1,9 +1,9 @@
-import { ReferenceAttachment } from '@xunjie/ui/chat'
+import { AttachmentTile, ReferenceAttachment, type PromptInputProps } from '@xunjie/ui/chat'
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useId, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { useToastFeedback } from '@xunjie/ui/feedback'
+import { AGENT_IMAGE_ACCEPT, IMAGE_MODEL_HINT, isAgentImage, useAgentImagePreviews, type AgentImageSource } from '../../../reliable-workspace/agent-images'
 import { QUESTION_TEXT_MAX_LENGTH } from '@xunjie/contracts/question-drafts'
 import type { QuestionSkill } from '@xunjie/contracts/question-drafts'
-import type { PromptInputProps } from '@xunjie/ui/chat'
 import { submissionReference, referenceKey, snapshotReference, type ReferenceSelection, type ReferenceSource,
   type ReferenceSubmission, type WorkspaceReference } from './model'
 import './references.css'
@@ -12,6 +12,9 @@ import { composerView, rememberComposerCaret, rememberComposerView, beginCompose
 export interface ReferencesController {
   viewActive?: boolean
   skills?: DraftSkillsController
+  addImages?(files: readonly AgentImageSource[]): Promise<void>
+  addingImages?: boolean
+  imageSubject?: string
   workspaceKey: string
   open: boolean
   setOpen(open: boolean): void
@@ -184,10 +187,16 @@ function ReferencesSession({ workspaceKey, onSubmit, children }: WorkspaceRefere
 }
 
 export function WorkspaceReferenceList() {
-  const { references, remove, locate, readOnly } = useWorkspaceReferences()
+  const { references, remove, locate, readOnly, imageSubject = '', busy } = useWorkspaceReferences()
+  const images = references.flatMap(reference => reference.source?.kind === 'image' ? [{ id: reference.id, image: reference.source.image }] : [])
+  const previews = useAgentImagePreviews(imageSubject, images.map(item => item.image))
+  const sources = references.filter(reference => reference.source?.kind !== 'image')
   return <section className="wr-references" aria-label="上下文引用">
-    {references.length === 0 ? <p className="wr-hint">选择材料或代码，可将片段加入问题。</p> :
-      <ol>{references.map((ref, index) => <li key={ref.id}>
+    {images.length > 0 && <div className="prompt-attachments-row" aria-label="图片附件">{images.map(({ id, image }) =>
+      <AttachmentTile key={id} attachment={{ id, kind: 'image', name: image.name, size: 0, src: previews[image.imageId] }}
+        onRemove={readOnly || busy ? undefined : () => remove(id)} />)}</div>}
+    {!references.length && <p className="wr-hint">选择材料或代码，可将片段加入问题。</p>}
+    {sources.length > 0 && <ol>{sources.map((ref, index) => <li key={ref.id}>
         <ReferenceAttachment name={ref.sourceName} excerpt={ref.text} kind={ref.kind} readOnly={readOnly}
           locateLabel={`定位引用 ${index + 1}：${ref.sourceName}`} removeLabel={`移除引用 ${index + 1}`}
           onLocate={() => { void locate(ref) }} onRemove={() => remove(ref.id)} />
@@ -225,7 +234,7 @@ function WorkspaceDraftSkills({ inputRef }: { inputRef: RefObject<HTMLTextAreaEl
     <summary>本次问题的 Skills{pinned.length ? ` · 已固定 ${pinned.length} 个版本` : ' · 使用已启用技能'}</summary>
     {skills.loading && <p className="wr-hint" role="status">正在读取 Skills…</p>}
     {skills.error && <p className="wr-notice" role="alert">{skills.error}</p>}
-    {!skills.loading && !skills.options.length && !unknown.length && <p className="wr-hint">尚无可用 Skill，可在 Agent 个性化中导入并启用。</p>}
+    {!skills.loading && !skills.error && !skills.options.length && !unknown.length && <p className="wr-hint">尚无可用 Skill，可在 Agent 个性化中导入并启用。</p>}
     {skills.options.length > 0 && <p className="wr-hint">勾选可固定本次使用的版本，其他已启用技能仍可按需使用。</p>}
     {skills.options.map(option => {
       const checked = option.fixed || pinned.some(item => item.skillId === option.skillId && item.version === option.version)
@@ -250,15 +259,19 @@ function WorkspaceDraftSkills({ inputRef }: { inputRef: RefObject<HTMLTextAreaEl
 type ComposerInputProps = Pick<PromptInputProps, 'value' | 'onChange' | 'onSend' | 'canSend' | 'inputRef' | 'textareaProps' | 'sendLabel'>
 
 /** The standalone conversation supplies its own input; both views use the same draft and caret. */
-export function WorkspaceReferenceComposer({ closeFocusRef, sendBlocked = false, blockedHint, blockedLabel, submitLabel, renderInput, modelPicker }: {
+export function WorkspaceReferenceComposer({ closeFocusRef, sendBlocked = false, blockedHint, blockedLabel, submitLabel, renderInput, modelPicker, supportsImages = true }: {
   closeFocusRef?: RefObject<HTMLElement | null>; sendBlocked?: boolean
-  blockedHint?: string; blockedLabel?: string; submitLabel?: string; modelPicker?: ReactNode
+  blockedHint?: string; blockedLabel?: string; submitLabel?: string; modelPicker?: ReactNode; supportsImages?: boolean
   renderInput?: (props: ComposerInputProps) => ReactNode
 } = {}) {
   const { open, setOpen, question, setQuestion, submit, busy, notice, sendAvailable, draftReady, draftError,
-    draftConflict, draftConflictReady, resolveDraftConflict, readOnly, skills, workspaceKey, viewActive = true } = useWorkspaceReferences()
-  const canSend = sendAvailable && !sendBlocked
+    draftConflict, draftConflictReady, resolveDraftConflict, readOnly, skills, workspaceKey, viewActive = true,
+    addImages, addingImages, references } = useWorkspaceReferences()
+  const needsImageModel = !supportsImages && references.some(ref => ref.source?.kind === 'image')
+  const textOnlySelection = !supportsImages && references.some(ref => ref.source?.kind === 'pdf' && ref.kind === 'semantic' && !!ref.range.target?.region)
+  const canSend = sendAvailable && !sendBlocked && !addingImages && !needsImageModel && !busy
   const input = useRef<HTMLTextAreaElement>(null)
+  const fileInput = useRef<HTMLInputElement>(null)
   const composing = useRef(false)
   const questionId = useId()
   useToastFeedback(!renderInput && viewActive && !busy ? notice : '', 'info')
@@ -293,6 +306,13 @@ export function WorkspaceReferenceComposer({ closeFocusRef, sendBlocked = false,
   }
   const textareaProps: NonNullable<PromptInputProps['textareaProps']> = {
     disabled: !draftReady, readOnly, maxLength: QUESTION_TEXT_MAX_LENGTH,
+    onPaste: event => {
+      const files = Array.from(event.clipboardData.files).filter(isAgentImage)
+      if (files.length && addImages && !addingImages && !readOnly && !busy) {
+        event.preventDefault()
+        void addImages(files)
+      }
+    },
     onFocus: event => rememberComposerCaret(workspaceKey, event.currentTarget, true),
     onBlur: event => rememberComposerCaret(workspaceKey, event.currentTarget),
     onSelect: event => { if (draftReady) rememberComposerCaret(workspaceKey, event.currentTarget) },
@@ -305,9 +325,11 @@ export function WorkspaceReferenceComposer({ closeFocusRef, sendBlocked = false,
   }
   const sendLabel = sendBlocked ? blockedLabel ?? '等待当前回答' : sendAvailable
     ? busy ? '发送中…' : submitLabel ?? '发送问题' : '发送问题（尚未接入）'
-  const sendHint = sendBlocked ? blockedHint ?? '当前回答结束后再发送；问题会先保存在草稿中。'
+  const sendHint = addingImages ? '正在添加图片…' : needsImageModel ? IMAGE_MODEL_HINT
+    : sendBlocked ? blockedHint ?? '当前回答结束后再发送；问题会先保存在草稿中。'
     : readOnly ? '还原校验环境中的问题与引用只读，接管后可继续编辑。'
-      : sendAvailable ? '' : '真实 Agent 尚未接入；问题与引用会自动保存在原工作区，暂不能发送。'
+      : textOnlySelection ? '选区图需要支持图片输入的模型。当前可发送引用文字。'
+        : sendAvailable ? '' : '真实 Agent 尚未接入；问题与引用会自动保存在原工作区，暂不能发送。'
   return <section className={renderInput ? 'wr-inline-composer' : 'wr-composer'} aria-label="Agent 问题草稿" data-reference-ui onFocusCapture={event => {
     if (event.target !== input.current) rememberComposerView(workspaceKey, { focused: false })
   }}>
@@ -350,7 +372,14 @@ export function WorkspaceReferenceComposer({ closeFocusRef, sendBlocked = false,
               event.preventDefault(); void submit()
             }
           }} />
-        <div className="wr-send">{modelPicker}<span className="wr-hint">{sendHint || 'Enter 发送 · Shift + Enter 换行'}</span>
+        <div className="wr-send">{addImages && <>
+          <button type="button" disabled={readOnly || busy || addingImages || !draftReady} onClick={() => fileInput.current?.click()}>添加图片</button>
+          <input ref={fileInput} type="file" multiple hidden accept={AGENT_IMAGE_ACCEPT} aria-label="选择图片" onChange={event => {
+            const files = Array.from(event.currentTarget.files ?? [])
+            event.currentTarget.value = ''
+            void addImages(files)
+          }} />
+        </>}{modelPicker}<span className="wr-hint" aria-live="polite">{sendHint || 'Enter 发送 · Shift + Enter 换行'}</span>
           <button className="wr-primary" type="submit" disabled={!canSend || busy || !question.trim()}>{sendLabel}</button></div>
       </form>
     </>}

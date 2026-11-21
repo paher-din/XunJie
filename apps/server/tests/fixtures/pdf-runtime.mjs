@@ -78,6 +78,12 @@ export async function pdfRuntime(answer, protocol = 'chat-completions', pdfBytes
       const response = await request(route, body, headers);
       assert.equal(response.status, 200, route + ': ' + JSON.stringify(response.value)); return response.value;
     };
+    const close = async () => {
+      await host.stop(); await runtime.stop(); globalThis.fetch = originalFetch;
+      dns.lookup = originalLookup; syncBuiltinESMExports();
+      await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    };
+    if (!answer) return { root, resources, endpoint: host.endpoint, api, request, close };
     const connectionId = randomUUID(), grantId = randomUUID();
     const connection = await api('models/connections', { requestId: randomUUID(), connectionId, expectedVersion: 0,
       name: 'PDF transport fixture', protocol, baseUrl: 'https://api.deepseek.com/' + (protocol === 'messages' ? 'anthropic' : 'v1'),
@@ -117,9 +123,7 @@ export async function pdfRuntime(answer, protocol = 'chat-completions', pdfBytes
         throw new Error('PDF Agent did not complete');
       },
       async restart() { await host.stop(); host = await createProductRuntimeHost({ root, createApplication: createProductLearningApplication }); },
-      async close() { await host.stop(); await runtime.stop(); globalThis.fetch = originalFetch;
-        dns.lookup = originalLookup; syncBuiltinESMExports();
-        await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); } };
+      close };
   } catch (error) {
     await host?.stop(); await runtime.stop(); globalThis.fetch = originalFetch;
     dns.lookup = originalLookup; syncBuiltinESMExports();

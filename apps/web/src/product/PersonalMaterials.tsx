@@ -1,18 +1,22 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import type { LearningActivity } from '@xunjie/contracts/learning-data'
 import { toast, useToastFeedback } from '@xunjie/ui/feedback'
 import { Button } from '@xunjie/ui/foundation'
 import { Icon } from '@xunjie/ui/icons'
-import { WorkspaceResourceLibrary, WorkspaceResourceList, WorkspaceResourceRow } from '@xunjie/ui/workspace'
+import { WorkspaceResourceLibrary, WorkspaceResourceList, WorkspaceResourceMenu, WorkspaceResourceRow } from '@xunjie/ui/workspace'
 import { PERSONAL_MATERIAL_LIMITS, personalMaterialReferenceSourceSchema, personalMaterialSchema,
   personalMaterialVersionContentSchema, type PersonalMaterial, type PersonalMaterialMediaType,
   type PersonalMaterialReferenceSource, type PersonalMaterialVersionContent } from '@xunjie/contracts/personal-materials'
 import { questionReferenceSourceId } from '@xunjie/contracts/question-drafts'
-import { TextReferenceSource, useWorkspaceReferences, type LocateResult } from '../components/workspace/references'
+import { locateDomRange, locateTextRange, useTextReferenceSource, useWorkspaceReferences, type LocateResult } from '../components/workspace/references'
 import { acknowledgePersonalMaterialRequest, listPersonalMaterialRequests, retainPersonalMaterialRemove,
   retainPersonalMaterialSave, retainPersonalMaterialUpdate, type PersonalMaterialRequest } from '../reliable-workspace/personal-materials'
 import { learningRequest, workspaceScope } from './learningTransport'
+import { renderedMarkdownRange, selectedMarkdownOffsets } from './courseMarkdownSelection'
 import './PersonalMaterials.css'
+import './course-material-reader.css'
+
+const CourseMarkdown = lazy(() => import('./CourseMarkdown'))
 
 const MEDIA_LABEL: Record<PersonalMaterialMediaType, string> = { 'text/plain': '纯文本', 'text/markdown': 'Markdown' }
 const requestLabel = (request: PersonalMaterialRequest) => request.kind === 'save' ? '保存' : request.kind === 'update' ? '更新' : '移除'
@@ -60,20 +64,6 @@ function escapeAttribute(value: string) {
   return typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
     ? CSS.escape(value) : value.replace(/[^a-zA-Z0-9_-]/g, char => `\\${char}`)
 }
-function rangeAtOffsets(root: HTMLElement, start: number, end: number): Range | null {
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
-  const range = document.createRange()
-  let offset = 0
-  let foundStart = false
-  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-    const length = node.textContent?.length ?? 0
-    if (!foundStart && start <= offset + length) { range.setStart(node, start - offset); foundStart = true }
-    if (foundStart && end <= offset + length) { range.setEnd(node, end - offset); return range }
-    offset += length
-  }
-  return null
-}
-
 /** Kept by ActivityPage, so changing/closing a center tab cannot reset pending operations. */
 export function usePersonalMaterials({ activity, spaceKey, namespace, authorized, reveal }: {
   activity: LearningActivity; spaceKey: string; namespace: string; authorized: boolean; reveal(): Promise<void>
@@ -302,20 +292,19 @@ export function usePersonalMaterials({ activity, spaceKey, namespace, authorized
         const root = window.document.querySelector<HTMLElement>(
           `[data-personal-material-reading="${escapeAttribute(key)}"] .wr-text-source`)
         if (!root) continue
-        if (root.textContent !== content.text)
-          return { ok: false, reason: '固定版本正文与引用不一致，原引用仍保留。' }
+        root.scrollIntoView({ block: 'nearest' })
         if (referenceRange?.start !== undefined && referenceRange.end !== undefined) {
-          const range = rangeAtOffsets(root, referenceRange.start, referenceRange.end)
-          if (!range) return { ok: false, reason: '固定版本已读取，但原选区当前不可用；引用副本仍保留。' }
-          root.scrollIntoView({ block: 'center' })
+          const { start, end } = referenceRange
+          if (root.textContent === content.text) {
+            if (locateTextRange(root, start, end, root)) return { ok: true }
+          } else {
+            const range = renderedMarkdownRange(root, content.text, start, end)
+            if (range && locateDomRange(root, range, root)) return { ok: true }
+          }
           root.focus({ preventScroll: true })
-          const selected = document.getSelection()
-          selected?.removeAllRanges()
-          selected?.addRange(range)
-        } else {
-          root.scrollIntoView({ block: 'center' })
-          root.focus({ preventScroll: true })
+          return { ok: false, reason: '已打开固定版本，引用选段无法在预览中定位。' }
         }
+        root.focus({ preventScroll: true })
         return { ok: true }
       }
       return { ok: false, reason: '固定版本已读取，但当前布局未能打开阅读位置。' }
@@ -327,17 +316,16 @@ export function usePersonalMaterials({ activity, spaceKey, namespace, authorized
   }
   const latest = useRef({ locate })
   latest.current = { locate }
-  const shownSourceId = reading ? sourceIdOf(sourceOf(reading)) : null
   const sourceIds = JSON.stringify([...new Set([
     ...materials.map(materialSourceId).filter(Boolean),
     ...references.references.filter(reference => reference.source?.kind === 'personal-material').map(reference => reference.sourceId),
+    ...(reading ? [sourceIdOf(sourceOf(reading))] : []),
   ])].sort())
   useEffect(() => {
-    const unregister = (JSON.parse(sourceIds) as string[]).filter(sourceId => sourceId !== shownSourceId)
-      .map(sourceId => references.register({ sourceId,
+    const unregister = (JSON.parse(sourceIds) as string[]).map(sourceId => references.register({ sourceId,
         locate: reference => latest.current.locate(reference.source, reference.range) }))
     return () => unregister.forEach(stop => stop())
-  }, [sourceIds, shownSourceId, references.register])
+  }, [sourceIds, references.register])
 
   return { materials, requests, reading, editing, busy, loading, error, loadError, notice,
     writable: authorized && !references.readOnly, canQuote: references.draftReady && !!reading && !reading.material.removedAt,
@@ -397,21 +385,20 @@ function PersonalMaterialEntries({ personal }: { personal: PersonalMaterialsCont
           if (file) void choose(file)
         }} /></label>
       <div className="personal-material-actions">
-        <button type="button" className="ws-btn" disabled={!personal.writable || personal.busy || !name.trim() || !text.trim()}
-          onClick={() => void save()}>保存笔记</button>
-        <button type="button" className="ws-btn ghost" disabled={personal.busy}
-          onClick={() => { updateForm({ open: false }); setLocalError('') }}>取消</button>
+        <Button type="button" disabled={!personal.writable || personal.busy || !name.trim() || !text.trim()}
+          onClick={() => void save()}>保存笔记</Button>
+        <Button type="button" variant="outline" disabled={personal.busy}
+          onClick={() => { updateForm({ open: false }); setLocalError('') }}>取消</Button>
       </div>
     </div>}
     {visible.length > 0 ? <WorkspaceResourceList label="个人笔记列表">
       {visible.map(material => <WorkspaceResourceRow key={material.materialId} name={material.name}
-        detail={`第 ${material.currentVersion} 版 · ${MEDIA_LABEL[material.mediaType]}`} actions={<>
-          <Button type="button" variant="outline" disabled={personal.busy} onClick={() => void personal.open(material)}>打开</Button>
-          <Button type="button" variant="outline" disabled={!personal.writable || personal.busy}
-            onClick={() => void personal.beginUpdate(material)}>更新</Button>
-          <Button type="button" variant="outline" disabled={!personal.writable || personal.busy}
-            onClick={() => void personal.remove(material)}>移除</Button>
-        </>} />)}
+        detail={`第 ${material.currentVersion} 版 · ${MEDIA_LABEL[material.mediaType]}`}
+        disabled={personal.busy} onOpen={() => void personal.open(material)}
+        actions={personal.writable && <WorkspaceResourceMenu name={material.name} disabled={personal.busy} items={[
+          { label: '更新', onSelect: () => void personal.beginUpdate(material) },
+          { label: '移除', onSelect: () => void personal.remove(material) },
+        ]} />} />)}
     </WorkspaceResourceList> : !personal.loading && !personal.busy && !personal.loadError && !pending.length
       && <p className="detail">还没有个人笔记。添加后可在阅读区选择正文引用到问题。</p>}
     {pending.map(request => <div className="personal-material-pending" key={request.key}>
@@ -423,6 +410,15 @@ function PersonalMaterialEntries({ personal }: { personal: PersonalMaterialsCont
     {personal.busy && <p className="detail" role="status" aria-label="正在保存或读取个人笔记" />}
     {personal.loadError && <p className="detail">{personal.loadError}</p>}
   </WorkspaceResourceLibrary>
+}
+
+function PersonalMarkdown({ reading, source }: { reading: PersonalMaterialVersionContent; source: PersonalMaterialReferenceSource }) {
+  const root = useRef<HTMLDivElement>(null)
+  useTextReferenceSource(root, sourceIdOf(source), reading.version.name, reading.text, source,
+    { registerSource: false, renderedOffsets: selectedMarkdownOffsets })
+  return <div ref={root} className="wr-text-source personal-material-markdown" tabIndex={0} aria-label={reading.version.name}>
+    <CourseMarkdown text={reading.text} preservePlainText />
+  </div>
 }
 
 export function PersonalMaterials({ personal }: { personal: PersonalMaterialsController }) {
@@ -446,8 +442,9 @@ export function PersonalMaterials({ personal }: { personal: PersonalMaterialsCon
     </header>
     {reading.material.removedAt && <p className="personal-material-notice" role="status">这份材料已移除；固定版本仍可阅读和引用。</p>}
     <div className="personal-material-reading" data-personal-material-reading={`${reading.material.materialId}:${reading.version.version}`}>
-      <TextReferenceSource sourceId={sourceIdOf(source)} sourceName={reading.version.name}
-        text={reading.text} source={source} />
+      <Suspense fallback={<p className="personal-material-muted" role="status">正在排版…</p>}>
+        <PersonalMarkdown reading={reading} source={source} />
+      </Suspense>
     </div>
     {personal.editing && <div className="personal-material-form personal-material-editor">
       <label>更新为当前文本
@@ -456,9 +453,9 @@ export function PersonalMaterials({ personal }: { personal: PersonalMaterialsCon
       </label>
       <p className="personal-material-muted">保存后将追加第 {reading.material.currentVersion + 1} 版，当前正文保持可见。</p>
       <div className="personal-material-actions">
-        <button type="button" className="ws-btn" disabled={!personal.writable || personal.busy || !text.trim()}
-          onClick={() => void personal.update({ text })}>保存新版本</button>
-        <button type="button" className="ws-btn ghost" disabled={personal.busy} onClick={personal.cancelEditing}>取消更新</button>
+        <Button type="button" disabled={!personal.writable || personal.busy || !text.trim()}
+          onClick={() => void personal.update({ text })}>保存新版本</Button>
+        <Button type="button" variant="outline" disabled={personal.busy} onClick={personal.cancelEditing}>取消更新</Button>
       </div>
     </div>}
     {personal.busy && <p className="personal-material-muted" role="status">正在保存或读取个人笔记…</p>}

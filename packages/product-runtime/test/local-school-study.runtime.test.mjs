@@ -6,13 +6,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:http';
+import { completed, question, versionHeaders } from './support/installed-agent-v2.mjs';
 import { openProductRuntime, resolveCredential, restoreProductRecovery } from '@xunjie/product-runtime';
 import { openStorage, createFileBackend } from '@xunjie/storage';
 import { learningMigrations, validateLearningData } from '@xunjie/learning-space';
 
 const resources = { nodePath: process.execPath, nodeVersion: '24.21.0',
   postgresBin: process.env.XUNJIE_PRODUCT_POSTGRES_BIN, postgresVersion: '18.6',
-  webRoot: fileURLToPath(new URL('../../../apps/web/dist-runtime', import.meta.url)),
+  webRoot: process.env.XUNJIE_PRODUCT_WEB_ROOT ?? fileURLToPath(new URL('../../../apps/web/dist-runtime', import.meta.url)),
   windowsPrerequisitePath: fileURLToPath(new URL('../../../scripts/windows-prereq-prepare.ps1', import.meta.url)) };
 if (!resources.postgresBin) throw new Error('Requires native PostgreSQL 18.6.');
 
@@ -20,6 +21,7 @@ test('school delivery leaves drafts, Agent inputs and unfinished works on the de
   const directory = await mkdtemp(join(tmpdir(), 'xj-local-school-study-'));
   const schoolRoot = join(directory, 'school'), deviceRoot = join(directory, 'device');
   const school = openProductRuntime({ root: schoolRoot, resources }), device = openProductRuntime({ root: deviceRoot, resources });
+  const secondDevice = openProductRuntime({ root: join(directory, 'second-device'), resources });
   let generations = 0, ledger;
   const provider = createServer(async (request, response) => {
     for await (const _ of request) { /* Synthetic local provider, no student input logs. */ }
@@ -30,7 +32,7 @@ test('school delivery leaves drafts, Agent inputs and unfinished works on the de
   });
   await new Promise(resolve => provider.listen(0, '127.0.0.1', resolve));
   const request = async (endpoint, route, body, headers = {}, expected = 200) => {
-    const response = await fetch(endpoint + '/api/learning/' + route, { headers: { 'content-type': 'application/json', ...headers },
+    const response = await fetch(endpoint + '/api/learning/' + route, { headers: { 'content-type': 'application/json', ...versionHeaders(route), ...headers },
       ...(body === undefined ? {} : { method: 'POST', body: JSON.stringify(body) }) });
     const value = await response.json();
     assert.equal(response.status, expected, route + ': ' + JSON.stringify(value));
@@ -96,6 +98,31 @@ test('school delivery leaves drafts, Agent inputs and unfinished works on the de
     const draft = (await deviceApi('drafts/' + copied.activityId, undefined, connected)).value;
     await deviceApi('drafts/' + copied.activityId, { requestId: randomUUID(), draftId: draft.draftId, baseRevision: draft.revision,
       question: '绝不上传学校的提问正文', references: [], bases: [] }, connected);
+    // The school has already acknowledged this member's one-time legacy export.
+    // A second installation still receives the course registration and keeps its own study data.
+    await schoolApi('study-transfer', undefined, member, 409);
+    await secondDevice.install({ profile: 'local' });
+    const secondState = await secondDevice.start();
+    const secondApi = (route, body, headers) => request(secondState.endpoint, route, body, headers);
+    const secondConnection = randomUUID();
+    await secondApi('client/start', { requestId: secondConnection, schoolEndpoint: schoolState.endpoint });
+    await schoolApi('connections/approve', { requestId: secondConnection }, member);
+    await secondApi('client/complete', { requestId: secondConnection });
+    const secondHeaders = { 'x-xj-space': 'school:' + secondConnection };
+    const secondCourses = (await secondApi('courses', undefined, secondHeaders)).value.courses;
+    assert.ok(secondCourses.some(course => course.courseId === courseId));
+    const secondActivities = (await secondApi('activities', undefined, secondHeaders)).value;
+    const secondCopy = secondActivities.find(activity => activity.activityId === copied.activityId);
+    assert.equal(secondCopy?.target.environmentId, secondState.environment.environmentId);
+    assert.equal(secondCopy.course.releaseId, copied.course.releaseId);
+    assert.deepEqual((await secondApi('workspaces/' + copied.activityId, undefined, secondHeaders)).value.files, []);
+    assert.equal((await secondApi('drafts/' + copied.activityId, undefined, secondHeaders)).value.question, '');
+    const secondFile = { ...file, objectId: randomUUID(), contentId: randomUUID(), value: '第二个本机环境的作品' };
+    await secondApi('workspaces/' + copied.activityId, { requestId: randomUUID(), baseRevision: 0, files: [secondFile] }, secondHeaders);
+    assert.deepEqual((await secondApi('workspaces/' + copied.activityId, undefined, secondHeaders)).value.files, [secondFile]);
+    assert.deepEqual((await deviceApi('workspaces/' + copied.activityId, undefined, connected)).value.files, [current]);
+    assert.equal((await deviceApi('drafts/' + copied.activityId, undefined, connected)).value.question, '绝不上传学校的提问正文');
+    await secondDevice.stop();
     const modelId = randomUUID();
     await deviceApi('models/connections', { requestId: randomUUID(), connectionId: modelId, expectedVersion: 0, name: '本机测试模型',
       protocol: 'chat-completions', baseUrl: `http://127.0.0.1:${provider.address().port}`, path: '/chat/completions',
@@ -103,19 +130,14 @@ test('school delivery leaves drafts, Agent inputs and unfinished works on the de
       maxOutputTokens: 1024, credential: { action: 'replace', value: 'synthetic-device-key' } }, { 'x-xj-space': 'personal' });
     await deviceApi('models/selection', { requestId: randomUUID(), expectedVersion: 0,
       source: { kind: 'personal', connectionId: modelId, owner: 'device' } }, connected);
-    const caps = (await deviceApi(`agent/${copied.activityId}/capabilities`, undefined, connected)).value;
-    const question = randomUUID(), scope = { environmentId: identity.environmentId, spaceId: identity.spaceId,
-      principalId: identity.principalId, activityId: copied.activityId };
-    await deviceApi(`intents/${copied.activityId}`, { requestId: question, receiver: caps.receiver, scope,
-      draft: { token: randomUUID(), question: '绝不上传学校的提问正文', references: [], bases: [] }, works: [current], evidence: [] }, connected);
-    await deviceApi(`intents/${copied.activityId}/${question}/dispatch`, {}, connected);
-    let conversation;
-    for (let attempt = 0; attempt < 300; attempt++) {
-      conversation = (await deviceApi(`agent/${copied.activityId}/conversation`, undefined, connected)).value;
-      if (conversation.runs.some(run => ['completed', 'failed', 'paused'].includes(run.state))) break;
-      await new Promise(resolve => setTimeout(resolve, 30));
-    }
-    assert.equal(conversation.runs[0]?.state, 'completed', JSON.stringify(conversation));
+    const session = (await deviceApi('agent-sessions/workspace', { activityId: copied.activityId, target: copied.target }, connected)).value;
+    const sessionPath = `agent-sessions/${session.sessionId}`;
+    const ask = async (text, work) => {
+      const input = question(copied, session, text, randomUUID(), { works: [work] });
+      const { value: receipt } = await deviceApi(`${sessionPath}/inputs`, input, connected);
+      return completed(async route => (await deviceApi(route, undefined, connected)).value, session.sessionId, receipt.turnId);
+    };
+    await ask('绝不上传学校的提问正文', current);
     assert.equal(generations, 1);
     assert.equal((await ledger.read('SELECT * FROM action_intents')).rows.length, 0);
     assert.equal((await ledger.read('SELECT * FROM question_drafts WHERE principal_id=$1', [identity.principalId])).rows.length, 0);
@@ -131,17 +153,9 @@ test('school delivery leaves drafts, Agent inputs and unfinished works on the de
     await deviceApi('workspaces/' + copied.activityId, { requestId: randomUUID(), baseRevision: 2, files: [later] }, connected);
     await device.stop(); await device.start();
     assert.equal((await deviceApi('context')).value.account.accountName, loginName);
-    assert.equal((await deviceApi(`agent/${copied.activityId}/conversation`, undefined, connected)).value.messages.at(-1).text, '仅保留在本机的回答');
-    const offlineQuestion = randomUUID();
-    await deviceApi(`intents/${copied.activityId}`, { requestId: offlineQuestion, receiver: caps.receiver, scope,
-      draft: { token: randomUUID(), question: '学校断连后继续本机学习', references: [], bases: [] }, works: [later], evidence: [] }, connected);
-    await deviceApi(`intents/${copied.activityId}/${offlineQuestion}/dispatch`, {}, connected);
-    for (let attempt = 0; attempt < 300; attempt++) {
-      conversation = (await deviceApi(`agent/${copied.activityId}/conversation`, undefined, connected)).value;
-      if (conversation.runs.some(run => run.requestId === offlineQuestion && ['completed', 'failed', 'paused'].includes(run.state))) break;
-      await new Promise(resolve => setTimeout(resolve, 30));
-    }
-    assert.equal(conversation.runs.find(run => run.requestId === offlineQuestion)?.state, 'completed', JSON.stringify(conversation));
+    const restoredConversation = (await deviceApi(`${sessionPath}/conversation`, undefined, connected)).value;
+    assert.equal(restoredConversation.messages.filter(message => message.role === 'assistant').at(-1)?.text, '仅保留在本机的回答');
+    await ask('学校断连后继续本机学习', later);
     assert.equal(generations, 2);
     const deferred = { requestId: randomUUID(), works: [later], artifacts: [], evidence: [] };
     await deviceApi(`submissions/${copied.activityId}`, deferred, connected, 503);
@@ -195,7 +209,7 @@ test('school delivery leaves drafts, Agent inputs and unfinished works on the de
     }
   } finally {
     if (ledger) await ledger.close();
-    await Promise.allSettled([device.stop(), school.stop()]);
+    await Promise.allSettled([secondDevice.stop(), device.stop(), school.stop()]);
     provider.closeAllConnections(); await new Promise(resolve => provider.close(resolve));
     await rm(directory, { recursive: true, force: true });
   }

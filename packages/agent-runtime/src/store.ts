@@ -842,6 +842,12 @@ export function createAgentStore(storage: OwnedStorage, options: StoreOptions) {
     return rows.filter(row => !exclude.includes(String(row.input_id)))
       .map(row => ({ id: String(row.input_id), version: Number(row.version), text: String((row.body as { text?: string }).text ?? '') }));
   }
+  async function adoptedInputs(sessionId: string, ids: readonly string[]): Promise<AgentSessionInput[]> {
+    if (!ids.length) return [];
+    const { rows } = await storage.read(`SELECT * FROM agent_inputs
+      WHERE session_id=$1 AND state='adopted' AND input_id=ANY($2::uuid[]) ORDER BY seq`, [sessionId, ids]);
+    return rows.map(inputFromRow);
+  }
   /** The stable real user request of this Turn: the latest non-answer input, never a system answer. */
   async function turnOriginInput(turnId: string): Promise<string | null> {
     const { rows } = await storage.read(`SELECT input_id, body FROM agent_inputs
@@ -1140,7 +1146,7 @@ function answerText(presentation: Facts, answer: Facts): string {
   return { storage, session, initialize, submitInput, request, continueSession, inputControl, turn, activeTurnOf, openPendingTurn, events, sessionSnapshot,
     appendEvent: appendEventPublic, turnRuntime, saveTurnRuntime, saveTurnRules, recordStepContext, recordRequestCapacity,
     openStep, saveAttempt, finishAttempt, saveResponse, startToolCall, saveToolResult,
-    completeStep, finishTurn, budgetOf, stepsOf, recentCompletedSteps, compactionCount, workspaceInputs, visibleInputs, turnOriginInput, toolCallsOf, toolCallsForTurn, toolCallByNative, toolResultsByNative, attemptsOf, sessionState, setSessionState, recordProgress,
+    completeStep, finishTurn, budgetOf, stepsOf, recentCompletedSteps, compactionCount, workspaceInputs, visibleInputs, adoptedInputs, turnOriginInput, toolCallsOf, toolCallsForTurn, toolCallByNative, toolResultsByNative, attemptsOf, sessionState, setSessionState, recordProgress,
     saveQuestion, question, answerQuestion, closeQuestion, registerNotification, notificationsOf,
     stopTurn, pendingCancellations, acknowledgeCancellation, requestCallCancellation, pendingCallCancellations,
     acknowledgeCallCancellation, recoverInterrupted, assertDispatch, ownerInstanceId };

@@ -50,6 +50,6 @@ export async function acknowledgePdfRequest(record: PdfMaterialRequest, value: u
       || document.byteLength !== record.input.dataBase64.length / 4 * 3 - (record.input.dataBase64.endsWith('==') ? 2 : record.input.dataBase64.endsWith('=') ? 1 : 0))))
     throw new Error('PDF 接收身份或内容不一致，已保留原请求，请核对原服务。')
   // "received" confirms retained bytes, but inspection still needs the original request to resume.
-  if (document.state !== 'received') await records.change(record.key, saved => ({ ...(saved ?? record), document }))
+  if (document.state !== 'received' || document.removedAt) await records.change(record.key, saved => ({ ...(saved ?? record), document }))
   return document
 }

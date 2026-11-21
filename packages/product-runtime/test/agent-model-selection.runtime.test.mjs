@@ -15,7 +15,7 @@ const resources = { nodePath: process.execPath, nodeVersion: '24.21.0',
   windowsPrerequisitePath: fileURLToPath(new URL('../../../scripts/windows-prereq-prepare.ps1', import.meta.url)) };
 if (!resources.postgresBin) throw new Error('Requires native PostgreSQL 18.6.');
 
-test('installed school settings share the Root pointer and independent Agent dispatches the chosen school/self/device owner', { timeout: 300000 }, async () => {
+test('installed school settings share the Root pointer and independent Agent dispatches the chosen school/self/device owner', { timeout: 300000 }, async t => {
   const directory = await mkdtemp(join(tmpdir(), 'xj-agent-model-selection-'));
   const school = openProductRuntime({ root: join(directory, 'school'), resources });
   const agent = openProductRuntime({ root: join(directory, 'agent'), resources });
@@ -29,14 +29,20 @@ test('installed school settings share the Root pointer and independent Agent dis
       +'\n\ndata: '+JSON.stringify({ choices: [], usage: { prompt_tokens: 17, completion_tokens: 5, total_tokens: 22 } })+'\n\ndata: [DONE]\n\n');
   });
   await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
-  const request = async (endpoint, route, body, headers = {}) => {
+  t.after(async () => {
+    await Promise.allSettled([agent.stop(), device.stop(), school.stop()]);
+    upstream.closeAllConnections(); await new Promise(resolve => upstream.close(resolve));
+    await rm(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+  });
+  const request = async (endpoint, route, body, headers = {}, polling = false) => {
     const response = await fetch(endpoint+'/api/learning/'+route, { headers: { 'content-type': 'application/json', ...versionHeaders(route), ...headers },
       ...(body === undefined ? {} : { method: 'POST', body: JSON.stringify(body) }) });
     const value = await response.json();
+    if (polling && response.status === 503) return null;
     assert.equal(response.status, 200, route+': '+JSON.stringify(value));
     return { value, cookie: response.headers.get('set-cookie')?.split(';')[0] };
   };
-  try {
+  await t.test('retains the attached image across model owners and preserves the original controls', async () => {
     const dependencyConnectionId = randomUUID(), agentConnectionId = randomUUID();
     await school.install({ profile: 'local' });
     await agent.install({ profile: 'agent', agent: { dependencyConnectionId } });
@@ -89,7 +95,7 @@ test('installed school settings share the Root pointer and independent Agent dis
     assert.equal((await deviceApi('agent-settings', undefined, personal)).busyInputMode, 'steering', 'School and device personal settings are isolated.');
     const configuration = (connectionId, modelId) => ({ requestId: randomUUID(), connectionId, expectedVersion: 0,
       name: modelId, protocol: 'chat-completions', baseUrl: `http://127.0.0.1:${upstream.address().port}/v1`, path: '/chat/completions',
-      modelId, dialect: 'standard', parameterMode: 'plain', enabled: true, contextWindow: 262144, maxOutputTokens: 1024,
+      modelId, dialect: 'standard', parameterMode: 'plain', enabled: true, imageInput: true, contextWindow: 262144, maxOutputTokens: 1024,
       credential: { action: 'replace', value: 'synthetic-model-selection-key' } });
     const schoolModelId = randomUUID(), personalModelId = randomUUID(), selfModelId = randomUUID(), localSchoolModelId = randomUUID();
     await schoolApi('manage/model-default', { ...configuration(schoolModelId, 'school-route'),
@@ -125,19 +131,31 @@ test('installed school settings share the Root pointer and independent Agent dis
     assert.deepEqual(await schoolApi('models/selection'), rootPointer);
     assert.deepEqual(await deviceApi('models/selection', undefined, personal), personalPointer);
     const session = await schoolApi('agent-sessions/workspace', { activityId: activity.activityId, target: activity.target });
-    async function ask(expectedConnectionId, modelId) {
+    const imageId = randomUUID(), dataBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=';
+    const attachment = await deviceApi('models/images', { requestId: imageId, imageId, mediaType: 'image/png',
+      dataBase64, attachmentScope: { kind: 'workspace', activityId: activity.activityId } }, selected);
+    async function ask(expectedConnectionId, modelId, attach = false) {
       const input = question(activity, session, '核对当前显式模型选择 ' + modelId);
+      if (attach) {
+        const name = 'pixel.png';
+        input.context.action.draft.references.push({ referenceId: randomUUID(), sourceName: name, copy: name,
+          range: { kind: 'text', start: 0, end: name.length }, source: { kind: 'image', activityId: activity.activityId,
+            image: { imageId, version: attachment.version, sha256: attachment.sha256, name } } });
+      }
       const receipt = await schoolApi(`agent-sessions/${session.sessionId}/inputs`, input);
-      const conversation = await completed(schoolApi, session.sessionId, receipt.turnId);
+      const conversation = await completed(async route =>
+        (await request(schoolState.endpoint, route, undefined, memberHeaders, true))?.value ?? { turns: [] }, session.sessionId, receipt.turnId);
       assert.ok(conversation.messages.some(message => message.text === 'route:' + modelId));
       assert.equal(payloads.at(-1).model, modelId, 'the SDK reaches the selected configuration');
+      assert.ok(JSON.stringify(payloads.at(-1).messages).includes(dataBase64),
+        'the original attachment reaches the selected vision model, including after a model owner change');
       const snapshot = await schoolApi(`agent-sessions/${session.sessionId}/snapshots/${receipt.turnId}`);
       assert.equal(snapshot.turns.find(turn => turn.turnId === receipt.turnId).state, 'completed');
       return { input, receipt, snapshot };
     }
     rootPointer = await deviceApi('models/selection', { requestId: randomUUID(), expectedVersion: rootPointer.version,
       source: { kind: 'personal', connectionId: localSchoolModelId, owner: 'self' } }, selected);
-    await ask(localSchoolModelId, 'local-school-scope');
+    await ask(localSchoolModelId, 'local-school-scope', true);
     rootPointer = await deviceApi('models/selection', { requestId: randomUUID(), expectedVersion: rootPointer.version,
       source: { kind: 'personal', connectionId: personalModelId, owner: 'device' } }, selected);
     const deviceRun = await ask(personalModelId, 'device-route');
@@ -177,11 +195,12 @@ test('installed school settings share the Root pointer and independent Agent dis
     const schoolSelectionBeforeControls = await schoolApi('models/selection');
     const personalSelectionBeforeControls = await deviceApi('models/selection', undefined, personal);
     const base = `agent-sessions/${session.sessionId}`;
-    const originalInput = (await schoolApi(`${base}/conversation`)).inputs.at(-1);
+    const originalInput = (await schoolApi(`${base}/conversation`)).inputs.find(input => input.inputId === fixedDeviceRun.receipt.inputId);
+    assert.ok(originalInput);
     const edited = await fetch(deviceState.endpoint + '/api/learning/' + base + '/inputs/' + originalInput.inputId + '/control', {
       method: 'POST', headers: { 'content-type': 'application/json', ...versionHeaders(base), ...selected },
       body: JSON.stringify({ requestId: randomUUID(), expectedVersion: originalInput.version, operation: 'edit', text: 'late mutation' }) });
-    assert.equal(edited.status, 409, 'adopted input remains immutable');
+    assert.equal(edited.status, 409, 'an older adopted input remains immutable');
     const malformed = await fetch(deviceState.endpoint + '/api/learning/' + base + '/runs/' + originalInput.turnId + '/continue', {
       method: 'POST', headers: { 'content-type': 'application/json', ...versionHeaders(base), ...selected },
       body: JSON.stringify({ requestId: randomUUID(), inputs: [] }) });
@@ -212,9 +231,5 @@ test('installed school settings share the Root pointer and independent Agent dis
     assert.deepEqual(turnSteps(await schoolApi(snapshotRoute)), turnSteps(fixedDeviceRun.snapshot));
     assert.equal(payloads.length, 4, 'rejected controls and grant receipts never dispatch another model request');
 
-  } finally {
-    await Promise.allSettled([agent.stop(), device.stop(), school.stop()]);
-    upstream.closeAllConnections(); await new Promise(resolve => upstream.close(resolve));
-    await rm(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
-  }
+  });
 });

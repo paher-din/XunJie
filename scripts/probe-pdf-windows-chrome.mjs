@@ -235,7 +235,7 @@ async function chromeJob() {
       readingId, page: 2, label: '7', imageSha256: reading.pages[0].image.sha256, retainedReadingSha256: digest(reading) };
     result.checks.push('formal-upload-page2-label7');
     const pdfTools = page.getByRole('button', { name: 'PDF 工具侧栏', exact: true });
-    if (await pdfTools.count()) await pdfTools.click();
+    if (await pdfTools.count() && await pdfTools.getAttribute('aria-expanded') !== 'true') await pdfTools.click();
     await page.getByRole('button', { name: '引用此页', exact: true }).click(); await openConversation();
     const question = page.locator('textarea:visible').last();
     await question.fill('请先且仅调用一次 read_reference 实际读取我引用的 PDF 页图，然后简短说明电压数值、实际页序和印刷标签。读取后直接回答，不调用其他工具。');

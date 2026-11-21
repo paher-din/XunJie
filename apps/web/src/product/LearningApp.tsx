@@ -308,6 +308,7 @@ function LearningView() {
     setPendingConnection(pending)
   }
   const workspace = useRef<ActivityWorkspaceHandle>(null)
+  const reopenAfterReconnect = useRef<string | null>(null)
   async function protectActivity() {
     await sessionInputProtection.leave()
     if (!currentView.current.opened) return
@@ -458,6 +459,7 @@ function LearningView() {
         const next = normalizeContext(value as Context)
         // 恢复请求可能早于当前活动挂载完成；按最新视图保留已打开或 URL 请求的活动，避免恢复后落回列表。
         requestedActivity.current = currentView.current.opened?.activityId ?? requestedActivity.current
+        reopenAfterReconnect.current = requestedActivity.current
         setContext(next); setContextVerified(true); setReload(n => n + 1)
         setKey(old => next.identities.some(i => i.key === old) ? old : next.identities[0]?.key ?? '')
         try { sessionStorage.setItem('xj.works-context.v1', JSON.stringify(next)) } catch { /* Optional hint. */ }
@@ -618,7 +620,10 @@ function LearningView() {
       setOpened(null); setActivities(null); setActivitiesFor(''); setKey(desiredKey)
       return retire
     }
-    if (activityId === (currentView.current.opened?.activityId ?? null)) return retire
+    const restoring = contextVerified && activityId !== null && reopenAfterReconnect.current === activityId
+    reopenAfterReconnect.current = null
+    // The reset effect clears the offline view in the same commit. Re-read even if it is still mounted here.
+    if (!restoring && activityId === (currentView.current.opened?.activityId ?? null)) return retire
     if (!activityId) { ++epoch.current; setOpened(null); setBusy(false); return retire }
     if (!contextVerified) return retire
     const generation = ++epoch.current
@@ -1202,7 +1207,7 @@ function LearningView() {
           {opened.course ? <>
             <header className="product-task-details-heading">
               <h2>{opened.course.taskTitle}</h2>
-              <p className="detail">{opened.course.courseName} · {opened.status === 'closed' ? '已关闭' : '进行中'}</p>
+              <p className="detail">{opened.course.courseName}</p>
             </header>
             <CourseInstructions content={opened.course} busy={busy}
               objectiveProgress={opened.purpose ? undefined : {

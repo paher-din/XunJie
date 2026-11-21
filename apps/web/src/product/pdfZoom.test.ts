@@ -1,15 +1,26 @@
 import { expect, it } from 'vitest'
 import type { PdfPage } from '@xunjie/contracts/pdf-materials'
-import { pdfPageSize, pdfZoomPercent } from './pdfZoom'
+import { pdfCanSpread, pdfPageSize, pdfSpreadGap, pdfZoomPercent, pdfZoomSliderMin } from './pdfZoom'
 
 const portrait = { width: 794, height: 1123 }
 const desktop = { width: 1280, height: 800 }
 
 it('opens a wide desktop view between fit page and fit width', () => {
   const reading = pdfZoomPercent('reading', desktop, [portrait])
+  expect(reading).toBe(125)
   expect(reading).toBeGreaterThan(pdfZoomPercent('fit-page', desktop, [portrait]))
   expect(reading).toBeLessThan(pdfZoomPercent('fit-width', desktop, [portrait]))
   expect(portrait.width * reading / 100).toBeLessThanOrEqual(desktop.width)
+})
+
+it('keeps whole-page fitting reachable below the normal slider minimum', () => {
+  const short = { width: 1280, height: 350 }
+  const pages = [portrait, portrait]
+  expect(pdfZoomSliderMin(desktop, pages)).toBe(50)
+  const minimum = pdfZoomSliderMin(short, pages)
+  expect(minimum).toBe(pdfZoomPercent('fit-page', short, pages))
+  expect(minimum).toBeLessThan(50)
+  expect(portrait.height * minimum / 100 + 26).toBeLessThanOrEqual(short.height)
 })
 
 it('uses the available width for a narrow column without horizontally clipping either page', () => {
@@ -25,6 +36,18 @@ it('keeps small pages at a moderate default while width fit can still fill the r
   const small = { width: 400, height: 266 }
   expect(pdfZoomPercent('reading', desktop, [small])).toBe(150)
   expect(pdfZoomPercent('fit-width', desktop, [small])).toBe(300)
+})
+
+it('fits both page widths and their gap in a wide spread and stacks them in a narrow column', () => {
+  const landscape = { width: 840, height: 590 }
+  const pages = [portrait, landscape]
+  expect(pdfCanSpread(desktop, pages)).toBe(true)
+  const spread = pdfZoomPercent('fit-width', desktop, pages)
+  expect(spread).toBe(Math.floor(100 * (desktop.width - pdfSpreadGap) / (portrait.width + landscape.width)))
+  const narrow = { width: 620, height: 800 }
+  expect(pdfCanSpread(narrow, pages)).toBe(false)
+  expect(pdfZoomPercent('fit-width', narrow, pages)).toBe(Math.floor(100 * narrow.width / landscape.width))
+  expect(pdfCanSpread(desktop, [portrait, undefined])).toBe(false)
 })
 
 it('derives the same display size from fixed previews rendered at different resolutions', () => {

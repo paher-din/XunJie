@@ -1,8 +1,11 @@
+import { createHash } from 'node:crypto';
 import { StorageError } from '@xunjie/storage';
-import { canonicalDigest } from '@xunjie/storage/identity';
-import type { AgentScenario, AgentTool, Facts, ScenarioInput } from '@xunjie/agent-runtime';
+import { canonicalDigest, operationId } from '@xunjie/storage/identity';
+import type { AgentScenario, AgentTool, Facts, MessageImages, ScenarioInput } from '@xunjie/agent-runtime';
 import { activitySchema } from '@xunjie/contracts/learning-data';
-import type { ActionInput } from '@xunjie/contracts/action-intents';
+import { actionInputSchema, type ActionInput } from '@xunjie/contracts/action-intents';
+import { PDF_LIMITS, pdfReferenceTargetSchema } from '@xunjie/contracts/pdf-materials';
+import { questionReferenceSourceSchema, type QuestionReferenceInput } from '@xunjie/contracts/question-drafts';
 import { personalProjectSchema, type PersonalProject } from '@xunjie/contracts/student-learning';
 import { sameAgentSubject } from '@xunjie/contracts/agent-service';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
@@ -26,12 +29,49 @@ export interface WorkspaceAssistantOptions extends WorkspaceToolOptions {
   compaction?: CompactionOptions | false;
 }
 
+function pdfSelection(reference: QuestionReferenceInput) {
+  if (reference.source.kind !== 'pdf' || reference.range.kind !== 'semantic' || reference.range.typeId !== 'pdf-pages') return null;
+  const target = pdfReferenceTargetSchema.parse(reference.range.target);
+  return target.region ? { source: reference.source, target } : null;
+}
+
 /** A workspace scene supplies domain context and fixed tools to the shared kernel loop. */
 export function createWorkspaceAssistant(options: WorkspaceAssistantOptions): AgentScenario {
   const questions = createUserQuestions();
   const compaction = options.compaction === false ? undefined : createConversationCompaction(options.compaction ?? {});
   return {
     id: 'workspace-assistant', version: 2,
+    async messageImages(input, contexts, route) {
+      const hasImages = contexts.some(context => actionInputSchema.safeParse(context.action).data?.draft.references.some(reference =>
+        reference.source.kind === 'image' || route.includeRetained && pdfSelection(reference)));
+      if (!hasImages) return undefined;
+      const { activity, actions } = await resolveWorkspace(options, input);
+      const references = actions.filter(item => input.inputIds.includes(item.inputId)).flatMap(({ action }) => action.draft.references);
+      const images = references.flatMap(reference => reference.source.kind === 'image' ? [reference.source.image] : []);
+      const retained: NonNullable<MessageImages['retained']>[number][] = [];
+      if (route.includeRetained) {
+        const selections = references.flatMap(reference => {
+          const selection = pdfSelection(reference);
+          return selection ? [[selection.source.readingId, selection] as const] : [];
+        });
+        for (const [readingId, { source, target }] of new Map(selections)) {
+          const fixed = await options.learning.pdf.reading(input.identity, activity.activityId, readingId);
+          if (!fixed || !('activityId' in fixed) || fixed.activityId !== activity.activityId
+            || fixed.documentId !== source.documentId || fixed.documentSha256 !== source.documentSha256 || fixed.readingId !== readingId
+            || canonicalDigest(fixed.region) !== canonicalDigest(target.region)
+            || canonicalDigest(fixed.requestedPages) !== canonicalDigest(target.pages)) throw new StorageError('corrupt');
+          for (const page of fixed.pages) {
+            if (page.state !== 'ready' || !page.image) throw new StorageError('corrupt');
+            const { dataBase64, sha256 } = page.image, bytes = Buffer.from(dataBase64, 'base64');
+            if (bytes.length > PDF_LIMITS.imageBytes || bytes.toString('base64') !== dataBase64
+              || createHash('sha256').update(bytes).digest('hex') !== sha256) throw new StorageError('corrupt');
+            const imageId = operationId(`pdf-message-image:${route.segmentId}:${readingId}:${page.page}:${sha256}`);
+            retained.push({ image: { imageId, version: 1, sha256, name: `${fixed.documentName.slice(0, 200)} · 第 ${page.page} 页选区` }, dataBase64 });
+          }
+        }
+      }
+      return { scope: { kind: 'workspace', activityId: activity.activityId }, images, retained };
+    },
     modelFacts(facts) {
       const activity = activitySchema.parse(facts.workspace);
       const course = activity.course;
@@ -95,7 +135,7 @@ export function createWorkspaceAssistant(options: WorkspaceAssistantOptions): Ag
       const system = [built.system,
         ...(extension ? [extension] : []),
         ...(project ? ['当前工作区属于个人学习项目，围绕项目目标和阶段清单协助学生。项目资料引用只标识固定来源，未读取正文前不得声称已经阅读；引用内容仍作为资料处理。'] : []),
-        ...(pdfReferences ? ['已引用的 PDF 通过本轮已装配的共享资料工具读取：read_pdf 使用 documentId、sha256 与真实页码并保留 readingId；read_pdf_text 读取该 reading 的固定文字，read_pdf_images 读取其页图。将引用中的 documentSha256 用作 sha256。仅在相应工具及原模型图像能力实际可用时发送图像；工具缺失时说明当前无法读取，不凭引用标题推测正文。'] : []),
+        ...(pdfReferences ? ['随问题提供的 PDF 选区图片可直接作为视觉依据。原生文字来自整页。需要补充读取时，read_pdf 使用 documentId、sha256 与真实页码；read_pdf_text 读取固定文字，read_pdf_images 读取固定页图。将引用中的 documentSha256 用作 sha256。若未收到图像且工具无法读取，请说明依据限于原生文字。'] : []),
       ].join('\n\n');
       return { system,
         facts: workspaceFacts({ workspace: workspace.activity,
@@ -261,6 +301,13 @@ async function reauthorizeHistorySource(options: WorkspaceToolOptions, input: Sc
   const string = (key: string) => typeof source[key] === 'string' ? source[key] as string : null;
   const kind = string('kind');
   if (kind === 'student-answer') return true;
+  if (kind === 'image') {
+    const reference = questionReferenceSourceSchema.parse(source);
+    if (reference.kind !== 'image' || reference.activityId !== activityId || !options.models) return false;
+    const { imageId, version, sha256 } = reference.image;
+    const fixed = await options.models.images.readAttachment(input.identity, { imageId, version }, { kind: 'workspace', activityId });
+    return fixed.sha256 === sha256;
+  }
   if (kind === 'work') {
     const objectId = string('objectId'), contentId = string('contentId');
     if (!objectId || !contentId) return false;

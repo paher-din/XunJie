@@ -112,7 +112,7 @@ async function experiment(patch: Partial<AluState> = {}, split = false, version 
   const submitBarrier = new Promise<void>(resolve => { releaseSubmit = resolve })
   const execution = { snapshot: () => runs, subscribe: (listener: () => void) => { runListeners.add(listener); return () => runListeners.delete(listener) },
     receiver: { identity: { receiverId: 'browser-execution' } }, submit: async (action: AnyExecutionAction) => { submitted.push(action); await submitBarrier },
-    artifact: async () => null, query: async () => null,
+    artifact: async () => null, query: vi.fn<(_requestId: string) => Promise<null>>(async () => null),
     visibility: async (requestId: string) => runs.records.some(record => record.requestId === requestId
       && record.action.execution.operation.operationId === 'check-all')
       ? { reveal: true, phase: 'submitted', state: 'succeeded', statusKnowledge: 'confirmed',
@@ -122,7 +122,7 @@ async function experiment(patch: Partial<AluState> = {}, split = false, version 
         || snapshot.files[0]?.contentId !== code.contentId,
         phase: state.feedbackPolicy === 'live' ? 'free-observation' : 'pending', state: 'succeeded', statusKnowledge: 'confirmed',
         workIds: snapshot.files.map(file => file.contentId).sort() }) }
-  let actionsState = { items: [] as LocalAction[] }
+  let actionsState = { ready: true, items: [] as LocalAction[] }
   const actionListeners = new Set<() => void>()
   const actions = { subscribe: (listener: () => void) => { actionListeners.add(listener); return () => actionListeners.delete(listener) }, snapshot: () => actionsState }
   vi.mocked(useActivitySession).mockReturnValue({ workspace, execution, actions } as unknown as ReturnType<typeof useActivitySession>)
@@ -134,6 +134,12 @@ async function experiment(patch: Partial<AluState> = {}, split = false, version 
   await act(async () => { root!.render(<WorkspaceReferencesProvider workspaceKey={key} onSubmit={() => {}}>
     {split && <AluExperimentTool {...props} compact />}<AluExperimentTool {...props} {...(location ? { location } : {})} /></WorkspaceReferencesProvider>) })
   return { submitted, enabled, checkRequestId, writes: () => writes, release: () => releaseSubmit!(), read: () => state,
+    query: execution.query,
+    setActionPhase: (requestId: string, phase: LocalAction['phase']) => {
+      actionsState = { ready: true, items: [{ key: `${key}:${requestId}`, scope: key,
+        input: { ...enabled.action, requestId }, phase, cancelRequested: false, error: '' }] }
+      actionListeners.forEach(listener => listener())
+    },
     isolate: () => { readOnly = true; snapshot = { ...snapshot }; listeners.forEach(listener => listener()) },
     files: () => snapshot.files,
     seedNotes: () => {
@@ -155,7 +161,7 @@ async function experiment(patch: Partial<AluState> = {}, split = false, version 
     editCode: () => workspace.change([{ ...code, contentId: crypto.randomUUID(), value: code.value + ' // v8' }, stateFile()]),
     patch: (next: Partial<AluState>) => { state = { ...state, ...next }; workspace.change([code, stateFile()]) },
     reject: () => { const action = submitted[0]!
-      actionsState = { items: [{ key: `${key}:${action.requestId}`, scope: key, input: action, phase: 'failed',
+      actionsState = { ready: true, items: [{ key: `${key}:${action.requestId}`, scope: key, input: action, phase: 'failed',
         cancelRequested: false, error: '', localAcceptance: rejectedExecutionAcceptance(action.requestId, '2'.repeat(64), action.receiver, '候选已变更') }] }
       actionListeners.forEach(listener => listener())
     },
@@ -163,6 +169,29 @@ async function experiment(patch: Partial<AluState> = {}, split = false, version 
 }
 
 describe('ALU view coordination and result ownership', () => {
+  it.each([
+    { key: 'selectedObservation', label: '观察', retry: '核对原观察' },
+    { key: 'selectedCheck', label: '检查', retry: '核对原检查' },
+  ] as const)('waits for the selected $label record to be accepted and checked before reporting it missing', async ({ key, label, retry }) => {
+    const env = await experiment()
+    const requestId = crypto.randomUUID()
+    let finish!: (value: null) => void
+    env.query.mockReturnValueOnce(new Promise(resolve => { finish = resolve }))
+    const warning = `暂时找不到所选${label}记录`
+    await act(async () => {
+      env.setActionPhase(requestId, 'dispatched')
+      env.patch({ [key]: requestId })
+    })
+    expect(env.query).not.toHaveBeenCalled()
+    expect(container.textContent).not.toContain(warning)
+    await act(async () => env.setActionPhase(requestId, 'accepted'))
+    expect(env.query).toHaveBeenCalledWith(requestId)
+    expect(container.textContent).not.toContain(warning)
+    await act(async () => finish(null))
+    expect(container.textContent).toContain(warning)
+    expect(Array.from(container.querySelectorAll('button')).some(item => item.textContent === retry)).toBe(true)
+  })
+
   it('opens a cited experiment as a read-only view without rewriting the student state', async () => {
     const env = await experiment({}, false, 3, true)
     const before = JSON.stringify(env.read())

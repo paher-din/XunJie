@@ -1,6 +1,6 @@
 export { WorkspaceReferencesProvider, WorkspaceReferenceComposer, WorkspaceReferenceList, useWorkspaceReferences } from './WorkspaceReferences'
 export { DraftReferencesProvider } from './DraftReferences'
 export { SelectionToolbar } from './SelectionToolbar'
-export { locateTextRange, TextReferenceSource, useTextReferenceSource } from './TextReferenceSource'
+export { locateDomRange, locateTextRange, TextReferenceSource, useTextReferenceSource } from './TextReferenceSource'
 export { CodeReferenceSource, codeReferenceSelection } from './CodeReferenceSource'
 export type { ReferenceSnapshot, WorkspaceReference, SubmittedReference, ReferenceSubmission, ReferenceSelection, ReferenceSource, LocateResult } from './model'

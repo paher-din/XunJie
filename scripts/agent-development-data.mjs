@@ -5,7 +5,7 @@ import { join, resolve } from 'node:path';
 import { agentServiceMigrations } from '@xunjie/agents/transport/session-storage';
 import { learningMigrations } from '@xunjie/learning-space/learning-data';
 import { modelMigrations } from '@xunjie/model-gateway';
-import { openStorage } from '@xunjie/storage';
+import { formerMigrationVersions, openStorage } from '@xunjie/storage';
 import { acquireLock, ownsProcess } from '../packages/product-runtime/dist/io.js';
 
 const quote = value => '"' + value.replaceAll('"', '""') + '"';
@@ -79,7 +79,7 @@ export async function resetAgentDevelopmentData({ root, admin, owners, apply = f
       const sourceMigrations = journal.map((recorded, index) => {
         const valid = migration => migration?.name === recorded.name && hash(`${recorded.version}\n${migration.name}\n${migration.sql}`) === recorded.checksum;
         const migration = valid(learningMigrations[recorded.version - 1]) ? learningMigrations[recorded.version - 1]
-          : index === journal.length - 1 ? learningMigrations.find(item => item.formerVersion === recorded.version && valid(item)) : undefined;
+          : index === journal.length - 1 ? learningMigrations.find(item => formerMigrationVersions(item).includes(recorded.version) && valid(item)) : undefined;
         if (!migration || recorded.version !== index + 1) fail('migration-prefix-conflict');
         return { version: recorded.version, name: migration.name, sql: migration.sql };
       });
@@ -270,7 +270,7 @@ export async function resetAgentDevelopmentData({ root, admin, owners, apply = f
         const migration = migrations[recorded.version - 1];
         if (migration?.name === recorded.name && hash(`${migration.version}\n${migration.name}\n${migration.sql}`) === recorded.checksum) present.add(recorded.version);
         else {
-          const former = index === applied.length - 1 ? migrations.find(item => item.formerVersion === recorded.version && item.name === recorded.name
+          const former = index === applied.length - 1 ? migrations.find(item => formerMigrationVersions(item).includes(recorded.version) && item.name === recorded.name
             && hash(`${recorded.version}\n${item.name}\n${item.sql}`) === recorded.checksum) : undefined;
           if (former) { relocations[kind] = { from: recorded.version, to: former.version, checksum: hash(`${former.version}\n${former.name}\n${former.sql}`) }; present.add(former.version); }
           else report.blocking.push({ code: 'migration-prefix-conflict', owner: kind, version: recorded.version });
