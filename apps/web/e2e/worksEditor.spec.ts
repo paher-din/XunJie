@@ -397,7 +397,7 @@ test('initial storage refusal retries automatically after the browser permits tr
   await expect(page.getByRole('button', { name: '导出当前作品' })).toBeVisible()
   await page.evaluate(() => { (window as unknown as { workStorageFault: { blocked: boolean } }).workStorageFault.blocked = false })
   const files = await openWorkspacePopover(page, '文件')
-  await expect(files.getByLabel('文件名', { exact: true })).toBeVisible()
+  await expect(files.getByRole('button', { name: '新建文件', exact: true })).toBeVisible()
   await closeWorkspacePopover(page, '文件')
   await expect(page.getByRole('button', { name: '导出当前作品' })).toHaveCount(0)
 })

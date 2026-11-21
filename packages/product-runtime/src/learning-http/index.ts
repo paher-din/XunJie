@@ -630,6 +630,8 @@ export function createLearningEntry(options: {
         else if (parts.length === 3 && parts[2] === 'course' && method === 'POST') result = await learning.pdf.importCourse(identity, parts[1]!, await readLearningBody(request));
         else if (parts.length === 4 && parts[2] === 'reads' && method === 'GET') result = await learning.pdf.reading(identity, parts[1]!, parts[3]!);
         else if (parts.length === 4 && parts[2] === 'documents' && method === 'GET') result = await learning.pdf.document(identity, parts[1]!, parts[3]!);
+        else if (parts.length === 5 && parts[2] === 'documents' && parts[4] === 'remove' && method === 'POST')
+          result = await learning.pdf.remove(identity, parts[1]!, parts[3]!, await readLearningBody(request));
         else if (parts.length === 4 && parts[2] === 'originals' && method === 'GET') {
           const original = await learning.pdf.original(identity, parts[1]!, parts[3]!);
           result = { document: original.document, dataBase64: Buffer.from(original.bytes).toString('base64') };

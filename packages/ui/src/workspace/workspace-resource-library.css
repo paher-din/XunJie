@@ -78,3 +78,26 @@
   padding: 4px 12px 4px 0;
 }
 .workspace-resource-row-actions > .outline { height: 28px; padding-inline: 8px; }
+.workspace-resource-row-more {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  color: var(--muted);
+}
+.workspace-resource-row-more:hover:not(:disabled) { background: var(--chip); color: var(--ink); }
+.workspace-resource-row-more:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+.workspace-resource-row-more:disabled { opacity: .5; cursor: default; }
+.workspace-resource-menu-positioner { z-index: 100; }
+.workspace-resource-menu {
+  min-width: 120px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--raised);
+  color: var(--ink);
+  box-shadow: var(--shadow-menu);
+}
+.workspace-resource-menu-item { padding: 6px 10px; border-radius: 6px; font-size: 13px; cursor: pointer; }
+.workspace-resource-menu-item[data-highlighted] { background: var(--hover-bg); }

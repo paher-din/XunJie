@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Menu } from '@base-ui/react/menu'
 import { Button } from '../foundation/Button'
 import { Icon } from '../icons'
 import './workspace-resource-library.css'
@@ -20,6 +21,22 @@ export function WorkspaceResourceLibrary({ title, description, actions, busy, ch
 
 export function WorkspaceResourceList({ label, children }: { label?: string; children: ReactNode }) {
   return <ul className="workspace-resource-list" aria-label={label}>{children}</ul>
+}
+
+export function WorkspaceResourceMenu({ name, disabled, items }: {
+  name: string; disabled?: boolean; items: readonly { label: string; onSelect: () => void }[]
+}) {
+  return <Menu.Root>
+    <Menu.Trigger className="workspace-resource-row-more" type="button" aria-label={`${name}的更多操作`}
+      title="更多操作" disabled={disabled}><Icon name="menu-dots" size={16} variant="linear" /></Menu.Trigger>
+    <Menu.Portal><Menu.Positioner className="workspace-resource-menu-positioner" align="end" sideOffset={6}>
+      <Menu.Popup className="workspace-resource-menu">
+        {items.map(item => <Menu.Item key={item.label} className="workspace-resource-menu-item" onClick={item.onSelect}>
+          {item.label}
+        </Menu.Item>)}
+      </Menu.Popup>
+    </Menu.Positioner></Menu.Portal>
+  </Menu.Root>
 }
 
 export function WorkspaceResourceRow({ name, detail, actions, current, disabled, onOpen }: {

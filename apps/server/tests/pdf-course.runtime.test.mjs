@@ -3,11 +3,11 @@ import { test } from 'node:test';
 import { randomUUID, createHash } from 'node:crypto';
 import { resolveCredential, openProductRuntime, createProductRuntimeHost, createProductLearningApplication } from '@xunjie/product-runtime';
 import { join } from 'node:path';
-import { pdfRuntime, modelReply } from './fixtures/pdf-runtime.mjs';
+import { pdfRuntime } from './fixtures/pdf-runtime.mjs';
 import { fixedPdf } from './fixtures/pdf-material.mjs';
 
 test('course PDF import checks the fixed student-open release and retains its provenance', {timeout:180000}, async()=>{
- const f=await pdfRuntime((_payload,_index,protocol)=>modelReply(protocol,null));
+ const f=await pdfRuntime();
  try {
   const admin={authorization:'Bearer '+await resolveCredential(f.root,'control')};
   const courseId=randomUUID(),releaseId=randomUUID(),materialId=randomUUID(),privateId=randomUUID(),bytes=fixedPdf();
@@ -25,6 +25,8 @@ test('course PDF import checks the fixed student-open release and retains its pr
   const route=`pdf/${activity.activityId}`;
   const imported=await f.api(route+'/course',{requestId:randomUUID(),documentId:randomUUID(),materialId},student);
   assert.equal(imported.state,'ready');assert.deepEqual(imported.courseSource,{releaseId,materialId});
+  const removal=await f.request(route+'/documents/'+imported.documentId+'/remove',{requestId:randomUUID()},student);
+  assert.equal(removal.status,403,'course PDFs cannot be removed through the personal PDF operation');
   const read=await f.api(route+'/read',{requestId:randomUUID(),documentId:imported.documentId,pages:[2],region:null},student);
   assert.match(read.pages[0].text,/37 volts/);
   // The installed remote client must expose PDF search through the same school grant.

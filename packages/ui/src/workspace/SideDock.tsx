@@ -86,6 +86,8 @@ export interface StashItem {
 type DockPanel = 'task' | 'stash' | null
 
 export interface SideDockProps {
+  /** Additional workspace controls that share the left dock. */
+  children?: ReactNode
   /** Task information content supplied by the caller. */
   taskInfo: ReactNode
   taskButtonRef?: Ref<HTMLButtonElement>
@@ -100,7 +102,7 @@ export interface SideDockProps {
   onToast?: (msg: string) => void
 }
 
-export function SideDock({ taskInfo, taskButtonRef, openPanel, onOpenPanelChange, stash: stashItems, stashPanel, onPin, onOpen, onToast }: SideDockProps) {
+export function SideDock({ children, taskInfo, taskButtonRef, openPanel, onOpenPanelChange, stash: stashItems, stashPanel, onPin, onOpen, onToast }: SideDockProps) {
   const [localOpen, setLocalOpen] = useState<DockPanel>(null)
   const open = openPanel === undefined ? localOpen : openPanel
   const stash = stashItems ?? []
@@ -354,6 +356,7 @@ export function SideDock({ taskInfo, taskButtonRef, openPanel, onOpenPanelChange
         </defs>
       </svg>
       <nav className="ws-dock" aria-label="工作区辅助">
+        {children}
         <button
           ref={attachTaskButton}
           type="button"

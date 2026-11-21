@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { Button } from '@xunjie/ui/foundation'
 import type { LearningActivity, WorkFile } from '@xunjie/contracts/learning-data'
 import { acceptsState, componentInstanceId, componentStateSchema, componentStateMediaType, componentStateName, matchesComponentState } from '@xunjie/contracts/components'
-import { canonicalValue, executionQuerySchema, type ExecutionHistoryEntry, type ExecutionQuery } from '@xunjie/contracts/execution'
+import { canonicalValue, executionQuerySchema, isTerminalExecutionState, type ExecutionHistoryEntry, type ExecutionQuery } from '@xunjie/contracts/execution'
+import { aluCaseFromAction, aluInputsSchema } from '@xunjie/contracts/alu-learning'
 import { schoolSubmissionInputSchema, schoolSubmissionListSchema, schoolSubmissionReceiptSchema, schoolSubmissionSchema,
   type SchoolSubmissionInput, type SchoolSubmissionReceipt, type SchoolSubmission } from '@xunjie/contracts/school-deliveries'
 import type { ReliableWorkspace } from '../reliable-workspace'
@@ -12,6 +13,7 @@ import { openWorkspaceDatabase } from '../reliable-workspace/draft-store'
 import type { ArtifactEntry } from '../teaching-artifacts/useTeachingArtifacts'
 import { staticPreviewDocument } from '../teaching-artifacts/partial-html'
 import { frameTheme } from '../teaching-artifacts/frame'
+import type { ExecutionController } from '../tool-execution/controller'
 import { createExecutionTransport, createSessionTransport } from './executionTransport'
 import { learningRequest, workspaceScope } from './learningTransport'
 import './activity-submission.css'
@@ -47,8 +49,31 @@ async function legacyJournals(key: string): Promise<Journal[]> {
   })
 }
 const date = (value: string) => new Date(value).toLocaleString('zh-CN', { hour12: false })
+type ExecutionResult = Pick<ExecutionHistoryEntry, 'action' | 'query' | 'createdAt'>
+const subscribeToNoRuns = () => () => {}
+const noRuns = () => null
+
+function resultLabel(entry: ExecutionResult, activity: LearningActivity) {
+  const action = entry.action
+  const command = action?.execution
+  const status = entry.query.state === 'cancelled' ? '已停止' : entry.query.state === 'failed' ? '未完成' : '已完成'
+  const output = entry.query.output?.output as { verdict?: string; totalInputs?: number; f?: string; cout?: string } | undefined
+  if (action?.protocolVersion === 3 && action.execution.basis.runtime.adapterId === 'icarus-alu') {
+    if (command?.operation.operationId === 'check-all') return { title: 'ALU 全量检查', detail: entry.query.state === 'succeeded' && output?.verdict === 'pass'
+      ? (output.totalInputs ? `${output.totalInputs} 组通过` : '检查通过') : output?.verdict === 'fail' ? '检查未通过' : status }
+    const inputs = aluInputsSchema.safeParse(command?.parameters)
+    const readings = inputs.success && Object.entries(inputs.data).map(([key, value]) => `${key}=${value}`).join(' · ')
+    const result = output?.f && output.cout ? `F=${output.f} · Cout=${output.cout}` : status
+    return { title: aluCaseFromAction(action) ? 'ALU 预测比较' : 'ALU 实验观察', detail: readings ? `${readings} / ${result}` : result }
+  }
+  const name = entry.query.output?.artifact?.name ?? '实验结果'
+  const title = activity.course?.components?.find(binding => binding.key === command?.instance.key)?.configuration.title
+  return { title: title || name, detail: title ? `${name} · ${status}` : status }
+}
+
 type Props = { activity: LearningActivity; spaceKey: string; namespace: string; authorized: boolean
   workspace: Pick<ReliableWorkspace, 'snapshot' | 'leave' | 'isReadOnly'>; artifacts: ArtifactEntry[]
+  execution?: Pick<ExecutionController, 'subscribe' | 'snapshot' | 'artifact'>
   beforeFreeze?: () => Promise<void>; isComposing?: () => boolean; transport?: ActivitySubmissionTransport }
 
 /** The account/target key also remounts every async lifetime, including late modal replies. */
@@ -60,7 +85,7 @@ export function ActivitySubmission(props: Props) {
   return <SchoolSubmissionControl key={JSON.stringify([key, spaceKey, props.authorized, activity.status])} {...props} journalKey={key} />
 }
 
-function SchoolSubmissionControl({ activity, spaceKey, namespace, authorized, workspace, artifacts, beforeFreeze,
+function SchoolSubmissionControl({ activity, spaceKey, namespace, authorized, workspace, execution, artifacts, beforeFreeze,
   isComposing, transport: provided, journalKey }: Props & { journalKey: string }) {
   const transport = useMemo<ActivitySubmissionTransport>(() => {
     if (provided) return provided
@@ -80,6 +105,18 @@ function SchoolSubmissionControl({ activity, spaceKey, namespace, authorized, wo
   const [selectedArtifacts, setSelectedArtifacts] = useState<string[]>([]), [selectedEvidence, setSelectedEvidence] = useState<string[]>([])
   const [history, setHistory] = useState<ExecutionHistoryEntry[]>([]), [historyLoading, setHistoryLoading] = useState(false)
   const [nativeSessions, setNativeSessions] = useState<ExecutionQuery[]>([])
+  const runs = useSyncExternalStore(open && execution ? execution.subscribe : subscribeToNoRuns, open && execution ? execution.snapshot : noRuns)
+  // Confirmed local results are already durable and can be submitted while history catches up.
+  const results = new Map<string, ExecutionResult>(history.map(entry => [entry.query.requestId, entry]))
+  for (const record of runs?.records ?? []) {
+    if (record.query.statusKnowledge === 'confirmed' && record.query.output?.artifact && isTerminalExecutionState(record.query.state))
+      results.set(record.requestId, { action: record.action, query: record.query, createdAt: new Date(record.createdAt).toISOString() })
+  }
+  const choices = [
+    ...[...results.values()].map(entry => ({ requestId: entry.query.requestId, time: entry.createdAt, ...resultLabel(entry, activity) })),
+    ...nativeSessions.map(query => ({ requestId: query.requestId, time: query.session!.observations.at(-1)!.at,
+      title: '本机会话观察', detail: `${query.session!.observations.length} 条观察` })),
+  ].sort((a, b) => Date.parse(b.time) - Date.parse(a.time))
   const trigger = useRef<HTMLButtonElement>(null), alive = useRef(true), composing = useRef(false), running = useRef(false)
   const artifactSource = useRef(artifacts); artifactSource.current = artifacts
   const prepared = useRef<SchoolSubmissionInput | null>(null), latest = useRef({ authorized, writable: activity.status === 'open' })
@@ -157,7 +194,7 @@ function SchoolSubmissionControl({ activity, spaceKey, namespace, authorized, wo
         setHistory(entries.filter(entry => entry.query.output?.artifact && ['succeeded', 'failed', 'cancelled'].includes(entry.query.state)))
         setNativeSessions(fixedSessions)
       }
-    } catch { if (current()) setHistoryError('实验结果暂时无法读取，可以不附实验结果提交作品。') }
+    } catch { if (current()) setHistoryError('暂时无法读取已同步的实验历史。') }
     finally { if (alive.current) setHistoryLoading(false) }
   }
   useEffect(() => {
@@ -241,7 +278,8 @@ function SchoolSubmissionControl({ activity, spaceKey, namespace, authorized, wo
                 observations: session.session.observations, finalObservation: session.session.observation }) })
             continue
           }
-          const entry = history.find(item => item.query.requestId === requestId), original = await transport.artifact(requestId)
+          const entry = results.get(requestId)
+          const original = await execution?.artifact(requestId) ?? await transport.artifact(requestId)
           if (!writable()) return
           if (!entry?.query.output?.artifact || !original || original.requestId !== requestId || original.executionRef !== entry.query.executionRef
             || original.sha256 !== entry.query.output.artifact.sha256 || original.byteLength !== entry.query.output.artifact.byteLength
@@ -312,13 +350,14 @@ function SchoolSubmissionControl({ activity, spaceKey, namespace, authorized, wo
                   onChange={() => toggle(setSelectedArtifacts, item.artifactId)} />{item.payload.title}</label>)}
             </fieldset>}
             <fieldset disabled={busy || !!prepared.current}><legend>附上实验结果</legend>
-              {historyLoading ? <p role="status" aria-label="正在读取实验结果" /> : history.length || nativeSessions.length ? <>{history.map(entry => <label key={entry.query.requestId} className="activity-submission-choice">
-                <input type="checkbox" checked={selectedEvidence.includes(entry.query.requestId)} onChange={() => toggle(setSelectedEvidence, entry.query.requestId)} />
-                {entry.query.output!.artifact!.name}<span>{date(entry.createdAt)}</span></label>)}
-                {nativeSessions.map(query => <label key={query.requestId} className="activity-submission-choice">
-                  <input type="checkbox" checked={selectedEvidence.includes(query.requestId)} onChange={() => toggle(setSelectedEvidence, query.requestId)} />
-                  本机会话观察<span>{date(query.session!.observations.at(-1)!.at)}</span></label>)}</> : <p>没有可附上的实验结果。</p>}
-              {historyError && <p>{historyError}<button type="button" className="ws-btn ghost" onClick={() => void loadHistory()}>重新读取</button></p>}
+              {choices.map(choice => <label key={choice.requestId} className="activity-submission-choice activity-submission-result">
+                <input type="checkbox" checked={selectedEvidence.includes(choice.requestId)} onChange={() => toggle(setSelectedEvidence, choice.requestId)} />
+                <span className="activity-submission-result-copy"><strong>{choice.title}</strong><span>{choice.detail}</span></span>
+                <time dateTime={choice.time}>{date(choice.time)}</time>
+              </label>)}
+              {historyLoading ? <p role="status" className="detail">正在读取实验历史…</p>
+                : !choices.length && !historyError && <p>没有可附上的实验结果。</p>}
+              {historyError && <p>{historyError}<Button type="button" variant="outline" onClick={() => void loadHistory()}>重新读取</Button></p>}
             </fieldset>
             <Button type="button" disabled={busy || !authorized || !latest.current.writable} onClick={() => void confirm()}>确认提交</Button>
           </section>}

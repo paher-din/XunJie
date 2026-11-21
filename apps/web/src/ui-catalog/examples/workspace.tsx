@@ -47,6 +47,83 @@ function FileTabsDemo({ empty = false }: { empty?: boolean }) {
     onOpen={id => { setActive(id); setEvent(`打开 ${id}`) }} onClose={id => { setOpened(items => items.filter(file => file.fileId !== id)); setEvent(`关闭标签 ${id}，文件仍在示例项目中`) }} />
     <button type="button" onClick={() => setOpened(files.slice(0, 2))}>恢复示例标签</button></Stage>
 }
+function ManagedFilesDemo({ readOnly = false, empty = false }: { readOnly?: boolean; empty?: boolean }) {
+  const initialFiles: W.FileTabDisplay[] = empty
+    ? []
+    : [
+        { id: 'example-alu', name: 'alu.sv' },
+        { id: 'example-tb', name: 'alu_tb.sv' },
+        { id: 'example-notes', name: 'notes.md' },
+      ]
+  const [library, setLibrary] = useState<W.FileTabDisplay[]>(initialFiles)
+  const [openedIds, setOpenedIds] = useState<string[]>(empty ? [] : ['example-alu', 'example-tb'])
+  const [active, setActive] = useState<string | null>(empty ? null : 'example-alu')
+  const [event, setEvent] = useEvent()
+
+  const openFiles = library.filter(file => openedIds.includes(file.id))
+  const validateName = (name: string, currentId?: string) => {
+    if (!name) return '请输入有效的文件名。'
+    if (/[\\/]/.test(name)) return '文件名不能包含路径分隔符。'
+    if (library.some(item => item.name === name && item.id !== currentId)) return '已有同名文件。'
+    return undefined
+  }
+
+  return (
+    <Stage event={event}>
+      <W.FileStripView
+        files={library}
+        openFiles={openFiles}
+        activeId={active}
+        readOnly={readOnly}
+        canManage={() => true}
+        onOpen={id => {
+          setOpenedIds(prev => (prev.includes(id) ? prev : [...prev, id]))
+          setActive(id)
+          const target = library.find(item => item.id === id)
+          setEvent(`已打开 ${target?.name ?? id}`)
+        }}
+        onClose={id => {
+          const nextOpened = openedIds.filter(item => item !== id)
+          setOpenedIds(nextOpened)
+          if (active === id) setActive(nextOpened[0] ?? null)
+          const target = library.find(item => item.id === id)
+          setEvent(`已关闭标签 ${target?.name ?? id}（文件仍可从菜单重新打开）`)
+        }}
+        onCreate={name => {
+          const invalid = validateName(name)
+          if (invalid) return invalid
+          const id = crypto.randomUUID()
+          setLibrary(items => [...items, { id, name }])
+          setOpenedIds(prev => [...prev, id])
+          setActive(id)
+          setEvent(`已新建 ${name}`)
+          return undefined
+        }}
+        onRename={(id, name) => {
+          const invalid = validateName(name, id)
+          if (invalid) return invalid
+          setLibrary(items => items.map(file => (file.id === id ? { ...file, name } : file)))
+          setEvent(`已重命名为 ${name}`)
+          return undefined
+        }}
+        onDelete={async id => {
+          const target = library.find(item => item.id === id)
+          setLibrary(items => items.filter(file => file.id !== id))
+          const nextOpened = openedIds.filter(item => item !== id)
+          setOpenedIds(nextOpened)
+          if (active === id) setActive(nextOpened[0] ?? null)
+          setEvent(`已删除 ${target?.name ?? id}`)
+        }}
+        onExport={() => setEvent('已触发导出示例作品备份')}
+      />
+    </Stage>
+  )
+}
+function WorkspaceStatusDemo({ closed = false, running = false }: { closed?: boolean; running?: boolean }) {
+  return <Stage><W.WorkspaceStatusBar closed={closed} attention={closed}
+    workLabel={closed ? '作品保存待核对' : '已保存'} workDescription={closed ? undefined : '作品已保存到本机（v2）'}
+    executionLabel={running ? '工具运行中 1' : undefined} /></Stage>
+}
 function ConfirmationDemo({ initial = 'ready' }: { initial?: W.ConfirmationPhase }) {
   const [phase, setPhase] = useState(initial), [dirty, setDirty] = useState(2), [event, setEvent] = useEvent()
   return <Stage event={event}><W.ConfirmationCluster phase={phase} hasAttempt={phase !== 'idle'} unconfirmedCount={dirty} workspaceRevision={phase === 'idle' ? null : 2}
@@ -365,6 +442,15 @@ export const workspaceEntries: CatalogEntry[] = [
   entry('TaskProgress', 'TaskPresentation', '受控进度环；每个实例的 gradient ID 独立。', ['percent/done/status', 'title/ariaLabel'], [], [state('progress', '进行中／可调进度', () => <TaskProgressDemo />), state('done', '已完成', () => <TaskProgressDemo done />)]),
   entry('TaskInfo', 'TaskPresentation', '任务展示字段由调用方提供，演示说明可省略。', ['name/status/goal', 'percent/done/currentProgress/stage/deadline/course', 'demoNotice?'], ['ProgressBar', '状态节点插槽'], [state('plain', '无演示标识', () => <TaskInfoDemo />), state('demo', '显式演示标识', () => <TaskInfoDemo demo />)]),
   entry('FileTabs', 'FileTabs', '关闭标签与删除文件明确分离。', ['files/activeId/tabRoles', 'onOpen/onClose'], ['Icon'], [state('tabs', '打开／关闭', () => <FileTabsDemo />), state('empty', '空标签', () => <FileTabsDemo empty />)]),
+  entry('FileStripView', 'FileStripView', '文件列表、行内命名、删除确认和备份入口。', ['files/openFiles/activeId/readOnly', 'onCreate/onRename/onDelete/onExport'],
+    ['FileTabs', 'ConfirmationDialog'], [
+      state('manage', '管理作品文件', () => <ManagedFilesDemo />),
+      state('readonly', '只读限制', () => <ManagedFilesDemo readOnly />),
+      state('empty', '空文件', () => <ManagedFilesDemo empty />),
+    ]),
+  entry('WorkspaceStatusBar', 'WorkspaceStatusBar', '在工具标签旁展示作品保存、活动和实际工具运行状态。', ['closed/workLabel/workDescription/executionLabel/attention'],
+    ['Icon'], [state('saved', '作品已保存', WorkspaceStatusDemo), state('running', '工具运行中', () => <WorkspaceStatusDemo running />),
+      state('closed', '关闭且保存待核对', () => <WorkspaceStatusDemo closed />)]),
   entry('ConfirmationCluster', 'ConfirmationCluster', '确认保存、快照与原请求恢复状态。', ['phase/hasAttempt/workspaceRevision/snapshot', 'canSave/canSnapshot/canRetry', 'onOpen/onSave/onSnapshot/onRetry/onReload'], ['WorkspacePopover'], [state('ready', '未确认改动', () => <ConfirmationDemo />), state('unknown', '原请求未知', () => <ConfirmationDemo initial="unknown" />), state('saving', '保存中／禁用操作', () => <ConfirmationDemo initial="saving" />), state('readonly', '只读', () => <ConfirmationDemo initial="readonly" />), state('idle', '尚无尝试', () => <ConfirmationDemo initial="idle" />)]),
   entry('WorkspacePopover', 'WorkspacePopover', '非模态 body Portal；验证 Escape、Tab 与焦点返回。', ['label/icon/children', 'closeOnAction/attention/accessibleLabel'], ['document.body', 'ResizeObserver', '焦点目标'], [state('interactive', '打开／键盘／动作关闭', PopoverDemo)]),
   entry('CoreRunEntry', 'RunPanel', '顶栏运行入口。', ['onOpen'], [], [state('interactive', '本地回调', () => { const [event, setEvent] = useEvent(); return <Stage event={event}><W.CoreRunEntry onOpen={() => setEvent('打开本地运行面板')} /></Stage> })]),

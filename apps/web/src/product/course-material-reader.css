@@ -22,8 +22,6 @@
   font-size: 17px;
   overflow-wrap: anywhere;
 }
-.course-reader-actions, .course-reader-modes { display: flex; flex-wrap: wrap; gap: 8px; }
-.course-reader-modes button[aria-pressed="true"] { background: var(--chip-bg); color: var(--ink); }
 .course-reader-scroll {
   flex: 1;
   min-height: 0;
@@ -32,7 +30,7 @@
   padding: 24px;
 }
 .course-reader-scroll > :first-child { margin-top: 0; }
-.course-reader-markdown, .course-reader-original, .course-reader-plain {
+.course-reader-body, .course-reader-links {
   max-width: 74ch;
   margin: 0 auto;
   color: var(--ink);
@@ -40,7 +38,10 @@
   line-height: 1.7;
   overflow-wrap: anywhere;
 }
-.course-reader-markdown > :first-child { margin-top: 0; }
+.course-reader-body { user-select: text; }
+.course-reader-markdown > [data-markdown-start] { display: contents; }
+.course-reader-markdown > :first-child,
+.course-reader-markdown > [data-markdown-start]:first-child > :first-child { margin-top: 0; }
 .course-reader-markdown :is(h3, h4, h5, h6) { margin: 24px 0 8px; line-height: 1.5; }
 .course-reader-markdown h3 { font-size: 20px; }
 .course-reader-markdown :is(h4, h5, h6) { font-size: 17px; }
@@ -49,6 +50,7 @@
 .course-reader-markdown blockquote { padding-inline-start: 12px; border-inline-start: 1px solid var(--line-strong); color: var(--ink-soft); }
 .course-reader-markdown hr { border: 0; border-top: 1px solid var(--line); }
 .course-reader-markdown a { color: var(--accent-deep); text-underline-offset: 2px; }
+.course-reader-markdown strong { font-weight: 600; }
 .course-reader-markdown code { font: 13px/1.7 var(--font-mono); }
 .course-reader-markdown :not(pre) > code { padding: 2px 4px; border-radius: 4px; background: var(--chip-bg); }
 .course-reader-markdown pre, .course-reader-table, .course-reader-math-block {
@@ -63,15 +65,15 @@
 .course-reader-table th { background: var(--hover-bg); font-weight: 600; }
 .course-reader-table tbody tr:last-child td { border-bottom: 0; }
 .course-reader-math-block .katex-display { margin: 8px 0; }
-.course-reader-original .wr-text-source, .course-reader-plain {
+.course-reader-plain {
+  margin: 0;
   white-space: pre-wrap;
   font: 13px/1.9 var(--font-mono);
 }
-.course-reader-original > .detail { margin: 0 0 16px; }
 .course-reader-links { margin-bottom: 16px; color: var(--ink-soft); font-size: 13px; }
 .course-reader-links a { color: var(--accent-deep); }
 .course-reader-error { color: var(--danger-deep); }
-.course-reader :is(button, a, .course-reader-table):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.course-reader :is(button, a, .course-reader-table, .course-reader-body):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 @media (max-width: 1023px) {
   .course-reader-header, .course-reader-scroll { padding: 12px 16px; }

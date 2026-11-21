@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { StorageError, type Migration, type OwnedStorage } from '@xunjie/storage';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import type { CourseBindingAuthority } from '@xunjie/contracts/courses';
-import { PDF_LIMITS, pdfReadingSchema, pdfReadInputSchema, pdfUploadSchema,
+import { PDF_LIMITS, pdfReadingSchema, pdfReadInputSchema, pdfUploadSchema, pdfRemoveInputSchema,
   pdfReferenceCopy, pdfReferenceTargetSchema, pdfCourseInputSchema, pdfFindInputSchema, pdfSearchResultSchema, type PdfDocument, type PdfReading } from '@xunjie/contracts/pdf-materials';
 import { scopedPdfDocumentSchema, scopedPdfReadingSchema, scopedPdfSearchResultSchema,
   type ScopedPdfDocument, type ScopedPdfReading, type ScopedPdfSearchResult } from '@xunjie/contracts/pdf-materials';
@@ -32,6 +32,7 @@ export interface PdfMaterials<S extends MaterialScopeInput = MaterialScopeInput>
   original(identity: SpaceIdentity, scope: S, documentId: string): Promise<{ document: DocumentFor<S>; bytes: Uint8Array }>;
   list(identity: SpaceIdentity, scope: S): Promise<DocumentFor<S>[]>;
   upload(identity: SpaceIdentity, scope: S, value: unknown): Promise<DocumentFor<S>>;
+  remove(identity: SpaceIdentity, scope: S, documentId: string, value: unknown): Promise<DocumentFor<S>>;
   importCourse(identity: SpaceIdentity, scope: S, value: unknown): Promise<DocumentFor<S>>;
   reading(identity: SpaceIdentity, scope: S, readingId: string): Promise<ReadingFor<S> | null>;
   read(identity: SpaceIdentity, scope: S, value: unknown): Promise<ReadingFor<S>>;
@@ -58,8 +59,25 @@ export function createPdfMaterials(storage: OwnedStorage, host: WorkspaceMateria
   }
   async function list(identity: SpaceIdentity, value: MaterialScopeInput) {
     const { scope } = await access.open(identity, value);
-    const { rows } = await storage.read(`SELECT document_id FROM pdf_documents WHERE ${materialScopeColumn(scope)}=$1 ORDER BY created_at,document_id`, [materialScopeId(scope)]);
+    const { rows } = await storage.read(`SELECT document_id FROM pdf_documents WHERE ${materialScopeColumn(scope)}=$1
+      AND body->>'removedAt' IS NULL ORDER BY created_at,document_id`, [materialScopeId(scope)]);
     return Promise.all(rows.map(row => document(identity, scope, String(row.document_id))));
+  }
+  async function remove(identity: SpaceIdentity, value: MaterialScopeInput, documentId: string, input: unknown) {
+    const { requestId } = pdfRemoveInputSchema.parse(input);
+    const { scope } = await access.open(identity, value);
+    const doc = await document(identity, scope, documentId);
+    if (scope.kind !== 'workspace' || doc.courseSource) throw new StorageError('forbidden');
+    const fingerprint = digest({ ...materialScopeKey(scope), documentId });
+    await storage.request({ requestId: 'pdf-remove:' + requestId, fingerprint }, async tx => {
+      const { activity } = await access.lock(tx, identity, scope);
+      if (activity?.status !== 'open') throw new StorageError('forbidden');
+      // Existing reference and original records must remain readable.
+      await tx.query(`UPDATE pdf_documents SET body=body || jsonb_build_object('removedAt', $2::text)
+        WHERE document_id=$1 AND activity_id=$3 AND body->>'removedAt' IS NULL`, [documentId, new Date().toISOString(), scope.activityId]);
+      return null;
+    });
+    return document(identity, scope, documentId);
   }
   async function receive(identity: SpaceIdentity, value: MaterialScopeInput, input: z.infer<typeof pdfUploadSchema>, courseSource?: PdfDocument['courseSource']) {
     const { scope } = await access.open(identity, value);
@@ -82,14 +100,14 @@ export function createPdfMaterials(storage: OwnedStorage, host: WorkspaceMateria
       });
     }
     const current = await document(identity, scope, input.documentId);
-    if (current.state !== 'received') return current;
+    if (current.state !== 'received' || current.removedAt) return current;
     // The original is already durable. Interrupted inspection can be resumed under the same identity.
     const metadata = await inspectPdf(bytes);
     const result = scopedPdfDocumentSchema.parse({ ...current, ...metadata });
     await access.open(identity, scope);
     await storage.request({ requestId: 'pdf-inspect:' + input.requestId, fingerprint }, async tx => {
       await access.lock(tx, identity, scope);
-      await tx.query('UPDATE pdf_documents SET body=$2 WHERE document_id=$1', [input.documentId, result]); return result;
+      await tx.query('UPDATE pdf_documents SET body=body || $2::jsonb WHERE document_id=$1', [input.documentId, result]); return result;
     });
     return document(identity, scope, input.documentId);
   }
@@ -185,7 +203,7 @@ export function createPdfMaterials(storage: OwnedStorage, host: WorkspaceMateria
       truncated, textOrigin: 'native', ocr: 'not-performed', imagesSent: false, coordinates: 'utf16-code-units' });
   }
   return { upload: (identity: SpaceIdentity, scope: MaterialScopeInput, value: unknown) => receive(identity, scope, pdfUploadSchema.parse(value)),
-    importCourse, list, document, original, read, reading, find };
+    importCourse, list, document, original, read, reading, find, remove };
 }
 
 /** A pure owner read, also used by isolated restore; it cannot create or render a page. */

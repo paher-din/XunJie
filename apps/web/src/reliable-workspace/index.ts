@@ -11,7 +11,14 @@ import { componentStateMediaType, componentStateName, matchesComponentState, typ
 
 export { LOCAL_MAX_WAIT_MS, NETWORK_MAX_WAIT_MS } from './coordinator'
 export interface WorkTransport { read(): Promise<WorkView>; receipt(requestId: string): Promise<WorkView | null>; sync(input: WorkSync): Promise<WorkView> }
-export interface WorkspaceState { files: WorkFile[]; ready: boolean; error: string; conflict?: WorkConflict; conflictReady: boolean; editorEpoch: number }
+export interface WorkspaceState { files: WorkFile[]; ready: boolean; error: string; conflict?: WorkConflict; conflictReady: boolean; editorEpoch: number
+  protection?: { unprotected: boolean; pendingConfirmation: boolean; revision: number } }
+
+function recordWithChanges(previous: WorkRecord, files: WorkFile[]): WorkRecord {
+  return { ...previous, files, localRevision: previous.localRevision + 1,
+    pending: previous.pending && !previous.pendingRejected ? previous.pending : pendingFor(files, previous.remoteRevision),
+    pendingRejected: false }
+}
 /** Apply local changes to the newly adopted head, using the same baseline rule before and after protection. */
 function mergeAdoptedFiles(baseline: WorkFile[], local: WorkFile[], remote: WorkFile[],
   reconcile: (local: WorkFile, remote: WorkFile) => WorkFile) {
@@ -189,7 +196,12 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
     }, transport, { denied: () => this.accessDenied() || draft.accessDenied(),
       confirmed: () => { this.confirmAccess(); draft.confirmAccess() } }, this.readOnly)
   }
-  private notify(patch: Partial<WorkspaceState> = {}) { this.state = { ...this.state, ...patch, conflictReady: !this.dirty }; for (const listener of this.listeners) listener() }
+  private notify(patch: Partial<WorkspaceState> = {}) {
+    this.state = { ...this.state, ...patch, conflictReady: !this.dirty,
+      protection: { unprotected: this.dirty, pendingConfirmation: !!this.record.pending || !!this.record.remoteOperation,
+        revision: this.record.remoteRevision } }
+    for (const listener of this.listeners) listener()
+  }
   protected ready() { return this.state.ready }
   protected conflicted() { return !!this.state.conflict }
   protected clearListeners() { this.listeners.clear() }
@@ -276,7 +288,31 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
     this.change([...this.state.files, file]); return file.objectId
   }
   rename(objectId: string, name: string) { this.change(this.state.files.map(f => f.objectId === objectId ? { ...f, name } : f)) }
-  remove(objectId: string) { this.change(this.state.files.filter(f => f.objectId !== objectId)) }
+  async remove(objectId: string) {
+    if (this.unprotectedInput()) await this.leave()
+    await this.withProtection(async () => {
+      if (!this.state.ready || this.readOnly || this.denied || this.dirty || this.state.conflict)
+        throw new Error('请核对当前作品状态后再删除文件。')
+      const files = this.state.files.filter(file => file.objectId !== objectId)
+      if (files.length === this.state.files.length) return
+      this.validateComponentEdits(files)
+      const epoch = this.editEpoch
+      const revision = this.record.localRevision
+      // Keep the file visible until the local transaction commits. Other edits may arrive while it runs.
+      try {
+        this.record = await this.store.change(this.key, current => {
+          if (!current || current.localRevision !== revision || current.conflict || current.remoteOperation)
+            throw new Error('workspace-changed')
+          return recordWithChanges(current, files)
+        })
+      } catch {
+        throw new Error('本机未确认删除文件，请核对作品后重试。')
+      }
+      const latest = this.snapshot()
+      const remaining = this.editEpoch === epoch ? this.record.files : latest.files.filter(file => file.objectId !== objectId)
+      this.notify({ files: remaining, ...(latest.conflict ? { conflict: { ...latest.conflict, local: remaining } } : {}) })
+    })
+  }
   protected async persist() {
     const epoch = this.editEpoch
     const files = structuredClone(this.state.files)
@@ -293,9 +329,7 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
         }
         this.record = await this.store.change(this.key, current => {
           const previous = current ?? this.record
-          return { ...previous, localRevision: previous.localRevision + 1, files,
-            pending: previous.pending && !previous.pendingRejected ? previous.pending : pendingFor(files, previous.remoteRevision),
-            pendingRejected: false,
+          return { ...recordWithChanges(previous, files),
             ...(conflict ? { conflict: { ...conflict, local: files, at: previous.localRevision + 1 } } : {}) }
         }, { expected: this.record.localRevision, files }, undefined, operations.map(([, value]) => value))
         for (const [key, value] of operations) if (this.operations.get(key) === value) this.operations.delete(key)

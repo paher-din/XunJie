@@ -26,7 +26,8 @@ const waitFor = async (check: () => void) => {
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 5)) })
   }
 }
-const button = (label: string) => Array.from(document.querySelectorAll('button')).find(item => item.textContent === label) as HTMLButtonElement
+const button = (label: string) => Array.from(document.querySelectorAll('button,[role="menuitem"]'))
+  .find(item => item.getAttribute('aria-label') === label || item.textContent === label) as HTMLButtonElement
 const click = async (label: string) => act(async () => {
   const target = button(label)
   if (!target) throw new Error('missing button: ' + label)
@@ -98,10 +99,13 @@ afterEach(async () => {
   host.remove(); vi.unstubAllGlobals()
 })
 
-it('lists personal materials and opens a fixed version', async () => {
+it.each([
+  { text: '第一版正文', selector: '.wr-text-source', displayed: '第一版正文' },
+  { text: '~~已完成~~', selector: '.wr-text-source del', displayed: '已完成' },
+])('lists personal materials and opens a fixed version with $text', async ({ text, selector, displayed }) => {
   const activity = makeActivity()
-  const material = await makeMaterial(activity.activityId, '课堂笔记', 'text/plain', '第一版正文')
-  const content = { material, version: material.versions[0], text: '第一版正文' }
+  const material = await makeMaterial(activity.activityId, '课堂笔记', 'text/plain', text)
+  const content = { material, version: material.versions[0], text }
   request.mockImplementation(async (_activity, _spaceKey, _namespace, route) => {
     if (route === `materials/${activity.activityId}`) return [material]
     if (route === `materials/${activity.activityId}/${material.materialId}/versions/1`) return content
@@ -110,8 +114,8 @@ it('lists personal materials and opens a fixed version', async () => {
   const reveal = vi.fn(async () => {})
   await mount(activity, undefined, reveal)
   await waitFor(() => { expect(host.textContent).toContain('课堂笔记'); expect(host.textContent).toContain('第 1 版') })
-  await click('打开')
-  await waitFor(() => expect(host.querySelector('.personal-material-reading .wr-text-source')?.textContent).toBe('第一版正文'))
+  await click(material.name)
+  await waitFor(() => expect(host.querySelector('.personal-material-reading ' + selector)?.textContent).toBe(displayed))
   expect(reveal).toHaveBeenCalled()
 })
 
@@ -179,7 +183,7 @@ it('appends a new version and keeps the reading content visible', async () => {
   })
   await mount(activity)
   await waitFor(() => expect(noteRows()).toHaveLength(1))
-  await click('打开')
+  await click(material.name)
   await waitFor(() => expect(host.querySelector('.personal-material-reading .wr-text-source')?.textContent).toBe('第一版内容'))
   await click('更新为当前文本')
   const editor = host.querySelector<HTMLTextAreaElement>('[aria-label="更新个人笔记正文"]')!
@@ -210,7 +214,7 @@ it('locates an older fixed-version reference after the material gets a new versi
   })
   await mount(activity)
   await waitFor(() => expect(noteRows()).toHaveLength(1))
-  await click('打开')
+  await click(material.name)
   const source = await (async () => { let found: HTMLElement | null = null
     await waitFor(() => { found = host.querySelector<HTMLElement>('.personal-material-reading .wr-text-source'); expect(found).not.toBeNull() })
     return found! })()
@@ -247,6 +251,7 @@ it('removes a personal material with its expected version', async () => {
   })
   await mount(activity)
   await waitFor(() => expect(noteRows()).toHaveLength(1))
+  await click(material.name + '的更多操作')
   await click('移除')
   await waitFor(() => expect(noteRows()).toHaveLength(0))
   expect(removes).toHaveLength(1)
@@ -265,7 +270,7 @@ it('creates a personal-material text reference from a selection', async () => {
   })
   await mount(activity)
   await waitFor(() => expect(noteRows()).toHaveLength(1))
-  await click('打开')
+  await click(material.name)
   const source = await (async () => { let found: HTMLElement | null = null
     await waitFor(() => { found = host.querySelector<HTMLElement>('.personal-material-reading .wr-text-source'); expect(found).not.toBeNull() })
     return found! })()
@@ -289,6 +294,42 @@ it('creates a personal-material text reference from a selection', async () => {
   expect(references[0]).toMatchObject({ kind: 'text', source: { kind: 'personal-material', activityId: activity.activityId,
     materialId: material.materialId, version: 1, sha256: material.versions[0].sha256 }, range: { start, end },
     copy: '正文内容', sourceName: '课堂笔记' })
+})
+
+it('renders Markdown and locates a selected passage in the preview', async () => {
+  const activity = makeActivity()
+  const text = '# 课堂笔记\n\n请看**「重要内容」**再继续，公式 $x^2$。'
+  const material = await makeMaterial(activity.activityId, '公式笔记', 'text/plain', text)
+  const content = { material, version: material.versions[0], text }
+  request.mockImplementation(async (_activity, _spaceKey, _namespace, route) => {
+    if (route === 'materials/' + activity.activityId) return [material]
+    if (route === 'materials/' + activity.activityId + '/' + material.materialId + '/versions/1') return content
+    throw new Error('unexpected route ' + route)
+  })
+  await mount(activity)
+  await waitFor(() => expect(noteRows()).toHaveLength(1))
+  await click(material.name)
+  await waitFor(() => expect(host.querySelector('.personal-material-markdown strong')?.textContent).toBe('「重要内容」'))
+  expect(host.querySelector('.personal-material-markdown math')).toBeTruthy()
+  const selected = host.querySelector('.personal-material-markdown strong')!.firstChild!
+  await act(async () => {
+    const range = document.createRange()
+    range.setStart(selected, 1)
+    range.setEnd(selected, 5)
+    document.getSelection()!.removeAllRanges()
+    document.getSelection()!.addRange(range)
+    document.dispatchEvent(new Event('selectionchange'))
+    await settle()
+  })
+  await click('询问 Agent')
+  const reference = JSON.parse(host.querySelector('[data-testid="refs"]')!.textContent!)[0]
+  expect(reference.copy).toBe('重要内容')
+  expect(reference.range.start).toBe(text.indexOf('重要内容'))
+  await act(async () => { document.getSelection()!.removeAllRanges() })
+  await click('probe-reference-locate')
+  await waitFor(() => expect(document.getSelection()?.toString()).toBe('重要内容'))
+  expect(document.getSelection()?.anchorNode).toBe(selected)
+  expect(host.querySelector('.personal-material-markdown math')).toBeTruthy()
 })
 
 it('opens the fixed version on locate and reports a missing fixed version without pretending success', async () => {

@@ -12,6 +12,7 @@ import { teachingArtifactRevisionSchema } from '@xunjie/contracts/teaching-artif
 import type { ArtifactEntry } from '../teaching-artifacts/useTeachingArtifacts'
 import { ReliableWorkspace } from '../reliable-workspace'
 import { ReliableRecordStore } from '../reliable-workspace/record-store'
+import type { ExecutionControllerState } from '../tool-execution/controller'
 import { workspaceScope } from './learningTransport'
 import { ActivitySubmission, type ActivitySubmissionTransport } from './ActivitySubmission'
 
@@ -274,6 +275,33 @@ it('only attaches explicitly selected full artifact payloads and verified origin
   expect(f.transport.artifact).toHaveBeenCalledExactlyOnceWith(requestId)
 })
 
+it('offers a newly retained local ALU report while the service history still lacks it', async () => {
+  const f = await fixture(), requestId = crypto.randomUUID(), executionRef = crypto.randomUUID()
+  const text = 'fixed check report', scope = workspaceScope(f.props.namespace, f.activity)
+  const output = { verdict: 'pass', totalInputs: 4096 }
+  const artifact = { name: 'check-report.json', mediaType: 'application/json', byteLength: text.length, sha256: await hash(text) }
+  const record = { requestId, action: { protocolVersion: 3, execution: { basis: { runtime: { adapterId: 'icarus-alu' } },
+    operation: { operationId: 'check-all' } } }, createdAt: Date.parse('2026-11-21T02:00:00Z'), query: {
+    requestId, executionRef, statusKnowledge: 'confirmed', state: 'succeeded', output: { artifact, output },
+  } } as ExecutionControllerState['records'][number]
+  vi.mocked(f.transport.history).mockResolvedValue([{ createdAt: '2026-11-20T02:00:00Z', query: {
+    requestId: crypto.randomUUID(), state: 'succeeded', output: { artifact: { ...artifact, name: 'previous.json' } },
+  } } as ExecutionHistoryEntry])
+  let state: ExecutionControllerState = { ready: true, records: [], error: '' }
+  let updated: (() => void) | undefined
+  const execution = { snapshot: () => state, subscribe: (listener: () => void) => { updated = listener; return () => { updated = undefined } },
+    artifact: vi.fn(async () => ({ ...artifact, text, output, scope, requestId, executionRef, at: record.createdAt })) }
+  await mount({ ...f.props, execution }); await click('提交作品')
+  await waitFor(() => expect(document.body.textContent).toContain('previous.json'))
+  await act(async () => { state = { ...state, records: [record] }; updated?.() })
+  const labels = [...document.querySelectorAll<HTMLLabelElement>('.activity-submission-result')]
+  expect(labels.map(label => label.textContent)).toEqual([expect.stringContaining('ALU 全量检查4096 组通过'), expect.stringContaining('previous.json')])
+  await act(async () => { labels[0].querySelector('input')!.click(); await settle() })
+  await click('确认提交'); await waitFor(() => expect(f.posts).toHaveLength(1))
+  expect(f.posts[0].evidence).toEqual([{ requestId, executionRef, text, mediaType: artifact.mediaType }])
+  expect(f.transport.artifact).not.toHaveBeenCalled()
+})
+
 it('keeps composition focused and captures before a slow protection await, excluding later edits', async () => {
   const f = await fixture(); await mount(f.props)
   const input = document.createElement('textarea'); host.append(input); input.focus()
@@ -404,7 +432,7 @@ it('reads submitted pages as inert static previews and uses their fixed workstat
 
 it('rejects an empty selection locally with the shared schema before protecting or posting an invalid request', async () => {
   const f = await fixture()
-  await act(async () => { f.workspace.remove(f.file.objectId); await f.workspace.leave() })
+  await act(() => f.workspace.remove(f.file.objectId))
   await mount(f.props); await click('提交作品'); await click('确认提交')
   expect(document.body.textContent).toContain('请至少选择一份作品或结果')
   expect(f.posts).toHaveLength(0); expect(await f.readJournal()).toBeUndefined()

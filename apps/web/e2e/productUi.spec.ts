@@ -9,7 +9,8 @@ import { openProductRuntime, createProductRuntimeHost, createProductLearningAppl
 import { controlledActionReceiver } from '../../server/tests/support/action-receiver.mjs'
 import { annotationPackage } from '../../../components/material-annotation/package.mjs'
 import { fixedPdf } from '../../server/tests/fixtures/pdf-material.mjs'
-import { courseTaskCard, openCourseTasks, selectProductSpace, useEmbeddedSchoolFixture } from './support/product-ui'
+import { courseTaskCard, createWorkFile, openCourseTasks, openWorkFileActions, openWorkspacePopover, renameWorkFile,
+  selectProductSpace, useEmbeddedSchoolFixture } from './support/product-ui'
 
 const postgresBin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN
 test.skip(!postgresBin, 'Requires the native PostgreSQL distribution')
@@ -67,34 +68,56 @@ async function openPersonalActivityFromHome(page: Page) {
   return id
 }
 
-async function fileMenu(page: Page) {
-  const trigger = page.getByRole('button', { name: '文件', exact: true })
-  if (await trigger.getAttribute('aria-expanded') !== 'true') await trigger.click()
-}
 async function newFile(page: Page, name: string) {
-  await fileMenu(page)
-  await page.getByLabel('文件名', { exact: true }).fill(name)
-  await page.getByRole('button', { name: '新建文件', exact: true }).click()
-  await page.keyboard.press('Escape')
+  await createWorkFile(page, name)
   await page.locator('.monaco-editor textarea').focus()
 }
 const readWorks = async (page: Page, id: string) => (await page.request.get(endpoint + '/api/learning/workspaces/' + id,
   { headers: { 'x-xj-space': 'personal' } })).json()
 
 test('default product entry uses shared UI and stable file identities through rename, deletion and recreation', async ({ page }) => {
+  await page.addInitScript(() => {
+    const fault = { refuse: false }
+    Object.assign(window, { fileDeletionFault: fault })
+    const put = IDBObjectStore.prototype.put
+    IDBObjectStore.prototype.put = function (value, key) {
+      if (fault.refuse && this.name === 'workspaces' && value.files?.length === 0)
+        throw new DOMException('Controlled refusal of deletion', 'QuotaExceededError')
+      return put.call(this, value, key)
+    }
+  })
   const id = await openPersonalActivityFromHome(page)
   await expect(page.locator('.shell.immersive')).toBeVisible()
+  const status = page.locator('.ws-commandbar').getByRole('region', { name: '工作区状态' })
+  await expect(status.getByRole('status', { name: '活动进行中', exact: true })).toHaveText('进行中')
   await newFile(page, '中文.txt')
   await page.keyboard.insertText('第一份原文')
   await expect.poll(async () => (await readWorks(page, id)).files[0]?.value).toBe('第一份原文')
+  await expect(status.getByText('已保存', { exact: true })).toBeVisible()
+  await expect(status.getByTitle(/作品已保存到本机/)).toBeVisible()
   const first = (await readWorks(page, id)).files[0]
-  await fileMenu(page)
-  await page.getByLabel('新名称', { exact: true }).fill('改名.txt')
-  await page.getByRole('button', { name: '重命名', exact: true }).click()
-  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: '关闭 中文.txt 的标签', exact: true }).click()
+  await expect(page.getByRole('button', { name: '中文.txt', exact: true })).toHaveCount(0)
+  const menu = await openWorkspacePopover(page, '文件')
+  await menu.getByRole('button', { name: '中文.txt', exact: true }).click()
+  await expect(page.locator('.monaco-editor .view-lines')).toContainText('第一份原文')
+  await renameWorkFile(page, '中文.txt', '改名.txt')
   await expect.poll(async () => (await readWorks(page, id)).files[0]?.name).toBe('改名.txt')
   expect((await readWorks(page, id)).files[0].objectId).toBe(first.objectId)
-  await fileMenu(page); await page.getByRole('button', { name: '删除文件', exact: true }).click(); await page.keyboard.press('Escape')
+  const row = await openWorkFileActions(page, '改名.txt')
+  const [download] = await Promise.all([page.waitForEvent('download'), row.getByRole('button', { name: '导出作品备份' }).click()])
+  expect(download.suggestedFilename()).toBe('循阶作品备份.json')
+  await download.delete()
+  await row.getByRole('button', { name: '删除', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: '删除文件' })
+  await page.evaluate(() => { (window as unknown as { fileDeletionFault: { refuse: boolean } }).fileDeletionFault.refuse = true })
+  await dialog.getByRole('button', { name: '删除文件' }).click()
+  await expect(dialog.getByRole('alert')).toContainText('本机未确认删除文件')
+  await expect(page.locator('.cw-filetab.active')).toContainText('改名.txt')
+  expect((await readWorks(page, id)).files[0]?.objectId).toBe(first.objectId)
+  await page.evaluate(() => { (window as unknown as { fileDeletionFault: { refuse: boolean } }).fileDeletionFault.refuse = false })
+  await dialog.getByRole('button', { name: '删除文件' }).click()
+  await expect(dialog).toHaveCount(0)
   await expect.poll(async () => (await readWorks(page, id)).files).toHaveLength(0)
   await newFile(page, '改名.txt'); await page.keyboard.insertText('同名新作品')
   await expect.poll(async () => (await readWorks(page, id)).files[0]?.value).toBe('同名新作品')
@@ -111,7 +134,7 @@ test('default product entry uses shared UI and stable file identities through re
   await expect(page.getByText(/演示统计|热力/)).toHaveCount(0)
 })
 
-test('PDF page turns retain the visible page and reuse confirmed reads', async ({ page }) => {
+test('PDF page turns preload the next page and reuse confirmed reads', async ({ page }) => {
   await openPersonalActivityFromHome(page)
   const requestedPages: number[][] = []
   let releaseNextPage = () => {}
@@ -135,6 +158,8 @@ test('PDF page turns retain the visible page and reuse confirmed reads', async (
     await expect(cover).toBeVisible()
     const firstReadingId = await reading.getAttribute('data-pdf-reading-id')
     expect(firstReadingId).toBeTruthy()
+    await expect.poll(() => requestedPages).toEqual([[1], [2]])
+    await expect(reader).toHaveAttribute('aria-busy', 'false')
 
     await reader.getByRole('button', { name: '下一页', exact: true }).click()
     await expect(reader.getByRole('status').filter({ hasText: '正在读取第 2 页…' })).toBeVisible()
@@ -151,6 +176,99 @@ test('PDF page turns retain the visible page and reuse confirmed reads', async (
   } finally {
     releaseNextPage()
   }
+})
+
+test('PDF region references show one fit stop when the fit stops overlap', async ({ page }) => {
+  await page.setViewportSize({ width: 1320, height: 850 })
+  await openPersonalActivityFromHome(page)
+  await page.getByRole('tab', { name: '学习资料', exact: true }).click()
+  await page.getByRole('group', { name: '资料分类' }).getByRole('button', { name: '个人 PDF', exact: true }).click()
+  await page.getByRole('region', { name: '个人 PDF', exact: true }).locator('input[type=file]')
+    .setInputFiles({ name: '选区缩放.pdf', mimeType: 'application/pdf', buffer: fixedPdf() })
+
+  const reader = page.getByRole('region', { name: 'PDF 阅读区', exact: true })
+  const zoom = reader.getByRole('group', { name: 'PDF 缩放', exact: true })
+  const slider = zoom.getByRole('slider', { name: 'PDF 缩放比例', exact: true })
+  const stops = zoom.locator('.pdf-zoom-stop')
+  await expect(slider).toBeEnabled()
+  await expect(stops).toHaveCount(2)
+  await expect(reader.getByRole('button', { name: 'PDF 工具侧栏', exact: true })).toHaveAttribute('aria-expanded', 'true')
+  await reader.getByRole('button', { name: '框选区域', exact: true }).click()
+  const frame = (await reader.locator('.pdf-page-image').boundingBox())!
+  await page.mouse.move(frame.x + frame.width * .13, frame.y + frame.height * .15)
+  await page.mouse.down()
+  await page.mouse.move(frame.x + frame.width * .79, frame.y + frame.height * .34, { steps: 10 })
+  await page.mouse.up()
+  await reader.getByRole('button', { name: '引用所选区域', exact: true }).click()
+
+  const citation = page.getByRole('button', { name: '定位引用 1：选区缩放.pdf · 第 1 页选区', exact: true })
+  await expect(citation).toBeVisible()
+  const fitRegion = zoom.getByRole('button', { name: '适合选区', exact: true })
+  await expect(stops).toHaveCount(1)
+  await fitRegion.click()
+  await expect(fitRegion).toHaveAttribute('aria-pressed', 'true')
+  const fitted = Number(await slider.inputValue())
+  await slider.press('ArrowLeft')
+  await expect(slider).toHaveValue(String(fitted - 1))
+  await reader.getByRole('button', { name: '完整页', exact: true }).click()
+  await expect(stops).toHaveCount(2)
+  await citation.click()
+  await expect(fitRegion).toBeVisible()
+  await expect(stops).toHaveCount(1)
+})
+
+test('personal material rows open by name and removing a PDF preserves its existing citation', async ({ page }) => {
+  await openPersonalActivityFromHome(page)
+  const learningTab = page.getByRole('tab', { name: '学习资料', exact: true })
+  await learningTab.click()
+  const categories = page.getByRole('group', { name: '资料分类' })
+  await categories.getByRole('button', { name: '个人笔记', exact: true }).click()
+  const notes = page.getByRole('region', { name: '个人笔记', exact: true })
+  await notes.getByRole('button', { name: '添加笔记', exact: true }).click()
+  await notes.getByLabel('个人笔记名称').fill('界面验收笔记')
+  await notes.getByLabel('个人笔记正文').fill('# 我的笔记\n\n请看**「关键结论」**再继续，记住**（ALU）**的公式 $x^2$。\n\n$$\n\\frac{1}{2}\n$$')
+  await notes.getByRole('button', { name: '保存笔记', exact: true }).click()
+  const noteMenu = notes.getByRole('button', { name: '界面验收笔记的更多操作', exact: true })
+  await noteMenu.press('Enter')
+  await expect(page.getByRole('menuitem', { name: '更新', exact: true })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: '移除', exact: true })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(noteMenu).toBeFocused()
+  await notes.getByRole('button', { name: '界面验收笔记', exact: true }).click()
+  const noteReader = page.getByRole('region', { name: '个人笔记阅读区' })
+  await expect(noteReader.getByRole('heading', { name: '我的笔记' })).toBeVisible()
+  const emphasized = noteReader.locator('strong').filter({ hasText: '「关键结论」' })
+  await expect(emphasized).toBeVisible()
+  await expect(emphasized).toHaveCSS('font-weight', '600')
+  await expect(noteReader.locator('strong').filter({ hasText: '（ALU）' })).toBeVisible()
+  await expect(noteReader.locator('math')).toHaveCount(2)
+  await expect(noteReader.getByRole('button', { name: '查看原文', exact: true })).toHaveCount(0)
+
+  const pdfTab = categories.getByRole('button', { name: '个人 PDF', exact: true })
+  await pdfTab.click()
+  const library = page.getByRole('region', { name: '个人 PDF', exact: true })
+  const reader = page.getByRole('region', { name: 'PDF 阅读区', exact: true })
+  const pdfName = '待移除的讲义.pdf'
+  await library.locator('input[type=file]').setInputFiles({ name: pdfName, mimeType: 'application/pdf', buffer: fixedPdf() })
+  const pageImage = reader.getByRole('img', { name: 'PDF 第 1 页固定页图', exact: true })
+  await expect(pageImage).toBeVisible()
+  const readingId = await reader.locator('.pdf-reading').getAttribute('data-pdf-reading-id')
+  expect(readingId).toBeTruthy()
+  const tools = reader.getByRole('button', { name: 'PDF 工具侧栏', exact: true })
+  if (await tools.getAttribute('aria-expanded') !== 'true') await tools.click()
+  await reader.getByRole('button', { name: '引用此页', exact: true }).click()
+  await reader.getByRole('button', { name: '返回 PDF 列表', exact: true }).click()
+  await library.getByRole('button', { name: pdfName + '的更多操作', exact: true }).click()
+  await page.getByRole('menuitem', { name: '移除', exact: true }).click()
+  await expect(library.getByRole('button', { name: pdfName, exact: true })).toHaveCount(0)
+  await library.getByRole('button', { name: '刷新 PDF 列表', exact: true }).click()
+  await expect(library.getByText('还没有添加 PDF。', { exact: false })).toBeVisible()
+
+  await page.getByRole('button', { name: /^定位引用 \d+：待移除的讲义\.pdf/ }).click()
+  await expect(pageImage).toBeVisible()
+  await expect(reader.locator('.pdf-reading')).toHaveAttribute('data-pdf-reading-id', readingId!)
+  await reader.getByRole('button', { name: '返回 PDF 列表', exact: true }).click()
+  await expect(library.getByRole('button', { name: pdfName, exact: true })).toHaveCount(0)
 })
 
 test('browser history cannot bypass a refused local protection transaction', async ({ page }) => {
@@ -301,7 +419,8 @@ test('course content and shared navigation keep usable widths, theme and keyboar
   const taskInfo = dock.getByRole('button', { name: '任务信息', exact: true })
   const stash = dock.getByRole('button', { name: '卡片收纳', exact: true })
   const details = page.getByRole('complementary', { name: '目标与要求', exact: true })
-  const detailsToggle = page.getByRole('button', { name: '目标与要求', exact: true })
+  const detailsToggle = page.getByRole('button', { name: /^(收起|展开)目标与要求$/ })
+  await expect(page.locator('.ws-head-utilities').getByRole('button', { name: '目标与要求', exact: true })).toHaveCount(0)
   await expect(taskInfo).toHaveAttribute('aria-expanded', 'false')
   await expect(taskInfo).toBeFocused()
   await expect(stash).toBeVisible()
@@ -367,8 +486,7 @@ test('course content and shared navigation keep usable widths, theme and keyboar
   await expect(pdfReader.getByRole('heading', { name: pdfName, exact: true })).toBeVisible()
   await expect(pdfReader.getByRole('button', { name: '返回作品', exact: true })).toHaveCount(0)
   const pdfTools = pdfReader.getByRole('button', { name: 'PDF 工具侧栏', exact: true })
-  await expect(pdfTools).toHaveAttribute('aria-expanded', 'false')
-  await pdfTools.click()
+  await expect(pdfTools).toHaveAttribute('aria-expanded', 'true')
   await pdfReader.getByRole('button', { name: '引用此页', exact: true }).click()
   await pdfReader.getByRole('button', { name: '返回材料列表', exact: true }).click()
   await pdfTab.click()
@@ -377,6 +495,7 @@ test('course content and shared navigation keep usable widths, theme and keyboar
   await pdfList.locator('input[type=file]').setInputFiles({ name: pdfName, mimeType: 'application/pdf', buffer: pdfBytes })
   const cover = pdfReader.getByRole('img', { name: 'PDF 第 1 页固定页图', exact: true })
   await expect(cover).toBeVisible()
+  await expect(pdfTools).toHaveAttribute('aria-expanded', 'true')
   const defaultZoom = pdfReader.getByRole('button', { name: '默认', exact: true })
   const fitWidth = pdfReader.getByRole('button', { name: '适合宽度', exact: true })
   const fitPage = pdfReader.getByRole('button', { name: '适合整页', exact: true })
@@ -389,9 +508,12 @@ test('course content and shared navigation keep usable widths, theme and keyboar
   await expect(fitWidthTip).toHaveText('适合宽度')
   await fitWidth.click()
   await expect(fitWidth).toHaveAttribute('aria-pressed', 'true')
-  const closedWidth = (await cover.boundingBox())!.width
+  const expandedPdfWidth = (await cover.boundingBox())!.width
   await pdfTools.click()
-  await expect.poll(async () => (await cover.boundingBox())!.width).toBeLessThan(closedWidth)
+  await expect(pdfTools).toHaveAttribute('aria-expanded', 'false')
+  await expect.poll(async () => (await cover.boundingBox())!.width).toBeGreaterThan(expandedPdfWidth)
+  await pdfTools.click()
+  await expect(pdfTools).toHaveAttribute('aria-expanded', 'true')
   await defaultZoom.click()
   await pdfReader.getByRole('button', { name: '相邻两页', exact: true }).click()
   const secondPage = pdfReader.getByRole('img', { name: 'PDF 第 2 页固定页图', exact: true })
@@ -471,6 +593,7 @@ test('course content and shared navigation keep usable widths, theme and keyboar
   await expect(courseMaterialsTab).toHaveAttribute('aria-pressed', 'true')
   await expect(pdfReader.getByRole('heading', { name: pdfName, exact: true })).toBeVisible()
   await expect(pdfReader.getByRole('img', { name: 'PDF 第 1 页固定页图', exact: true })).toBeVisible()
+  await expect(pdfTools).toHaveAttribute('aria-expanded', 'true')
   await pdfReader.getByRole('button', { name: '返回材料列表', exact: true }).click()
   await references.getByRole('button', { name: '移除引用 1', exact: true }).click()
   await page.getByRole('button', { name: '收起对话', exact: true }).click()
@@ -486,7 +609,7 @@ test('course content and shared navigation keep usable widths, theme and keyboar
   await expect(noteText).toHaveValue('在任务要求之外记录自己的思路。')
   await notes.getByRole('button', { name: '保存笔记', exact: true }).click()
   await expect(notes.getByText('课程随记', { exact: true })).toBeVisible()
-  await notes.getByRole('button', { name: '打开', exact: true }).click()
+  await notes.getByRole('button', { name: '课程随记', exact: true }).click()
   const noteReader = page.getByRole('region', { name: '个人笔记阅读区', exact: true })
   await expect(noteReader).toContainText('在任务要求之外记录自己的思路。')
   await noteReader.getByRole('button', { name: '返回笔记列表', exact: true }).click()
@@ -538,6 +661,12 @@ test('course content and shared navigation keep usable widths, theme and keyboar
   await expect(taskInfo).toBeFocused()
   await expect(firstObjective).toBeChecked()
   await detailsToggle.click()
+  await expect(details).toHaveCount(0)
+  await expect(detailsToggle).toHaveAccessibleName('展开目标与要求')
+  await detailsToggle.press('Enter')
+  await expect(details).toBeVisible()
+  await expect(detailsToggle).toHaveAccessibleName('收起目标与要求')
+  await detailsToggle.press('Enter')
   await expect(details).toHaveCount(0)
   await expect.poll(async () => {
     const response = await page.request.get(endpoint + '/api/learning/activities', { headers: { 'x-xj-space': 'school' } })

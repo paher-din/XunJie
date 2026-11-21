@@ -22,7 +22,7 @@ export function FileTabs({ files, activeId, onOpen, onClose, tabRoles = false }:
       <button type="button" className="cw-filetab-main" role={tabRoles ? 'tab' : undefined}
         aria-selected={tabRoles ? file.id === activeId : undefined} aria-pressed={tabRoles ? undefined : file.id === activeId}
         title={file.name} onClick={() => onOpen(file.id)}>
-        <Icon name={/\.(txt|md)$/i.test(file.name) ? 'file-text' : 'file-code'} size={14} tone="neutral" />
+        <Icon name={/\.(txt|md)$/i.test(file.name) ? 'file-text' : 'file-code'} size={14} variant="linear" tone="neutral" />
         <span className="cw-filetab-name">{file.name}</span>{file.decoration}
       </button>
       {onClose && <button type="button" className="cw-filetab-x" aria-label={`关闭 ${file.name} 的标签`}

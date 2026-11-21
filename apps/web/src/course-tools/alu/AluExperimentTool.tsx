@@ -567,7 +567,7 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
       : !authorized ? '当前身份没有这个活动的实验权限。'
       : preparationNote || '正在确认实验能力…'}</p>}
     {!ready && preparationDetails && <details><summary>准备详情</summary><pre>{preparationDetails}</pre></details>}
-    {basis && !enabledRecord && <p role="status" className="alu-hint">正在读取原启用依据；若本机与服务都没有这条记录，不会自动重跑。
+    {runs.ready && basis && !enabledRecord && <p role="status" className="alu-hint">正在读取原启用依据；若本机与服务都没有这条记录，不会自动重跑。
       <button type="button" className="ws-btn ghost" onClick={() => {
         queried.current.delete(basis.requestId)
         void execution.query(basis.requestId).catch(() => toast.error('原启用依据暂时无法核实；不会自动重跑。'))

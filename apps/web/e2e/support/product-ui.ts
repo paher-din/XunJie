@@ -21,7 +21,7 @@ export async function openWorkspacePopover(page: Page, name: '文件' | '活动'
   const trigger = page.getByRole('button', { name, exact: true })
   await expect(trigger).toBeVisible()
   if (await trigger.getAttribute('aria-expanded') !== 'true') await trigger.click()
-  const panel = page.getByRole('region', { name, exact: true })
+  const panel = page.getByRole(name === '文件' ? 'dialog' : 'region', { name, exact: true })
   await expect(panel).toBeVisible()
   return panel
 }
@@ -31,30 +31,40 @@ export async function closeWorkspacePopover(page: Page, name: '文件' | '活动
   // A successful activity navigation can unmount the entire workspace.
   if (!await trigger.isVisible() || await trigger.getAttribute('aria-expanded') !== 'true') return
   await page.keyboard.press('Escape')
-  await expect(page.getByRole('region', { name, exact: true })).toHaveCount(0)
+  await expect(page.getByRole(name === '文件' ? 'dialog' : 'region', { name, exact: true })).toHaveCount(0)
   await expect(trigger).toBeFocused()
 }
 
 export async function createWorkFile(page: Page, name: string) {
   const files = await openWorkspacePopover(page, '文件')
-  await files.getByLabel('文件名', { exact: true }).fill(name)
   await files.getByRole('button', { name: '新建文件', exact: true }).click()
-  await closeWorkspacePopover(page, '文件')
+  await files.getByLabel('文件名', { exact: true }).fill(name)
+  await files.getByRole('button', { name: '创建', exact: true }).click()
+  await expect(files).toHaveCount(0)
   await expect(page.getByRole('button', { name, exact: true })).toBeVisible()
 }
 
-export async function renameWorkFile(page: Page, name: string) {
+export async function openWorkFileActions(page: Page, name: string) {
   const files = await openWorkspacePopover(page, '文件')
-  await files.getByLabel('新名称', { exact: true }).fill(name)
+  await files.getByRole('button', { name: `管理 ${name}`, exact: true }).click()
+  return files
+}
+
+export async function renameWorkFile(page: Page, previousName: string, name: string) {
+  const files = await openWorkFileActions(page, previousName)
   await files.getByRole('button', { name: '重命名', exact: true }).click()
-  await closeWorkspacePopover(page, '文件')
+  await files.getByLabel('新名称', { exact: true }).fill(name)
+  await files.getByRole('button', { name: '确认改名', exact: true }).click()
+  await expect(files).toHaveCount(0)
   await expect(page.getByRole('button', { name, exact: true })).toBeVisible()
 }
 
-export async function deleteWorkFile(page: Page) {
-  const files = await openWorkspacePopover(page, '文件')
-  await files.getByRole('button', { name: '删除文件', exact: true }).click()
-  await closeWorkspacePopover(page, '文件')
+export async function deleteWorkFile(page: Page, name: string) {
+  const files = await openWorkFileActions(page, name)
+  await files.getByRole('button', { name: '删除', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: '删除文件', exact: true })
+  await dialog.getByRole('button', { name: '删除文件', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
 }
 
 export async function clickActivityAction(page: Page, name: string) {

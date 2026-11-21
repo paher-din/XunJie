@@ -4,7 +4,7 @@ import type { LearningActivity } from '@xunjie/contracts/learning-data'
 import { useToastFeedback } from '@xunjie/ui/feedback'
 import { Button } from '@xunjie/ui/foundation'
 import { Icon, type IconName } from '@xunjie/ui/icons'
-import { WorkspaceResourceLibrary, WorkspaceResourceList, WorkspaceResourceRow } from '@xunjie/ui/workspace'
+import { WorkspaceResourceLibrary, WorkspaceResourceList, WorkspaceResourceMenu, WorkspaceResourceRow } from '@xunjie/ui/workspace'
 import { PDF_LIMITS, pdfDocumentSchema, pdfReadingSchema, pdfReferenceCopy, pdfReferenceSourceSchema,
   type PdfDocument, type PdfPage, type PdfReading, type PdfRegion } from '@xunjie/contracts/pdf-materials'
 import { questionReferenceSourceId } from '@xunjie/contracts/question-drafts'
@@ -20,6 +20,7 @@ import './PdfMaterials.css'
 type PdfSource = ReturnType<typeof pdfReferenceSourceSchema.parse>
 export type PdfOrigin = 'course' | 'personal'
 type ReadRequest = { requestId: string; documentId: string; pages: number[]; region: PdfRegion | null }
+type PagePreload = { key: string; controller: AbortController; result: Promise<PdfReading | null> }
 const cachedPageReads = 12
 const documentStates: Record<PdfDocument['state'], string> = {
   received: '原文件已接收，页信息尚未准备完成。请核对并继续原请求。', ready: '可阅读',
@@ -46,6 +47,12 @@ const availableReading = (reading: PdfReading | null) => {
   try { if (reading) { pdfReferenceCopy(reading); return true } } catch { /* Partial reads cannot become references. */ }
   return false
 }
+const pageReadKey = (doc: PdfDocument, pages: number[]) => JSON.stringify([doc.documentId, doc.sha256, pages])
+function rememberPageRead(cache: Map<string, PdfReading>, key: string, reading: PdfReading) {
+  cache.delete(key)
+  cache.set(key, reading)
+  if (cache.size > cachedPageReads) cache.delete(cache.keys().next().value!)
+}
 
 /** Kept by ActivityPage, so changing/closing a center tab cannot reset pending operations. */
 export function usePdfMaterials({ activity, spaceKey, namespace, authorized, reveal }: {
@@ -66,6 +73,7 @@ export function usePdfMaterials({ activity, spaceKey, namespace, authorized, rev
   const [loadError, setLoadError] = useState('')
   const [notice, setNotice] = useState('')
   const pageReads = useRef(new Map<string, PdfReading>())
+  const preloading = useRef<PagePreload | null>(null)
   useToastFeedback(error)
   useToastFeedback(notice, 'success')
   const alive = useRef(false), operation = useRef(false), readEpoch = useRef(0), listEpoch = useRef(0)
@@ -88,7 +96,36 @@ export function usePdfMaterials({ activity, spaceKey, namespace, authorized, rev
       throw new Error('PDF 原件大小不一致。')
     return bytes
   }, [api, activity.activityId])
-  const canWrite = () => alive.current && current.current.authorized && !current.current.readOnly
+  const canWrite = useCallback(() => alive.current && current.current.authorized && !current.current.readOnly, [])
+  const fetchReading = useCallback(async (input: ReadRequest, expectedDocument: PdfDocument | null, signal?: AbortSignal) => {
+    const fixed = pdfReadingSchema.parse(await api('/read', input, signal))
+    if (fixed.activityId !== activity.activityId || fixed.documentId !== input.documentId || fixed.readingId !== input.requestId
+      || (expectedDocument && fixed.documentSha256 !== expectedDocument.sha256)
+      || JSON.stringify(fixed.requestedPages) !== JSON.stringify(input.pages)
+      || JSON.stringify(fixed.region) !== JSON.stringify(input.region)) throw new Error('PDF 阅读响应与所选页或区域不一致。')
+    return fixed
+  }, [api, activity.activityId])
+  const preloadPage = useCallback((doc: PdfDocument, page: number) => {
+    if (!canWrite() || operation.current || preloading.current || doc.removedAt || page > doc.pageCount) return
+    const pages = [page]
+    const key = pageReadKey(doc, pages)
+    if (pageReads.current.has(key)) return
+    const controller = new AbortController()
+    const input = { requestId: crypto.randomUUID(), documentId: doc.documentId, pages, region: null }
+    const result = fetchReading(input, doc, controller.signal).then(fixed => availableReading(fixed) ? fixed : null, () => null)
+    const pending = { key, controller, result }
+    preloading.current = pending
+    void result.then(fixed => {
+      if (preloading.current !== pending) return
+      preloading.current = null
+      if (fixed && canWrite()) rememberPageRead(pageReads.current, key, fixed)
+    })
+    return () => {
+      if (preloading.current !== pending) return
+      preloading.current = null
+      controller.abort()
+    }
+  }, [canWrite, fetchReading])
   const adopt = (doc: PdfDocument) => {
     if (doc.activityId !== activity.activityId) throw new Error('PDF 不属于当前活动。')
     if (alive.current) setDocuments(items => [...items.filter(item => item.documentId !== doc.documentId), doc])
@@ -141,30 +178,29 @@ export function usePdfMaterials({ activity, spaceKey, namespace, authorized, rev
   async function read(input: ReadRequest, quote = false, expectedDocument = document, retry = false) {
     if (!canWrite() || operation.current) return
     const cache = pageReads.current
-    const cacheKey = expectedDocument && !input.region && !quote
-      ? JSON.stringify([expectedDocument.documentId, expectedDocument.sha256, input.pages]) : null
+    const cacheKey = expectedDocument && !input.region && !quote ? pageReadKey(expectedDocument, input.pages) : null
     const cached = !retry && cacheKey ? cache.get(cacheKey) : undefined
     if (cached && cacheKey) {
-      cache.delete(cacheKey); cache.set(cacheKey, cached)
+      rememberPageRead(cache, cacheKey, cached)
       setReading(cached); setReferenceReadingId(null); setPendingRead(null); setError(''); setNotice('')
       return
     }
+    const background = preloading.current
+    const prefetched = !retry && background?.key === cacheKey ? background : null
+    // The foreground owns an adopted request, so reader cleanup cannot cancel it.
+    preloading.current = null
+    if (background !== prefetched) background?.controller.abort()
     operation.current = true; setBusy(true); setError(''); setNotice(''); setPendingRead(input)
     quotePendingRead.current = quote
     const epoch = ++readEpoch.current
     // Keep the last verified page and its identity visible until this read completes.
     setReading(previous => previous?.documentId === input.documentId && previous.documentSha256 === expectedDocument?.sha256 ? previous : null)
     try {
-      const fixed = pdfReadingSchema.parse(await api('/read', input))
-      if (fixed.activityId !== activity.activityId || fixed.documentId !== input.documentId
-        || (expectedDocument && fixed.documentSha256 !== expectedDocument.sha256)
-        || JSON.stringify(fixed.requestedPages) !== JSON.stringify(input.pages)
-        || JSON.stringify(fixed.region) !== JSON.stringify(input.region)) throw new Error('PDF 阅读响应与所选页或区域不一致。')
+      let fixed = prefetched ? await prefetched.result : null
       if (!canWrite() || epoch !== readEpoch.current) return
-      if (cacheKey && availableReading(fixed)) {
-        cache.delete(cacheKey); cache.set(cacheKey, fixed)
-        if (cache.size > cachedPageReads) cache.delete(cache.keys().next().value!)
-      }
+      fixed ??= await fetchReading(input, expectedDocument)
+      if (!canWrite() || epoch !== readEpoch.current) return
+      if (cacheKey && availableReading(fixed)) rememberPageRead(cache, cacheKey, fixed)
       setReading(fixed); setReferenceReadingId(null); setPendingRead(null)
       if (quote && availableReading(fixed)) {
         // Registering the source is an effect; queue the explicit add until it is registered.
@@ -195,7 +231,8 @@ export function usePdfMaterials({ activity, spaceKey, namespace, authorized, rev
       // Query before replay; an unknown outcome never creates a new upload identity.
       try { value = await api(`/documents/${record.input.documentId}`) }
       catch (error) { if ((error as { code?: string }).code !== 'missing') throw error }
-      if (value === undefined || pdfDocumentSchema.parse(value).state === 'received') {
+      const prior = value === undefined ? undefined : pdfDocumentSchema.parse(value)
+      if (!prior || (prior.state === 'received' && !prior.removedAt)) {
         if (!canWrite()) return
         value = await api(record.kind === 'course' ? '/course' : '', record.input)
       }
@@ -212,7 +249,7 @@ export function usePdfMaterials({ activity, spaceKey, namespace, authorized, rev
       if (!alive.current) return
       adopt(doc); setRequests(saved)
       operation.current = false; setBusy(false)
-      await openDocument(doc)
+      if (!doc.removedAt) await openDocument(doc)
     } catch (error) { if (alive.current) setError(failureText(error)) }
     finally { operation.current = false; if (alive.current) setBusy(false) }
   }
@@ -231,6 +268,30 @@ export function usePdfMaterials({ activity, spaceKey, namespace, authorized, rev
       await receive(record)
     } catch (error) { if (alive.current) setError(failureText(error)) }
     finally { operation.current = false; if (alive.current) setBusy(false) }
+  }
+  async function remove(doc: PdfDocument) {
+    if (!canWrite() || operation.current || doc.courseSource || doc.removedAt) return
+    ++listEpoch.current; setLoading(false)
+    operation.current = true; setBusy(true); setError(''); setNotice('')
+    try {
+      const removed = pdfDocumentSchema.parse(await api(`/documents/${doc.documentId}/remove`, { requestId: crypto.randomUUID() }))
+      if (removed.activityId !== activity.activityId || removed.documentId !== doc.documentId
+        || removed.sha256 !== doc.sha256 || removed.courseSource || !removed.removedAt)
+        throw new Error('PDF 移除回执与当前文件不一致，请刷新列表核对。')
+      const record = requests.find(item => item.input.documentId === doc.documentId)
+      if (record) {
+        // The owner already confirmed removal. Update the browser's fallback copy when available.
+        try { await acknowledgePdfRequest(record, removed) } catch { /* The owner's list remains authoritative. */ }
+      }
+      if (!alive.current) return
+      adopt(removed)
+      setRequests(items => items.map(item => item.input.documentId === doc.documentId ? { ...item, document: removed } : item))
+      setLastOpenedPersonalId(previous => previous === doc.documentId ? null : previous)
+      setNotice(`已移除「${doc.name}」。已有引用仍可打开。`)
+    } catch (error) {
+      if (alive.current) setError(error instanceof Error && !(error.name === 'ZodError' || 'code' in error)
+        ? error.message : '尚未确认 PDF 是否已移除，请刷新列表核对。')
+    } finally { operation.current = false; if (alive.current) setBusy(false) }
   }
   async function openCourse(materialId: string) {
     if (!canWrite() || operation.current) return
@@ -310,7 +371,7 @@ export function usePdfMaterials({ activity, spaceKey, namespace, authorized, rev
 
   return { documents, requests, document, lastOpenedPersonalId, reading, referenceReadingId, pendingRead, busy, loading, error, loadError, notice,
     authorized, loadOriginal, writable: authorized && !references.readOnly, canQuote: references.draftReady && availableReading(reading),
-    refresh, upload, receive, openCourse, openDocument, locate,
+    refresh, upload, remove, receive, openCourse, openDocument, locate, preloadPage,
     readPages: (pages: number[], region: PdfRegion | null = null, quote = false) => document
       ? read({ requestId: crypto.randomUUID(), documentId: document.documentId, pages, region }, quote) : Promise.resolve(),
     retryRead: () => pendingRead ? read(pendingRead, quotePendingRead.current, document, true) : Promise.resolve(),
@@ -342,7 +403,7 @@ export function PendingCoursePdfs({ pdf, materials }: { pdf: PdfMaterialsControl
 export function PersonalPdfLibrary({ pdf }: { pdf: PdfMaterialsController }) {
   const input = useRef<HTMLInputElement>(null)
   const pending = pdf.requests.filter(item => item.kind === 'upload').filter(item => !item.document)
-  const personalDocuments = pdf.documents.filter(doc => !doc.courseSource)
+  const personalDocuments = pdf.documents.filter(doc => !doc.courseSource && !doc.removedAt)
   return <WorkspaceResourceLibrary title="个人 PDF" description="随当前活动保存，单份最多 20 MiB。" busy={pdf.busy} actions={<>
     <Button type="button" variant="outline" className="workspace-resource-icon-action" aria-label="刷新 PDF 列表" title="刷新 PDF 列表"
       disabled={pdf.busy || pdf.loading} onClick={() => void pdf.refresh()}><Icon name="refresh" /></Button>
@@ -355,7 +416,9 @@ export function PersonalPdfLibrary({ pdf }: { pdf: PdfMaterialsController }) {
       <WorkspaceResourceRow key={doc.documentId} name={doc.name}
         detail={doc.state === 'ready' ? `${doc.pageCount} 页` : documentStates[doc.state]}
         current={doc.documentId === pdf.lastOpenedPersonalId}
-        disabled={pdf.busy || !pdf.writable} onOpen={() => void pdf.openDocument(doc)} />
+        disabled={pdf.busy || !pdf.writable} onOpen={() => void pdf.openDocument(doc)}
+        actions={pdf.writable && <WorkspaceResourceMenu name={doc.name} disabled={pdf.busy}
+          items={[{ label: '移除', onSelect: () => void pdf.remove(doc) }]} />} />
     )}</WorkspaceResourceList> : !pdf.loading && !pdf.busy && !pdf.loadError && !pending.length
       && <p className="detail">还没有添加 PDF。添加后可在这里翻页、框选和引用。</p>}
     {pending.map(item => <PendingPdf key={item.key} pdf={pdf} request={item} title={item.input.name} />)}
@@ -371,9 +434,9 @@ function pdfZoomPosition(percent: number, min: number): CSSProperties {
 
 const pdfZoomDotSize = 6
 
-function PdfZoomControls({ zoom, percent, min, viewport, pages, disabled, onChange }: {
+function PdfZoomControls({ zoom, percent, min, viewport, pages, cropped, disabled, onChange }: {
   zoom: PdfZoom; percent: number; min: number; viewport: PdfSize; pages: readonly (PdfSize | undefined)[]
-  disabled: boolean; onChange(zoom: PdfZoom): void
+  cropped: boolean; disabled: boolean; onChange(zoom: PdfZoom): void
 }) {
   const slider = useRef<HTMLInputElement>(null)
   const track = useRef<HTMLDivElement>(null)
@@ -391,6 +454,8 @@ function PdfZoomControls({ zoom, percent, min, viewport, pages, disabled, onChan
   const range = pdfZoomMax - min
   const distance = Math.abs(stops[0].percent - stops[1].percent) * trackWidth / range
   const overlap = distance < pdfZoomDotSize
+  const combineFits = cropped && overlap
+  const visibleStops = combineFits ? [{ ...stops[zoom === 'fit-width' ? 1 : 0], label: '适合选区' }] : stops
   const moveStop = (event: PointerEvent<HTMLButtonElement>) => {
     const active = pointer.current
     if (!active || active.id !== event.pointerId || !(event.buttons & 1)) return
@@ -412,9 +477,9 @@ function PdfZoomControls({ zoom, percent, min, viewport, pages, disabled, onChan
         <input ref={slider} type="range" min={min} max={pdfZoomMax} step={1} value={percent} disabled={disabled}
           style={pdfZoomPosition(percent, min)} aria-label="PDF 缩放比例" aria-valuetext={`${percent}%`}
           onChange={event => onChange(event.currentTarget.valueAsNumber)} />
-        <div ref={track} className="pdf-zoom-stops" data-overlap={overlap || undefined}
+        <div ref={track} className="pdf-zoom-stops" data-overlap={overlap && !combineFits || undefined}
           style={{ '--pdf-zoom-dot-size': `${pdfZoomDotSize}px`, '--pdf-zoom-stop-width': `${overlap ? 20 : Math.min(20, distance)}px` } as CSSProperties}>
-          {stops.map(({ value, label, edge, percent: position }) => <button key={value} type="button" className="pdf-zoom-stop"
+          {visibleStops.map(({ value, label, edge, percent: position }) => <button key={combineFits ? 'fit-region' : value} type="button" className="pdf-zoom-stop"
             data-edge={edge} data-current={percent === position || undefined} aria-label={label} aria-pressed={zoom === value} disabled={disabled}
             style={pdfZoomPosition(position, min)}
             onPointerDown={event => {
@@ -464,14 +529,14 @@ function PdfIconButton({ icon, label, ...props }: Omit<ComponentProps<typeof But
   </Button>
 }
 
-export function PdfMaterials({ pdf, onBackToList }: {
-  pdf: PdfMaterialsController; onBackToList(): void
+export function PdfMaterials({ pdf, active, onBackToList }: {
+  pdf: PdfMaterialsController; active: boolean; onBackToList(): void
 }) {
-  const { document: doc, reading } = pdf
+  const { document: doc, reading, pendingRead, preloadPage } = pdf
   const [pageInput, setPageInput] = useState('1')
   const [zoom, setZoom] = useState<PdfZoom>('reading')
   const [viewportSize, setViewportSize] = useState<PdfSize>({ width: 0, height: 0 })
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
   const [findOpen, setFindOpen] = useState(false)
   const sidebarId = useId()
   const findId = useId()
@@ -504,6 +569,12 @@ export function PdfMaterials({ pdf, onBackToList }: {
   const hasNativeText = reading?.pages.some(item => item.state === 'ready' && item.image && item.text.trim())
   const quoteLabel = selecting ? '引用所选区域' : reading?.region ? '引用此区域' : twoPages ? '引用这两页' : '引用此页'
   const cancelRegion = () => { setSelectionMode('page'); setRegion(null) }
+  useEffect(() => {
+    if (!active || !canNavigate || pendingRead || doc?.state !== 'ready' || !reading || reading.region
+      || reading.documentId !== doc.documentId || reading.documentSha256 !== doc.sha256
+      || reading.pages.length !== 1 || reading.pages[0]?.state !== 'ready' || !reading.pages[0].image) return
+    return preloadPage(doc, page + 1)
+  }, [active, canNavigate, doc, page, pendingRead, preloadPage, reading])
   useEffect(() => { setPageInput(String(page)); cancelRegion(); setLocalError('') }, [reading?.readingId, page, doc?.documentId])
   useEffect(() => { setQuery(''); setFindOpen(false); findComposing.current = false }, [doc?.documentId])
   useLayoutEffect(() => { if (findOpen) findInput.current?.focus() }, [findOpen])
@@ -597,7 +668,7 @@ export function PdfMaterials({ pdf, onBackToList }: {
           </form>
           <PdfIconButton icon="alt-arrow-right" label="下一页" disabled={!canNavigate || page >= doc.pageCount} onClick={() => navigate(page + 1)} />
         </div>
-        <PdfZoomControls zoom={zoom} percent={percent} min={zoomMin} viewport={viewportSize} pages={pageSizes}
+        <PdfZoomControls zoom={zoom} percent={percent} min={zoomMin} viewport={viewportSize} pages={pageSizes} cropped={!!reading?.region}
           disabled={!hasPageImage} onChange={changeZoom} />
         <PdfIconButton ref={findToggle} icon="minimalistic-magnifier" label="查找文字"
           aria-keyshortcuts="Control+F Meta+F" aria-expanded={findOpen} aria-controls={findId}

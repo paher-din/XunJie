@@ -12,12 +12,13 @@ export type PdfRegion = z.infer<typeof pdfRegionSchema>;
 export const pdfUploadSchema = z.object({ requestId: z.uuid(), documentId: z.uuid(),
   name: z.string().min(1).max(240), dataBase64: z.string().min(1).max(Math.ceil(PDF_LIMITS.inputBytes / 3) * 4) }).strict();
 export const pdfCourseInputSchema = z.object({ requestId: z.uuid(), documentId: z.uuid(), materialId: z.uuid() }).strict();
+export const pdfRemoveInputSchema = z.object({ requestId: z.uuid() }).strict();
 export const pdfDocumentSchema = z.object({ documentId: z.uuid(), activityId: z.uuid(), requestId: z.uuid(),
   name: z.string().min(1).max(240), sha256: digest, byteLength: z.number().int().positive(),
   state: z.enum(['received', 'ready', 'damaged', 'encrypted', 'limit', 'timeout', 'failed']),
   pageCount: z.number().int().nonnegative(), pageLabels: z.array(z.string().max(300)).max(PDF_LIMITS.pages),
   courseSource: z.object({ releaseId: z.uuid(), materialId: z.uuid() }).strict().optional(),
-  detail: z.string().max(2000).optional() }).strict();
+  detail: z.string().max(2000).optional(), removedAt: z.iso.datetime().optional() }).strict();
 export type PdfDocument = z.infer<typeof pdfDocumentSchema>;
 export const sessionPdfDocumentSchema = pdfDocumentSchema.omit({ activityId: true }).extend({ scope: sessionMaterialScopeSchema }).strict();
 export const scopedPdfDocumentSchema = z.union([pdfDocumentSchema, sessionPdfDocumentSchema]);
