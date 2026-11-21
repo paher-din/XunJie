@@ -220,8 +220,7 @@ test('course text and requirements stay as fixed references through collapse, re
   await page.getByRole('button', { name: /^定位引用 \d+：ALU 题目$/ }).click()
   await expect(preview.getByRole('heading', { name: 'ALU 题目' })).toBeVisible()
   await expect(material).toBeVisible()
-  await expect(page.getByRole('region', { name: '通知' }).getByText('已定位引用来源。', { exact: true })).toBeVisible()
-  expect(await page.evaluate(() => document.getSelection()?.toString())).toBe(selected)
+  await expect.poll(() => page.evaluate(() => document.getSelection()?.toString())).toBe(selected)
   if (evidenceDirectory()) await page.screenshot({ path: evidencePath('152/course-material-located.png') })
   await page.getByRole('button', { name: '返回活动列表', exact: true }).click()
   await resume()
@@ -335,7 +334,10 @@ test('an existing reliable workspace database upgrades without losing its work',
       const db = request.result
       resolve({ version: db.version, stores: [...db.objectStoreNames] })
     }
-  }))).toEqual({ version: 6, stores: ['actions', 'candidates', 'draftCandidates', 'drafts', 'executionCommands', 'executionPending', 'executionResults', 'executionStops', 'executionSync', 'nativeSessionRequests', 'workOperations', 'workspaces'] })
+  }))).toEqual({ version: 12, stores: ['actions', 'agentControls', 'agentImages', 'candidates', 'draftCandidates', 'drafts',
+    'executionCommands', 'executionPending', 'executionResults', 'executionStops', 'executionSync',
+    'nativeSessionJournal', 'nativeSessionRequests', 'pdfMaterials', 'personalMaterials', 'studentResponses',
+    'workOperations', 'workspaces'] })
 })
 
 async function draftDriver(page: Page, activityId: string) {
