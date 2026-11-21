@@ -8,6 +8,7 @@ import { createAgentSessions, agentSessionMigration } from '@xunjie/learning-spa
 import { createLearningData, learningMigrations } from '@xunjie/learning-space';
 import { nativeFixture } from '../../storage/test/native-fixture.mjs';
 import { createSessionRuntimeHost } from '../dist/session-runtime.js';
+import { createProductAgent } from '../dist/product-agent.js';
 
 const connection = { routeId: randomUUID(), version: 1, maxOutputTokens: 4096, contextWindow: 1_000_000,
   protocol: 'openai-chat', parameterMode: 'plain', capabilities: {}, hasCredential: true, adapterState: 'ready' };
@@ -43,6 +44,7 @@ function mockGateway(onDispatch) {
           segment: { segmentId: [...segments.keys()][0], sequence: 0 } });
         return attempt; },
       read: async (_identity, attemptId) => attempts.get(attemptId),
+      readRecorded: async (_identity, attemptId) => attempts.get(attemptId),
       progress: async () => null, summary: async () => null, requestPayload: async () => ({}),
       cancel: async (_identity, attemptId) => attempts.get(attemptId),
     },
@@ -50,6 +52,164 @@ function mockGateway(onDispatch) {
     images: { upload: async () => ({}), read: async () => ({}) },
   };
 }
+
+test('attempt inspection limits a mixed personal session to the approved course Turn and reauthorizes its sources', async t => {
+  const pg = await nativeFixture();
+  const owner = { environmentId: randomUUID(), serviceId: randomUUID() };
+  const binding = await provisionStorage({ admin: pg.admin, owner, password: randomUUID(), migrations: agentRuntimeMigrations });
+  const storage = await openStorage({ binding, migrations: agentRuntimeMigrations,
+    backend: createFileBackend({ id: 'inspection', root: join(pg.root, 'inspection') }) });
+  const student = { environmentId: owner.environmentId, spaceId: randomUUID(), principalId: randomUUID(),
+    kind: 'personal', name: '学生' };
+  const inspector = { ...student, principalId: randomUUID(), kind: 'school', name: '学校排查者' };
+  const session = { sessionId: randomUUID(), identity: student, scenario: 'student-assistant', state: 'ready',
+    owner: { target: owner }, createdAt: new Date().toISOString() };
+  const courseActivityId = randomUUID(), forgedActivityId = randomUUID();
+  let revoked = false, dispatches = 0, recordedReads = 0, inspections = 0;
+  const gateway = mockGateway(() => { dispatches++; });
+  const recorded = gateway.checks.readRecorded;
+  gateway.checks.readRecorded = async (...args) => { recordedReads++; return recorded(...args); };
+  const host = createProductAgent({ storage, models: gateway, authorize: async () => {},
+    async authorizeInspection(actor, target) {
+      // The host hook receives the full target metadata, not only an id. The exact Turn/Attempt
+      // must carry the course activity; a different Turn in the same Session cannot reuse it.
+      if (actor.kind !== 'school' || actor.principalId !== inspector.principalId
+        || target.session.identity.principalId !== student.principalId
+        || !target.session.sessionId || !target.attempt?.attemptId || !target.attempt.stepId
+        || !target.attempt.turnId || !target.activityIds.includes(courseActivityId))
+        throw Object.assign(new Error('forbidden'), { code: 'forbidden' });
+      inspections++;
+    },
+    inspectSession: async id => id === session.sessionId ? session : Promise.reject(Object.assign(new Error('missing'), { code: 'missing' })),
+    directory: { read: async (actor, id) => {
+      if (id !== session.sessionId || actor.principalId !== student.principalId || actor.kind !== 'personal')
+        throw Object.assign(new Error('forbidden'), { code: 'forbidden' });
+      return session;
+    }, readForInspection: async () => session },
+    scene: async () => ({
+      student: { localPersonalIdentity: student, localLearningTarget: { ...owner, version: 1 },
+        historySource: async () => !revoked },
+      tools: async () => [],
+      experimentMaterials: async input => {
+        const references = (input.inputs ?? []).flatMap(entry =>
+          Array.isArray(entry.context.experimentReferences) ? entry.context.experimentReferences : []);
+        if (!references.length) return [];
+        const accepted = references.some(reference => reference && typeof reference === 'object'
+          && reference.activityId === courseActivityId);
+        return [{ materialId: 'M-inspection', sourceId: 'fixed-evidence',
+          kind: 'system-observation', author: 'system', label: '固定结果', version: 'v1', range: null,
+          digest: accepted ? 'evidence-digest' : 'failed-digest',
+          content: accepted ? 'fixed proof' : null, readState: accepted ? 'included' : 'failed',
+          readReason: accepted ? undefined : '原实验当前不可访问或无法核实。', citationAllowed: accepted,
+          source: { kind: 'experiment-reference', activityId: accepted ? courseActivityId : forgedActivityId,
+            executionRef: randomUUID() } }];
+      },
+    }),
+  });
+  t.after(async () => { await host.close(); await storage.close(); await pg.close(); });
+  await host.local.initialize({ sessionId: session.sessionId, identity: student, scenario: session.scenario, createdAt: session.createdAt });
+  const privateReceipt = await host.local.submit(student, { sessionId: session.sessionId, requestId: randomUUID(),
+    text: '与课程无关的私人问题', context: { experimentReferences: [{ activityId: forgedActivityId }] } });
+  await host.drain();
+  await assert.rejects(host.inspect(inspector, session.sessionId, { turnId: privateReceipt.turnId }), { code: 'forbidden' });
+  const receipt = await host.local.submit(student, { sessionId: session.sessionId, requestId: randomUUID(),
+    text: '核对实验', context: { experimentReferences: [{ activityId: courseActivityId }] } });
+  await host.drain();
+  const view = await host.inspect(inspector, session.sessionId, { turnId: receipt.turnId });
+  assert.equal(view.turnId, receipt.turnId);
+  assert.equal(view.assembly, null);
+  assert.equal(view.result, null);
+  assert.equal(view.request, null);
+  assert.equal(view.redaction.request, 'mixed-session-history');
+  assert.equal(view.redaction.assembly, 'mixed-session-history');
+  assert.equal(view.redaction.tools, 'mixed-session-history');
+  assert.equal(view.redaction.citations, 'mixed-session-history');
+  assert.deepEqual(view.tools, []);
+  assert.deepEqual(view.citations, []);
+  assert.equal(JSON.stringify(view).includes('与课程无关的私人问题'), false);
+  assert.equal(view.capacity.dispatchable, true);
+  assert.equal(view.attemptId, view.attempt.attemptId);
+  assert.ok(Array.isArray(view.tools));
+  assert.ok(Array.isArray(view.citations));
+  // A normal student, a non-managing school member and any other subject are forbidden; the
+  // injected hook above intentionally encodes only this allowed inspector.
+  await assert.rejects(host.inspect(student, session.sessionId, { attemptId: view.attemptId }), { code: 'forbidden' });
+  await assert.rejects(host.inspect({ ...inspector, principalId: randomUUID() }, session.sessionId, { attemptId: view.attemptId }),
+    { code: 'forbidden' });
+  revoked = true;
+  await assert.rejects(host.inspect(inspector, session.sessionId, { attemptId: view.attemptId }), { code: 'forbidden' });
+  // The revoked source passes the host inspection gate but is rejected by history reauthorization.
+  assert.equal(inspections, 2);
+  assert.equal(dispatches, 2);
+  assert.equal(recordedReads, 0);
+});
+
+test('attempt inspection keeps Step and Attempt tool receipts inside the selected Attempt', async t => {
+  const pg = await nativeFixture();
+  const owner = { environmentId: randomUUID(), serviceId: randomUUID() };
+  const binding = await provisionStorage({ admin: pg.admin, owner, password: randomUUID(), migrations: agentRuntimeMigrations });
+  const storage = await openStorage({ binding, migrations: agentRuntimeMigrations,
+    backend: createFileBackend({ id: 'inspection-attempt-scope', root: join(pg.root, 'inspection-attempt-scope') }) });
+  const student = { environmentId: owner.environmentId, spaceId: randomUUID(), principalId: randomUUID(), kind: 'personal', name: '学生' };
+  const inspector = { ...student, principalId: randomUUID(), kind: 'school', name: '排查者' };
+  const sessionId = randomUUID(), createdAt = new Date().toISOString();
+  const session = { sessionId, identity: student, scenario: 'student-assistant', state: 'ready',
+    owner: { target: owner }, createdAt };
+  const turnId = randomUUID(), priorStepId = randomUUID(), targetStepId = randomUUID();
+  const priorAttemptId = randomUUID(), otherAttemptId = randomUUID(), targetAttemptId = randomUUID();
+  const priorCallId = randomUUID(), otherCallId = randomUUID(), targetCallId = randomUUID();
+  const activityA = randomUUID(), activityB = randomUUID();
+  const now = new Date().toISOString();
+  const material = (activityId, text) => ({ materialId: 'M-' + activityId, sourceId: 'source-' + activityId,
+    kind: 'system-observation', author: 'system', label: text, version: 'v1', range: null, digest: 'a'.repeat(64),
+    content: text, readState: 'included', source: { kind: 'experiment-reference', activityId, executionRef: activityId } });
+  const toolResult = (activityId, text) => ({ kind: 'completed', outcome: 'success', summary: text,
+    data: { source: { kind: 'experiment-reference', activityId, executionRef: activityId } } });
+  const gateway = mockGateway(() => {});
+  const host = createProductAgent({ storage, models: gateway, authorize: async () => {},
+    inspectSession: async id => id === sessionId ? session : Promise.reject(Object.assign(new Error('missing'), { code: 'missing' })),
+    authorizeInspection: async (actor, target) => {
+      assert.equal(actor.principalId, inspector.principalId);
+      assert.deepEqual(target.activityIds, [activityA]);
+    },
+    directory: { read: async () => session, readForInspection: async () => session },
+    scene: async () => ({ tools: async () => [] }),
+  });
+  t.after(async () => { await host.close(); await storage.close(); await pg.close(); });
+  await host.local.initialize({ sessionId, identity: student, scenario: session.scenario, createdAt });
+  await storage.request({ requestId: randomUUID(), fingerprint: 'inspection-attempt-scope-fixture' }, async tx => {
+    await tx.query(`INSERT INTO agent_turns(turn_id,session_id,request_id,trigger,origin_notification_id,state,reason,owner_instance_id,budget,usage,created_at,updated_at)
+      VALUES($1,$2,$3,'user',NULL,'completed','', 'fixture', $4, $5, $6, $6)`,
+      [turnId, sessionId, randomUUID(), JSON.stringify({ maxSteps: 8, maxToolCalls: 8, maxInputTokens: 10000, maxOutputTokens: 1000, maxCallMs: 10000, deadline: null }), JSON.stringify({ inputTokens: 0, outputTokens: 0, inputReserved: 0, outputReserved: 0 }), now]);
+    const snapshot = { attemptContexts: {
+      [priorAttemptId]: { materials: [material(activityA, 'prior-step-A')], historySources: [] },
+      [otherAttemptId]: { materials: [material(activityB, 'other-attempt-B')], historySources: [] },
+      [targetAttemptId]: { materials: [material(activityA, 'target-A')], historySources: [] },
+    } };
+    await tx.query(`INSERT INTO agent_steps(step_id,turn_id,step_no,state,snapshot,created_at,updated_at,completed_at)
+      VALUES($1,$2,1,'completed',$3,$4,$4,$4),($5,$2,2,'completed',$3,$4,$4,$4)`,
+      [priorStepId, turnId, JSON.stringify(snapshot), now,
+        targetStepId]);
+    await tx.query(`INSERT INTO agent_attempts(attempt_id,step_id,attempt_no,state,request_ref,response_ref,usage,reserved,error,created_at,updated_at)
+      VALUES($1,$2,1,'completed',NULL,NULL,'{"state":"final"}','{"inputTokens":1,"outputTokens":1}',NULL,$3,$3),
+             ($4,$5,1,'completed',NULL,NULL,'{"state":"final"}','{"inputTokens":1,"outputTokens":1}',NULL,$3,$3),
+             ($6,$5,2,'completed',NULL,NULL,'{"state":"final"}','{"inputTokens":1,"outputTokens":1}',NULL,$3,$3)`,
+      [priorAttemptId, priorStepId, now, otherAttemptId, targetStepId, targetAttemptId]);
+    await tx.query(`INSERT INTO agent_tool_calls(tool_call_id,step_id,attempt_id,call_index,native_call_id,name,input,execution_mode,state,result,task_id,created_at,updated_at)
+      VALUES($1,$2,$3,0,'prior-call','read_work','{}','foreground','closed',$4,NULL,$7,$7),
+             ($5,$6,$8,0,'other-call','read_work','{}','foreground','closed',$9,NULL,$7,$7),
+             ($10,$6,$11,1,'target-call','read_work','{}','foreground','closed',$12,NULL,$7,$7)`,
+      [priorCallId, priorStepId, priorAttemptId, JSON.stringify(toolResult(activityA, 'prior-A')), otherCallId, targetStepId, now,
+        otherAttemptId, JSON.stringify(toolResult(activityB, 'other-B')), targetCallId, targetAttemptId, JSON.stringify(toolResult(activityA, 'target-A'))]);
+    return null;
+  });
+  const view = await host.inspect(inspector, sessionId, { attemptId: targetAttemptId });
+  assert.equal(view.attemptId, targetAttemptId);
+  assert.equal(view.assembly.materials[0].label, 'target-A');
+  assert.deepEqual(view.tools.map(tool => tool.toolCallId), [targetCallId]);
+  assert.equal(JSON.stringify(view).includes('other-B'), false);
+  assert.equal(JSON.stringify(view).includes(activityB), false);
+});
 
 test('the product host selects the saved scene and wakes the direct runner without creating a home workspace', async t => {
   const pg = await nativeFixture(), storages = [];

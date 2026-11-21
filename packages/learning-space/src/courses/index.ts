@@ -256,6 +256,19 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
       [courseId, identity.spaceId, identity.principalId]);
     return rows.length > 0;
   }
+  /** Host-only current course eligibility check used by controlled inspection; no student route exposes it. */
+  async function hasAccess(identity: SpaceIdentity, courseId: string): Promise<boolean> {
+    await spaces.authorize(identity); uuid.parse(courseId);
+    return accessActive(identity, courseId);
+  }
+  /** Host-only fixed activity-to-course fact used for controlled inspection authorization. */
+  async function courseForActivity(identity: SpaceIdentity, activityId: string): Promise<string | null> {
+    await spaces.authorize(identity); uuid.parse(activityId);
+    const { rows: [row] } = await storage.read(`SELECT course_id FROM course_activity_associations
+      WHERE activity_id=$1 AND space_id=$2 AND principal_id=$3 AND state='accepted' ORDER BY created_at LIMIT 1`,
+      [activityId, identity.spaceId, identity.principalId]);
+    return row ? String(row.course_id) : null;
+  }
   async function releaseRow(releaseId: string) {
     const { rows: [row] } = await storage.read(`SELECT r.content_digest,r.content,r.published_at,t.task_id,t.title AS task_title,
       c.course_id,c.name AS course_name,c.space_id FROM course_releases r JOIN course_tasks t ON t.task_id=r.task_id
@@ -712,6 +725,6 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
   }
   return { verifyComponentReference, components, readComponent, readComponentAlgorithm, readComponentDependency,
     readComponentRuntimeResource, submitComponentReport, readComponentReports,
-    registerRelease, registrationResult, listCourses, readRelease, readMaterial, referenceText, verifyReference, setAccess,
+    registerRelease, registrationResult, listCourses, readRelease, readMaterial, referenceText, verifyReference, setAccess, hasAccess, courseForActivity,
     prepare, confirm, confirmForMember, bindingResult, authorize, validate };
 }

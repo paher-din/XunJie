@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { ExecutionActionV3, AnyExecutionAction } from './execution.js';
 import type { WorkFile } from './learning-data.js';
+import { predictionResultsHidden, type TeachingHelpPolicy } from './course-help.js';
 
 /** HDL sources and include files share one selection rule across preparation, execution and references. */
 export function isAluCodeWork(file: { kind: string; name: string }): boolean {
@@ -70,6 +71,30 @@ export function aluCaseFromAction(action: ExecutionActionV3): AluCaseCapture | n
     return { draft: aluCaseDraftSchema.parse(JSON.parse(state.content.caseDraft)), inputs, stateFile,
       origin: action.execution.initiator.kind };
   } catch { return null; }
+}
+
+/**
+ * A course gate protects only prediction observations. Free experimentation and other
+ * operations remain ordinary observations; a captured case proves the prediction was fixed.
+ */
+export function aluResultAllowedBeforeSubmission(action: AnyExecutionAction,
+  policy: TeachingHelpPolicy | null | undefined): boolean {
+  if (!predictionResultsHidden(policy) || action.protocolVersion !== 3
+    || action.execution.basis.runtime.adapterId !== 'icarus-alu') return true;
+  const operation = action.execution.operation.operationId;
+  if (!['run-single', 'observe-enabled', 'check-all'].includes(operation)) return true;
+  // Free experimentation is an explicit state, not an inference from the operation name.
+  const stateFile = action.execution.basis.works.find(file => file.kind === 'state'
+    && file.contentId === action.execution.basis.expected.stateContentId);
+  if (!stateFile || stateFile.encoding !== 'json') return false;
+  try {
+    const content = (JSON.parse(stateFile.value) as { content?: Record<string, unknown> }).content;
+    if (content?.feedbackPolicy === 'live') return true;
+    // A held observation is readable only when its own fixed case proves the prediction was submitted.
+    return operation === 'observe-enabled' && !!aluCaseFromAction(action);
+  } catch {
+    return false;
+  }
 }
 
 /** Equality uses original compile-relevant bytes, so undo or copying the same bytes cannot hide an existing source. */

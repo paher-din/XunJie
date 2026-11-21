@@ -76,7 +76,7 @@ export const agentToolCallStateSchema = z.enum(['pending', 'started', 'closed'])
 export const agentExecutionModeSchema = z.enum(['foreground', 'background']);
 export type AgentExecutionMode = z.infer<typeof agentExecutionModeSchema>;
 export const agentToolCallSchema = z.object({
-  toolCallId: z.uuid(), stepId: z.uuid(), callIndex: z.number().int().nonnegative(),
+  toolCallId: z.uuid(), stepId: z.uuid(), attemptId: z.uuid().optional(), callIndex: z.number().int().nonnegative(),
   nativeCallId: z.string().min(1).max(200), name: z.string().min(1).max(200),
   input: z.record(z.string(), z.json()), executionMode: agentExecutionModeSchema,
   state: agentToolCallStateSchema, result: agentToolResultSchema.nullable(),

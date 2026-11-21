@@ -28,7 +28,9 @@ $owner = $acl.GetOwner([Security.Principal.SecurityIdentifier]).Value
 if ($owner -ne $sid.Value ${protect ? "-and $owner -ne $identity.Owner.Value" : ''}) { throw 'owner' }
 ${protect ? `
 $acl = New-Object Security.AccessControl.${directory ? 'DirectorySecurity' : 'FileSecurity'}
-$acl.SetOwner($sid)
+# Writing the DACL of an owned path does not require WRITE_OWNER. Request
+# an owner change only when the token's default owner differs from its user.
+if ($owner -ne $sid.Value) { $acl.SetOwner($sid) }
 $acl.SetAccessRuleProtection($true, $false)
 $rule = New-Object Security.AccessControl.FileSystemAccessRule($sid, 'FullControl', '${directory ? 'ContainerInherit, ObjectInherit' : 'None'}', 'None', 'Allow')
 $acl.AddAccessRule($rule)

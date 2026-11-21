@@ -169,6 +169,23 @@ export const modelUsageSchema = z.object({ state: z.enum(['final', 'partial', 'u
   inputTokens: z.number().nonnegative().optional(), outputTokens: z.number().nonnegative().optional(),
   totalTokens: z.number().nonnegative().optional(), cachedTokens: z.number().nonnegative().optional(),
   reasoningTokens: z.number().nonnegative().optional() }).strict();
+/** Calibratable first-version pressure policy shared by the kernel and the model owner. */
+export const modelContextPressurePolicy = Object.freeze({
+  version: 1 as const, compactAt: 0.8, target: 0.6, defaultSafetyRate: 0.05, imageSafetyRate: 0.1,
+});
+export function modelContextPressure(inputTokens: number, outputReserveTokens: number,
+  contextWindow: number | null, safetyRate: number = modelContextPressurePolicy.defaultSafetyRate) {
+  if (contextWindow === null) return { pressure: null, state: 'unknown' as const,
+    safetyMarginTokens: null, availableInputTokens: null };
+  const safetyMarginTokens = Math.ceil(contextWindow * safetyRate);
+  const availableInputTokens = contextWindow - outputReserveTokens - safetyMarginTokens;
+  if (availableInputTokens <= 0) return { pressure: null, state: 'blocked' as const,
+    safetyMarginTokens, availableInputTokens };
+  const pressure = inputTokens / availableInputTokens;
+  return { pressure, safetyMarginTokens, availableInputTokens,
+    state: pressure > 1 ? 'blocked' as const
+      : pressure >= modelContextPressurePolicy.compactAt ? 'compact' as const : 'ok' as const };
+}
 export const modelUpstreamSchema = modelDiagnosticFactsSchema;
 export const modelImageRefSchema = z.object({ imageId: z.uuid(), version: z.literal(1) }).strict();
 export const modelImageInputSchema = z.object({ requestId: z.uuid(), imageId: z.uuid(), mediaType: z.literal('image/png'),
@@ -192,6 +209,27 @@ export const settleModelToolsSchema = z.object({ requestId: z.uuid(), expectedSe
   results: z.array(modelToolResultSchema).min(1).max(8) }).strict();
 export const modelObservationSchema = z.object({ observationId: z.uuid(), version: z.number().int().positive(),
   source: z.literal('caller'), text: z.string().max(8192) }).strict();
+/** A kernel-selected representation change that must be applied to an existing native segment. */
+export const modelHistoryProjectionSchema = z.object({
+  projectionId: z.string().regex(/^[a-f0-9]{64}$/),
+  baseProjectionId: z.string().regex(/^[a-f0-9]{64}$/).nullable(),
+  replacements: z.array(z.object({
+    entryId: z.string().min(1).max(200),
+    /** The original native exchange, when one exists. */
+    attemptId: z.uuid().optional(),
+    callId: z.string().min(1).max(200).optional(),
+    text: z.string().max(8192),
+  }).strict()).max(64),
+}).strict().superRefine((value, ctx) => {
+  const calls = new Set<string>();
+  for (const replacement of value.replacements) {
+    if (!replacement.callId) continue;
+    const key = replacement.attemptId ? replacement.attemptId + ':' + replacement.callId : replacement.callId;
+    if (calls.has(key)) ctx.addIssue({ code: 'custom', path: ['replacements'],
+      message: 'Duplicate native call replacement' });
+    calls.add(key);
+  }
+});
 export const modelChatOptionsSchema = z.object({
   toolChoice: z.union([z.enum(['auto', 'none']), z.object({ name: modelToolSchema.shape.name }).strict()]).optional(),
   responseFormat: z.union([z.object({ kind: z.literal('json-object') }).strict(), z.object({ kind: z.literal('json-schema'),
@@ -242,7 +280,8 @@ export const modelSegmentInputSchema = z.object({ requestId: z.uuid(), segmentId
   purpose: modelSegmentPurposeSchema.optional(), sessionId: z.uuid().optional(),
   prefix: z.object({ system: z.string().max(400_000), tools: z.array(modelToolSchema).max(64), options: modelChatOptionsSchema.optional() }).strict(),
   portable: z.array(z.object({ text: z.string().max(400_000), role: z.enum(['user', 'assistant']).optional(),
-    resultRef: z.uuid().optional() }).strict()).max(512),
+    resultRef: z.uuid().optional(), entryId: z.string().min(1).max(300).optional() }).strict()).max(512),
+  projectionId: z.string().regex(/^[a-f0-9]{64}$/).optional(),
   previousSegmentId: z.uuid().optional() }).strict();
 export const modelSegmentCloseSchema = z.object({ requestId: z.uuid(), expectedSequence: z.number().int().nonnegative() }).strict();
 export const modelPortableResultSchema = z.object({ owner: storageOwnerSchema, attemptId: z.uuid(), resultRef: z.uuid(), routeId: z.uuid(),
@@ -259,7 +298,8 @@ export const modelChatInputSchema = z.object({ attemptId: z.uuid(), purpose: z.l
 export const modelLearningInputSchema = z.object({ attemptId: z.uuid(), purpose: z.literal('learning'), segmentId: z.uuid(),
   authority: modelSessionAuthoritySchema.optional(),
   expectedSequence: z.number().int().nonnegative(), input: z.object({ text: z.string().max(1_000_000), images: z.array(modelImageRefSchema).max(8).default([]),
-    toolResults: z.array(modelToolResultSchema).max(64).default([]), observations: z.array(modelObservationSchema).max(512).default([]) }).strict(),
+    toolResults: z.array(modelToolResultSchema).max(64).default([]), observations: z.array(modelObservationSchema).max(512).default([]),
+    historyProjection: modelHistoryProjectionSchema.optional() }).strict(),
   limits: z.object({ maxOutputTokens: z.number().int().min(1).max(1_000_000),
     timeoutMs: z.number().int().min(250).max(2_147_483_647).optional() }).strict() }).strict();
 export const modelAttemptInputSchema = z.union([modelCheckInputSchema, modelChatInputSchema, modelLearningInputSchema]);

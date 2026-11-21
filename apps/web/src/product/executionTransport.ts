@@ -47,6 +47,15 @@ export function createExecutionTransport(activity: LearningActivity, spaceKey: s
       }
       return artifact
     },
+    visibility: async (requestId: string) => {
+      const value = await request('/' + requestId + '/visibility')
+      if (value === null) return null
+      return z.object({ reveal: z.boolean(), phase: z.enum(['not-required', 'free-observation', 'pending', 'submitted']),
+        previouslyShown: z.literal(true).optional(), state: executionQuerySchema.shape.state,
+        statusKnowledge: executionQuerySchema.shape.statusKnowledge, workIds: z.array(z.uuid()) }).parse(value)
+    },
+    displayed: async (requestId, contentId) => z.object({ recorded: z.literal(true) }).parse(
+      await request('/' + requestId + '/displayed', { contentId })),
     accept: async (action: ExecutionAction, acceptance: ExecutionAcceptance) => executionQuerySchema.parse(
       action.execution.initiator.kind === 'agent'
         ? await request('/agent/' + action.requestId + '/accept', { browserId: await teachingBrowserId(),

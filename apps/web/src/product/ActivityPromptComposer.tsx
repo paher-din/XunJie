@@ -63,6 +63,7 @@ export function ActivityPromptComposer({ activity, spaceKey, namespace, authoriz
           onResume={controls.canResume && !hasDraft ? controls.resume : undefined}
           actionDisabled={controls.disabled} resumeLabel="继续生成"
           onSend={() => sendWithAttachments(props.onSend)} canSend={props.canSend && !preparing}
-          selection={selection} contextUsage={contextUsage ?? agent?.conversation?.contextUsage} readOnly={workspace.isReadOnly() || !authorized} onModelSettings={onModels} />} />
+          selection={selection} modelLocked={active} contextUsage={contextUsage ?? agent?.conversation?.contextUsage}
+          readOnly={workspace.isReadOnly() || !authorized} onModelSettings={onModels} />} />
   </div>
 }

@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { randomBytes, randomUUID, createHash, createHmac } from 'node:crypto';
 import { mkdtemp, mkdir, writeFile, readFile, readdir, rm, stat, symlink, rename, statfs, chmod } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { sealRecovery, verifyRecovery, unsealRecovery, ensureRecoverySpace, checkIndependentDirectory } from '../dist/recovery-files.js';
 
 function metadata() {
@@ -190,6 +190,9 @@ test('real owners need not have a public source endpoint, and receivers use envi
 });
 
 const directoryLinkType = process.platform === 'win32' ? 'junction' : 'dir';
+const linkAtFilePath = (source, target) => process.platform === 'win32'
+  ? symlink(dirname(source), target, 'junction')
+  : symlink(source, target, 'file');
 
 test('symlinks in payload, cipher files, cipher directories and the catalog are rejected without deleting their targets', async (t) => {
   const f = await fixture(t);
@@ -197,7 +200,7 @@ test('symlinks in payload, cipher files, cipher directories and the catalog are 
   await mkdir(external);
   const secret = join(external, 'secret');
   await writeFile(secret, 'external-private-value');
-  await symlink(secret, join(f.backup, 'payload', 'link'), 'file');
+  await linkAtFilePath(secret, join(f.backup, 'payload', 'link'));
   await assert.rejects(sealRecovery(f.backup, f.key, f.metadata), fixedError);
   assert.equal(await readFile(secret, 'utf8'), 'external-private-value');
   assert.equal((await readdir(f.backup)).includes('payload'), false);
@@ -208,7 +211,7 @@ test('symlinks in payload, cipher files, cipher directories and the catalog are 
   const b = await sealed(t);
   const cipher = join(b.backup, 'artifacts', 'a');
   await rename(cipher, join(b.root, 'cipher'));
-  await symlink(join(b.root, 'cipher'), cipher, 'file');
+  await linkAtFilePath(join(b.root, 'cipher'), cipher);
   await assert.rejects(verifyRecovery(b.backup, b.key), fixedError);
   await rm(cipher);
   await rename(join(b.root, 'cipher'), cipher);
@@ -218,7 +221,7 @@ test('symlinks in payload, cipher files, cipher directories and the catalog are 
   await rm(join(b.backup, 'artifacts'), { recursive: true, force: true });
   await rename(join(b.root, 'cipher-directory'), join(b.backup, 'artifacts'));
   await rename(join(b.backup, 'manifest.json'), join(b.root, 'catalog'));
-  await symlink(join(b.root, 'catalog'), join(b.backup, 'manifest.json'), 'file');
+  await linkAtFilePath(join(b.root, 'catalog'), join(b.backup, 'manifest.json'));
   await assert.rejects(verifyRecovery(b.backup, b.key), fixedError);
   assert.deepEqual(await readdir(b.destination), []);
 });

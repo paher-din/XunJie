@@ -7,20 +7,32 @@ import type { SpaceIdentity } from './spaces.js';
 /** A reference is provenance, never a grant. The host must supply the same current source. */
 export const learningReferenceSchema = z.object({ sourceId: z.string().min(1).max(200),
   identity: spaceIdentitySchema.omit({ name: true }), owner: learningTargetSchema,
-  kind: z.enum(['activity', 'course', 'work', 'record', 'conversation', 'personal-project']),
+  kind: z.enum(['activity', 'course', 'course-material', 'work', 'record', 'conversation', 'personal-project']),
   objectId: z.string().min(1).max(300), version: z.string().min(1).max(200), activityId: z.uuid().optional(),
+  releaseId: z.uuid().optional(),
   provenanceDigest: z.string().regex(/^[a-f0-9]{64}$/).optional(),
 }).strict();
 export type LearningReference = z.infer<typeof learningReferenceSchema>;
 export const learningPageSchema = z.object({ offset: z.number().int().min(0).max(10000).default(0),
   limit: z.number().int().min(1).max(50).default(20) }).strict();
 export const learningSearchSchema = learningPageSchema.extend({ query: z.string().trim().min(1).max(500),
-  kinds: z.array(learningReferenceSchema.shape.kind).min(1).max(6).optional() }).strict();
+  kinds: z.array(learningReferenceSchema.shape.kind).min(1).max(7).optional() }).strict();
+const learningReadRangeSchema = z.object({ offset: z.number().int().min(0).max(2000000).default(0),
+  length: z.number().int().min(1).max(16000).default(4000) }).strict();
 export const learningReadSchema = z.object({ reference: learningReferenceSchema,
-  range: z.object({ offset: z.number().int().min(0).max(2000000).default(0),
-    length: z.number().int().min(1).max(16000).default(4000) }).strict().default({ offset: 0, length: 4000 }),
-}).strict();
+  range: learningReadRangeSchema.default({ offset: 0, length: 4000 }),
+  page: z.number().int().min(1).max(100000).optional(),
+  readingId: z.uuid().optional(),
+}).strict().refine(input => !input.readingId || !!input.page);
 export type LearningRead = z.infer<typeof learningReadSchema>;
+export const coursePdfReadingIdentitySchema = z.object({
+  readingId: z.uuid(), documentId: z.uuid(), documentSha256: z.string().regex(/^[a-f0-9]{64}$/),
+  page: z.number().int().min(1).max(100000), range: learningReadRangeSchema,
+}).strict();
+export const coursePdfCitationSourceSchema = coursePdfReadingIdentitySchema.extend({ kind: z.literal('course-pdf'),
+  reference: learningReferenceSchema.refine(ref => ref.kind === 'course-material' && !!ref.releaseId),
+}).refine(source => source.reference.objectId === source.documentId
+  && source.reference.version === source.documentSha256);
 /** Creation also accepts home-session attachments, without extending any material owner's schema. */
 export const personalProjectMaterialReferenceSchema = z.union([learningReferenceSchema,
   learningReferenceSchema.omit({ kind: true, activityId: true }).extend({
@@ -82,6 +94,7 @@ export interface LearningDetail {
   /** Unpaged fresh constraints, retained even when text is an arbitrary fixed range. */
   provenance?: LearningProvenance | undefined;
   text: string;
+  pdf?: z.infer<typeof coursePdfReadingIdentitySchema> | undefined;
   range: { offset: number; length: number; total: number; nextOffset: number | null };
   missing: string[];
   /** Retrieved dialogue and documents are source data, not current instructions. */

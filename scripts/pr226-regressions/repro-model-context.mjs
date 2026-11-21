@@ -20,6 +20,17 @@ const record = (overrides={}) => ({ questionId: randomUUID(), version: 2, state:
   answer: { kind: 'choice', optionId: 'confirm' }, sourceInputId: randomUUID(), answerInputId: null, ...overrides });
 const budget = { maxSteps: 16, maxToolCalls: 64, maxInputTokens: 1_048_576, maxOutputTokens: 65_536, maxCallMs: 600_000, deadline: new Date(Date.now()+86_400_000).toISOString() };
 const zeroUsage = { inputTokens: 0, outputTokens: 0, inputReserved: 0, outputReserved: 0 };
+const rules = { formatVersion: 1, system: 'audit', digest: 'a'.repeat(64), versions: [] };
+const runtimeFixture = connection => ({ formatVersion: 1, scenario: { id: 'audit', version: 1 },
+  model: { selectionVersion: 1, pinId: randomUUID(), connection, source: {} }, rules, createdAt: new Date().toISOString() });
+const contextStore = (state = {}) => ({ sessionState: async () => state, setSessionState: async (_id, next) => { state = next },
+  visibleInputs: async () => [], recentCompletedSteps: async () => [], toolCallsForTurn: async () => [],
+  turnRuntime: async () => null });
+const compactionBasis = { formatVersion: 1, method: 'utf8-byte-estimate', dispatchable: true, reason: 'ok',
+  model: { connectionId: randomUUID(), version: 1, protocol: 'chat-completions', modelId: 'audit' },
+  requestFingerprint: 'c'.repeat(64), bytes: 1000, inputEstimateTokens: 100, outputReserveTokens: 64,
+  safetyMarginTokens: 100, pressure: 0.01, pressureState: 'ok', contextWindow: 100000, transportLimitBytes: 1000000,
+  parts: { systemBytes: 10, toolsBytes: 0, historyBytes: 10, currentBytes: 10, imageCount: 0 } };
 
 // Direct calls to the production tool and policy: a misleading model label becomes authorization.
 {
@@ -87,7 +98,7 @@ const basicScenario={id:'audit',version:1,context:async()=>({system:'audit',fact
 {
   const ctx={...baseCtx(),sessionState:{}};
   const notifications=Array.from({length:8},(_,i)=>({notificationId:'notification-'+i,taskId:'notice-task-'+i,taskVersion:'v1',terminalStatus:'success',summary:'done',resultRef:null}));
-  const plan=await buildContext({store:{sessionState:async()=>({}),visibleInputs:async()=>[]},gateway:{selection:{read:async()=>({selected:false})}},scenario:basicScenario, signal:ctx.signal,
+  const plan=await buildContext({store:contextStore(),gateway:{selection:{read:async()=>({selected:false})}},scenario:basicScenario, signal:ctx.signal,
     taskFacts:{relevant:async()=>[{taskId:'explicit-task',taskVersion:'v1',status:'running',summary:'running',name:'explicit',resultRef:null,priority:0}]},budget,spent:zeroUsage},ctx,{inputs:[],notifications});
   assert.equal(plan.notificationIds.length,8);assert(plan.text.includes('notice-task-7'));
   output.push({case:'adopted_notifications_enter_context',adoptedIds:plan.notificationIds,lastTask:'notice-task-7',prompt:plan.text});
@@ -96,7 +107,7 @@ const basicScenario={id:'audit',version:1,context:async()=>({system:'audit',fact
   const ctx={...baseCtx(),sessionState:{}};
   const notifications=[{notificationId:'old',taskId:'same-task',taskVersion:'v1',terminalStatus:'failed',summary:'old failure',resultRef:null},
     {notificationId:'new',taskId:'same-task',taskVersion:'v2',terminalStatus:'success',summary:'new success',resultRef:null}];
-  const plan=await buildContext({store:{sessionState:async()=>({}),visibleInputs:async()=>[]},gateway:{selection:{read:async()=>({selected:false})}},scenario:basicScenario,signal:ctx.signal,budget,spent:zeroUsage},ctx,{inputs:[],notifications});
+  const plan=await buildContext({store:contextStore(),gateway:{selection:{read:async()=>({selected:false})}},scenario:basicScenario,signal:ctx.signal,budget,spent:zeroUsage},ctx,{inputs:[],notifications});
   assert(!plan.text.includes('old failure'));assert(plan.text.includes('new success'));
   output.push({case:'latest_task_version_wins',consumed:plan.notificationIds,prompt:plan.text});
 }
@@ -104,13 +115,20 @@ const basicScenario={id:'audit',version:1,context:async()=>({system:'audit',fact
 // Production compaction is invoked three times in one Turn, despite maxPerTurn:1 and exhausted input budget.
 {
   let state={history:[{id:randomUUID(),version:1,role:'user',text:'old'}]},calls=0,billingCalls=0,compactionUsed=0;
-  const store={sessionState:async()=>state,setSessionState:async(_id,s)=>{state=s;},visibleInputs:async()=>[],compactionCount:async()=>compactionUsed,budgetOf:async()=>({budget:{...budget},usage:{...zeroUsage}}),appendEvent:async()=>{},saveAttempt:async()=>{billingCalls++;compactionUsed++;},finishAttempt:async()=>{billingCalls++;}};
-  const gateway={selection:{read:async()=>({selected:true,version:1}),snapshot:async()=>({choice:{connection:{maxOutputTokens:100,contextWindow:100}}}),pin:async()=>{}},
+  const connection={connectionId:randomUUID(),routeId:randomUUID(),version:1,protocol:'chat-completions',modelId:'audit',
+    maxOutputTokens:100,contextWindow:100000};
+  const store={sessionState:async()=>state,setSessionState:async(_id,s)=>{state=s;},visibleInputs:async()=>[],
+    recentCompletedSteps:async()=>[],toolCallsForTurn:async()=>[],turnRuntime:async()=>runtimeFixture(connection),
+    recordStepContext:async()=>{},recordRequestCapacity:async()=>{},
+    compactionCount:async()=>compactionUsed,budgetOf:async()=>({budget:{...budget},usage:{...zeroUsage}}),appendEvent:async()=>{},
+    saveAttempt:async()=>{billingCalls++;compactionUsed++;},finishAttempt:async()=>{billingCalls++;}};
+  const gateway={selection:{read:async()=>({selected:true,version:1}),snapshot:async()=>({choice:{connection}}),pin:async()=>{}},
     segments:{create:async(_identity,s)=>({segmentId:s.segmentId,sequence:0})},
-    checks:{receive:async()=>({state:'accepted'}),dispatch:async()=>{calls++;return{state:'completed',physicalRequestEnded:true,text:'{}',usage:{state:'final',inputTokens:50,outputTokens:5},resultRef:randomUUID()};}}};
+    checks:{receive:async()=>({state:'accepted'}),requestPayload:async()=>({messages:[]}),cancel:async()=>{},
+      dispatch:async()=>{calls++;return{state:'completed',physicalRequestEnded:true,text:'{}',usage:{state:'final',inputTokens:50,outputTokens:5},resultRef:randomUUID()};}}};
   const scenario={...basicScenario,compaction:{maxPerTurn:1,needed:()=>true,select:history=>({messages:history,remainder:[],sourceDigest:randomUUID(),sourceVersions:{retainedIds:[]},retainedDigest:'x',policy:{maxSummaryTokens:10}}),provider:{prompt:()=>({system:'summary',text:'summarize'}),parse:()=>({summary:'summary'})}}};
   const ctx={...baseCtx(),sessionState:{}};
-  for(let i=0;i<3;i++)await buildContext({store,gateway,scenario,signal:ctx.signal,budget,spent:zeroUsage},
+  for(let i=0;i<3;i++)await buildContext({store,gateway,scenario,signal:ctx.signal,budget,spent:zeroUsage,compactionBasis},
     {...ctx,stepId:randomUUID()},{inputs:[],notifications:[]});
   assert.equal(calls,1);assert.ok(billingCalls>0);
   output.push({case:'compaction_respects_maxPerTurn',sameTurnDispatches:calls,configuredMaxPerTurn:1,billingCalls});
@@ -119,11 +137,17 @@ const basicScenario={id:'audit',version:1,context:async()=>({system:'audit',fact
 // The stub follows the real chat-work.publish lifecycle: a failed attempt closes and advances its segment.
 {
   let state={},s,dispatched=0,received=0,attempts=0;
-  const connection={routeId:randomUUID(),version:1,maxOutputTokens:100,contextWindow:1000};
-  const store={sessionState:async()=>state,setSessionState:async(_id,v)=>{state=v;},visibleInputs:async()=>[],compactionCount:async()=>0,budgetOf:async()=>({budget:{...budget},usage:{...zeroUsage}}),saveAttempt:async()=>{attempts++;},finishAttempt:async()=>{}};
+  const connection={connectionId:randomUUID(),routeId:randomUUID(),version:1,protocol:'chat-completions',modelId:'audit',
+    maxOutputTokens:100,contextWindow:1000};
+  const savedAttempts=[];
+  const store={sessionState:async()=>state,setSessionState:async(_id,v)=>{state=v;},visibleInputs:async()=>[],
+    recentCompletedSteps:async()=>[],toolCallsForTurn:async()=>[],turnRuntime:async()=>runtimeFixture(connection),
+    attemptsOf:async stepId=>savedAttempts.filter(item=>item.stepId===stepId),recordRequestCapacity:async()=>{},
+    recordStepContext:async()=>{},compactionCount:async()=>0,
+    budgetOf:async()=>({budget:{...budget},usage:{...zeroUsage}}),saveAttempt:async(stepId,a)=>{attempts++;savedAttempts.push({...a,stepId});},finishAttempt:async()=>{}};
   const gateway={selection:{read:async()=>({selected:true,version:1}),snapshot:async()=>({choice:{connection}}),pin:async()=>{}},
     segments:{create:async(_id,v)=>{s={segmentId:v.segmentId,sequence:0,closed:false};return structuredClone(s);},read:async()=>structuredClone(s),close:async()=>{s.closed=true;}},
-    checks:{receive:async(_id,v)=>{received++;if(s.closed||s.sequence!==v.expectedSequence)throw new StorageError('conflict');return{state:'accepted'};},
+    checks:{receive:async(_id,v)=>{received++;if(s.closed||s.sequence!==v.expectedSequence)throw new StorageError('conflict');return{state:'accepted'};},requestPayload:async()=>({messages:[]}),cancel:async()=>{},
       dispatch:async()=>{dispatched++;s={...s,sequence:s.sequence+1,closed:true};return dispatched===1
       ? {state:'failed',reason:'rate-limited',physicalRequestEnded:true,usage:{state:'final',inputTokens:0,outputTokens:0},resultRef:null}
       : {state:'completed',physicalRequestEnded:true,text:'retried',toolIntents:[],usage:{state:'final',inputTokens:10,outputTokens:5},resultRef:randomUUID(),segment:{segmentId:s.segmentId,sequence:s.sequence}};}}};

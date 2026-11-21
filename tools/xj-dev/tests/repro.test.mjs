@@ -121,8 +121,14 @@ test('unpublished committed bytes, selected dirty/untracked source transfer; unr
   assert.equal(git(imported, ['show', 'FETCH_HEAD:app.mjs']).trim(), 'export const value = 2;');
   assert.equal(git(imported, ['show', 'FETCH_HEAD:other.mjs']).trim(), 'export const original = true;');
   assert.equal(git(imported, ['rev-list', '--count', 'FETCH_HEAD']).trim(), '1', 'history is deliberately not shared');
-  symlinkSync(join(repo, 'app.mjs'), join(repo, 'link.mjs'));
-  assert.throws(() => collectCode(repo, join(root, 'another'), { roots: ['link.mjs'], paths: ['link.mjs'] }), { code: 'UNSAFE_PATH' });
+  const linked = process.platform === 'win32' ? 'linked-source/app.mjs' : 'link.mjs';
+  if (process.platform === 'win32') {
+    const outside = join(root, 'outside-source');
+    mkdirSync(outside);
+    writeFileSync(join(outside, 'app.mjs'), 'export const outside = true;');
+    symlinkSync(outside, join(repo, 'linked-source'), 'junction');
+  } else symlinkSync(join(repo, 'app.mjs'), join(repo, linked));
+  assert.throws(() => collectCode(repo, join(root, 'another'), { roots: [linked], paths: [linked] }), { code: 'UNSAFE_PATH' });
 });
 
 test('inspection detects wrong whole digest, unsupported version and a missing required resource', t => {

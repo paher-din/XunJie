@@ -38,7 +38,7 @@ test('legacy import preserves the visible branch and edit time, is idempotent, s
   const options = { authorize: async () => {}, scenario: { id: 'import-test', version: 1,
     context: async () => ({ system: 'fixture', facts: {}, sources: [] }), tools: async () => [],
     authorizeHistory: async (_input, history) => { visibleHistory = history; return history; } },
-    gateway: { selection: { read: async () => { modelCalls++; throw new Error('fixture-no-model'); } } } };
+    gateway: { selection: { read: async () => { modelCalls++; return { selected: false, version: 0, options: [] }; } } } };
   runtime = createAgentRuntime(storage, options); await runtime.drain();
   assert.equal(modelCalls, 0);
   let projection = createAgentConversationProjection(runtime);

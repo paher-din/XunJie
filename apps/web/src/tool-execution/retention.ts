@@ -8,9 +8,20 @@ import type { ExecutionHistoryEntry } from '@xunjie/contracts/execution'
 import type { ResultRecord } from './store'
 
 /** The service side of the same facts; a local run is usable while it is unreachable. */
+export interface ExecutionVisibility {
+  reveal: boolean
+  phase: 'not-required' | 'free-observation' | 'pending' | 'submitted'
+  previouslyShown?: true | undefined
+  state: ExecutionQuery['state']
+  statusKnowledge: ExecutionQuery['statusKnowledge']
+  workIds: string[]
+}
+
 export interface ExecutionTransport {
   history?(): Promise<ExecutionHistoryEntry[]>
   artifact?(requestId: string): Promise<Omit<ResultRecord, 'scope' | 'at'> | null>
+  visibility?(requestId: string): Promise<ExecutionVisibility | null>
+  displayed?(requestId: string, contentId: string): Promise<{ recorded: true }>
   accept(action: AnyExecutionAction, acceptance: ExecutionAcceptance): Promise<ExecutionQuery>
   report(requestId: string, query: ExecutionQuery): Promise<ExecutionQuery>
   stop(requestId: string, stopId: string, reason: string): Promise<ExecutionQuery>

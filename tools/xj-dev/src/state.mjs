@@ -15,10 +15,20 @@ export function loadState(envPaths) {
   }
 }
 
+const renameWait = new Int32Array(new SharedArrayBuffer(4));
+
 export function writeJsonAtomic(file, value, mode = 0o600) {
   const temporary = file + '.tmp';
   writeFileSync(temporary, JSON.stringify(value, null, 2) + '\n', { mode });
-  renameSync(temporary, file);
+  for (let attempt = 0; ; attempt++) {
+    try { renameSync(temporary, file); return; }
+    catch (error) {
+      // A Windows reader can briefly hold the old receipt without delete sharing.
+      // Keep it visible and retry atomic replacement for a bounded time.
+      if (process.platform !== 'win32' || !['EPERM', 'EACCES', 'EBUSY'].includes(error.code) || attempt >= 5) throw error;
+      Atomics.wait(renameWait, 0, 0, 25 * (attempt + 1));
+    }
+  }
 }
 
 export function saveState(envPaths, state) {

@@ -24,7 +24,8 @@ export const chatWorkMigrations = [{ version: 6, name: 'fixed-chat-images-and-na
 ` }];
 type Segment = { segmentId: string; formatVersion: 1; sequence: number; snapshot: Omit<CheckSnapshot, 'retain' | 'payload'>;
   prefix: z.infer<typeof modelSegmentInputSchema>['prefix']; prefixDigest: string;
-  portable: { text: string; role?: 'user' | 'assistant' | undefined; resultRef?: string | undefined }[];
+  portable: { text: string; role?: 'user' | 'assistant' | undefined; resultRef?: string | undefined; entryId?: string | undefined }[];
+  projectionId?: string;
   purpose?: 'chat-probe' | 'learning'; sessionId?: string;
   headAttemptId: string | null; pendingAttemptId: string | null; closed: boolean; previousSegmentId?: string };
 function canonical(value: unknown): string {
@@ -57,7 +58,7 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
     const body = await stored(identity, id);
     const head = body.headAttemptId ? await attempt(identity, body.headAttemptId) : null;
     return { ...(body.sessionId ? { sessionId: body.sessionId } : {}), segmentId: body.segmentId, formatVersion: body.formatVersion, sequence: body.sequence, connection: body.snapshot.connection,
-      prefixDigest: body.prefixDigest, resultRef: head?.resultRef ?? null, pending: body.pendingAttemptId !== null,
+      prefixDigest: body.prefixDigest, projectionId: body.projectionId ?? null, resultRef: head?.resultRef ?? null, pending: body.pendingAttemptId !== null,
       closed: body.closed, pendingTools: head?.state === 'completed' && !await toolResults(identity, head.attemptId) ? head.toolIntents ?? [] : [] };
   }
   async function toolResults(identity: SpaceIdentity, attemptId: string): Promise<ModelToolResult[] | null> {
@@ -94,10 +95,26 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
   async function close(identity: SpaceIdentity, id: string, value: unknown) {
     owner.assertWritable(); await stored(identity, id);
     const input = modelSegmentCloseSchema.parse(value), scope = modelScopeOf(identity);
+    const pendingId = (await stored(identity, id)).pendingAttemptId;
+    if (pendingId) {
+      for (let attemptNo = 0; attemptNo < 40; attemptNo++) {
+        const pending = await attempt(identity, pendingId).catch(() => null);
+        if (!pending || pending.physicalRequestEnded || pending.state === 'cancelled' && !pending.dispatched) break;
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+    }
     const result = await storage.request({ requestId: 'model-boundary:' + input.requestId, fingerprint: digest({ scope, id, input }) }, async tx => {
       const { rows: [row] } = await tx.query('SELECT body FROM model_segments WHERE id=$1 AND scope=$2 FOR UPDATE', [id, scope]);
-      const segment = row!.body as Segment;
-      if (segment.pendingAttemptId || segment.sequence !== input.expectedSequence) throw new StorageError('conflict');
+      let segment = row!.body as Segment;
+      if (segment.pendingAttemptId) {
+        const { rows: [pendingRow] } = await tx.query('SELECT body FROM model_attempts WHERE id=$1 AND scope=$2', [segment.pendingAttemptId, scope]);
+        if (!pendingRow) throw new StorageError('conflict');
+        const pending = modelAttemptSchema.parse(pendingRow.body);
+        if (!pending.physicalRequestEnded && !(pending.state === 'cancelled' && !pending.dispatched))
+          throw new StorageError('conflict');
+        segment = { ...segment, pendingAttemptId: null };
+      }
+      if (segment.sequence !== input.expectedSequence) throw new StorageError('conflict');
       let resultRef: string | null = null;
       if (segment.headAttemptId) {
         const { rows: [head] } = await tx.query('SELECT body FROM model_attempts WHERE id=$1 AND scope=$2', [segment.headAttemptId, scope]);
@@ -156,6 +173,7 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
     }
     const { retain: _retain, ...fixed } = snapshot;
     const body: Segment = { segmentId: input.segmentId, sequence: 0, formatVersion: 1, prefix: input.prefix, portable: input.portable,
+      ...(input.projectionId ? { projectionId: input.projectionId } : {}),
       prefixDigest: digest(input.prefix), snapshot: fixed, headAttemptId: null, pendingAttemptId: null, closed: false,
       purpose: input.purpose ?? 'chat-probe', ...(input.sessionId ? { sessionId: input.sessionId } : {}),
       ...(input.previousSegmentId ? { previousSegmentId: input.previousSegmentId } : {}) };
@@ -186,12 +204,79 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
     if (segment.sequence !== input.expectedSequence) throw new StorageError('conflict');
     if (segment.closed) throw new StorageError('conflict');
     if (segment.pendingAttemptId) throw new StorageError('resource-busy');
+    const projection = input.purpose === 'learning' ? input.input.historyProjection : undefined;
+    if (projection && (segment.projectionId ?? null) !== projection.baseProjectionId) throw new StorageError('conflict');
     await owner.assertDispatch(identity, { connection: segment.snapshot.connection, source: segment.snapshot.source,
       createdAt: new Date().toISOString(), purpose: segment.purpose ?? 'chat-probe' }, segment.snapshot.credentialRef);
     const responses = segment.snapshot.connection.protocol === 'responses';
     const anthropic = segment.snapshot.connection.protocol === 'messages';
     const messages: ChatPayload['messages'] = [], items: OpenAI.Responses.ResponseInput = [];
     const messageItems: Anthropic.MessageParam[] = [];
+    let projectedPortable: Segment['portable'] | undefined;
+    const projectionReplacements = projection?.replacements ?? [];
+    const applyPortableProjection = (replacement: (typeof projectionReplacements)[number]) => {
+      const source = projectedPortable ?? segment.portable;
+      const indices = source.flatMap((item, index) => item.entryId === replacement.entryId ? [index] : []);
+      if (!indices.length) return false;
+      if (indices.length !== 1) throw new StorageError('conflict');
+      const first = indices[0]!;
+      if (segment.headAttemptId) {
+        const original = source[first]!;
+        const role = original.role ?? 'user';
+        if (anthropic) {
+          let messageIndex = 0, blockIndex = 0;
+          for (let index = 1; index <= first; index++) {
+            if ((source[index]!.role ?? 'user') === (source[index - 1]!.role ?? 'user')) blockIndex++;
+            else { messageIndex++; blockIndex = 0; }
+          }
+          const message = messageItems[messageIndex];
+          const block = message && Array.isArray(message.content) ? message.content[blockIndex] : undefined;
+          if (message?.role !== role || block?.type !== 'text' || block.text !== original.text)
+            throw new StorageError('conflict');
+          block.text = replacement.text;
+        } else if (responses) {
+          const item = items[first];
+          if (!item || !('role' in item) || item.role !== role || item.content !== original.text)
+            throw new StorageError('conflict');
+          item.content = replacement.text;
+        } else {
+          const message = messages[first + 1];
+          if (!message || message.role !== role || message.content !== original.text)
+            throw new StorageError('conflict');
+          message.content = replacement.text;
+        }
+      }
+      projectedPortable ??= [...segment.portable];
+      projectedPortable[first] = { ...source[first]!, text: replacement.text };
+      return true;
+    };
+    const nativeMatches = (replacement: (typeof projectionReplacements)[number]): number => {
+      if (!replacement.callId) return 0;
+      if (anthropic) return messageItems.reduce((count, message) => count + (Array.isArray(message.content)
+        ? message.content.filter(part => part.type === 'tool_result' && part.tool_use_id === replacement.callId).length : 0), 0);
+      if (responses) return (items as unknown as { type?: string; call_id?: string }[])
+        .filter(item => item.type === 'function_call_output' && item.call_id === replacement.callId).length;
+      return messages.filter(message => message.role === 'tool' && message.tool_call_id === replacement.callId).length;
+    };
+    const replaceNative = (replacement: (typeof projectionReplacements)[number]) => {
+      if (anthropic) {
+        for (const message of messageItems) if (Array.isArray(message.content))
+          for (const part of message.content) if (part.type === 'tool_result' && part.tool_use_id === replacement.callId)
+            part.content = [{ type: 'text', text: replacement.text }];
+      } else if (responses) {
+        for (const item of items as unknown as { type?: string; call_id?: string; output?: unknown }[])
+          if (item.type === 'function_call_output' && item.call_id === replacement.callId)
+            item.output = replacement.text;
+      } else {
+        for (const message of messages)
+          if (message.role === 'tool' && message.tool_call_id === replacement.callId)
+            message.content = replacement.text;
+      }
+    };
+    if (!segment.headAttemptId && projectionReplacements.length) {
+      for (const replacement of projectionReplacements)
+        if (!applyPortableProjection(replacement)) throw new StorageError('missing');
+    }
     const nativeImages = (content: Awaited<ReturnType<typeof images.materialize>>['content']) => content.map(part => ({
       type: 'input_image' as const, image_url: part.image_url.url, detail: 'auto' as const,
     }));
@@ -263,11 +348,25 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
     } else {
       if (input.input.toolResults.length) throw new StorageError('invalid');
       if (!responses && !anthropic) messages.push({ role: 'system', content: segment.prefix.system });
-      for (const portable of segment.portable) conversation(portable.role ?? 'user', portable.text);
+      for (const portable of projectedPortable ?? segment.portable) conversation(portable.role ?? 'user', portable.text);
     }
     const image = await images.materialize(identity, input.input.images);
     if (input.input.text || image.content.length) user(input.input.text, image.content);
     for (const observation of input.input.observations) user(JSON.stringify(observation));
+    if (segment.headAttemptId && projectionReplacements.length) {
+      for (const replacement of projectionReplacements) {
+        if (applyPortableProjection(replacement)) continue;
+        if (replacement.attemptId) {
+          const original = await attempt(identity, replacement.attemptId);
+          if (original.segment?.segmentId !== segment.segmentId
+            || !(await toolResults(identity, replacement.attemptId))?.some(result => result.callId === replacement.callId && !result.images.length))
+            throw new StorageError('conflict');
+        }
+        const count = nativeMatches(replacement);
+        if (count !== 1) throw new StorageError(count ? 'conflict' : 'invalid');
+        replaceNative(replacement);
+      }
+    }
     const base = checkPayload(segment.snapshot.connection, input.limits.maxOutputTokens);
     const options = segment.prefix.options;
     const payload: NativePayload = anthropic ? {
@@ -311,8 +410,11 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
         options: { ...options, requiredCapabilities: [...new Set([...(options?.requiredCapabilities ?? []), 'images' as const])] } });
       throw new ModelCapabilityError(decision);
     }
-    if (Buffer.byteLength(JSON.stringify(payload)) > 1000000) throw new StorageError('invalid');
-    return { ...segment.snapshot, payload, tools: segment.prefix.tools, ...(options?.applicationSchema ? { applicationSchema: options.applicationSchema } : {}), segment: { segmentId: input.segmentId, sequence: input.expectedSequence },
+    const portableSnapshot = projectedPortable?.map(item => ({ text: item.text,
+      ...(item.role ? { role: item.role } : {}), ...(item.entryId ? { entryId: item.entryId } : {}),
+      ...(item.resultRef ? { resultRef: item.resultRef } : {}) }));
+    return { ...segment.snapshot, payload, tools: segment.prefix.tools, ...(options?.applicationSchema ? { applicationSchema: options.applicationSchema } : {}),
+      ...(portableSnapshot ? { projectedPortable: portableSnapshot } : {}), segment: { segmentId: input.segmentId, sequence: input.expectedSequence },
       async retain(tx) {
         const { rows: [row] } = await tx.query('SELECT body FROM model_segments WHERE id=$1 FOR UPDATE', [input.segmentId]);
         const current = row!.body as Segment;
@@ -335,8 +437,14 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
     if (!row) throw new StorageError('corrupt'); const segment = row.body as Segment;
     if (segment.headAttemptId === fact.attemptId || segment.sequence > fact.segment.sequence && segment.pendingAttemptId !== fact.attemptId) return;
     if (segment.pendingAttemptId !== fact.attemptId || segment.sequence !== fact.segment.sequence) throw new StorageError('conflict');
+    const { rows: [inputRow] } = await tx.query('SELECT input_metadata FROM model_attempts WHERE id=$1', [fact.attemptId]);
+    const metadata = inputRow?.input_metadata as { input?: { historyProjection?: { projectionId?: string } };
+      projectedPortable?: Segment['portable'] } | null | undefined;
+    const projectionId = fact.state === 'completed' ? metadata?.input?.historyProjection?.projectionId : undefined;
     await tx.query('UPDATE model_segments SET body=$2 WHERE id=$1', [segment.segmentId,
       { ...segment, sequence: segment.sequence + 1, headAttemptId: fact.attemptId, pendingAttemptId: null,
+        ...(projectionId ? { projectionId } : {}),
+        ...(projectionId && metadata?.projectedPortable ? { portable: metadata.projectedPortable } : {}),
         closed: segment.closed || fact.state !== 'completed' }]);
     if (fact.resultRef) await tx.reference('model-segment-result:' + fact.attemptId, fact.resultRef);
   }

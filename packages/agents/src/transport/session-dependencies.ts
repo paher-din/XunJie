@@ -90,6 +90,7 @@ export interface AgentDependencyServiceOptions {
   modelsForSession?(identity: SpaceIdentity, session: AgentSession, source: Readonly<ChunkConnectionSource>,
     call: Readonly<Extract<AgentDependencyCall, { operation: 'model' }>>): LearningModelPort | Promise<LearningModelPort>;
   source?(identity: SpaceIdentity): Promise<LearningQuerySource>;
+  pdfReadingReceipt?(readingId: string, fingerprint: string, write: boolean): Promise<boolean>;
   sessions: Pick<ReturnType<typeof createAgentSessions>, 'create' | 'read' | 'list' | 'update' | 'markReady'>;
   learning: ReturnType<typeof createLearningData>;
   courses: Parameters<typeof createWorkspaceDataService>[0]['courses'];
@@ -207,7 +208,8 @@ export function createAgentDependencyChannel(storage: OwnedStorage, options: Age
           const described = await options.source!(call.identity);
           if (!sameAgentSubject(described.identity, call.identity)) throw new StorageError('forbidden');
           return [described];
-        } }).readLearning(call.args);
+        }, ...(options.pdfReadingReceipt ? { pdfReadingReceipt: (id, fingerprint) =>
+          options.pdfReadingReceipt!(id, fingerprint, false) } : {}) }).readLearning(call.args);
       }
     },
   });
@@ -441,7 +443,8 @@ export function createAgentDependencyService(options: AgentDependencyServiceOpti
       }
       case 'query.list': case 'query.search': case 'query.read': {
         if (session.scenario !== 'student-assistant' || session.deleted) throw new StorageError('forbidden');
-        const query = createLearningQuery({ sources: async () => [await sourceOf(call.identity)] });
+        const query = createLearningQuery({ sources: async () => [await sourceOf(call.identity)],
+          ...(options.pdfReadingReceipt ? { pdfReadingReceipt: options.pdfReadingReceipt } : {}) });
         if (call.operation === 'query.list') return query.listLearningTasks(call.args);
         if (call.operation === 'query.search') return query.searchLearning(call.args);
         return query.readLearning(call.args);
@@ -471,6 +474,8 @@ export function createAgentDependencyService(options: AgentDependencyServiceOpti
         const activity = await workspace(call.identity, session), args = call.args.args;
         if (args[0] !== activity.activityId) throw new StorageError('forbidden');
         const method = call.args.method;
+        if (method === 'records.read')
+          return options.learning.executionRecords.read(call.identity, activity.activityId, z.uuid().parse(args[1]));
         if (method === 'artifacts.publish' || method === 'pdf.read' || method === 'pdf.find') {
           const body = args[1] as Record<string, unknown> | undefined;
           if (!call.permit || body?.requestId !== call.permit.operationId) throw new StorageError('identity-conflict');
@@ -701,6 +706,8 @@ export function createAgentDependencyClient(send: (call: AgentDependencyCall) =>
       readLearning: args => invoke({ version: 2, operation: 'query.read', identity, sessionId, args: learningReadSchema.parse(args) }),
     },
     workspace: () => invoke({ version: 2, operation: 'workspace.activity', identity, sessionId, args: {} }),
-    learning: { ...lower.data, executions }, courses: lower.courses,
+    learning: { ...lower.data, executions, executionRecords: {
+      read: (who, activityId, requestId) => execution('records.read', who, [activityId, requestId]),
+    } }, courses: lower.courses,
   }; }, invoke };
 }

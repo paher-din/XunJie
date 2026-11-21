@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useState, type ReactNode } from 'react'
-import { CenterToolArea as CenterToolAreaView, defaultLayout, knownTools, DIGITAL_LOGIC_TOOLS,
+import { CenterToolArea as CenterToolAreaView, addTool, defaultLayout, knownTools, DIGITAL_LOGIC_TOOLS,
   type CenterToolAreaHandle, type CenterVariant, type ToolSpec, type ToolKey, type CoreToolKey, type LayoutNode } from '@xunjie/ui/workspace'
 import type { StoredGenCard } from '../../bridge/types'
 import { GenToolPane } from './GenCardItems'
@@ -10,6 +10,7 @@ export interface CenterToolAreaProps {
   taskId: string
   /** 外部（引导脚本）要求聚焦的工具。 */
   tool: ToolKey
+  initialTool?: ToolKey
   onToolChange: (t: ToolKey) => void
   onToast: (text: string) => void
   onDesignLoaded?: () => void
@@ -43,19 +44,21 @@ export interface CenterToolAreaProps {
 
 /** Legacy adapter owns storage and generated-card business content, not the visual tool area. */
 export const CenterToolArea = forwardRef<CenterToolAreaHandle, CenterToolAreaProps>(function CenterToolArea(
-  { taskId, beforeToolChange, genCards = [], onGenCollect, onGenStateSync, ...props }, ref,
+  { taskId, initialTool, beforeToolChange, genCards = [], onGenCollect, onGenStateSync, ...props }, ref,
 ) {
   const toolKeys = (props.tools ?? DIGITAL_LOGIC_TOOLS).map(tool => tool.key)
   const storeKey = `ws-layout:${taskId}`
   const [layout, setLayoutState] = useState<LayoutNode>(() => {
+    const initialLayout = (value: LayoutNode) => initialTool && toolKeys.includes(initialTool as CoreToolKey)
+      ? addTool(value, initialTool) : value
     try {
       const raw = localStorage.getItem(storeKey)
       if (raw) {
         const stored = JSON.parse(raw) as LayoutNode
-        if (knownTools(stored, toolKeys)) return stored
+        if (knownTools(stored, toolKeys)) return initialLayout(stored)
       }
     } catch { /* Corrupt/unavailable storage falls back to the existing default. */ }
-    return defaultLayout(toolKeys)
+    return initialLayout(defaultLayout(toolKeys))
   })
   const setLayout = (update: React.SetStateAction<LayoutNode>) => {
     if (!beforeToolChange) { setLayoutState(update); return }

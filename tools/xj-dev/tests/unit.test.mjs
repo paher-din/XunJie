@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
+import { syncBuiltinESMExports } from 'node:module';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -8,7 +10,7 @@ import { test } from 'node:test';
 import { CliError, failureEnvelope, resultEnvelope } from '../src/envelope.mjs';
 import { PINNED_NODE, environmentId, environmentPaths, findWorktreeRoot, toolHome } from '../src/paths.mjs';
 import { allocatePorts, basePortFor, portFree } from '../src/ports.mjs';
-import { acquireLock, loadState, saveState } from '../src/state.mjs';
+import { acquireLock, loadState, saveState, writeJsonAtomic } from '../src/state.mjs';
 import { componentRunning, spawnComponent, stopComponent } from '../src/processes.mjs';
 import { dependenciesFresh, ensureDependencies, locatePinnedRuntime, npmCliJs, runNode } from '../src/runtime.mjs';
 
@@ -58,6 +60,31 @@ const worktreeRoot = resolve(toolRoot, '..', '..');
 function tempDir(label) {
   return mkdtempSync(join(tmpdir(), `xj-dev-${label}-`));
 }
+
+test('atomic JSON replacement retries transient Windows sharing and keeps the previous receipt visible', { skip: process.platform !== 'win32' }, () => {
+  const root = tempDir('atomic-receipt');
+  const file = join(root, 'run.json');
+  const rename = fs.renameSync;
+  let renames = 0;
+  try {
+    writeJsonAtomic(file, { phase: 'previous' });
+    fs.renameSync = (from, to) => {
+      if (to === file && ++renames <= 2) {
+        assert.deepEqual(JSON.parse(readFileSync(file, 'utf8')), { phase: 'previous' });
+        throw Object.assign(new Error('controlled sharing conflict'), { code: 'EPERM' });
+      }
+      return rename(from, to);
+    };
+    syncBuiltinESMExports();
+    writeJsonAtomic(file, { phase: 'completed' });
+    assert.equal(renames, 3);
+    assert.deepEqual(JSON.parse(readFileSync(file, 'utf8')), { phase: 'completed' });
+  } finally {
+    fs.renameSync = rename;
+    syncBuiltinESMExports();
+    rmSync(root, { recursive: true, force: true });
+  }
+});
 
 function fakeNode(directory, version) {
   const file = join(directory, process.platform === 'win32' ? `node-${version}.exe` : 'fake-node');

@@ -4,6 +4,7 @@ type Data = ReturnType<typeof createLearningData>;
 /** The Agent reads the actual learning owner; it owns neither a duplicate workspace nor a data coordinator. */
 export type TeachingToolData = {
   open: Data['open'];
+  executionRecords?: Pick<Data['executionRecords'], 'read'>;
   works: Pick<Data['works'], 'content' | 'inspectVersion'>;
   drafts: Pick<Data['drafts'], 'verifyReferences'>;
   pdf: Pick<Data['pdf'], 'read' | 'reading' | 'find'>;

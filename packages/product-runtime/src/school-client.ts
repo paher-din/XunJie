@@ -709,6 +709,8 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       courses: { owner: described.courseTarget,
         listCourses: (who: SpaceIdentity) => readOnly(who, 'courses'),
         readRelease: async (who: SpaceIdentity, releaseId: string) => courseReleaseSchema.parse(await readOnly(who, `releases/${z.uuid().parse(releaseId)}`)),
+        readMaterial: async (who: SpaceIdentity, releaseId: string, materialId: string) =>
+          courseMaterialContentSchema.parse(await readOnly(who, `releases/${z.uuid().parse(releaseId)}/materials/${z.uuid().parse(materialId)}`)),
       },
     };
   }
@@ -1468,6 +1470,11 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
         return learning.executions.history(identity, parts[1]!, parts[3]);
       if (parts.length === 4 && parts[3] === 'artifact' && body === undefined)
         return learning.executions.artifact(identity, parts[1]!, parts[2]!);
+      if (parts.length === 4 && parts[3] === 'visibility' && body === undefined)
+        return learning.executionRecords.visibility(identity, z.uuid().parse(parts[1]), z.uuid().parse(parts[2]));
+      if (parts.length === 4 && parts[3] === 'displayed' && body !== undefined)
+        return learning.executionRecords.markDisplayed(identity, z.uuid().parse(parts[1]), z.uuid().parse(parts[2]),
+          z.object({ contentId: z.uuid() }).strict().parse(body).contentId);
       if (parts.length === 3 && parts[2] === 'sessions' && body === undefined) return learning.executions.sessions(identity, parts[1]!);
       if ((parts.length === 3 || parts.length === 4) && parts[2] === 'checkpoints' && body === undefined)
         return learning.executions.checkpoints(identity, parts[1]!, parts[3]);
@@ -1494,6 +1501,11 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     if (route.startsWith('executions/')) {
       if (!local?.executions) throw new StorageError('unavailable');
       const parts = route.split('/'), activityId = z.uuid().parse(parts[1]);
+      if (parts.length === 4 && parts[3] === 'visibility' && body === undefined)
+        return learning.executionRecords.visibility(identity, activityId, z.uuid().parse(parts[2]));
+      if (parts.length === 4 && parts[3] === 'displayed' && body !== undefined)
+        return learning.executionRecords.markDisplayed(identity, activityId, z.uuid().parse(parts[2]),
+          z.object({ contentId: z.uuid() }).strict().parse(body).contentId);
       if (body === undefined && parts[2] === 'history') {
         const [current, retained] = await Promise.all([local.executions.history(identity, activityId, parts[3]),
           learning.executions.history(identity, activityId, parts[3])]);

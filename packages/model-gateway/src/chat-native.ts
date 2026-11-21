@@ -26,12 +26,32 @@ export function compileOutputSchema(schema: Record<string, unknown>) {
     return validate;
   } catch { throw new StorageError('invalid'); }
 }
+const toolSchemaCache = new Map<string, ValidateFunction>();
+const maxCachedToolSchemas = 128;
+
+function toolValidator(schema: ModelTool['inputSchema']): ValidateFunction {
+  const key = JSON.stringify(schema);
+  const cached = toolSchemaCache.get(key);
+  if (cached) {
+    toolSchemaCache.delete(key);
+    toolSchemaCache.set(key, cached);
+    return cached;
+  }
+  const validated = compileOutputSchema(schema);
+  toolSchemaCache.set(key, validated);
+  if (toolSchemaCache.size > maxCachedToolSchemas) {
+    const oldest = toolSchemaCache.keys().next();
+    if (!oldest.done) toolSchemaCache.delete(oldest.value);
+  }
+  return validated;
+}
+
 export function toolValidators(tools: ModelTool[]) {
   if (new Set(tools.map(tool => tool.name)).size !== tools.length || Buffer.byteLength(JSON.stringify(tools)) > 24000) throw new StorageError('invalid');
   const compiled = new Map<string, ValidateFunction>();
   for (const tool of tools) {
     if (tool.inputSchema.type !== 'object') throw new StorageError('invalid');
-    compiled.set(tool.name, compileOutputSchema(tool.inputSchema));
+    compiled.set(tool.name, toolValidator(tool.inputSchema));
   }
   return compiled;
 }
