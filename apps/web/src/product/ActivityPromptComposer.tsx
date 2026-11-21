@@ -9,6 +9,8 @@ import { useActivitySession } from './ActivitySession'
 import { workspaceScope } from './learningTransport'
 import { releaseComposerAttachments, resolveComposerAttachments, useComposerAttachments } from './composer-attachments'
 import { sessionComposerActions } from './session-composer'
+import { useAgentModelPicker } from './AgentModelPicker'
+import { isAgentImage } from '../reliable-workspace/agent-images'
 
 /** Shared durable input for the full conversation and the workspace sidebar. */
 export function ActivityPromptComposer({ activity, spaceKey, namespace, authorized, selection, onModels, active, contextUsage, sending, closeFocusRef }: {
@@ -20,7 +22,15 @@ export function ActivityPromptComposer({ activity, spaceKey, namespace, authoriz
   const references = useWorkspaceReferences()
   const scope = workspaceScope(namespace, activity)
   const controls = sessionComposerActions(agent, workspace.isReadOnly() || !authorized)
+  const picker = useAgentModelPicker(selection)
   const files = useComposerAttachments(scope)
+  const composerFiles = references.addImages ? { ...files, busy: files.busy || !!references.addingImages,
+    async add(selected: File[]) {
+      const images = selected.filter(isAgentImage)
+      if (images.length) await references.addImages?.(images)
+      await files.add(selected.filter(file => !isAgentImage(file)))
+    },
+  } : files
   const hasDraft = !!references.question.trim() || files.items.length > 0
   const [attachmentError, setAttachmentError] = useState('')
   const [preparing, setPreparing] = useState(false)
@@ -55,10 +65,12 @@ export function ActivityPromptComposer({ activity, spaceKey, namespace, authoriz
   return <div className="activity-prompt-composer">
       {attachmentError && <p className="learning-error" role="alert">{attachmentError}</p>}
       {controls.error && <p className="learning-error" role="alert">{controls.error}</p>}
-      <WorkspaceReferenceComposer closeFocusRef={closeFocusRef} sendBlocked={!inputInteraction.ready}
+      <WorkspaceReferenceComposer closeFocusRef={closeFocusRef} sendBlocked={!inputInteraction.ready || picker.blocked}
+        supportsImages={picker.supportsImages}
         blockedHint="正在核对本次发送方式，问题与引用仍保留。" blockedLabel="核对发送方式…"
         submitLabel={active ? inputInteraction.mode === 'queue' ? '排队发送' : '补充当前任务' : '发送问题'}
-        renderInput={props => <ProductPromptInput {...props} sendLabel="发送消息" files={files} skills={references.skills} submitting={preparing}
+        renderInput={props => <ProductPromptInput {...props} sendLabel="发送消息" files={composerFiles} skills={references.skills}
+          pasteImages={!!references.addImages} submitting={preparing}
           busy={controls.active && !hasDraft} onStop={controls.stop}
           onResume={controls.canResume && !hasDraft ? controls.resume : undefined}
           actionDisabled={controls.disabled} resumeLabel="继续生成"

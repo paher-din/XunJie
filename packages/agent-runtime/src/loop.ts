@@ -92,6 +92,12 @@ async function runStep(deps: LoopDependencies, turn: AgentTurn, step: AgentStep,
     identity: session.identity, sessionId, turnId: turn.turnId, stepId: step.stepId,
     system: plan.system, tools: plan.tools.map(t => t.definition), history: plan.history,
     text: plan.text, images: plan.images, toolResults: [], budget, spent: usage, signal,
+    ...(scenario.messageImages && inputs.length ? { messageImages: {
+      resolve: route => scenario.messageImages!(scenarioInput, inputs.map(item => item.input.context), route),
+      async assertActive() {
+        if (signal.aborted || !await deps.isActive(turn.turnId)) throw new AgentError('cancelled');
+      },
+    } } : {}),
     onProgress: progress => deps.onProgress(sessionId, turn.turnId, step.stepId, progress.attemptId, progress),
   });
   const intents = response.toolIntents;

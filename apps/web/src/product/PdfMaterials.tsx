@@ -137,6 +137,13 @@ export function usePdfMaterials({ activity, spaceKey, namespace, authorized, rev
     references.ask()
     setNotice('已加入当前问题草稿。')
   }
+  const addPageImages = (fixed: PdfReading) => {
+    if (!canWrite() || !references.draftReady || !availableReading(fixed)) return
+    return references.addImages?.(fixed.pages.flatMap(item => item.image ? [{
+      name: `${fixed.documentName.slice(0, 200)} · 第 ${item.page} 页${fixed.region ? '选区' : ''}`,
+      dataBase64: item.image.dataBase64,
+    }] : []))
+  }
   const quotePendingRead = useRef(false)
   async function read(input: ReadRequest, quote = false, expectedDocument = document, retry = false) {
     if (!canWrite() || operation.current) return
@@ -310,11 +317,13 @@ export function usePdfMaterials({ activity, spaceKey, namespace, authorized, rev
 
   return { documents, requests, document, lastOpenedPersonalId, reading, referenceReadingId, pendingRead, busy, loading, error, loadError, notice,
     authorized, loadOriginal, writable: authorized && !references.readOnly, canQuote: references.draftReady && availableReading(reading),
+    imageAttachments: !!references.addImages, addingImages: !!references.addingImages,
     refresh, upload, receive, openCourse, openDocument, locate,
     readPages: (pages: number[], region: PdfRegion | null = null, quote = false) => document
       ? read({ requestId: crypto.randomUUID(), documentId: document.documentId, pages, region }, quote) : Promise.resolve(),
     retryRead: () => pendingRead ? read(pendingRead, quotePendingRead.current, document, true) : Promise.resolve(),
     quote: () => reading && addReference(reading),
+    attachPageImages: () => reading && !reading.region && addPageImages(reading),
     closeDocument: () => {
       if (operation.current) return
       setDocument(null); setReading(null); setPendingRead(null)
@@ -503,6 +512,7 @@ export function PdfMaterials({ pdf, onBackToList }: {
   const canNavigate = !pdf.busy && pdf.writable
   const hasNativeText = reading?.pages.some(item => item.state === 'ready' && item.image && item.text.trim())
   const quoteLabel = selecting ? '引用所选区域' : reading?.region ? '引用此区域' : twoPages ? '引用这两页' : '引用此页'
+  const imageLabel = twoPages ? '将两页添加为图片' : '将此页添加为图片'
   const cancelRegion = () => { setSelectionMode('page'); setRegion(null) }
   useEffect(() => { setPageInput(String(page)); cancelRegion(); setLocalError('') }, [reading?.readingId, page, doc?.documentId])
   useEffect(() => { setQuery(''); setFindOpen(false); findComposing.current = false }, [doc?.documentId])
@@ -628,6 +638,10 @@ export function PdfMaterials({ pdf, onBackToList }: {
                 if (selecting && region) void pdf.readPages([page], region, true)
                 else pdf.quote()
               }}><Icon name="link" />{quoteLabel}</Button>
+            {pdf.imageAttachments && !selecting && !reading?.region && <Button type="button" variant="outline"
+              disabled={!canNavigate || pdf.addingImages || !pdf.canQuote} onClick={() => void pdf.attachPageImages()}>
+              <Icon name="file-image" variant="linear" />{imageLabel}
+            </Button>}
             {selecting && <p className="pdf-hint">在页图上拖动框选，再引用所选区域。</p>}
             {reading?.region && <p className="pdf-hint">当前显示已引用的区域。点「完整页」可阅读整页。</p>}
           </div>

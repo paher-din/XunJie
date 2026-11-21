@@ -26,6 +26,7 @@ import type { AgentSession } from '@xunjie/contracts/agent-sessions'
 import { useAgentInteraction } from './AgentInteraction'
 import { useSkillCatalog, draftSkillOption } from './skills'
 import type { LearningReadCache } from './learning-read-cache'
+import { uploadAgentImage } from '../reliable-workspace/agent-images'
 
 export function ActivityReferences({ activity, spaceKey, namespace, authorized, readOnly = false, children, viewActive = true, readCache }: {
   activity: LearningActivity; spaceKey: string; namespace: string; authorized: boolean; readOnly?: boolean; children: ReactNode; viewActive?: boolean
@@ -126,6 +127,9 @@ export function ActivityReferences({ activity, spaceKey, namespace, authorized, 
   }, [draft, workspace, actions, execution, authorized])
   return <ActivitySessionContext.Provider value={{ workspace, draft, actions, execution, sessions, interactions, inputInteraction, agent, agentSession, agentSessionError, retryAgentSession: () => setAttempt(value => value + 1), readCache, viewActive }}>
     <DraftReferencesProvider workspaceKey={scope} draft={draft} actions={actions} delivery={inputInteraction.delivery}
+      images={authorized && !readOnly ? { activityId: activity.activityId, subject: agentClient.scope,
+        upload: source => uploadAgentImage(agentClient.scope, { kind: 'workspace', activityId: activity.activityId }, source,
+          body => learningRequest(activity, spaceKey, namespace, 'models/images', body)) } : undefined}
       viewActive={viewActive}
       skillCatalog={{ options: (skills.data?.skills ?? []).map(draftSkillOption),
         defaults: (skills.data?.skills ?? []).filter(skill => skill.selected && skill.origin === 'personal').map(skill => ({ skillId: skill.skillId, version: skill.version })),

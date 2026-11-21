@@ -7,6 +7,7 @@ import type { AgentSessionController } from './useAgentSession'
 import { toolDetail, toolResultData, toolFailed } from './workspace-conversation'
 import { TeachingToolRecords } from './TeachingToolRecords'
 import { useSessionDraft } from './session-drafts'
+import { useAgentImagePreviews } from '../reliable-workspace/agent-images'
 import { orderedAgentTrace } from './trace-order'
 import { AgentQuestionRecord } from './SessionQuestion'
 
@@ -50,7 +51,7 @@ export function SessionConversation({ controller, readOnly = false, onOpenWorksp
     {conversation.turns.filter(run => !messages.some(message => message.turnId === run.turnId))
       .map(run => <SessionTrace key={run.turnId} controller={controller} runId={run.turnId} renderTool={renderTool} />)}
     {conversation.workspaces.filter(item => !renderedCards.has(item.toolCallId)).map(item => <div key={item.toolCallId}>{cards(item.turnId)}</div>)}
-    {error && <p role="alert" className="learning-error">{error} <button type="button" onClick={() => void controller.replay()}>核对并重试</button></p>}
+    {error && <p role="alert" className="learning-error">{error} <button type="button" onClick={() => void (readOnly ? controller.refresh() : controller.replay())}>{readOnly ? '重新读取' : '核对并重试'}</button></p>}
   </section>
 }
 function DraftProtectionFeedback({ error, retry }: { error: string; retry: () => Promise<void> }) {
@@ -77,13 +78,17 @@ function SessionUserMessage({ input, at, controller, readOnly }: { input: AgentC
     } catch (cause) { setError(cause instanceof Error ? cause.message : '停止尚未确认。'); throw cause }
     finally { setStopping(false) }
   }
-  return <><UserMessage text={input.text} at={at} busy={controller.busy || stopping || !draft.ready}
+  const previews = useAgentImagePreviews(controller.client.scope, input.images ?? [])
+  const images = (input.images ?? []).flatMap(image => previews[image.imageId] ? [{ name: image.name, dataUrl: previews[image.imageId]! }] : [])
+  const missing = (input.images ?? []).filter(image => !previews[image.imageId])
+  return <><UserMessage text={input.text} at={at} images={images} busy={controller.busy || stopping || !draft.ready}
     editDraft={draft.value} onRequestEdit={stopForEdit} onEditDraftChange={value => {
       void draft.change({ ...value, expectedVersion: value.editing && !draft.value.editing ? input.version : draft.value.expectedVersion }).catch(() => {})
     }} onEdit={editable ? async text => {
       await draft.protect()
       await controller.inputControl(input.inputId, draft.value.expectedVersion, 'edit', { text })
     } : undefined} />
+    {missing.length > 0 && <p className="wr-hint" aria-label="图片附件">{missing.map(image => image.name).join('、')}</p>}
     {error && <p role="alert" className="learning-error">{error}</p>}
     <DraftProtectionFeedback error={draft.error} retry={draft.protect} /></>
 }

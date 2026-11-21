@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { expect, it } from 'vitest'
 import CourseMarkdown from './CourseMarkdown'
 import { courseMaterialOffsets } from './CourseMaterials'
+import { renderedMarkdownRange, selectedMarkdownOffsets } from './courseMarkdownSelection'
 
 function preview(text: string) {
   const root = document.createElement('div')
@@ -48,4 +49,20 @@ it('locates a saved range in the fixed source and recovers the offset from a cli
   expect(courseMaterialOffsets(text, { start, end, copy })).toEqual({ start, end })
   expect(courseMaterialOffsets(text, { start: start - 1, end: end - 1, copy })).toEqual({ start, end })
   expect(courseMaterialOffsets(text, { start, end, copy: '另一段' })).toBeNull()
+})
+
+it('maps a rendered selection across inline formatting back to the correct occurrence in the original', () => {
+  const text = '\uFEFF# 先预测\r\n\r\n再读**先预测**并比较。\r\n再记录。'
+  const root = preview(text)
+  const bold = root.querySelector('strong')!
+  const selection = document.createRange()
+  selection.setStart(bold.firstChild!, 0)
+  selection.setEnd(bold.nextSibling!, '并比较。'.length)
+  const offsets = selectedMarkdownOffsets(root, text, selection)!
+  expect(offsets.start).toBe(text.indexOf('**先预测') + 2)
+  expect(text.slice(offsets.start, offsets.end)).toBe('先预测**并比较。')
+  expect(renderedMarkdownRange(root, text, offsets.start, offsets.end)?.toString()).toBe('先预测并比较。')
+
+  const start = text.indexOf('再记录。')
+  expect(renderedMarkdownRange(root, text, start, start + '再记录。'.length)?.toString()).toBe('再记录。')
 })

@@ -8,6 +8,8 @@ import type { ActionInput } from '@xunjie/contracts/action-intents'
 import { snapshotReference, type ReferenceSelection, type ReferenceSource, type WorkspaceReference } from './model'
 import { ReferencesContext, type ReferencesController, type DraftSkillsController } from './WorkspaceReferences'
 import { composerView, rememberComposerView } from './composer-view'
+import { MODEL_MESSAGE_IMAGE_LIMIT, type ModelMessageImage } from '@xunjie/contracts/model-connections'
+import type { AgentImageSource } from '../../../reliable-workspace/agent-images'
 
 const sourceIdOf = (reference: QuestionReferenceInput) => reference.source.kind === 'work'
   ? reference.source.objectId : questionReferenceSourceId(reference.source)
@@ -18,16 +20,19 @@ function displayReferences(references: readonly QuestionReferenceInput[], worksp
     range: Object.freeze({ ...reference.range }) }))
 }
 export interface DraftReferencesProviderProps { workspaceKey: string; draft: ReliableQuestionDraft; actions: ReliableActions; children: ReactNode
+  images?: { activityId: string; subject: string; upload(source: AgentImageSource): Promise<ModelMessageImage> }
   delivery?: ActionInput['delivery']; deliveryReady?: boolean; onCreated?: () => void; skillCatalog?: Omit<DraftSkillsController, 'selected' | 'choose'>; viewActive?: boolean }
 /** Production host consumes the common workspace; availability comes only from registered receivers. */
 export function DraftReferencesProvider(props: DraftReferencesProviderProps) {
   return <DraftReferencesSession key={props.workspaceKey} {...props} />
 }
-function DraftReferencesSession({ workspaceKey, draft, actions, children, delivery, deliveryReady = true, onCreated, skillCatalog, viewActive = true }: DraftReferencesProviderProps) {
+function DraftReferencesSession({ workspaceKey, draft, actions, children, delivery, deliveryReady = true, onCreated, skillCatalog, images, viewActive = true }: DraftReferencesProviderProps) {
   const state = useSyncExternalStore(draft.subscribe, draft.snapshot)
   const actionState = useSyncExternalStore(actions.subscribe, actions.snapshot)
   const receiver = actionState.receivers.find(item => item.kind === 'question')
   const [busy, setBusy] = useState(false)
+  const [addingImages, setAddingImages] = useState(false)
+  const uploading = useRef(false)
   const creating = useRef(false)
   const actionIds = useRef(new Map<string, string>())
   const [open, setOpenState] = useState(() => composerView(workspaceKey).open)
@@ -91,6 +96,28 @@ function DraftReferencesSession({ workspaceKey, draft, actions, children, delive
     view.current.pending = null
     setPending(null)
   }
+  const addImages = async (files: readonly AgentImageSource[]) => {
+    if (!images || !files.length || uploading.current || creating.current || !draft.snapshot().ready || draft.isReadOnly()) return
+    if (inputs().filter(reference => reference.source.kind === 'image').length + files.length > MODEL_MESSAGE_IMAGE_LIMIT
+      || inputs().length + files.length > 64) {
+      setNotice(`每条消息最多附带 ${MODEL_MESSAGE_IMAGE_LIMIT} 张图片，请先移除部分附件或引用。`); return
+    }
+    uploading.current = true; setAddingImages(true); setNotice(''); setOpen(true)
+    try {
+      for (const file of files) {
+        const image = await images.upload(file)
+        if (!draft.snapshot().ready || draft.isReadOnly()) return
+        const current = inputs()
+        if (current.some(reference => reference.source.kind === 'image' &&
+          reference.source.image.sha256 === image.sha256 && reference.source.image.name === image.name)) continue
+        if (current.length >= 64) throw new Error('引用已满，请先移除部分引用。')
+        draft.change(draft.snapshot().question, [...current, { referenceId: crypto.randomUUID(),
+          source: { kind: 'image', activityId: images.activityId, image }, sourceName: image.name, copy: image.name,
+          range: { kind: 'text', start: 0, end: image.name.length } }])
+      }
+    } catch (error) { setNotice(error instanceof Error && !('code' in error) ? error.message : '图片添加失败，请重新添加。') }
+    finally { uploading.current = false; setAddingImages(false) }
+  }
   const ask = () => {
     const selected = view.current.pending
     if (!selected) return
@@ -115,7 +142,7 @@ function DraftReferencesSession({ workspaceKey, draft, actions, children, delive
   const submit = async () => {
     if (!receiver || !actionState.ready) { setNotice('真实 Agent 尚未接入，暂不能发送；问题与引用会自动保存在原工作区。'); return }
     if (!deliveryReady) { setNotice('本次发送方式尚未就绪，原问题与引用仍保留。'); return }
-    if (creating.current || !draft.snapshot().question.trim()) return
+    if (creating.current || uploading.current || !draft.snapshot().question.trim()) return
     creating.current = true; setBusy(true)
     try {
       const token = draft.capture().token + ':' + JSON.stringify(receiver)
@@ -149,6 +176,7 @@ function DraftReferencesSession({ workspaceKey, draft, actions, children, delive
     other: { question: state.conflict.other.question, references: displayReferences(state.conflict.other.references, workspaceKey), skills: state.conflict.other.skills },
   } : undefined
   const value: ReferencesController = { workspaceKey, open, setOpen, question: state.question, setQuestion, references: refs, viewActive,
+    ...(images ? { addImages, addingImages, imageSubject: images.subject } : {}),
     ...(skillCatalog ? { skills: { ...skillCatalog, selected: state.skills ?? skillCatalog.defaults ?? [], explicit: state.skills !== undefined, choose: skills => {
       const current = draft.snapshot()
       if (!current.ready || draft.isReadOnly() || skillCatalog.loading || skillCatalog.error || skillCatalog.isCurrent?.() === false) return

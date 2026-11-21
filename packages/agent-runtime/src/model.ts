@@ -1,12 +1,13 @@
 import { StorageError } from '@xunjie/storage';
 import { canonicalDigest, operationId } from '@xunjie/storage/identity';
-import { modelLearningInputSchema, modelSegmentInputSchema, settleModelToolsSchema,
+import { modelAllowsImages, modelLearningInputSchema, modelSegmentInputSchema, settleModelToolsSchema, MODEL_MESSAGE_IMAGE_LIMIT,
   type ModelAttempt, type ModelToolResult } from '@xunjie/contracts/model-connections';
 import type { LearningModelPort } from '@xunjie/model-gateway/service';
 import type { AgentStore } from './store.js';
 import type { GenerateInput, GeneratedResponse, ModelPort, Json } from './ports.js';
 import { portableHistory } from './history.js';
 import { AgentError } from './errors.js';
+import { resolveMessageImages } from './message-images.js';
 
 const delay = (ms: number, signal: AbortSignal) => new Promise<void>((resolve, reject) => {
   const timer = setTimeout(resolve, ms);
@@ -111,6 +112,9 @@ export function createModelAdapter(source: ModelGatewaySource, store: AgentStore
       // A failed publish may close the old segment; every retry starts from a fresh legal boundary.
       segment = await ensureSegment(input, prefixDigest, gateway, attemptNo);
       segmentPorts.set(segment.segmentId, gateway);
+      const allImages = input.messageImages
+        ? await resolveMessageImages(input.identity, input.messageImages, segment.segmentId, modelAllowsImages(segment.connection), gateway, images)
+        : images;
       const attemptId = operationId('agent-attempt:' + input.stepId + ':' + attemptNo);
       attemptPorts.set(attemptId, gateway);
       await store.saveAttempt(input.stepId, { attemptId, attemptNo, requestRef: null, reserved: { inputTokens: attemptInputReserve, outputTokens: attemptMaxOutput } });
@@ -120,7 +124,7 @@ export function createModelAdapter(source: ModelGatewaySource, store: AgentStore
       try {
         fact = await raceAbort(gateway.checks.receive(input.identity, modelLearningInputSchema.parse({
           attemptId, purpose: 'learning', segmentId: segment.segmentId, expectedSequence: segment.sequence,
-          input: { text: input.text, images, toolResults: input.toolResults, observations: [] },
+          input: { text: input.text, images: allImages, toolResults: input.toolResults, observations: [] },
           limits: { maxOutputTokens: attemptMaxOutput, timeoutMs }, authority: { formatVersion: 1, permit },
         })), input.signal);
         if (fact.state === 'accepted') fact = await raceAbort(gateway.checks.dispatch(input.identity, attemptId, { formatVersion: 1, permit }), input.signal);

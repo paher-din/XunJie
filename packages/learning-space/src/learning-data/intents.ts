@@ -299,6 +299,8 @@ export async function validateActionIntents(storage: OwnedStorage) {
           || (reference.range.kind === 'code') !== (content.kind === 'code')) throw new StorageError('corrupt');
         const text = Buffer.from(await storage.readResource(source.contentId)).toString('utf8');
         if (referenceTextSelection(text, reference.range) !== reference.copy) throw new StorageError('corrupt');
+      } else if (source.kind === 'image') {
+        if (source.activityId !== row.activity_id) throw new StorageError('corrupt');
       } else if (!body.course || source.courseId !== body.course.courseId || source.taskId !== body.course.taskId
         || source.releaseId !== body.course.releaseId || source.contentDigest !== body.course.contentDigest) throw new StorageError('corrupt');
     }

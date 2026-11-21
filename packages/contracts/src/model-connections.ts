@@ -171,8 +171,21 @@ export const modelUsageSchema = z.object({ state: z.enum(['final', 'partial', 'u
   reasoningTokens: z.number().nonnegative().optional() }).strict();
 export const modelUpstreamSchema = modelDiagnosticFactsSchema;
 export const modelImageRefSchema = z.object({ imageId: z.uuid(), version: z.literal(1) }).strict();
+/** An explicit user attachment fixes both the image identity and its content. */
+export const modelMessageImageSchema = modelImageRefSchema.extend({
+  sha256: z.string().regex(/^[a-f0-9]{64}$/), name: z.string().trim().min(1).max(240),
+}).strict();
+export const MODEL_MESSAGE_IMAGE_LIMIT = 8;
+export const modelMessageImagesSchema = z.array(modelMessageImageSchema).max(MODEL_MESSAGE_IMAGE_LIMIT);
+export type ModelMessageImage = z.infer<typeof modelMessageImageSchema>;
+export const modelImageAttachmentScopeSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('session'), sessionId: z.uuid() }).strict(),
+  z.object({ kind: z.literal('workspace'), activityId: z.uuid() }).strict(),
+]);
+export type ModelImageAttachmentScope = z.infer<typeof modelImageAttachmentScopeSchema>;
 export const modelImageInputSchema = z.object({ requestId: z.uuid(), imageId: z.uuid(), mediaType: z.literal('image/png'),
-  dataBase64: z.string().min(1).max(350000), source: modelImageRefSchema.safeExtend({ transformation: z.string().min(1).max(200) }).optional() }).strict();
+  dataBase64: z.string().min(1).max(350000), attachmentScope: modelImageAttachmentScopeSchema.optional(),
+  source: modelImageRefSchema.safeExtend({ transformation: z.string().min(1).max(200) }).optional() }).strict();
 export const modelToolSchema = z.object({ name: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/), description: z.string().max(1000),
   inputSchema: z.record(z.string(), z.unknown()), strict: z.boolean().optional(),
   /** Application-only static preview projection; never sent to the model provider. */
@@ -258,7 +271,7 @@ export const modelChatInputSchema = z.object({ attemptId: z.uuid(), purpose: z.l
 /** Learning calls are not probes: no probe count, sequence, output or time caps apply. */
 export const modelLearningInputSchema = z.object({ attemptId: z.uuid(), purpose: z.literal('learning'), segmentId: z.uuid(),
   authority: modelSessionAuthoritySchema.optional(),
-  expectedSequence: z.number().int().nonnegative(), input: z.object({ text: z.string().max(1_000_000), images: z.array(modelImageRefSchema).max(8).default([]),
+  expectedSequence: z.number().int().nonnegative(), input: z.object({ text: z.string().max(1_000_000), images: z.array(modelImageRefSchema).max(MODEL_MESSAGE_IMAGE_LIMIT).default([]),
     toolResults: z.array(modelToolResultSchema).max(64).default([]), observations: z.array(modelObservationSchema).max(512).default([]) }).strict(),
   limits: z.object({ maxOutputTokens: z.number().int().min(1).max(1_000_000),
     timeoutMs: z.number().int().min(250).max(2_147_483_647).optional() }).strict() }).strict();

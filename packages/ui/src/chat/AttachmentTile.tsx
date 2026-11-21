@@ -50,7 +50,7 @@ export interface AttachmentTileProps {
   attachment: PromptAttachment
   /** 已移除、退场中：瓦片固定在移除瞬间的视口矩形上播完动效（leaving 期间 CSS 给它 position: fixed） */
   leavingRect?: TileRect
-  onRemove: (rect: TileRect) => void
+  onRemove?: (rect: TileRect) => void
 }
 
 export function AttachmentTile({
@@ -113,7 +113,7 @@ export function AttachmentTile({
       <span className="pt-pct" aria-hidden="true">
         {uploading ? progress : 100}%
       </span>
-      <button
+      {onRemove && <button
         type="button"
         className="pt-dismiss"
         aria-label={'移除附件 ' + attachment.name}
@@ -126,7 +126,7 @@ export function AttachmentTile({
         }}
       >
         <Icon name="close" size={12} />
-      </button>
+      </button>}
     </div>
   )
 }

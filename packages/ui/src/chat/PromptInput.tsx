@@ -10,6 +10,7 @@ export interface PromptInputProps<Effort extends string = string> {
   onChange: (value: string) => void
   onSend: () => void | Promise<void>
   canSend: boolean
+  pasteImages?: boolean
   submitting?: boolean
   busy?: boolean
   onStop?: () => void
@@ -20,7 +21,7 @@ export interface PromptInputProps<Effort extends string = string> {
   inputRef?: RefObject<HTMLTextAreaElement | null>
   textareaProps?: Pick<ComponentPropsWithoutRef<'textarea'>,
     'aria-label' | 'role' | 'aria-expanded' | 'aria-controls' | 'aria-activedescendant' | 'aria-haspopup'
-    | 'disabled' | 'readOnly' | 'maxLength' | 'onFocus' | 'onBlur' | 'onSelect' | 'onKeyDown' | 'onCompositionStart' | 'onCompositionEnd'>
+    | 'disabled' | 'readOnly' | 'maxLength' | 'onFocus' | 'onBlur' | 'onSelect' | 'onKeyDown' | 'onPaste' | 'onCompositionStart' | 'onCompositionEnd'>
   sendLabel?: string
   additions?: Omit<PromptAdditionsProps, 'onFiles' | 'restoreFocus'>
   contextItems?: readonly PromptContextItem[]
@@ -49,7 +50,7 @@ export interface PromptInputProps<Effort extends string = string> {
 }
 
 /** 完整受控输入 UI；不读取模型 store，不上传、读取文件或写入持久状态。 */
-export function PromptInput<Effort extends string = string>({ value, onChange, onSend, canSend,
+export function PromptInput<Effort extends string = string>({ value, onChange, onSend, canSend, pasteImages = false,
   submitting = false, busy = false, onStop, onResume, resumeLabel = '继续生成', actionDisabled = false,
   autoFocus, inputRef, textareaProps, sendLabel = '发送消息', additions, contextItems,
   attachments, showAttachments = true, onAddFiles, onRemoveAttachment,
@@ -186,7 +187,8 @@ export function PromptInput<Effort extends string = string>({ value, onChange, o
     removeTimers.current.push(timer)
   }
 
-  const submit = () => { if (canSend && !composing.current) void onSend() }
+  const readyToSend = canSend && !Object.keys(leaving).length
+  const submit = () => { if (readyToSend && !composing.current) void onSend() }
   const activeId = attachments.find(a => a.progress !== undefined)?.id ?? null
   const visible = attachments.filter(a => a.progress === undefined || a.id === activeId || leaving[a.id] !== undefined)
   const inFlowCount = visible.filter(a => leaving[a.id] === undefined).length
@@ -235,7 +237,7 @@ export function PromptInput<Effort extends string = string>({ value, onChange, o
               key={a.id}
               attachment={a}
               leavingRect={leaving[a.id]}
-              onRemove={(rect) => removeAttachment(a.id, rect)}
+              onRemove={submitting || leaving[a.id] ? undefined : rect => removeAttachment(a.id, rect)}
             />
           ))}
         </div>
@@ -251,6 +253,13 @@ export function PromptInput<Effort extends string = string>({ value, onChange, o
         disabled={submitting || textareaProps?.disabled}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onPaste={pasteImages && showAttachments ? event => {
+          const files = Array.from(event.clipboardData.files).filter(file => file.type.startsWith('image/'))
+          if (files.length && !submitting) {
+            event.preventDefault()
+            void onAddFiles(files)
+          } else textareaProps?.onPaste?.(event)
+        } : textareaProps?.onPaste}
         onCompositionStart={event => { composing.current = true; textareaProps?.onCompositionStart?.(event) }}
         onCompositionEnd={event => { composing.current = false; textareaProps?.onCompositionEnd?.(event) }}
         onKeyDown={(e) => {
@@ -354,7 +363,7 @@ export function PromptInput<Effort extends string = string>({ value, onChange, o
             <button type="button" className="prompt-send" aria-label={resumeLabel} title={resumeLabel}
               disabled={actionDisabled} onClick={onResume}><Icon name="play" size={18} /></button>
           ) : (
-            <button type="submit" className="prompt-send" aria-label={sendLabel} title={sendLabel} disabled={!canSend}>
+            <button type="submit" className="prompt-send" aria-label={sendLabel} title={sendLabel} disabled={!readyToSend}>
               <Icon name="arrow-up" size={20} />
             </button>
           )}

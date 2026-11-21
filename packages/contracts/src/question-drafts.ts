@@ -3,6 +3,7 @@ import { aluReferenceAdapters, aluReferenceCopy, normalizeAluReferenceTarget } f
 import { teachingSkillReferencesSchema } from './agent-skills.js';
 import { pdfReferenceSourceSchema, pdfReferenceTargetSchema, pdfReferenceCopy } from './pdf-materials.js';
 import { personalMaterialReferenceSourceSchema } from './personal-materials.js';
+import { MODEL_MESSAGE_IMAGE_LIMIT, modelMessageImageSchema } from './model-connections.js';
 import { teachingArtifactReferenceAdapters, normalizeTeachingArtifactReferenceTarget, teachingArtifactReferenceCopy } from './teaching-artifacts-reference.js';
 const courseDigestSchema = z.string().regex(/^[a-f0-9]{64}$/);
 
@@ -38,12 +39,13 @@ export const componentReferenceSourceSchema = z.object({ kind: z.literal('compon
 /** Stable source object plus immutable content identity. Display names and paths are never identity. */
 export const questionReferenceSourceSchema = z.discriminatedUnion('kind',
   [workSourceSchema, courseMaterialSourceSchema, courseFieldSourceSchema, componentReferenceSourceSchema, pdfReferenceSourceSchema,
-    personalMaterialReferenceSourceSchema]);
+    personalMaterialReferenceSourceSchema, z.object({ kind: z.literal('image'), activityId: z.uuid(), image: modelMessageImageSchema }).strict()]);
 export type QuestionReferenceSource = z.infer<typeof questionReferenceSourceSchema>;
 
 export function questionReferenceSourceId(source: QuestionReferenceSource): string {
   switch (source.kind) {
     case 'pdf': return `pdf:${source.activityId}:${source.documentId}`;
+    case 'image': return `image:${source.activityId}:${source.image.imageId}`;
     case 'personal-material': return `personal-material:${source.activityId}:${source.materialId}:${source.version}`;
     case 'component': return `component:${source.activityId}:${source.instanceId}:${source.objectId}`;
     case 'work': return `work:${source.objectId}`;
@@ -60,7 +62,11 @@ export function questionReferenceKey(reference: Pick<QuestionReferenceInput, 'so
 const sourceNameSchema = z.string().min(1).max(300);
 export const questionReferenceInputSchema = z.object({ referenceId: z.uuid(),
   source: questionReferenceSourceSchema, range: questionReferenceRangeSchema,
-  copy: z.string().min(1).max(2000000), sourceName: sourceNameSchema }).strict().refine(value => value.range.kind !== 'semantic' || value.range.end === value.copy.length, 'Semantic copy length must match its envelope');
+  copy: z.string().min(1).max(2000000), sourceName: sourceNameSchema }).strict()
+  .refine(value => value.range.kind !== 'semantic' || value.range.end === value.copy.length, 'Semantic copy length must match its envelope')
+  .refine(({ source, range, copy, sourceName }) => source.kind !== 'image' ||
+    range.kind === 'text' && range.start === 0 && range.end === source.image.name.length
+    && copy === source.image.name && sourceName === source.image.name, 'Image reference must match its attachment');
 export type QuestionReferenceInput = z.infer<typeof questionReferenceInputSchema>;
 /** Received references carry the digest the owner checked against the fixed source content. */
 export const questionReferenceSchema = questionReferenceInputSchema.safeExtend({ copyDigest: courseDigestSchema }).strict();
@@ -72,6 +78,7 @@ export const questionTextSchema = z.string().max(QUESTION_TEXT_MAX_LENGTH);
 export const questionReferencesSchema = z.array(questionReferenceInputSchema).max(64)
   .refine(references => new Set(references.map(item => item.referenceId)).size === references.length
     && new Set(references.map(item => questionReferenceKey(item))).size === references.length
+    && references.filter(item => item.source.kind === 'image').length <= MODEL_MESSAGE_IMAGE_LIMIT
     && references.reduce((sum, item) => sum + item.copy.length, 0) <= 1000000);
 
 /** Explicit version pins travel with the original question, never a mutable catalog alias. */

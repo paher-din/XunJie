@@ -22,8 +22,12 @@ function rangeAtOffsets(root: HTMLElement, start: number, end: number): Range | 
 export function locateTextRange(element: HTMLElement, start: number, end: number, scroll?: HTMLElement): boolean {
   if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || end <= start || end > (element.textContent?.length ?? 0)) return false
   const range = rangeAtOffsets(element, start, end)
+  return range ? locateDomRange(element, range, scroll) : false
+}
+
+export function locateDomRange(element: HTMLElement, range: Range, scroll?: HTMLElement): boolean {
   const selection = element.ownerDocument.getSelection()
-  if (!range || !selection) return false
+  if (!selection) return false
   if (scroll) {
     const first = range.getClientRects()[0]
     if (first) scroll.scrollTop += first.top - scroll.getBoundingClientRect().top - scroll.clientHeight / 3
@@ -42,9 +46,21 @@ export function readTextSelection(root: HTMLElement, text: string, selection: Se
   for (const blocked of root.querySelectorAll(excluded)) if (range.intersectsNode(blocked)) return null
   return range.cloneRange()
 }
-/** Register a container whose textContent equals the authoritative source text. */
+
+function textOffsets(root: HTMLElement, range: Range) {
+  const prefix = document.createRange()
+  prefix.selectNodeContents(root)
+  prefix.setEnd(range.startContainer, range.startOffset)
+  const start = prefix.toString().length
+  return { start, end: start + range.toString().length }
+}
+
+/** The rendered selection can supply original offsets when the displayed text includes formatting. */
 export function useTextReferenceSource(root: RefObject<HTMLElement | null>, sourceId: string, sourceName: string, text: string,
-  source?: QuestionReferenceSource, { registerSource = true }: { registerSource?: boolean } = {}) {
+  source?: QuestionReferenceSource, { registerSource = true, renderedOffsets }: {
+    registerSource?: boolean
+    renderedOffsets?: (root: HTMLElement, text: string, range: Range) => { start: number; end: number } | null
+  } = {}) {
   const { workspaceKey, register, select, clearSelection } = useWorkspaceReferences()
   const sourceRef = useRef(source); sourceRef.current = source
   useEffect(() => {
@@ -64,17 +80,16 @@ export function useTextReferenceSource(root: RefObject<HTMLElement | null>, sour
     } }) : undefined
     let gesture: object | undefined, frame = 0
     const capture = (committed?: object) => {
-      const range = readTextSelection(element, text, document.getSelection())
+      const displayedText = renderedOffsets ? (element.textContent ?? '') : text
+      const range = readTextSelection(element, displayedText, document.getSelection())
       if (!range) { clearSelection(sourceId); return }
-      const prefix = document.createRange()
-      prefix.selectNodeContents(element)
-      prefix.setEnd(range.startContainer, range.startOffset)
-      const start = prefix.toString().length, end = start + range.toString().length
-      const snapshot = snapshotReference({ workspaceKey, sourceId, sourceName, kind: 'text', sourceText: text, range: { start, end },
+      const offsets = renderedOffsets && displayedText !== text ? renderedOffsets(element, text, range) : textOffsets(element, range)
+      if (!offsets) { clearSelection(sourceId); return }
+      const snapshot = snapshotReference({ workspaceKey, sourceId, sourceName, kind: 'text', sourceText: text, range: offsets,
         ...(sourceRef.current ? { source: sourceRef.current } : {}) })
       if (!snapshot) { clearSelection(sourceId); return }
       const candidate: ReferenceSelection = { snapshot, anchor: () => {
-        if (!element.isConnected || element.textContent !== text) return null
+        if (!element.isConnected || element.textContent !== displayedText) return null
         const rects = Array.from(range.getClientRects())
         const container = element.getBoundingClientRect()
         const rect = rects.find(rect => rect.height > 0 && rect.bottom > Math.max(0, container.top) &&
@@ -112,7 +127,7 @@ export function useTextReferenceSource(root: RefObject<HTMLElement | null>, sour
       element.removeEventListener('keydown', keydown); element.removeEventListener('keyup', keyup)
       document.removeEventListener('selectionchange', changed)
     }
-  }, [root, workspaceKey, sourceId, sourceName, text, register, registerSource, select, clearSelection])
+  }, [root, workspaceKey, sourceId, sourceName, text, register, registerSource, renderedOffsets, select, clearSelection])
 }
 export function TextReferenceSource({ sourceId, sourceName, text, source, registerSource }: { sourceId: string; sourceName: string; text: string
   source?: QuestionReferenceSource; registerSource?: boolean }) {

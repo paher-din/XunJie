@@ -421,10 +421,11 @@ export async function createProductLearningApplication(context: {
         const stable = { request, source: { environmentId: source.sourceEnvironmentId, serviceId: source.sourceServiceId,
           installationId: source.sourceInstallationId, grantId: source.grantId }, sessionId: session.sessionId };
         const authority = 'permit' in call ? call.permit : undefined;
+        const segmentId = request.operation === 'images.upload' && typeof request.args[1] === 'string' ? request.args[1] : undefined;
         const origin: PairedModelOrigin = { formatVersion: 3, operationId: read ? randomUUID() : operationId('agent-paired-model:' + canonicalDigest(stable)),
           service: { environmentId: source.sourceEnvironmentId, serviceId: source.sourceServiceId },
           installationId: source.sourceInstallationId, grantId: source.grantId, sessionId: session.sessionId,
-          ...(authority ? { authority } : {}) };
+          ...(authority ? { authority } : {}), ...(segmentId ? { segmentId } : {}) };
         return paired.request(request, origin);
       });
     }

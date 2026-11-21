@@ -1,9 +1,9 @@
 import { ChatViewport, BackToBottom } from '@xunjie/ui/chat'
 import { useConversationScroll } from './conversation-scroll'
-import { useCallback, useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref, type RefObject } from 'react'
+import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type ReactNode, type Ref, type RefObject } from 'react'
 import { GuidancePresentation } from '@xunjie/ui/workspace'
 import { toast } from '@xunjie/ui/feedback'
-import { StatusChip } from '@xunjie/ui/foundation'
+import { Button, StatusChip } from '@xunjie/ui/foundation'
 import { SideDock, TaskInfo } from '@xunjie/ui/workspace'
 import { courseReleaseSchema } from '@xunjie/contracts/courses'
 import type { LearningActivity } from '@xunjie/contracts/learning-data'
@@ -93,6 +93,16 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
   const courseWorkspace = !!course
   const [detailsOpen, setDetailsOpen] = useState(courseWorkspace)
   useEffect(() => { if (project.project) setDetailsOpen(true) }, [project.project])
+  const detailsToggle = useRef<HTMLButtonElement>(null)
+  const detailsCollapse = useRef<HTMLButtonElement>(null)
+  const detailsRestore = useRef<HTMLButtonElement>(null)
+  const returnDetailsFocus = useRef(false)
+  useLayoutEffect(() => {
+    if (!returnDetailsFocus.current) return
+    returnDetailsFocus.current = false
+    const target = detailsOpen ? detailsCollapse.current : detailsRestore.current ?? detailsToggle.current
+    target?.focus({ preventScroll: true })
+  }, [detailsOpen])
   const [dockPanel, setDockPanel] = useState<'task' | 'stash' | null>(null)
   const [releaseDeadline, setReleaseDeadline] = useState<{ releaseId: string; deadlineAt?: string }>()
   const deadline = releaseDeadline?.releaseId === course?.releaseId ? releaseDeadline : undefined
@@ -359,10 +369,15 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
       }).catch(() => toast.error('当前输入尚未保护，请保留页面后继续。'))}>{entry.artifact.title}</button>)}
   </div>
   const detailsLabel = course ? '目标与要求' : '学习目标'
-  const detailsEntry = <button type="button" className="ws-btn ghost" aria-expanded={detailsOpen}
+  const detailsCovered = () => references.open && window.matchMedia('(width < 1024px)').matches
+  const openDetails = () => {
+    if (detailsCovered()) references.setOpen(false)
+    setDetailsOpen(true)
+  }
+  const detailsEntry = <button ref={detailsToggle} type="button" className="ws-btn ghost" aria-expanded={detailsOpen}
     aria-controls={detailsOpen ? 'activity-details' : undefined} onClick={() => {
-      if (window.matchMedia('(width < 1024px)').matches && references.open) { references.setOpen(false); setDetailsOpen(true) }
-      else setDetailsOpen(value => !value)
+      if (detailsOpen && !detailsCovered()) setDetailsOpen(false)
+      else openDetails()
     }}><IconText name="clipboard-text">{detailsLabel}</IconText></button>
   return <div ref={root} className={'ws ws-organized product-workspace' + (references.open ? ' discussion-open' : '')}>
     <header className="ws-head">
@@ -390,6 +405,11 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
         {activity.status === 'closed' ? ' · 活动已关闭' : ''}</span></div>
     <div className="ws-body" data-task-dock={courseWorkspace || undefined}>
       {detailsOpen && <aside id="activity-details" className="product-task-details" aria-label={detailsLabel}>
+        <Button ref={detailsCollapse} type="button" variant="outline" className="product-task-details-collapse"
+          aria-label={`收起${detailsLabel}`} title={`收起${detailsLabel}`} onClick={() => {
+            returnDetailsFocus.current = true
+            setDetailsOpen(false)
+          }}><IconText name="panel-left-close" size={16}>收起</IconText></Button>
         {project.project ? <PersonalProjectPlan project={project.project} /> : details}
         {project.error && <p role="alert">项目清单暂时无法读取。<button type="button" onClick={() => void project.retry()}>重试</button></p>}
       </aside>}
@@ -435,7 +455,13 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
         stashPanel={{ count: shelvedEntries.length, content: <section className="ws-dock-content">
           <h2>卡片收纳</h2>
           {artifactShelf || <p>{artifacts.error || '在学习页面点「收纳」后，卡片会显示在这里。'}</p>}
-        </section> }} />}
+        </section> }}>
+        {!detailsOpen && <button ref={detailsRestore} type="button" className="ws-dbtn product-task-details-restore"
+          aria-expanded={false} aria-label={`展开${detailsLabel}`} data-tip={`展开${detailsLabel}`} onClick={() => {
+            returnDetailsFocus.current = true
+            openDetails()
+          }}><Icon name="alt-arrow-right" size={16} /><span>展开</span></button>}
+      </SideDock>}
     </div>
     <SelectionToolbar />
     {!references.open && pendingQuestion && <GuidancePresentation item={{ id: pendingQuestion.questionId, content: { kind: 'text', text: waitText }, target: () => ask.current,

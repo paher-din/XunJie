@@ -3,6 +3,7 @@ import DOMPurify from 'dompurify'
 import katex from 'katex'
 import { Marked, Renderer } from 'marked'
 import 'katex/dist/katex.min.css'
+import { markdownSource } from './courseMarkdownSelection'
 
 const inlineFormula = /^\$(?![\s$])((?:\\[^\r\n]|[^\\$\r\n])+)\$(?![\d$])/
 const displayFormula = /^ {0,3}\$\$[ \t]*\n([\s\S]*?)\n {0,3}\$\$[ \t]*(?:\n|$)/
@@ -64,7 +65,7 @@ const markdown = new Marked({
       try {
         const url = new URL(href)
         if (!url.username && !url.password)
-          return '<a href="' + escapeHtml(url.href) + '" target="_blank" rel="noopener noreferrer">' + label + '</a>'
+          return '<a href="' + escapeHtml(url.href) + '" target="_blank" rel="noopener noreferrer" draggable="false">' + label + '</a>'
       } catch { /* Malformed links remain readable as text. */ }
       return label
     },
@@ -79,8 +80,17 @@ export default function CourseMarkdown({ text }: { text: string }) {
   const html = useMemo(() => {
     try {
       if (!DOMPurify.isSupported) return null
-      return DOMPurify.sanitize(markdown.parse(text.replace(/^\uFEFF/, ''), { async: false }), {
-        ADD_ATTR: ['target'],
+      const source = markdownSource(text, text.startsWith('\uFEFF') ? 1 : 0)
+      let cursor = 0
+      const blocks = markdown.lexer(source.text).map(token => {
+        const start = source.text.indexOf(token.raw, cursor)
+        const block = markdown.parser([token])
+        if (start < 0) return block
+        cursor = start + token.raw.length
+        return block && `<div data-markdown-start="${source.originalOffset(start)}" data-markdown-end="${source.originalOffset(cursor)}">${block}</div>`
+      })
+      return DOMPurify.sanitize(blocks.join(''), {
+        ADD_ATTR: ['target', 'draggable', 'data-markdown-start', 'data-markdown-end'],
         ALLOW_DATA_ATTR: false,
         FORBID_TAGS: ['img', 'audio', 'video', 'iframe', 'object', 'embed', 'style', 'form'],
       })
