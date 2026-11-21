@@ -38,7 +38,8 @@ function sourceFixture(root) {
   }
   writeFileSync(join(root, 'node_modules/.package-lock.json'), JSON.stringify({packages:{'node_modules/zod':{version:'1.0.0'}}}));
   mkdirSync(join(root, 'node_modules/.bin'), { recursive: true });
-  symlinkSync('../zod/index.js', join(root, 'node_modules/.bin/zod'));
+  if (process.platform === 'win32') symlinkSync(join(root, 'node_modules/zod'), join(root, 'node_modules/.bin/zod'), 'junction');
+  else symlinkSync('../zod/index.js', join(root, 'node_modules/.bin/zod'));
   mkdirSync(join(root, 'packages/contracts/dist'), { recursive: true });
   writeFileSync(join(root, 'packages/contracts/package.json'), JSON.stringify({name:'@xunjie/contracts',type:'module',exports:'./dist/index.js'}));
   writeFileSync(join(root, 'packages/contracts/dist/index.js'), 'export const contract = true;');
@@ -49,9 +50,8 @@ function sourceFixture(root) {
   writeFileSync(join(teaching, 'dist/server/main.js'), 'export {storageFixture} from "@xunjie/storage";');
   writeFileSync(join(root, 'package.json'), '{"private":true,"type":"module"}');
   mkdirSync(join(root, 'node_modules/@xunjie'), { recursive: true });
-  symlinkSync('../../packages/contracts', join(root, 'node_modules/@xunjie/contracts'));
-  symlinkSync('../../packages/storage', join(root, 'node_modules/@xunjie/storage'));
-  symlinkSync('../../apps/server', join(root, 'node_modules/@xunjie/server'));
+  for (const [name, path] of [['contracts', 'packages/contracts'], ['storage', 'packages/storage'], ['server', 'apps/server']])
+    symlinkSync(join(root, path), join(root, 'node_modules/@xunjie', name), process.platform === 'win32' ? 'junction' : 'dir');
   mkdirSync(join(root, 'tools/i0-cloud'), { recursive: true });
   writeFileSync(join(root, 'tools/i0-cloud/cloud-host.mjs'), 'export const host = \'original\';\n');
   writeFileSync(join(root, 'tools/i0-cloud/build-runtime-artifact.test-helper.md'), 'not part of the runtime\n');
@@ -157,9 +157,11 @@ test('runtime artifact rejects unsupported symlinks, wrong inputs and platform m
   const root = mkdtempSync(join(tmpdir(), 'xunjie-artifact-reject-')), output = join(root, 'output');
   try {
     sourceFixture(root);
-    symlinkSync('./main.js', join(root, 'apps/server/dist/server/alias.js'));
+    const alias = join(root, 'apps/server/dist/server/alias.js');
+    if (process.platform === 'win32') symlinkSync(join(root, 'apps/server/dist/contracts'), alias, 'junction');
+    else symlinkSync('./main.js', alias);
     assert.throws(() => buildRuntimeArtifact({ source: root, output, commit: COMMIT, gitTree: TREE }), /RUNTIME_SYMLINK_UNSUPPORTED/);
-    rmSync(join(root, 'apps/server/dist/server/alias.js'));
+    rmSync(alias);
 
     const dist = join(root, 'apps/web/dist');
     const entry = readFileSync(join(dist, 'index.html'), 'utf8');

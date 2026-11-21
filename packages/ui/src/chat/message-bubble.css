@@ -43,3 +43,14 @@
 .chat-message.user.editing .user-edit {
   max-width: 100%;
 }
+.message-citations { margin: 8px 0 2px; padding: 10px 12px; border: 1px solid var(--line);
+  border-radius: 8px; background: var(--sunken); }
+.message-citations-label { margin: 0 0 6px; color: var(--muted); font-size: 12px; }
+.message-citations ul { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.message-citation { display: grid; gap: 2px; width: 100%; padding: 6px 8px; border: 0; border-radius: 6px;
+  color: var(--ink); background: transparent; text-align: start; cursor: pointer; }
+.message-citation:hover:not(:disabled) { background: var(--hover-bg); }
+.message-citation:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+.message-citation:disabled { cursor: default; }
+.message-citation-claim { font-size: 13px; line-height: 1.5; }
+.message-citation-source { color: var(--muted); font-size: 12px; line-height: 1.5; }

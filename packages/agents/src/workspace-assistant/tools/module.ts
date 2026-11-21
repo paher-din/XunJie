@@ -55,20 +55,42 @@ export async function resolveWorkspace(options: WorkspaceToolOptions, input: Sce
     return { inputId: item.inputId, action };
   });
   const fixed = actions.at(-1)!;
-  for (const { action } of actions) {
-    for (const file of [...action.works, ...action.draft.bases]) {
+  const unavailable = new Set<string>();
+  for (const file of [...fixed.action.works, ...fixed.action.draft.bases]) {
+    try {
       const storedFile = await options.learning.works.content(input.identity, activity.activityId, file.contentId);
       if (storedFile.objectId !== file.objectId || storedFile.value !== file.value || storedFile.encoding !== file.encoding
         || storedFile.kind !== file.kind || storedFile.mediaType !== file.mediaType) throw new StorageError('corrupt');
+    } catch (error) {
+      if (!(error instanceof StorageError) || !['missing', 'forbidden', 'unavailable', 'resource-gone'].includes(error.code)) throw error;
+      unavailable.add(file.contentId);
     }
-    await options.learning.drafts.verifyReferences(input.identity, activity.activityId,
-      { references: action.draft.references, bases: action.draft.bases });
   }
-  return { activity, action: fixed.action, inputId: fixed.inputId, actions };
+  const unavailableReferences = new Set<string>();
+  for (const reference of fixed.action.draft.references) {
+    try {
+      await options.learning.drafts.verifyReferences(input.identity, activity.activityId, {
+        references: [reference], bases: fixed.action.draft.bases.filter(file =>
+          'contentId' in reference.source && file.contentId === reference.source.contentId && !unavailable.has(file.contentId)),
+      });
+    } catch (error) {
+      if (!(error instanceof StorageError) || !['missing', 'forbidden', 'unavailable', 'resource-gone'].includes(error.code)) throw error;
+      unavailableReferences.add(reference.referenceId);
+    }
+  }
+  const action = { ...fixed.action, works: fixed.action.works.filter(file => !unavailable.has(file.contentId)),
+    draft: { ...fixed.action.draft, bases: fixed.action.draft.bases.filter(file => !unavailable.has(file.contentId)),
+      references: fixed.action.draft.references.filter(ref => !unavailableReferences.has(ref.referenceId)) } };
+  // A Session may have accepted v7 before the student submits a later v8 question.
+  // Keep the earlier fixed work versions available for read-only re-authorization.
+  const acceptedWorkActions = actions.map(entry => entry.action);
+  return { activity, action, inputId: fixed.inputId, actions, acceptedWorkActions, unavailable, unavailableReferences };
 }
 
-function toolScope(ctx: ToolContext, workspace: { activity: LearningActivity; action: ActionInput }): TeachingToolScope {
+function toolScope(ctx: ToolContext, workspace: { activity: LearningActivity; action: ActionInput;
+  acceptedWorkActions?: readonly ActionInput[] }): TeachingToolScope {
   return { identity: ctx.identity, sessionId: ctx.sessionId, activity: workspace.activity, input: workspace.action,
+    ...(workspace.acceptedWorkActions ? { acceptedWorkActions: workspace.acceptedWorkActions } : {}),
     runId: ctx.turnId, stepId: ctx.stepId, snapshotId: ctx.stepId, attemptId: ctx.toolCallId,
     ...(ctx.segmentId ? { segmentId: ctx.segmentId } : {}),
     assertDispatch: async () => { await ctx.assertActive(); } };

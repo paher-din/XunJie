@@ -203,6 +203,23 @@ export function createSpaces(storage: OwnedStorage, options: { sessionLifetimeMs
     if (!row) return fail('forbidden');
     return identity(row);
   }
+  // A derived identifier binds a delegated read to a browser login without storing a credential.
+  const loginId = (tokenHash: string) => operationId('school-browser-login:' + tokenHash);
+  async function schoolSession(token: string) {
+    const member = await authenticate(token, 'session');
+    if (member.kind !== 'school') return fail('forbidden');
+    return { member, loginId: loginId(sessionDigest(token)) };
+  }
+  async function activeSchoolSessions(member: SpaceIdentity): Promise<string[]> {
+    const value = spaceIdentitySchema.parse(member);
+    if (value.kind !== 'school' || value.environmentId !== storage.owner.environmentId) return [];
+    const { rows } = await storage.read<{ token_hash: string }>(`SELECT s.token_hash FROM sessions s
+      JOIN memberships m ON m.principal_id=s.principal_id AND m.space_id=$1
+      JOIN spaces space ON space.id=m.space_id AND space.kind='school'
+      WHERE s.principal_id=$2 AND s.kind='session' AND NOT s.revoked
+        AND s.expires_at>clock_timestamp() AND m.active`, [value.spaceId, value.principalId]);
+    return rows.map(row => loginId(row.token_hash));
+  }
   async function authorize(value: SpaceIdentity) {
     const identity = spaceIdentitySchema.parse(value);
     if (identity.environmentId !== storage.owner.environmentId) fail('forbidden');
@@ -232,9 +249,16 @@ export function createSpaces(storage: OwnedStorage, options: { sessionLifetimeMs
     if (!row) return fail('missing');
     return learningTargetSchema.parse(row.target);
   }
-  async function logout(token: string) {
-    await storage.request({ requestId: randomUUID(), fingerprint: digest({ logout: digest(token) }) }, async tx => {
-      await tx.query('UPDATE sessions SET revoked=true WHERE token_hash=$1', [sessionDigest(token)]);
+  async function logout(token: string, scope: 'browser' | 'local-school-account' = 'browser') {
+    await storage.request({ requestId: randomUUID(), fingerprint: digest({ logout: digest(token), scope }) }, async tx => {
+      const tokenHash = sessionDigest(token);
+      if (scope === 'local-school-account') {
+        // Personal reads belong to this installation, not to a tab. A still-open tab
+        // from before logout cannot keep the installation's cross-space access alive.
+        await tx.query(`UPDATE sessions AS candidate SET revoked=true FROM sessions AS login
+          WHERE login.token_hash=$1 AND login.kind='session' AND NOT login.revoked AND login.expires_at>clock_timestamp()
+          AND candidate.principal_id=login.principal_id AND candidate.kind='session'`, [tokenHash]);
+      } else await tx.query('UPDATE sessions SET revoked=true WHERE token_hash=$1', [tokenHash]);
       return null;
     });
   }
@@ -292,6 +316,6 @@ export function createSpaces(storage: OwnedStorage, options: { sessionLifetimeMs
     for (const row of rows) learningTargetSchema.parse(row.target);
     await storage.read('SELECT a.principal_id FROM accounts a JOIN memberships m ON m.principal_id=a.principal_id');
   }
-  return { personal, readPersonal, verifyPassword, schoolSpace, createMember, setMembership, setMemberPermission, hasMemberPermission, login, authenticate, authorize, account, lookup, bindMember, resolveBinding,
+  return { personal, readPersonal, verifyPassword, schoolSpace, createMember, setMembership, setMemberPermission, hasMemberPermission, login, authenticate, authorize, account, lookup, schoolSession, activeSchoolSessions, bindMember, resolveBinding,
     logout, authenticateConnection, readConnection, authorizeConnection, beginConnection, approveConnection, exchangeConnection, revokeConnection, adminRevokeConnection, validate };
 }

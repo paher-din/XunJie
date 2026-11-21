@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { test } from 'node:test';
 import { StorageError } from '@xunjie/storage';
 import { createLearningQuery } from '../dist/learning-data/learning-query.js';
+import { fixedPdf } from '../../../apps/server/tests/fixtures/pdf-material.mjs';
 
 function fixture() {
   const identity = { environmentId: randomUUID(), spaceId: randomUUID(), principalId: randomUUID(), kind: 'personal', name: '学生' };
@@ -60,6 +61,88 @@ test('a missing conversation owner is reported as unavailable instead of an auth
   const page = await f.query.searchLearning({ query: '历史', kinds: ['conversation'] });
   assert.deepEqual(page.items, []);
   assert.deepEqual(page.unavailable, [{ sourceId: 'local-personal', kind: 'conversation', code: 'not-configured' }]);
+});
+
+test('course material references fix the original owner, old release and exact text range', async () => {
+  const f = fixture(), courseId = randomUUID(), taskId = randomUUID(), releaseId = randomUUID();
+  const materialId = randomUUID(), bytes = Buffer.from('前缀固定讲义后缀');
+  const sha256 = createHash('sha256').update(bytes).digest('hex');
+  const material = { materialId, title: '原版讲义', mediaType: 'text/plain', sha256 };
+  const release = { courseId, taskId, releaseId, taskTitle: '排序', courseName: '课程', contentDigest: 'a'.repeat(64),
+    materials: [material], helpPolicy: { version: 1, questions: 'allowed', scope: 'course' } };
+  let revoked = false;
+  f.source.courses = { owner: { ...f.source.target, serviceId: randomUUID() },
+    async listCourses() { return { courses: [{ courseId, name: '课程', tasks: [{ taskId, title: '排序', summary: '',
+      releases: [{ releaseId, contentDigest: release.contentDigest, objectives: ['排序'], publishedAt: '2026-11-13T00:00:00.000Z' }] }] }] }; },
+    async readRelease(actor, id) {
+      assert.deepEqual(actor, f.source.identity);
+      assert.equal(id, releaseId);
+      if (revoked) throw new StorageError('forbidden');
+      return release;
+    },
+    async readMaterial(actor, id, objectId) {
+      assert.deepEqual(actor, f.source.identity);
+      assert.equal(id, releaseId);
+      assert.equal(objectId, materialId);
+      return { ...material, contentBase64: bytes.toString('base64') };
+    },
+  };
+  const result = await f.query.searchLearning({ query: '原版讲义', kinds: ['course-material'] });
+  assert.equal(result.items.length, 1);
+  const { reference } = result.items[0];
+  assert.equal(reference.releaseId, releaseId);
+  assert.equal(reference.version, sha256);
+  assert.deepEqual(reference.owner, f.source.courses.owner);
+  const detail = await f.query.readLearning({ reference, range: { offset: 2, length: 4 } });
+  assert.equal(detail.text, '固定讲义');
+  await assert.rejects(f.query.readLearning({ reference: { ...reference, version: 'new-version' } }), { code: 'conflict' });
+  revoked = true;
+  await assert.rejects(f.query.readLearning({ reference }), { code: 'forbidden' });
+});
+
+test('course PDF materials remain searchable by fixed release identity and require a page for reading', async () => {
+  const f = fixture(), courseId = randomUUID(), taskId = randomUUID(), releaseId = randomUUID();
+  const materialId = randomUUID(), bytes = fixedPdf();
+  const receipts = new Map();
+  const query = createLearningQuery({ sources: async () => [f.source], pdfReadingReceipt: async (id, fingerprint, write) => {
+    if (write) receipts.set(id, fingerprint);
+    return receipts.get(id) === fingerprint;
+  } });
+  const sha256 = createHash('sha256').update(bytes).digest('hex');
+  const material = { materialId, title: '原版 PDF 讲义', mediaType: 'application/pdf', sha256 };
+  const release = { courseId, taskId, releaseId, taskTitle: '排序', courseName: '课程', contentDigest: 'b'.repeat(64),
+    materials: [material], helpPolicy: { version: 1, questions: 'allowed', scope: 'course' } };
+  let revoked = false;
+  f.source.courses = { owner: { ...f.source.target, serviceId: randomUUID() },
+    async listCourses() { return { courses: [{ courseId, name: '课程', tasks: [{ taskId, title: '排序', summary: '',
+      releases: [{ releaseId, contentDigest: release.contentDigest, objectives: ['排序'], publishedAt: '2026-11-13T00:00:00.000Z' }] }] }] }; },
+    async readRelease() { if (revoked) throw new StorageError('forbidden'); return release; },
+    async readMaterial() { return { ...material, contentBase64: bytes.toString('base64') }; },
+  };
+  const page = await query.searchLearning({ query: 'PDF', kinds: ['course-material'] });
+  assert.equal(page.items.length, 1);
+  const { reference } = page.items[0];
+  const detail = await query.readLearning({ reference, range: { offset: 0, length: 500 } });
+  assert.deepEqual(JSON.parse(detail.text), { releaseId, materialId, title: material.title,
+    mediaType: material.mediaType, sha256 });
+  assert.deepEqual(detail.missing, ['pdf-page-required']);
+  const fixed = await query.readLearning({ reference, page: 2 });
+  assert.match(fixed.text, /37 volts/);
+  assert.equal(fixed.pdf.documentId, materialId);
+  assert.equal(fixed.pdf.documentSha256, sha256);
+  assert.equal(fixed.pdf.page, 2);
+  const replay = { reference, page: 2, readingId: fixed.pdf.readingId, range: fixed.pdf.range };
+  const partial = await query.readLearning({ reference, page: 2, range: { offset: 2, length: 4 } });
+  assert.deepEqual(partial.pdf.range, { offset: 2, length: 4 });
+  await assert.rejects(query.readLearning({ reference, page: 2, readingId: partial.pdf.readingId,
+    range: { offset: 2, length: 5 } }), { code: 'missing' });
+  assert.equal((await query.readLearning({ reference, page: 2, readingId: partial.pdf.readingId,
+    range: partial.pdf.range })).text, partial.text);
+  assert.deepEqual(await query.readLearning(replay), fixed);
+  await assert.rejects(query.readLearning({ ...replay, page: 1 }), { code: 'missing' });
+  assert.deepEqual((await query.readLearning({ reference, page: 3 })).missing, ['pdf-out-of-range']);
+  revoked = true;
+  await assert.rejects(query.readLearning(replay), { code: 'forbidden' });
 });
 
 test('search reads work versions, paged experiment records, courses and dialogue only through their owner ports', async () => {

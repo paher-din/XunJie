@@ -1,16 +1,16 @@
 // A resumable observation process: inspect its progress/PID; never restart an alive 900-second run after a tool timeout.
-import {existsSync,appendFileSync,readFileSync,writeFileSync,renameSync,statSync} from 'node:fs';
+import {existsSync,appendFileSync,readFileSync,writeFileSync,statSync} from 'node:fs';
 import {resolve,join} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {randomUUID} from 'node:crypto';
 import {setTimeout as delay} from 'node:timers/promises';
 import {privateJson,ensurePrivateDirectory} from '../xj-dev/src/enrollment-protocol.mjs';
+import {writeJsonAtomic} from '../xj-dev/src/state.mjs';
 import {publishFrozen} from '../xj-dev/src/package-transfer.mjs';
 import {CliError} from '../xj-dev/src/envelope.mjs';
 import {routes} from './capacity-metrics.mjs';
 import {client,httpsTransport,prepareProject,resumeProject,editAndSave,snapshot,submit,reviewAndResume,check,hash,CapacityFailure} from './capacity-workflow.mjs';
 
-function jsonFile(file,value){const temporary=file+'.tmp';writeFileSync(temporary,JSON.stringify(value,null,2)+'\n',{mode:0o600});renameSync(temporary,file);}
 function transferFailure(error){
   // CliError is already the transfer tool's safe contract. Messages, recovery, native errors and URLs stay private.
   return error instanceof CliError&&['transfer','enrollment','repro','lock'].includes(error.stage)&&typeof error.code==='string'&&/^[A-Z][A-Z0-9_]{0,79}$/.test(error.code)
@@ -50,9 +50,9 @@ export async function runCapacity(config,{transportFactory=httpsTransport,publis
       steadyAt:steadyAt?new Date(steadyAt).toISOString():null,elapsedSeconds:steadyAt?(Date.now()-steadyAt)/1000:0,counts,
       models:modelResults,transfers,branchResults,actors:project?.states.map(s=>({actor:s.label,iterations:s.iterations,submissions:s.submissions,feedback:s.feedback,replays:s.replays})),
       ...persistent,...(hasFatal?fatalFailure(fatal):{})};
-    jsonFile(marker,value);
+    writeJsonAtomic(marker,value);
     if(config.ownerProgress){const previous=JSON.parse(readFileSync(config.ownerProgress,'utf8'));
-      jsonFile(config.ownerProgress,{...previous,updatedAt:new Date().toISOString(),activeRun:value,
+      writeJsonAtomic(config.ownerProgress,{...previous,updatedAt:new Date().toISOString(),activeRun:value,
         liveCommands:[...(previous.liveCommands??[]).filter(item=>item.kind!=='capacity-load'),{kind:'capacity-load',pid:process.pid,runFile:marker,phase}]});}
   }
   function fail(error){
@@ -96,7 +96,7 @@ export async function runCapacity(config,{transportFactory=httpsTransport,publis
     phase='prepare-own-project';progress();
     project=config.previousAuditFile?await resumeProject(teacher.client,students,config.courseId,runId,privateJson(config.previousAuditFile)):
       await prepareProject(teacher.client,students,config.courseId,runId,{reusePublishedActivity:config.reusePublishedActivity===true});
-    jsonFile(join(directory,'project.json'),{runId,courseId:project.courseId,generation:project.generation,blueprintId:project.blueprintId,activityId:project.activityId,projectSource:project.projectSource,
+    writeJsonAtomic(join(directory,'project.json'),{runId,courseId:project.courseId,generation:project.generation,blueprintId:project.blueprintId,activityId:project.activityId,projectSource:project.projectSource,
       actors:project.states.map(s=>({actor:s.label,assignmentId:s.assignmentId,attemptId:s.attemptId,
         baseDocumentVersion:s.baseDocumentVersion??0,baseSaves:s.baseSaves??0,baseSubmissions:s.baseSubmissions??0,baseFeedback:s.baseFeedback??0}))});
     steadyAt=Date.now();const end=steadyAt+config.seconds*1000;phase='steady-load';progress();event({phase,minimumSeconds:config.seconds});
@@ -180,7 +180,7 @@ export async function runCapacity(config,{transportFactory=httpsTransport,publis
         baseDocumentVersion:state.baseDocumentVersion??0,baseSaves:state.baseSaves??0,baseSubmissions:state.baseSubmissions??0,baseFeedback:state.baseFeedback??0,
         finalFileBytes:Buffer.byteLength(file.text),state:final.attempt.status});
     }
-    jsonFile(join(directory,'write-audit.json'),{source:'actual API readback, exact hashes/version, idempotent command replay, immutable submitted artifact',actors:audits});
+    writeJsonAtomic(join(directory,'write-audit.json'),{source:'actual API readback, exact hashes/version, idempotent command replay, immutable submitted artifact',actors:audits});
     check(Date.now()-steadyAt>=900_000&&modelResults.length===2&&transfers.length===2&&counts.non2xx===0,'CAPACITY_ACCEPTANCE_INCOMPLETE');
     const acceptance={businessRequestsAllSuccessful:counts.non2xx===0,realModelsPassed:modelResults.every(result=>result.success&&result.exactOK),
       realUploadsPassed:transfers.length===2&&transfers.every(result=>result.state==='published')};

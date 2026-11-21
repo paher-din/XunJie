@@ -51,7 +51,7 @@ test('persistent database target validation rejects relative, existing, missing 
   assert.throws(() => openApplicationDatabase(join(directory, 'missing.sqlite')), /existing/);
   const real = mkdtempSync(join(realpathSync(tmpdir()), 'xunjie-persistent-real-'));
   const link = join(directory, 'linked');
-  symlinkSync(real, link);
+  symlinkSync(real, link, process.platform === 'win32' ? 'junction' : 'dir');
   assert.throws(() => createApplicationDatabase(join(link, 'xunjie.sqlite'), 'digital-logic-application'), /directory/);
   assert.throws(() => openApplicationDatabase(join(directory, 'xunjie.sqlite', 'nested')), /directory/);
   // Ancestor symlinks are the caller's environment (macOS /var→/private/var, symlinked home): only the final

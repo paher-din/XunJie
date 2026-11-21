@@ -1,9 +1,12 @@
 import { z } from 'zod';
 import { StorageError } from '@xunjie/storage';
-import { agentInputSchema, agentQuestionResponseSchema } from '@xunjie/contracts/agent-runtime';
+import { agentEventSchema, agentInputSchema, agentQuestionResponseSchema, type AgentEvent,
+  type AgentToolResult, type AgentTurn } from '@xunjie/contracts/agent-runtime';
+import { modelToolProgressSchema } from '@xunjie/contracts/model-connections';
 import { agentSessionSchema, createAgentSessionSchema, updateAgentSessionSchema,
   type AgentSession, type CreateAgentSession, type UpdateAgentSession } from '@xunjie/contracts/agent-sessions';
-import { agentInputControlSchema, type AgentSessionPort, type BrowserAgentSessionCall } from '@xunjie/contracts/agent-service';
+import { agentInputControlSchema, agentSessionSnapshotSchema, type AgentSessionPort,
+  type AgentSessionSnapshot, type BrowserAgentSessionCall } from '@xunjie/contracts/agent-service';
 import { createAgentSessionService, createBrowserAgentSessionCall } from '@xunjie/agents/transport/session-service';
 import { learningTargetSchema, type LearningTarget, type SpaceIdentity } from '@xunjie/contracts/spaces';
 import type { SessionMaterials } from '@xunjie/agents/capabilities/documents/index';
@@ -25,9 +28,63 @@ export interface SessionHttpPort {
   skillDescription?(identity: SpaceIdentity, sessionId: string, reference: { skillId: string; version: number }): Promise<string>;
   skills?(identity: SpaceIdentity, sessionId: string): Promise<SessionSkillsPort>;
 }
+/** Separate host-only read port; it is never part of the student agent-sessions route. */
+export interface SessionInspectionPort {
+  inspect(identity: SpaceIdentity, sessionId: string, target: { attemptId?: string; turnId?: string; stepId?: string }): Promise<unknown>;
+}
 const control = z.object({ requestId: z.uuid() }).strict();
 const workspace = z.object({ activityId: z.uuid(), target: learningTargetSchema }).strict();
 const record = z.record(z.string(), z.unknown());
+
+function browserToolResult(result: AgentToolResult | null): AgentToolResult | null {
+  if (!result) return null;
+  if (result.kind === 'completed') return { kind: 'completed', outcome: result.outcome,
+    summary: result.outcome === 'success' ? '已完成' : '未能完成' };
+  if (result.kind === 'accepted') return { kind: 'accepted', taskId: result.taskId, summary: '已受理' };
+  return { kind: result.kind, reason: '' };
+}
+
+/** Browser recovery sees progress and identity, never kernel assembly, source tracing or metering. */
+function browserSessionSnapshot(value: unknown): AgentSessionSnapshot {
+  const snapshot = agentSessionSnapshotSchema.parse(value);
+  return agentSessionSnapshotSchema.parse({ ...snapshot, automaticWakeBlocked: null,
+    turns: snapshot.turns.map(browserTurn),
+    steps: snapshot.steps.map(step => ({ ...step, snapshot: {} })),
+    attempts: snapshot.attempts.map(attempt => ({ ...attempt, requestRef: null, responseRef: null,
+      usage: { state: 'unknown' as const }, reserved: { inputTokens: 0, outputTokens: 0 }, error: null })),
+    toolCalls: snapshot.toolCalls.map(call => ({ ...call, nativeCallId: 'browser-hidden',
+      input: {}, result: browserToolResult(call.result) })),
+    notifications: snapshot.notifications.map(notification => ({ ...notification, summary: '', resultRef: null })) });
+}
+function browserTurn(turn: AgentTurn): AgentTurn {
+  return { ...turn, ownerInstanceId: 'browser-hidden', reason: browserTurnReason(turn.reason) };
+}
+/** Keep only the status categories the student UI already renders. */
+function browserTurnReason(reason: string) {
+  return ['budget-exhausted', 'budget_exhausted', 'input-budget-exhausted', 'output-budget-exhausted',
+    'context-capacity-exceeded', 'context-capacity-preflight', 'deadline-exceeded', 'cancelled'].includes(reason)
+    ? reason : '';
+}
+
+/** Only events consumed by the formal UI projection survive. A cursor keeps pagination moving. */
+function browserEvents(value: unknown): AgentEvent[] {
+  const events = z.array(agentEventSchema).parse(value), projected: AgentEvent[] = [];
+  for (const event of events) {
+    if (event.kind === 'tool-prepared') {
+      const body = z.object({ turnId: z.uuid(), stepId: z.uuid(), toolCallId: z.uuid(), callId: z.string() })
+        .safeParse(event.body);
+      if (body.success) projected.push({ ...event, body: body.data });
+    } else if (event.kind === 'model-progress') {
+      const body = z.object({ turnId: z.uuid(), stepId: z.uuid(), attemptId: z.uuid(),
+        revision: z.number().int().positive(), tools: z.array(modelToolProgressSchema).max(8).optional() })
+        .safeParse(event.body);
+      if (body.success) projected.push({ ...event, body: body.data });
+    }
+  }
+  const last = events.at(-1);
+  if (last && projected.at(-1)?.seq !== last.seq) projected.push({ ...last, kind: 'browser-cursor', body: {} });
+  return projected;
+}
 
 /** Authentication and deployment routing remain with the HTTP host. */
 export async function routeAgentSessions(host: SessionHttpPort, identity: SpaceIdentity, route: string,
@@ -102,7 +159,27 @@ export async function routeAgentSessions(host: SessionHttpPort, identity: SpaceI
     if (current.deleted) throw new StorageError('missing');
     if (current.archived && ['submit', 'answerQuestion', 'continueSession', 'inputControl'].includes(operation)) throw new StorageError('conflict');
   } });
-  return service(call);
+  const result = await service(call);
+  if (parts[2] === 'snapshots') return browserSessionSnapshot(result);
+  if (parts[2] === 'events') return browserEvents(result);
+  if (call.operation === 'turn' || call.operation === 'stop' || call.operation === 'continueSession')
+    return browserTurn(result as AgentTurn);
+  return result;
+}
+
+/** Authenticated host-only technical inspection. The student agent-sessions routes never call this. */
+export async function routeAgentInspection(host: SessionInspectionPort, identity: SpaceIdentity, route: string,
+  method: string, search = '', contractVersion: unknown = undefined): Promise<unknown> {
+  if (contractVersion !== '3') throw new StorageError('incompatible');
+  if (method !== 'GET') throw new StorageError('missing');
+  const match = /^agent-inspections\/([0-9a-f-]{36})$/.exec(route);
+  if (!match) throw new StorageError('missing');
+  const query = new URLSearchParams(search), target: { attemptId?: string; turnId?: string; stepId?: string } = {};
+  for (const key of ['attemptId', 'turnId', 'stepId'] as const) {
+    const value = query.get(key);
+    if (value !== null) target[key] = z.uuid().parse(value);
+  }
+  return host.inspect(identity, match[1]!, target);
 }
 
 /** Scope is fixed by the authenticated directory; request bodies cannot choose another owner. */

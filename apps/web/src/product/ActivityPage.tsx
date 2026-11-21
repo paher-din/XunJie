@@ -1,18 +1,19 @@
 import { ChatViewport, BackToBottom } from '@xunjie/ui/chat'
+import * as Dialog from '@radix-ui/react-dialog'
 import { useConversationScroll } from './conversation-scroll'
-import { useCallback, useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref, type RefObject } from 'react'
-import { GuidancePresentation } from '@xunjie/ui/workspace'
+import { useCallback, useEffect, useImperativeHandle, useRef, useState, useSyncExternalStore, type ReactNode, type Ref, type RefObject } from 'react'
 import { toast } from '@xunjie/ui/feedback'
 import { StatusChip } from '@xunjie/ui/foundation'
-import { SideDock, TaskInfo } from '@xunjie/ui/workspace'
+import { GuidancePresentation, SideDock, TaskInfo } from '@xunjie/ui/workspace'
 import { courseReleaseSchema } from '@xunjie/contracts/courses'
-import type { LearningActivity } from '@xunjie/contracts/learning-data'
+import { workFileSchema, type LearningActivity } from '@xunjie/contracts/learning-data'
 import { Icon, IconText } from '../icons'
 import { CenterToolArea, type ToolKey, type ToolSpec, type CenterToolAreaHandle } from '../components/workspace/CenterToolArea'
-import { questionReferenceInputSchema, questionReferenceSchema, questionReferenceSourceId, questionReferenceSourceSchema } from '@xunjie/contracts/question-drafts'
+import { questionReferenceInputSchema, questionReferenceSchema, questionReferenceRangeSchema, questionReferenceSourceId, questionReferenceSourceSchema } from '@xunjie/contracts/question-drafts'
 import { executionQuerySchema } from '@xunjie/contracts/execution'
 import { componentStateName } from '@xunjie/contracts/components'
-import type { TeachingToolLocator } from './TeachingToolRecords'
+import type { TeachingToolLocator, TeachingToolRecordView } from './TeachingToolRecords'
+import type { CitationRecord } from '@xunjie/ui/chat'
 import { ComponentView } from '../component-host/ComponentView'
 import { useActivitySession } from './ActivitySession'
 import { WorkspacePopover } from '../components/workspace/WorkspacePopover'
@@ -35,6 +36,8 @@ import { ArtifactCard } from '../teaching-artifacts/ArtifactCard'
 import { PersonalProjectPlan, usePersonalProject } from './PersonalProjectPlan'
 import { ActivitySubmission } from './ActivitySubmission'
 import { formatDeadline } from '../lib/tasks'
+import { experimentReference, type ExperimentReference } from './experiment-reference'
+import { toolResultData } from './workspace-conversation'
 
 // The center already supports injected named tool bodies; PDF shares its existing tab/layout lifecycle.
 const PDF_TOOL = 'component:__pdf-materials__' as const
@@ -77,12 +80,14 @@ import { RuntimeTool, type ComponentResultLocation } from './RuntimeTool'
 
 /** The existing workspace container consumes the reliable session; it owns only layout and focus. */
 export function ActivityPage({ activity, spaceKey, namespace, authorized, nativeAvailable, workspaceRef, busy, onBack, onStatus, onRefresh,
-  onModels, details, courseResources, account, requestedArtifactId, selection, taskInfoEntryRef, taskProgress }: {
+  onModels, onAskHome, details, courseResources, account, requestedArtifactId, requestedExperiment, selection, taskInfoEntryRef, taskProgress }: {
   activity: LearningActivity; spaceKey: string; namespace: string; authorized: boolean; nativeAvailable: boolean
   workspaceRef: RefObject<ActivityWorkspaceHandle | null>; busy: boolean
   onBack: () => void; onStatus: () => void; onRefresh: () => void
   onModels?: () => void; selection: ModelSelectionController
+  onAskHome?: (reference: ExperimentReference) => void | Promise<void>
   requestedArtifactId?: string | null
+  requestedExperiment?: { requestId: string; bindingKey: string } | undefined
   taskInfoEntryRef?: Ref<HTMLButtonElement>
   taskProgress?: { percent: number; done: boolean }
   details: ReactNode; account: ReactNode
@@ -112,8 +117,16 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
   const conversationScroll = useConversationScroll()
   const ask = useRef<HTMLButtonElement>(null)
   const { workspace, draft, actions, execution, sessions, agent, agentSessionError, retryAgentSession } = useActivitySession()
+  const executionState = useSyncExternalStore(execution.subscribe, execution.snapshot)
+  const latestExperiment = executionState.records.find(record => record.action.protocolVersion === 3
+    && record.query.statusKnowledge === 'confirmed' && record.query.state === 'succeeded' && !!record.query.output)
+  const latestExperimentReference = latestExperiment ? experimentReference(activity, latestExperiment) : null
   const root = useRef<HTMLDivElement>(null)
-  const [tool, setTool] = useState<ToolKey>('design')
+  const requestedRun = requestedExperiment?.requestId, requestedBinding = requestedExperiment?.bindingKey
+  const experimentTool = requestedBinding && requestedRun && /^[0-9a-f-]{36}$/i.test(requestedRun)
+    && activity.course?.components?.some(item => item.key === requestedBinding)
+    ? `component:${requestedBinding}` as const : undefined
+  const [tool, setTool] = useState<ToolKey>(experimentTool ?? 'design')
   const resourceTitle = course ? '课程材料' : activity.references.length ? '学习链接' : null
   const [coursePdfOpen, setCoursePdfOpen] = useState(false)
   const [selectedResource, setResourceSection] = useState<'course' | 'pdf' | 'notes'>(resourceTitle ? 'course' : 'pdf')
@@ -127,11 +140,17 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
     center.current?.openGenTab(artifactId)
   }
   const [workLocation, setWorkLocation] = useState<{ objectId: string }>()
+  const [fixedWork, setFixedWork] = useState<{ name: string; version: string; text: string } | null>(null)
   const [componentLocation, setComponentLocation] = useState<ComponentResultLocation & { key: string }>()
   const readOnly = workspace.isReadOnly()
   const sending = useRef<Promise<void> | null>(null)
   const scope = workspaceScope(namespace, activity)
   const [layoutReady, setLayoutReady] = useState(false)
+  useEffect(() => {
+    if (!authorized || !experimentTool || !requestedRun || !requestedBinding) return
+    setComponentLocation({ key: requestedBinding, requestId: requestedRun, token: requestedRun })
+    setTool(experimentTool)
+  }, [authorized, experimentTool, requestedRun, requestedBinding])
   useEffect(() => {
     const taskId = namespace + ':' + activity.activityId
     includeCenterTab(taskId, PDF_TOOL)
@@ -239,9 +258,21 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
     }
     const objectId = fixed?.kind === 'work' ? fixed.objectId : record.name === 'read_work' ? record.arguments.objectId : null
     const contentId = fixed?.kind === 'work' ? fixed.contentId : record.arguments.contentId
-    if (typeof objectId === 'string') {
+    if (typeof objectId === 'string' && typeof contentId === 'string') {
       const file = workspace.snapshot().files.find(item => item.objectId === objectId)
-      if (!file || file.contentId !== contentId) return { ok: false, reason: '来源已变化或不可用，保留的是本次使用的固定原文。' }
+      const range = questionReferenceRangeSchema.safeParse(record.basis.range ?? (reference.success ? reference.data.range : null))
+      if (!file || file.contentId !== contentId || range.success && range.data.kind === 'text') {
+        try {
+          const original = workFileSchema.parse(await learningRequest(activity, spaceKey, namespace,
+            `workspaces/${activity.activityId}/contents/${encodeURIComponent(contentId)}`))
+          if (original.objectId !== objectId || original.contentId !== contentId || original.encoding === 'base64')
+            return { ok: false, reason: '这份作品的固定版本当前不可显示。' }
+          const text = range.success && range.data.kind === 'text'
+            ? original.value.slice(range.data.start, range.data.end) : original.value
+          setFixedWork({ name: original.name, version: contentId, text })
+          return { ok: true }
+        } catch { return { ok: false, reason: '这份作品的固定版本当前不可读取。' } }
+      }
       await workspace.leave(); setWorkLocation({ objectId }); setTool('design')
       return focusLocation(root.current, `[data-work-object-id="${CSS.escape(objectId)}"][data-work-content-id="${CSS.escape(String(contentId))}"]`)
     }
@@ -282,7 +313,8 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
         && questionReferenceSourceId(reference.data.source) === questionReferenceSourceId(fixed)
         && reference.data.source.materialSha256 === fixed.materialSha256
         ? { ...reference.data.range, copy: reference.data.copy } : undefined
-      return courseMaterials.locate(fixed, range)
+      const citedRange = questionReferenceRangeSchema.safeParse(record.basis.range)
+      return courseMaterials.locate(fixed, range ?? (citedRange.success && citedRange.data.kind === 'text' ? citedRange.data : undefined))
     }
     if (fixed?.kind === 'course-field') {
       if (fixed.releaseId !== activity.course?.releaseId) return { ok: false, reason: '材料版本已变化，固定副本仍保留。' }
@@ -291,6 +323,47 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
       return focusLocation(root.current, '[data-course-requirements]')
     }
     return { ok: false, reason: '原来源当前无法定位，固定依据和结果仍保留。' }
+  }
+  const openCitation = async (item: CitationRecord) => {
+    const source = item.citation.source
+    if (source.kind === 'tool-call') {
+      const toolCallId = typeof source.toolCallId === 'string' ? source.toolCallId : null
+      const tool = toolCallId ? agent?.conversation?.tools.find(candidate => candidate.toolCallId === toolCallId) : undefined
+      if (!tool) { toast.error('原工具记录在当前会话中不可用。'); return }
+      const data = toolResultData(tool)
+      const file = data?.file && typeof data.file === 'object' && !Array.isArray(data.file)
+        ? data.file as Record<string, unknown> : null
+      const reference = data?.reference && typeof data.reference === 'object' && !Array.isArray(data.reference)
+        ? data.reference as Record<string, unknown> : null
+      const resultSource = data?.source && typeof data.source === 'object' && !Array.isArray(data.source)
+        ? data.source as Record<string, unknown> : null
+      const query = data?.query && typeof data.query === 'object' && !Array.isArray(data.query)
+        ? data.query as Record<string, unknown> : null
+      const view: TeachingToolRecordView = { commandId: tool.toolCallId, runId: tool.turnId, name: tool.name,
+        state: tool.state === 'closed' ? 'settled' : tool.state === 'started' ? 'dispatching' : 'prepared',
+        outcome: tool.state === 'closed' ? 'completed' : null, result: data,
+        feedback: '', arguments: file && typeof file.objectId === 'string' && typeof file.contentId === 'string'
+          ? { objectId: file.objectId, contentId: file.contentId } : {},
+        basis: { ...(reference ? { reference } : {}), ...(resultSource ? { source: resultSource } : {}) },
+        source: typeof query?.requestId === 'string' ? { label: item.citation.label, requestId: query.requestId,
+          ...(typeof query.contentId === 'string' ? { contentId: query.contentId } : {}) } : null }
+      const result = await locateTool(view)
+      if (!result.ok) toast.error(result.reason)
+      return
+    }
+    const name = source.kind === 'work' ? 'read_work'
+      : source.kind === 'component' ? 'read_result'
+        : source.kind === 'personal-material' ? 'read_personal_material' : 'read_reference'
+    const view: TeachingToolRecordView = { commandId: item.citation.citationId, runId: item.turnId,
+      name, state: 'settled', outcome: 'completed', result: { source }, feedback: '',
+      arguments: source.kind === 'work' ? { objectId: source.objectId, contentId: source.contentId } : {},
+      basis: { source, range: item.citation.range }, source: source.kind === 'component'
+        ? { label: item.citation.label, ...(typeof source.requestId === 'string' ? { requestId: source.requestId } : {}),
+          ...(typeof source.bindingKey === 'string' ? { componentKey: source.bindingKey } : {}) }
+        : source.kind === 'personal-material' && typeof source.requestId === 'string'
+          ? { label: item.citation.label, requestId: source.requestId } : null }
+    const result = await locateTool(view)
+    if (!result.ok) toast.error(result.reason)
   }
   const tools: ToolSpec[] = [{ key: 'design', label: '作品', icon: 'code-square' },
     { key: PDF_TOOL, label: '学习资料', icon: 'file-text' },
@@ -375,6 +448,8 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
         {detailsEntry}
         <button ref={ask} type="button" className="ws-btn ghost" aria-label={references.open ? '问题与引用' : '打开对话'}
           aria-expanded={references.open} onClick={() => references.setOpen(!references.open)}><IconText name="chat-round-dots">询问 Agent</IconText></button>
+        {latestExperimentReference && onAskHome && <button type="button" className="ws-btn ghost"
+          onClick={() => void onAskHome(latestExperimentReference)}><IconText name="chat-round-dots">到主页追问</IconText></button>}
         <WorkspacePopover label="活动" icon="menu-dots">
           <p>{activity.status === 'closed' ? '活动已关闭，可随时重新开始。' : '继续围绕这个目标学习。'}</p>
           <button type="button" className="ws-btn ghost" disabled={busy || readOnly} onClick={onStatus}>{activity.status === 'closed' ? '重新开始活动' : '关闭活动'}</button>
@@ -394,6 +469,7 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
         {project.error && <p role="alert">项目清单暂时无法读取。<button type="button" onClick={() => void project.retry()}>重试</button></p>}
       </aside>}
       {layoutReady && <CenterToolArea ref={center} taskId={namespace + ':' + activity.activityId} tools={tools} toolBodies={toolBodies}
+        {...(experimentTool ? { initialTool: experimentTool } : {})}
         genCards={artifacts.entries.flatMap(entry => entry.revision ? [{ cardId: entry.artifact.artifactId, title: entry.artifact.title,
           taskId: activity.activityId, claimSim: false, srcdoc: entry.revision.payload.html, version: entry.revision.version, collectedAt: entry.artifact.createdAt }] : [])}
         onGenTabsChange={ids => {
@@ -416,7 +492,7 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
         <ChatViewport scrollerRef={conversationScroll.scroller} onScroll={conversationScroll.onScroll} onJump={conversationScroll.onJump}
           busy={conversationActive} phase={conversationActive ? 'streaming' : undefined} padSuggestions={false} queued={false}>
         <ActivityConversation activity={activity} spaceKey={spaceKey} namespace={namespace} onModels={onModels}
-          onActiveChange={setConversationActive} onLocateTool={locateTool}
+          onActiveChange={setConversationActive} onLocateTool={locateTool} onOpenCitation={openCitation}
           focusQuestionId={focusQuestionId} onQuestionFocused={questionFocused} artifacts={artifacts} onOpenArtifact={openArtifact} />
         {agentSessionError && <p role="alert">{agentSessionError}<button type="button" onClick={retryAgentSession}>重新打开对话</button></p>}
         </ChatViewport>
@@ -438,6 +514,17 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
         </section> }} />}
     </div>
     <SelectionToolbar />
+    <Dialog.Root open={!!fixedWork} onOpenChange={open => { if (!open) setFixedWork(null) }}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="xj-confirm-overlay" />
+        <Dialog.Content className="xj-confirm-dialog activity-submission-dialog">
+          <Dialog.Title className="xj-confirm-title">{fixedWork?.name}</Dialog.Title>
+          <Dialog.Description className="xj-confirm-description">固定作品版本 {fixedWork?.version.slice(0, 8)}</Dialog.Description>
+          <pre className="teaching-tool-excerpt">{fixedWork?.text}</pre>
+          <Dialog.Close className="ws-btn">关闭</Dialog.Close>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
     {!references.open && pendingQuestion && <GuidancePresentation item={{ id: pendingQuestion.questionId, content: { kind: 'text', text: waitText }, target: () => ask.current,
       actions: [{ id: 'respond', label: '回应 Agent', primary: true }] }} onAction={() => { references.setOpen(true); setFocusQuestionId(pendingQuestion.questionId) }} />}
 

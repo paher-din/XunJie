@@ -21,7 +21,14 @@ export const DATA_EXCLUSIONS = ['sessions', 'login_attempt_windows', 'jobs', 'wo
   'personal models and conversations', 'browser state', 'machine identity', 'original credentials'];
 
 export function databaseDriver(teachingDir) {
-  return createRequire(join(teachingDir, 'package.json'))('better-sqlite3');
+  const appsDir = dirname(teachingDir);
+  const worktree = dirname(appsDir);
+  // The receiver must prepare its own workspace. Node's bare package lookup
+  // would keep walking into the parent repository or the user's global paths.
+  const installed = [teachingDir, appsDir, worktree].map(dir => join(dir, 'node_modules', 'better-sqlite3'))
+    .find(path => existsSync(path));
+  if (!installed) throw Object.assign(new Error('better-sqlite3 is missing from the receiver workspace'), { code: 'MODULE_NOT_FOUND' });
+  return createRequire(join(teachingDir, 'package.json'))(installed);
 }
 export async function schemaFingerprint(teachingDir, scratch) {
   // Test the locally installed native dependency before importing application

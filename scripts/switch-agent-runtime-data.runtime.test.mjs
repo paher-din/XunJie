@@ -275,11 +275,12 @@ test('an installed service 1..9 agent owner upgrades instead of failing as incom
   const upgradedBinding = await provisionStorage({ admin: pg.admin, owner, password, migrations: agentServiceMigrations });
   const upgraded = await openStorage({ binding: upgradedBinding, backend, migrations: agentServiceMigrations }); handles.push(upgraded);
   const journal = (await upgraded.read('SELECT version,name,applied_at FROM _storage_migrations ORDER BY version')).rows;
-  assert.deepEqual(journal.map(row => row.version), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  assert.deepEqual(journal.map(row => row.version), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
   assert.equal(journal[8].name, 'agent-turn-loop');
-  assert.equal(journal[9].name, 'agent-session-transport-v2');
+  assert.equal(journal[9].name, 'attempt-owned-tool-calls');
+  assert.equal(journal[10].name, 'agent-session-transport-v2');
   // The published tail keeps its original application time; only its version is displaced.
-  assert.equal(new Date(journal[9].applied_at).toISOString(), new Date(before[8].applied_at).toISOString());
+  assert.equal(new Date(journal[10].applied_at).toISOString(), new Date(before[8].applied_at).toISOString());
   await validateAgentRuntime(upgraded);
   assert.equal(Number((await upgraded.read("SELECT count(*) AS total FROM agent_chunk_transfers WHERE source_key='published'")).rows[0].total), 1);
   assert.equal(Number((await upgraded.read("SELECT count(*) AS total FROM agent_chunk_parts WHERE source_key='published'")).rows[0].total), 1);

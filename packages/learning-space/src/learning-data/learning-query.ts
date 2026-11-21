@@ -1,13 +1,17 @@
 import { createHash } from 'node:crypto';
 import { StorageError } from '@xunjie/storage';
+import { operationId } from '@xunjie/storage/identity';
 import type { LearningTarget, SpaceIdentity } from '@xunjie/contracts/spaces';
 import { canonicalValue } from '@xunjie/contracts/execution';
 import { learningPageSchema, learningReadSchema, learningSearchSchema,
   learningProvenanceSchema, learningCourseProvenanceSchema, type LearningProvenance,
   type LearningReference, type LearningPage, type LearningDetail, type LearningItem } from '@xunjie/contracts/student-learning';
 import type { createLearningData } from './index.js';
-import { courseCatalogSchema, type CourseRelease } from '@xunjie/contracts/courses';
+import { courseCatalogSchema, type CourseMaterialContent, type CourseRelease } from '@xunjie/contracts/courses';
 import type { createPersonalProjects } from './personal-projects.js';
+import { executionReveal, projectExecutionRecord } from './execution-visibility.js';
+import type { ExecutionRecord } from '@xunjie/contracts/execution-records';
+import { renderPdf } from '../pdf-engine/index.js';
 
 type LearningOwner = ReturnType<typeof createLearningData>;
 export interface LearningQuerySource {
@@ -17,10 +21,12 @@ export interface LearningQuerySource {
   target: LearningTarget;
   learning: Pick<LearningOwner, 'list' | 'open'> & {
     works?: Pick<LearningOwner['works'], 'read' | 'content'>;
-    executionRecords?: Pick<LearningOwner['executionRecords'], 'history' | 'read'>;
+    executionRecords?: Pick<LearningOwner['executionRecords'], 'history' | 'read'> &
+      Partial<Pick<LearningOwner['executionRecords'], 'wasDisplayed'>>;
   };
   courses?: { owner: LearningTarget; listCourses(identity: SpaceIdentity): Promise<unknown>;
-    readRelease(identity: SpaceIdentity, releaseId: string): Promise<CourseRelease> };
+    readRelease(identity: SpaceIdentity, releaseId: string): Promise<CourseRelease>;
+    readMaterial?(identity: SpaceIdentity, releaseId: string, materialId: string): Promise<CourseMaterialContent> };
   personalProjects?: Pick<ReturnType<typeof createPersonalProjects>, 'list' | 'read'>;
   ownerConversationRead?: OwnerConversationRead;
 }
@@ -46,6 +52,7 @@ export interface LearningQuerySourceResult {
 }
 export interface LearningQueryHost {
   sources(): Promise<readonly LearningQuerySource[] | LearningQuerySourceResult>;
+  pdfReadingReceipt?(readingId: string, fingerprint: string, write: boolean): Promise<boolean>;
 }
 export const learningObjectVersion = (value: unknown) => createHash('sha256').update(JSON.stringify(canonicalValue(value))).digest('hex');
 const subject = (identity: Omit<SpaceIdentity, 'name'>) => [identity.environmentId, identity.spaceId, identity.principalId, identity.kind];
@@ -95,6 +102,16 @@ export function createLearningQuery(host: LearningQueryHost) {
   function item(ref: LearningReference, title: string, text: string, missing: string[] = [], provenance?: LearningProvenance): LearningItem {
     return { reference: provenance ? { ...ref, provenanceDigest: learningObjectVersion(provenance) } : ref,
       ...(provenance ? { provenance } : {}), title: title.slice(0, 300), excerpt: text.slice(0, 500), dueAt: null, missing };
+  }
+  async function recordProjection(source: LearningQuerySource, activity: Awaited<ReturnType<LearningOwner['open']>>,
+    record: Record<string, unknown>) {
+    const fixed = record as unknown as ExecutionRecord;
+    const wasDisplayed = source.learning.executionRecords?.wasDisplayed;
+    const reveal = await executionReveal({ activity, record: fixed,
+      works: source.learning.works, readRecord: requestId =>
+        source.learning.executionRecords!.read(source.identity, activity.activityId, requestId),
+      ...(wasDisplayed ? { wasDisplayed: record => wasDisplayed(source.identity, activity.activityId, record) } : {}) });
+    return projectExecutionRecord(fixed, reveal);
   }
   async function collect(kinds: readonly LearningReference['kind'][], query?: string): Promise<{ items: LearningItem[]; unavailable: LearningPage['unavailable'] }> {
     const current = await currentSources();
@@ -147,13 +164,16 @@ export function createLearningQuery(host: LearningQueryHost) {
             for (const file of works.files) add(reference(source, 'work', file.objectId, file.contentId, source.target, activity.activityId), file.name, file.value, [], provenance);
           });
           if (kinds.includes('record') && source.learning.executionRecords) await attempt(source, 'record', async () => {
-            await pages(cursor => source.learning.executionRecords!.history(source.identity, activity.activityId, cursor), record =>
+            await pages(cursor => source.learning.executionRecords!.history(source.identity, activity.activityId, cursor), async record => {
+              const projected = await recordProjection(source, activity, record as unknown as Record<string, unknown>);
               add(reference(source, 'record', record.requestId, learningObjectVersion(record), source.target, activity.activityId),
-                `${activity.goal} · 实验记录`, JSON.stringify(record), record.result ? [] : ['execution-result'], provenance));
+                `${activity.goal} · 实验记录`, projected.text,
+                [...(record.result ? [] : ['execution-result']), ...projected.missing], provenance);
+            });
           });
         }
       });
-      if (kinds.includes('course') && source.courses) await attempt(source, 'course', async () => {
+      if ((kinds.includes('course') || kinds.includes('course-material')) && source.courses) await attempt(source, 'course', async () => {
         const catalog = courseCatalogSchema.parse(await source.courses!.listCourses(source.identity));
         for (const course of catalog.courses) for (const task of course.tasks) for (const release of task.releases) {
           const fixed = await source.courses!.readRelease(source.identity, release.releaseId);
@@ -162,6 +182,11 @@ export function createLearningQuery(host: LearningQueryHost) {
           const provenance = { course: courseConstraints(fixed) };
           add(reference(source, 'course', release.releaseId, release.contentDigest, source.courses!.owner),
             `${course.name} · ${task.title}`, JSON.stringify({ title: task.title, release, provenance }), ['deadline'], provenance);
+          if (source.courses!.readMaterial) for (const material of fixed.materials) {
+            if (!readableCourseMaterial(material.mediaType)) continue;
+            add({ ...reference(source, 'course-material', material.materialId, material.sha256, source.courses!.owner),
+              releaseId: fixed.releaseId }, material.title, `${course.name} · ${task.title}`, [], provenance);
+          }
         }
       });
       if (kinds.includes('conversation') && source.ownerConversationRead) await attempt(source, 'conversation', async () => {
@@ -182,7 +207,7 @@ export function createLearningQuery(host: LearningQueryHost) {
   }
   async function searchLearning(value: unknown) {
     const input = learningSearchSchema.parse(value), result = await collect(input.kinds
-      ?? ['activity', 'course', 'personal-project', 'work', 'record', 'conversation'], input.query.toLocaleLowerCase());
+      ?? ['activity', 'course', 'course-material', 'personal-project', 'work', 'record', 'conversation'], input.query.toLocaleLowerCase());
     return page(result.items, result.unavailable, { offset: input.offset, limit: input.limit });
   }
   async function readLearning(value: unknown): Promise<LearningDetail> {
@@ -197,11 +222,14 @@ export function createLearningQuery(host: LearningQueryHost) {
       throw new StorageError('forbidden');
     }
     if (!equal(subject(source.identity), subject(ref.identity))) throw new StorageError('forbidden');
-    const owner = ref.kind === 'course' ? source.courses?.owner : ref.kind === 'conversation' ? source.ownerConversationRead?.owner : source.target;
+    const courseSource = ref.kind === 'course' || ref.kind === 'course-material';
+    const owner = courseSource ? source.courses?.owner : ref.kind === 'conversation' ? source.ownerConversationRead?.owner : source.target;
     // A conversation directory may contain several fixed Agents; compare its fresh entry owner after authorization.
     if (!owner || (ref.kind !== 'conversation' && !equal(owner, ref.owner))) throw new StorageError('forbidden');
     if (failure) throw new StorageError(failure.code as StorageError['code']);
     let data: unknown, version: string, missing: string[] = [], provenance: LearningProvenance | undefined;
+    let pdf: LearningDetail['pdf'];
+    if (input.page && ref.kind !== 'course-material') throw new StorageError('invalid');
     if (ref.kind === 'work' || ref.kind === 'record') {
       if (!ref.activityId) throw new StorageError('invalid');
       const activity = await openActivity(source, ref.activityId);
@@ -215,7 +243,9 @@ export function createLearningQuery(host: LearningQueryHost) {
         if (!source.learning.executionRecords) throw new StorageError('missing');
         const record = await source.learning.executionRecords.read(source.identity, ref.activityId, ref.objectId);
         if (!record) throw new StorageError('missing');
-        data = record; version = learningObjectVersion(record); missing = record.result ? [] : ['execution-result'];
+        const projected = await recordProjection(source, activity, record as unknown as Record<string, unknown>);
+        data = projected.value; version = learningObjectVersion(record);
+        missing = [...(record.result ? [] : ['execution-result']), ...projected.missing];
       }
     } else {
       if (ref.activityId) throw new StorageError('invalid');
@@ -229,6 +259,65 @@ export function createLearningQuery(host: LearningQueryHost) {
         if (course.releaseId !== ref.objectId) throw new StorageError('identity-conflict');
         provenance = { course: courseConstraints(course) };
         data = withoutSkills(course); version = course.contentDigest; missing = ['deadline'];
+      } else if (ref.kind === 'course-material') {
+        if (!ref.releaseId || !source.courses?.readMaterial) throw new StorageError('missing');
+        const fixed = await source.courses.readRelease(source.identity, ref.releaseId);
+        if (fixed.releaseId !== ref.releaseId) throw new StorageError('identity-conflict');
+        provenance = { course: courseConstraints(fixed) };
+        const material = fixed.materials.find(item => item.materialId === ref.objectId);
+        if (!material || !readableCourseMaterial(material.mediaType)) throw new StorageError('missing');
+        version = material.sha256;
+        if (version !== ref.version) throw new StorageError('conflict');
+        if (fixed.helpPolicy.questions === 'disabled') {
+          data = ''; missing = ['course-agent-help-disabled'];
+        } else {
+          const content = await source.courses.readMaterial(source.identity, ref.releaseId, material.materialId);
+          const bytes = Buffer.from(content.contentBase64, 'base64');
+          if (content.materialId !== material.materialId || content.sha256 !== version
+            || createHash('sha256').update(bytes).digest('hex') !== version) throw new StorageError('identity-conflict');
+          if (material.mediaType.toLowerCase().split(';')[0]?.trim() === 'application/pdf') {
+            if (input.page) {
+              const readingRange = (length: number) => ({ offset: input.range.offset, length });
+              const fingerprintFor = (range: { offset: number; length: number }) => learningObjectVersion({
+                identity: ref.identity, sourceId: ref.sourceId, owner: ref.owner, courseId: fixed.courseId,
+                releaseId: fixed.releaseId, releaseDigest: fixed.contentDigest, documentId: material.materialId,
+                documentSha256: version, page: input.page, range });
+              const readingIdFor = (fingerprint: string) => operationId('course-pdf-text:' + fingerprint);
+              if (input.readingId) {
+                const fingerprint = fingerprintFor(input.range);
+                if (input.readingId !== readingIdFor(fingerprint)
+                  || !await host.pdfReadingReceipt?.(input.readingId, fingerprint, false)) throw new StorageError('missing');
+              }
+              const [page] = await renderPdf(bytes, [input.page], null);
+              if (!page || page.state !== 'ready') {
+                data = ''; missing = ['pdf-' + (page?.state ?? 'failed')];
+              } else {
+                // Rendering can take time. Authorize again before recording or returning text.
+                const current = await source.courses.readRelease(source.identity, fixed.releaseId);
+                if (current.contentDigest !== fixed.contentDigest) throw new StorageError('identity-conflict');
+                data = page.text;
+                const length = Math.min(input.range.length, page.text.length - input.range.offset);
+                if (length > 0 && host.pdfReadingReceipt) {
+                  const range = readingRange(length);
+                  const fingerprint = fingerprintFor(range), readingId = readingIdFor(fingerprint);
+                  if (input.readingId && input.readingId !== readingId) throw new StorageError('missing');
+                  if (input.readingId || await host.pdfReadingReceipt(readingId, fingerprint, true)) {
+                    pdf = { readingId, documentId: material.materialId, documentSha256: version, page: input.page, range };
+                  }
+                }
+                if (!page.text) missing = ['pdf-no-native-text'];
+                else if (length <= 0) missing = ['pdf-range-out-of-range'];
+              }
+            } else {
+              data = JSON.stringify({ releaseId: fixed.releaseId, materialId: material.materialId,
+                title: material.title, mediaType: material.mediaType, sha256: version });
+              missing = ['pdf-page-required'];
+            }
+          } else {
+            if (input.page) throw new StorageError('invalid');
+            data = new TextDecoder().decode(bytes);
+          }
+        }
       } else if (ref.kind === 'personal-project') {
         if (!source.personalProjects) throw new StorageError('missing');
         data = await source.personalProjects.read(source.identity, ref.objectId); version = learningObjectVersion(data); missing = ['deadline'];
@@ -243,9 +332,14 @@ export function createLearningQuery(host: LearningQueryHost) {
     }
     if (version !== ref.version || ref.provenanceDigest && (!provenance || learningObjectVersion(provenance) !== ref.provenanceDigest))
       throw new StorageError('conflict');
-    const text = JSON.stringify(data), start = input.range.offset, end = Math.min(text.length, start + input.range.length);
-    return { reference: ref, ...(provenance ? { provenance } : {}), text: text.slice(start, end), range: { offset: start, length: Math.max(0, end - start),
+    const text = typeof data === 'string' ? data : JSON.stringify(data);
+    const start = input.range.offset, end = Math.min(text.length, start + input.range.length);
+    return { reference: ref, ...(provenance ? { provenance } : {}), ...(pdf ? { pdf } : {}), text: text.slice(start, end), range: { offset: start, length: Math.max(0, end - start),
       total: text.length, nextOffset: end < text.length ? end : null }, missing, role: 'source-data' };
   }
   return { listLearningTasks, searchLearning, readLearning };
+}
+
+function readableCourseMaterial(mediaType: string) {
+  return /^(?:text\/|application\/json(?:;|$)|application\/pdf(?:;|$))/i.test(mediaType.trim());
 }

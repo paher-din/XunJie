@@ -38,7 +38,7 @@ $acl = [IO.Directory]::GetAccessControl($env:XJ_BACKUP_DIRECTORY)
 $owner = $acl.GetOwner([Security.Principal.SecurityIdentifier]).Value
 if ($owner -ne $sid.Value -and $owner -ne $identity.Owner.Value) { throw 'owner' }
 $acl = New-Object Security.AccessControl.DirectorySecurity
-$acl.SetOwner($sid)
+if ($owner -ne $sid.Value) { $acl.SetOwner($sid) }
 $acl.SetAccessRuleProtection($true, $false)
 $acl.AddAccessRule((New-Object Security.AccessControl.FileSystemAccessRule($sid, 'FullControl', 'ContainerInherit, ObjectInherit', 'None', 'Allow')))
 [IO.Directory]::SetAccessControl($env:XJ_BACKUP_DIRECTORY, $acl)

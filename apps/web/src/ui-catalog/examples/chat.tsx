@@ -4,7 +4,7 @@ import {
   AgentTrace, AgentTraceItem, AgentRunStatus, AgentSkillRead, AgentThinking, ReferenceAttachment, AgentQuestion,
   ActionBar, AgentEmptyState, AgentMessage, AttachmentTile, BackToBottom, Block, Chars,
   ChatComposerDock, ChatError, ChatViewport, CodeBlock, ConceptBlock, ConceptCard, FailureCard,
-  GenCard, GenFailCard, GenLiveCard, Inline, ListBlock, Markdown, MessageRail, MessageTaskCard,
+  GenCard, GenFailCard, GenLiveCard, Inline, ListBlock, Markdown, MessageCitations, MessageRail, MessageTaskCard,
   PromptInput, PromptModelPicker, QueueNotice, QuizCard, StepsBlock, StopLine, TableBlock, TaskPicker,
   ThinkingSettled, ThinkTail, TurnAriaStatus, UserMessage, WaitTail, Waveform,
   type ChatMessageData, type ConceptCardData, type GenCardData, type GenHostFactory,
@@ -19,6 +19,7 @@ const agentSource = 'packages/ui/src/chat/AgentMessage.tsx'
 const sectionSource = 'packages/ui/src/chat/ConversationSections.tsx'
 const markdownSource = 'packages/ui/src/chat/Markdown.tsx'
 const genSource = 'packages/ui/src/chat/GenCard.tsx'
+const citationsSource = 'packages/ui/src/chat/MessageCitations.tsx'
 const image = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="160" height="100"><rect width="160" height="100" fill="#e6f0ff"/><text x="20" y="57" font-size="20" fill="#155e75">EXAMPLE</text></svg>')
 const wave = { rows: [{ name: 'CLK', clk: true }, { name: 'reset', segs: [[140, 0], [260, 1]] as [number, number][] }], highlight: [120, 200] as [number, number], markers: [140], labels: [{ x: 140, text: '示例复位' }] }
 const concept: ConceptCardData = { title: '示例：同步复位', points: ['先确认采样边沿。', '比较边沿前后的复位信号。'], note: '示例图中的高亮表示观察区间。', wave }
@@ -240,6 +241,24 @@ function GeneratedDemo({ part = 'card', mode = 'live' }: { part?: 'card' | 'live
 }
 function GenFailureDemo() { const [count, setCount] = useState(0); return <Frame><GenFailCard code="EXAMPLE_GENERATION_FAILED" onRetry={() => setCount(value => value + 1)} /><output>本地重试回调 {count} 次</output></Frame> }
 
+function CitationsDemo() {
+  const [opened, setOpened] = useState('')
+  const turnId = '11111111-1111-4111-8111-111111111111'
+  const stepId = '22222222-2222-4222-8222-222222222222'
+  return <Frame>
+    <MessageCitations citations={[
+      { citation: { citationId: '33333333-3333-4333-8333-333333333333', claim: 'v7 的进位由最高位相加产生。',
+        label: 'alu.sv', version: 'v7', range: null, digest: 'a'.repeat(64), materialId: 'M-demo',
+        source: { kind: 'work', objectId: '44444444-4444-4444-8444-444444444444', contentId: 'b'.repeat(64) } },
+        turnId, stepId },
+      { citation: { citationId: '55555555-5555-4555-8555-555555555555', claim: '实测输入与实际结果来自固定实验记录。',
+        label: '工作区实验', version: 'v1', range: { kind: 'execution-status' }, digest: 'c'.repeat(64),
+        materialId: 'M-experiment', source: { kind: 'experiment-reference', activityId: turnId } }, turnId, stepId },
+    ]} onOpen={value => setOpened(value.citation.label)} />
+    {opened && <output aria-live="polite">已请求打开：{opened}</output>}
+  </Frame>
+}
+
 function ActivityUiDemo({ kind = 'trace' }: { kind?: 'trace' | 'status' | 'reference' | 'question' }) {
   const [notice, setNotice] = useState(''), [mode, setMode] = useState<'choice' | 'text'>('choice')
   const [optionId, setOption] = useState(''), [text, setText] = useState(''), [submitted, setSubmitted] = useState(false)
@@ -259,6 +278,9 @@ function ActivityUiDemo({ kind = 'trace' }: { kind?: 'trace' | 'status' | 'refer
 }
 
 export const chatEntries: CatalogEntry[] = [
+  { id: 'message-citations', name: 'MessageCitations', description: '回答依据列表，保留固定来源并通过宿主回调打开。', importPath,
+    source: citationsSource, exampleSource, props: ['citations', 'onOpen'], dependencies: ['XunJie tokens'],
+    states: [{ id: 'interactive', name: '固定出处／打开回调', component: CitationsDemo, height: 360 }] },
   { id: 'agent-thinking', name: 'AgentThinking', description: '实时思考文字与完成后自动折叠。', importPath,
     source: 'packages/ui/src/chat/AgentThinking.tsx', exampleSource, props: ['text', 'active', 'truncated'], dependencies: ['Markdown', 'Collapsible', 'Spinner'],
     states: [{ id: 'active', name: '正在思考', component: () => <Frame><AgentThinking text="先核对问题中的已知条件，再比较可行的解法。" active /></Frame>, height: 350 },

@@ -10,7 +10,8 @@ import {
   type AgentStep, type AgentAttempt, type AgentToolCall, type AgentQuestion, type AgentNotification,
   type AgentToolResult, type AgentTurnBudget, type AgentQuestionResponse, type AgentDispatchPermit,
 } from '@xunjie/contracts/agent-runtime';
-import type { Facts, HistoryEntry, TaskTerminalFact, ToolEffectReference, GeneratedResponse } from './ports.js';
+import type { Facts, HistoryEntry, TaskTerminalFact, ToolEffectReference, GeneratedResponse,
+  RequestCapacity, TurnRuntime } from './ports.js';
 import { AgentError } from './errors.js';
 
 export const agentRuntimeMigrations: readonly Migration[] = [{ version: 1, name: 'independent-agent-sessions', sql: `
@@ -123,6 +124,9 @@ export const agentRuntimeMigrations: readonly Migration[] = [{ version: 1, name:
     operation text NOT NULL, input_digest text NOT NULL, body jsonb NOT NULL);
   CREATE TABLE agent_progress(attempt_id uuid NOT NULL REFERENCES agent_attempts(attempt_id), revision bigint NOT NULL CHECK(revision>0),
     body jsonb NOT NULL, event_id uuid NOT NULL UNIQUE REFERENCES agent_events(event_id), PRIMARY KEY(attempt_id,revision));
+` }, { version: 10, name: 'attempt-owned-tool-calls', sql: `
+  ALTER TABLE agent_tool_calls ADD COLUMN attempt_id uuid REFERENCES agent_attempts(attempt_id);
+  CREATE INDEX agent_tool_calls_attempt ON agent_tool_calls(attempt_id);
 ` }];
 
 type Row = Record<string, unknown>;
@@ -146,7 +150,8 @@ function attemptFromRow(row: Row): AgentAttempt {
     reserved: row.reserved, error: row.error ?? null, createdAt: iso(row.created_at), updatedAt: iso(row.updated_at) });
 }
 function toolCallFromRow(row: Row): AgentToolCall {
-  return agentToolCallSchema.parse({ toolCallId: row.tool_call_id, stepId: row.step_id, callIndex: Number(row.call_index),
+  return agentToolCallSchema.parse({ toolCallId: row.tool_call_id, stepId: row.step_id,
+    ...(row.attempt_id ? { attemptId: row.attempt_id } : {}), callIndex: Number(row.call_index),
     nativeCallId: row.native_call_id, name: row.name, input: facts(row.input), executionMode: row.execution_mode,
     state: row.state, result: row.result ?? null, taskId: row.task_id ?? null,
     createdAt: iso(row.created_at), updatedAt: iso(row.updated_at) });
@@ -178,6 +183,23 @@ export interface AgentSessionSnapshot {
 export interface TurnUsage { inputTokens: number; outputTokens: number; inputReserved: number; outputReserved: number; }
 const emptyUsage: TurnUsage = { inputTokens: 0, outputTokens: 0, inputReserved: 0, outputReserved: 0 };
 const codePointLength = (value: string) => Array.from(value).length;
+const ruleVersionSchema = z.object({ kind: z.enum(['platform', 'scene', 'course', 'output']),
+  id: z.string().min(1).max(300), version: z.union([z.string().max(300), z.number()]) }).strict();
+const turnRuleSetSchema = z.object({ formatVersion: z.literal(1), system: z.string().min(1).max(400_000),
+  digest: z.string().regex(/^[a-f0-9]{64}$/), versions: z.array(ruleVersionSchema).max(32) }).strict();
+const turnRuntimeSchema = z.object({ formatVersion: z.literal(1),
+  scenario: z.object({ id: z.string().min(1).max(200), version: z.number().int().positive() }).strict(),
+  model: z.object({ selectionVersion: z.number().int().nonnegative(), pinId: z.uuid(),
+    // The Gateway already validated the live connection. This frozen value is an internal
+    // snapshot consumed by the kernel; keep historical/test snapshots readable without
+    // pretending their partial projections are fresh public model facts.
+    connection: z.record(z.string(), z.json()), source: z.record(z.string(), z.json()) }).strict(),
+  rules: turnRuleSetSchema.optional(), createdAt: z.iso.datetime() }).strict();
+function turnRuntimeFromValue(value: unknown): TurnRuntime {
+  const parsed = turnRuntimeSchema.parse(value);
+  const { rules, ...rest } = parsed;
+  return { ...rest, ...(rules ? { rules } : {}) } as unknown as TurnRuntime;
+}
 /** The exact text a notification contributes to the model prompt, so its budget matches the prompt budget. */
 const factLineChars = (n: AgentNotification) => JSON.stringify({ taskId: n.taskId, taskVersion: n.taskVersion,
   status: n.terminalStatus, summary: n.summary, ...(n.resultRef ? { resultRef: n.resultRef } : {}) });
@@ -346,6 +368,7 @@ export function createAgentStore(storage: OwnedStorage, options: StoreOptions) {
         if (Array.isArray(state.answerInbox)) state.answerInbox = state.answerInbox.filter(answer =>
           !answer || typeof answer !== 'object' || Array.isArray(answer) || !retiredAnswers.has(String(answer.inputId)));
         delete state.segment; delete state.prefixDigest; delete state.compactionAdoption;
+        if (index < 0 && row.state !== 'pending') delete state.compactedEntries;
         turnId = await insertTurn(tx, sessionId, control.requestId, 'user', null);
         await tx.query('UPDATE agent_runtime_sessions SET state=$2,automatic_wake_blocked=NULL WHERE session_id=$1', [sessionId, state]);
         await appendEvent(tx, sessionId, 'turn-started', { turnId, trigger: 'user' });
@@ -405,6 +428,102 @@ export function createAgentStore(storage: OwnedStorage, options: StoreOptions) {
   }
   async function appendEventPublic(sessionId: string, kind: string, body: Record<string, unknown>) {
     return transition(sessionId, tx => appendEvent(tx, sessionId, kind, body));
+  }
+  async function turnRuntime(turnId: string): Promise<TurnRuntime | null> {
+    const { rows: [turn] } = await storage.read('SELECT session_id FROM agent_turns WHERE turn_id=$1', [turnId]);
+    if (!turn) return null;
+    const { rows: [row] } = await storage.read(`SELECT body FROM agent_events
+      WHERE session_id=$1 AND kind='turn-runtime-frozen' AND body->>'turnId'=$2
+      ORDER BY seq DESC LIMIT 1`, [turn.session_id, turnId]);
+    if (!row) return null;
+    const runtime = turnRuntimeFromValue((row.body as { runtime?: unknown }).runtime);
+    const { rows: [rulesRow] } = await storage.read(`SELECT body FROM agent_events
+      WHERE session_id=$1 AND kind='turn-rules-frozen' AND body->>'turnId'=$2
+      ORDER BY seq DESC LIMIT 1`, [turn.session_id, turnId]);
+    return rulesRow ? { ...runtime, rules: turnRuleSetSchema.parse((rulesRow.body as { rules?: unknown }).rules) }
+      : runtime;
+  }
+  async function saveTurnRuntime(turnId: string, runtime: TurnRuntime): Promise<TurnRuntime> {
+    const value = turnRuntimeFromValue(runtime);
+    const { rows: [turn] } = await storage.read('SELECT session_id FROM agent_turns WHERE turn_id=$1', [turnId]);
+    if (!turn) throw new StorageError('missing');
+    return transition(String(turn.session_id), async tx => {
+      await ownedTurn(tx, turnId);
+      const { rows: [prior] } = await tx.query(`SELECT body FROM agent_events
+        WHERE session_id=$1 AND kind='turn-runtime-frozen' AND body->>'turnId'=$2 ORDER BY seq LIMIT 1`,
+      [turn.session_id, turnId]);
+      if (prior) {
+        const saved = turnRuntimeFromValue((prior.body as { runtime?: unknown }).runtime);
+        if (canonicalDigest(saved) !== canonicalDigest(value)) throw new StorageError('identity-conflict');
+        return saved;
+      }
+      await appendEvent(tx, String(turn.session_id), 'turn-runtime-frozen', { turnId, runtime: value },
+        operationId('agent-turn-runtime:' + turnId));
+      return value;
+    });
+  }
+  async function saveTurnRules(turnId: string, rules: NonNullable<TurnRuntime['rules']>): Promise<NonNullable<TurnRuntime['rules']>> {
+    const value = turnRuleSetSchema.parse(rules);
+    const current = await turnRuntime(turnId);
+    if (!current) throw new StorageError('missing');
+    if (current.rules) {
+      if (canonicalDigest(current.rules) !== canonicalDigest(value)) throw new StorageError('identity-conflict');
+      return current.rules;
+    }
+    const { rows: [turn] } = await storage.read('SELECT session_id FROM agent_turns WHERE turn_id=$1', [turnId]);
+    if (!turn) throw new StorageError('missing');
+    await transition(String(turn.session_id), async tx => {
+      await ownedTurn(tx, turnId);
+      const { rows: [prior] } = await tx.query(`SELECT body FROM agent_events
+        WHERE session_id=$1 AND kind='turn-rules-frozen' AND body->>'turnId'=$2 ORDER BY seq LIMIT 1`,
+      [turn.session_id, turnId]);
+      if (prior) {
+        const saved = turnRuleSetSchema.parse((prior.body as { rules?: unknown }).rules);
+        if (canonicalDigest(saved) !== canonicalDigest(value)) throw new StorageError('identity-conflict');
+        return;
+      }
+      await appendEvent(tx, String(turn.session_id), 'turn-rules-frozen', { turnId, rules: value },
+        operationId('agent-turn-rules:' + turnId));
+    });
+    return value;
+  }
+  async function recordStepContext(stepId: string, context: Facts) {
+    const { rows: [step] } = await storage.read('SELECT s.turn_id,t.session_id FROM agent_steps s JOIN agent_turns t USING(turn_id) WHERE s.step_id=$1', [stepId]);
+    if (!step) throw new StorageError('missing');
+    return transition(String(step.session_id), async tx => {
+      await ownedTurn(tx, String(step.turn_id));
+      await tx.query(`UPDATE agent_steps SET snapshot=jsonb_set(snapshot,'{context}',$2::jsonb),
+        updated_at=clock_timestamp() WHERE step_id=$1`, [stepId, context]);
+    });
+  }
+  async function recordRequestCapacity(stepId: string, attemptId: string, capacity: RequestCapacity, requestRef: string, rebuilt = false) {
+    const { rows: [step] } = await storage.read('SELECT s.turn_id,t.session_id FROM agent_steps s JOIN agent_turns t USING(turn_id) WHERE s.step_id=$1', [stepId]);
+    if (!step) throw new StorageError('missing');
+    return transition(String(step.session_id), async tx => {
+      const turnId = String(step.turn_id);
+      await ownedTurn(tx, turnId);
+      const { rows: [attempt] } = await tx.query('SELECT reserved FROM agent_attempts WHERE step_id=$1 AND attempt_id=$2 FOR UPDATE', [stepId, attemptId]);
+      if (!attempt) throw new StorageError('missing');
+      const reserved = attempt.reserved as { inputTokens: number; outputTokens: number };
+      if (capacity.dispatchable) {
+        const usage = await usageOf(tx, turnId);
+        const budget = await budgetRow(tx, turnId);
+        const inputTokens = capacity.inputEstimateTokens;
+        const next = usage.inputTokens - reserved.inputTokens + inputTokens;
+        if (next > budget.maxInputTokens) throw new AgentError('input-budget-exhausted');
+        await tx.query('UPDATE agent_turns SET usage=$2, updated_at=clock_timestamp() WHERE turn_id=$1', [turnId, { ...usage, inputTokens: next }]);
+        await tx.query('UPDATE agent_attempts SET reserved=$2,usage=$3 WHERE attempt_id=$1',
+          [attemptId, { ...reserved, inputTokens }, { state: 'unknown', inputTokens, outputTokens: reserved.outputTokens }]);
+      }
+      await tx.query('UPDATE agent_attempts SET request_ref=$3 WHERE step_id=$1 AND attempt_id=$2', [stepId, attemptId, requestRef]);
+      await tx.query(`UPDATE agent_steps SET snapshot=snapshot || jsonb_build_object('requestCapacity', $2::jsonb,
+        'attemptCapacities', COALESCE(snapshot->'attemptCapacities', '{}'::jsonb) || jsonb_build_object($3::text,$2::jsonb),
+        'attemptContexts', COALESCE(snapshot->'attemptContexts', '{}'::jsonb) || jsonb_build_object($3::text,
+          CASE WHEN $4::boolean AND (snapshot->'context') ? 'rebuildMaterials'
+            THEN jsonb_set(snapshot->'context','{materials}',snapshot->'context'->'rebuildMaterials')
+            ELSE snapshot->'context' END)),
+        updated_at=clock_timestamp() WHERE step_id=$1`, [stepId, { ...capacity, attemptId }, attemptId, rebuilt]);
+    });
   }
 
   // ---- loop persistence ----
@@ -594,9 +713,9 @@ export function createAgentStore(storage: OwnedStorage, options: StoreOptions) {
       await tx.query("UPDATE agent_steps SET state='executing', updated_at=clock_timestamp() WHERE step_id=$1", [stepId]);
       for (let index = 0; index < toolCalls.length; index++) {
         const call = toolCalls[index]!;
-        await tx.query(`INSERT INTO agent_tool_calls(tool_call_id,step_id,call_index,native_call_id,name,input,execution_mode,state)
-          VALUES($1,$2,$3,$4,$5,$6,$7,'pending') ON CONFLICT(tool_call_id) DO NOTHING`,
-          [call.toolCallId, stepId, index, call.nativeCallId, call.name, call.input, call.executionMode]);
+        await tx.query(`INSERT INTO agent_tool_calls(tool_call_id,step_id,attempt_id,call_index,native_call_id,name,input,execution_mode,state)
+          VALUES($1,$2,$3,$4,$5,$6,$7,$8,'pending') ON CONFLICT(tool_call_id) DO NOTHING`,
+          [call.toolCallId, stepId, attemptId, index, call.nativeCallId, call.name, call.input, call.executionMode]);
       }
       await appendEvent(tx, sessionId, 'assistant', { turnId: step.turn_id, stepId, attemptId, text: response.text, resultRef: response.resultRef,
         ...(response.contextUsage ? { contextUsage: response.contextUsage } : {}) });
@@ -709,6 +828,13 @@ export function createAgentStore(storage: OwnedStorage, options: StoreOptions) {
     const { rows } = await storage.read('SELECT * FROM agent_steps WHERE turn_id=$1 ORDER BY step_no', [turnId]);
     return rows.map(stepFromRow);
   }
+  /** Completed Steps in a Session, across Turns. Attempt retries share one Step and count once. */
+  async function recentCompletedSteps(sessionId: string, limit = 2): Promise<AgentStep[]> {
+    const { rows } = await storage.read(`SELECT s.* FROM agent_steps s JOIN agent_turns t USING(turn_id)
+      WHERE t.session_id=$1 AND s.state='completed'
+      ORDER BY s.completed_at DESC NULLS LAST, s.step_id DESC LIMIT $2`, [sessionId, limit]);
+    return rows.map(stepFromRow);
+  }
   /** Adopted real inputs whose text the model has never seen in history (e.g. a failed first generate). */
   async function visibleInputs(sessionId: string, exclude: readonly string[]): Promise<{ id: string; version: number; text: string }[]> {
     const { rows } = await storage.read(`SELECT input_id, version, body FROM agent_inputs
@@ -734,16 +860,32 @@ export function createAgentStore(storage: OwnedStorage, options: StoreOptions) {
   async function toolResultsByNative(sessionId: string, nativeCallIds: readonly string[]): Promise<Map<string, AgentToolResult | null>> {
     const found = new Map<string, AgentToolResult | null>();
     for (const nativeCallId of nativeCallIds) {
-      const { rows: [row] } = await storage.read(`SELECT c.result FROM agent_tool_calls c
+      const { rows } = await storage.read(`SELECT c.result FROM agent_tool_calls c
         JOIN agent_steps s USING(step_id) JOIN agent_turns t USING(turn_id)
-        WHERE t.session_id=$1 AND c.native_call_id=$2 ORDER BY c.updated_at DESC LIMIT 1`, [sessionId, nativeCallId]);
-      if (row) found.set(nativeCallId, row.result ? agentToolResultSchema.parse(row.result) : null);
+        WHERE t.session_id=$1 AND c.native_call_id=$2 AND c.attempt_id IS NOT NULL
+        ORDER BY c.updated_at DESC LIMIT 2`, [sessionId, nativeCallId]);
+      // Native call IDs are provider-scoped and may repeat across Steps. Without a
+      // unique persisted owner, treating the newest row as the answer can settle the
+      // wrong Attempt after recovery. Force the provider to report an unknown result.
+      if (rows.length === 1) found.set(nativeCallId, rows[0]!.result ? agentToolResultSchema.parse(rows[0]!.result) : null);
+      else found.set(nativeCallId, null);
     }
     return found;
   }
   async function toolCallsOf(stepId: string): Promise<AgentToolCall[]> {
     const { rows } = await storage.read('SELECT * FROM agent_tool_calls WHERE step_id=$1 ORDER BY call_index', [stepId]);
     return rows.map(toolCallFromRow);
+  }
+  async function toolCallsForTurn(turnId: string): Promise<AgentToolCall[]> {
+    const { rows } = await storage.read(`SELECT c.* FROM agent_tool_calls c
+      JOIN agent_steps s USING(step_id) WHERE s.turn_id=$1 ORDER BY c.created_at,c.call_index`, [turnId]);
+    return rows.map(toolCallFromRow);
+  }
+  async function toolCallByNative(sessionId: string, nativeCallId: string): Promise<AgentToolCall | null> {
+    const { rows: [row] } = await storage.read(`SELECT c.* FROM agent_tool_calls c
+      JOIN agent_steps s USING(step_id) JOIN agent_turns t USING(turn_id)
+      WHERE t.session_id=$1 AND c.native_call_id=$2 ORDER BY c.updated_at DESC LIMIT 1`, [sessionId, nativeCallId]);
+    return row ? toolCallFromRow(row) : null;
   }
   async function attemptsOf(stepId: string): Promise<AgentAttempt[]> {
     const { rows } = await storage.read('SELECT * FROM agent_attempts WHERE step_id=$1 ORDER BY attempt_no', [stepId]);
@@ -996,8 +1138,9 @@ function answerText(presentation: Facts, answer: Facts): string {
     return result.result as string[];
   }
   return { storage, session, initialize, submitInput, request, continueSession, inputControl, turn, activeTurnOf, openPendingTurn, events, sessionSnapshot,
-    appendEvent: appendEventPublic, openStep, saveAttempt, finishAttempt, saveResponse, startToolCall, saveToolResult,
-    completeStep, finishTurn, budgetOf, stepsOf, compactionCount, workspaceInputs, visibleInputs, turnOriginInput, toolCallsOf, toolResultsByNative, attemptsOf, sessionState, setSessionState, recordProgress,
+    appendEvent: appendEventPublic, turnRuntime, saveTurnRuntime, saveTurnRules, recordStepContext, recordRequestCapacity,
+    openStep, saveAttempt, finishAttempt, saveResponse, startToolCall, saveToolResult,
+    completeStep, finishTurn, budgetOf, stepsOf, recentCompletedSteps, compactionCount, workspaceInputs, visibleInputs, turnOriginInput, toolCallsOf, toolCallsForTurn, toolCallByNative, toolResultsByNative, attemptsOf, sessionState, setSessionState, recordProgress,
     saveQuestion, question, answerQuestion, closeQuestion, registerNotification, notificationsOf,
     stopTurn, pendingCancellations, acknowledgeCancellation, requestCallCancellation, pendingCallCancellations,
     acknowledgeCallCancellation, recoverInterrupted, assertDispatch, ownerInstanceId };

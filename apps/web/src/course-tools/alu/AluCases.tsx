@@ -73,14 +73,13 @@ export function AluCaseEditor({ activity, binding, state, stateFile, records, en
   </section>
 }
 
-export function AluCaseResults({ activity, binding, state, records, fallbackRecord, suppressed, canWrite, writeState, selectState }: CaseProps & {
-  fallbackRecord?: ExecutionRecord; suppressed: boolean; selectState: WriteState
+export function AluCaseResults({ activity, binding, state, records, record, locatedRange, suppressed,
+  canWrite, writeState, selectState }: CaseProps & {
+  record?: ExecutionRecord; locatedRange?: ReferenceSnapshot['range']; suppressed: boolean; selectState: WriteState
 }) {
   const { execution, workspace } = useActivitySession(), references = useWorkspaceReferences()
   const works = useSyncExternalStore(workspace.subscribe, workspace.snapshot)
   const cases = records.filter(record => record.action.protocolVersion === 3 && aluCaseFromAction(record.action))
-  const selected = records.find(record => record.requestId === state.selectedCase)
-  const record = state.selectedCase ? selected : fallbackRecord
   const capture = record?.action.protocolVersion === 3 ? aluCaseFromAction(record.action) : null
   const observation = !!record && isAluObservationAction(record.action)
   const recordLabel = record ? `${record.action.execution.initiator.kind === 'agent' ? 'Agent 验证'
@@ -107,6 +106,7 @@ export function AluCaseResults({ activity, binding, state, records, fallbackReco
     pending.current?.resolve(unavailable)
     pending.current = null
     try {
+      if (suppressed) return unavailable
       const range = questionReferenceRangeSchema.parse({ ...reference.range, kind: reference.kind })
       if (range.kind !== 'semantic') return unavailable
       const normalized = normalizeSemanticRange(range)
@@ -130,9 +130,11 @@ export function AluCaseResults({ activity, binding, state, records, fallbackReco
         if (wave.signalIds.length > 64 || copy.signals.reduce((sum, signal) => sum + signal.changes.length, 0) > 4096) return unavailable
       }
       return await new Promise<LocateResult>(resolve => {
-        pending.current = { requestId: target.requestId, contentId: fresh.query.output!.contentId, typeId: normalized.typeId, noteFile, wave, resolve }
-        if (!selectState(previous => ({ ...previous, selectedCase: target.action.protocolVersion === 3 && aluCaseFromAction(target.action) ? target.requestId : '',
-          selectedObservation: target.requestId, selectedObservationRevision: -1, feedbackPolicy: 'live',
+        pending.current = { requestId: target.requestId, contentId: fresh.query.output!.contentId,
+          typeId: normalized.typeId, noteFile, wave, resolve }
+        if (!selectState(previous => ({ ...previous,
+          selectedCase: target.action.protocolVersion === 3 && aluCaseFromAction(target.action) ? target.requestId : '',
+          selectedObservation: target.requestId, selectedObservationRevision: -1,
           ...(wave ? { waveSelection: JSON.stringify({ requestId: target.requestId, range: wave }) } : {}) }), true)) {
           pending.current = null
           resolve(unavailable)
@@ -192,6 +194,7 @@ export function AluCaseResults({ activity, binding, state, records, fallbackReco
   }
   let selection: AluWaveRange | null = null
   try { const saved = JSON.parse(state.waveSelection); if (saved.requestId === record?.requestId) selection = saved.range } catch { /* No selection yet. */ }
+  if (record && locatedRange?.typeId === 'alu-waveform') selection = locatedRange.target as unknown as AluWaveRange
   const notes: { file: WorkFile; note: AluReflection }[] = []
   for (const file of works.files) if (file.mediaType === ALU_REFLECTION_MEDIA_TYPE) {
     try { notes.push({ file, note: parseAluReflectionFile(file) }) } catch { /* The original owner's error remains visible in workspace status. */ }
@@ -232,8 +235,8 @@ export function AluCaseResults({ activity, binding, state, records, fallbackReco
     })}
     <header className="alu-section-head"><h2>比较与解释</h2>
       {cases.length > 0 && <label>用例记录<SelectField label="用例记录" value={suppressed ? '' : state.selectedCase}
-        onChange={value => selectState(previous => ({ ...previous, selectedCase: value, caseRequestId: '',
-          selectedObservation: value, selectedObservationRevision: -1, feedbackPolicy: 'live' }))}
+        onChange={value => selectState(previous => ({ ...previous, selectedCase: value,
+          selectedObservation: value, selectedObservationRevision: -1 }))}
         options={[{ value: '', label: '当前观察' }, ...cases.map((item, index) => ({ value: item.requestId,
           label: `${cases.length - index} · ${new Date(item.createdAt).toLocaleTimeString('zh-CN')} · ${stateLabel(item.query)}` }))]} /></label>}
     </header>

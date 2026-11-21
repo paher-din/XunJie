@@ -10,13 +10,18 @@ export function appendHistory(history: HistoryEntry[], entries: HistoryEntry[]) 
 /** Only visible authorized text crosses a route. Provider-native IDs/signatures never enter this shape. */
 export function portableHistory(history: readonly HistoryEntry[]) {
   return history.flatMap(entry => {
-    const parts: { role: 'user' | 'assistant'; text: string }[] = [];
+    const parts: { role: 'user' | 'assistant'; text: string; entryId: string }[] = [];
     for (let start = 0; start < entry.text.length;) {
       let end = Math.min(start + 400_000, entry.text.length);
       if (end < entry.text.length && /[\uD800-\uDBFF]/.test(entry.text[end - 1]!)) end--;
-      parts.push({ role: entry.role, text: entry.text.slice(start, end) }); start = end;
+      parts.push({ role: entry.role, text: entry.text.slice(start, end), entryId: entry.id }); start = end;
     }
-    return parts.length ? parts : [{ role: entry.role, text: '' }];
+    return parts.length ? parts : [{ role: entry.role, text: '', entryId: entry.id }];
   });
 }
-export const historyDigest = (history: HistoryEntry[]) => canonicalDigest(history.map(({ id, version, text, role, images }) => ({ id, version, role, text, ...(images?.length ? { images } : {}) })));
+export const historyDigest = (history: HistoryEntry[]) => canonicalDigest(history.map(({ id, version, text, role, turnId, stepId,
+  kind, attemptId, nativeCallId, readback, feedbackCompressed, images, sources }) =>
+  ({ id, version, role, text, ...(turnId ? { turnId } : {}), ...(stepId ? { stepId } : {}), ...(kind ? { kind } : {}),
+    ...(attemptId ? { attemptId } : {}), ...(nativeCallId ? { nativeCallId } : {}), ...(readback ? { readback } : {}),
+    ...(feedbackCompressed ? { feedbackCompressed } : {}),
+    ...(images?.length ? { images } : {}), ...(sources?.length ? { sources } : {}) })));

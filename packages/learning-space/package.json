@@ -88,6 +88,10 @@
       "types": "./dist/learning-data/learning-query.d.ts",
       "import": "./dist/learning-data/learning-query.js"
     },
+    "./learning-data/execution-visibility": {
+      "types": "./dist/learning-data/execution-visibility.d.ts",
+      "import": "./dist/learning-data/execution-visibility.js"
+    },
     "./learning-data/personal-projects": {
       "types": "./dist/learning-data/personal-projects.d.ts",
       "import": "./dist/learning-data/personal-projects.js"

@@ -170,7 +170,8 @@ test('file backend rejects unsafe keys and symlinks without changing their targe
     }
   }
   await symlink(outside, join(root, 'escape'), process.platform === 'win32' ? 'junction' : 'dir');
-  await symlink(join(outside, 'victim'), join(root, 'shortcut'));
+  if (process.platform === 'win32') await symlink(outside, join(root, 'shortcut'), 'junction');
+  else await symlink(join(outside, 'victim'), join(root, 'shortcut'), 'file');
   for (const key of ['escape/victim', 'shortcut']) {
     await assert.rejects(backend.put(key, new Uint8Array([8])), { code: 'forbidden' });
     await assert.rejects(backend.get(key), { code: 'forbidden' });

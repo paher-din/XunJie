@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { teachingSkillLoadedSchema } from '@xunjie/contracts/agent-skills';
 import { agentConversationSchema, type AgentConversation, type AgentSessionPort } from '@xunjie/contracts/agent-service';
+import { agentCitationSchema } from '@xunjie/contracts/agent-citations';
+import { operationId } from '@xunjie/storage/identity';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import { importedAgentConversation } from './legacy-agent-history.js';
 
@@ -25,6 +27,10 @@ export function createAgentConversationProjection(runtime: Pick<AgentSessionPort
       const snapshot = await runtime.sessionSnapshot(identity, sessionId);
       const turns = new Map(snapshot.turns.map(turn => [turn.turnId, turn]));
       const steps = new Map(snapshot.steps.map(step => [step.stepId, step]));
+      // The final completed response of each Step is the only answer its citations may attach to.
+      const finalAttempts = new Map<string, string>();
+      for (const attempt of snapshot.attempts)
+        if (attempt.state === 'completed' && attempt.responseRef) finalAttempts.set(attempt.stepId, attempt.attemptId);
       const messages = new Map<string, Message>();
       const thinking = new Map<string, NonNullable<AgentConversation['thinking']>[number]>();
       const archiveEvent = events.find(event => event.kind === 'history-imported');
@@ -49,6 +55,9 @@ export function createAgentConversationProjection(runtime: Pick<AgentSessionPort
         messages.set(messageId, { messageId, turnId: input.turnId, inputId: input.inputId, role: 'user',
           text: input.input.text, createdAt: input.createdAt, state: 'settled', ...(edited.has(input.inputId) ? { editedAt: edited.get(input.inputId) } : {}) });
       }
+      const savedResponses = new Map<string, boolean>();
+      const answersByTurn = new Map<string, typeof snapshot.steps>();
+      const changedTools = new Set(events.filter(event => event.kind === 'tool-result').map(event => event.body.toolCallId));
       for (const event of events) {
         if (!['assistant', 'model-progress'].includes(event.kind)) continue;
         const body = event.body;
@@ -59,6 +68,15 @@ export function createAgentConversationProjection(runtime: Pick<AgentSessionPort
         const operation = String(body.attemptId);
         const priorThinking = thinking.get(operation);
         const step = steps.get(String(body.stepId));
+        if (event.kind === 'assistant' && step && finalAttempts.get(step.stepId) === operation && typeof body.text === 'string') {
+          const hasAnswer = !!body.text.trim();
+          savedResponses.set(step.stepId, hasAnswer);
+          if (hasAnswer) {
+            const answers = answersByTurn.get(step.turnId) ?? [];
+            answers.push(step);
+            answersByTurn.set(step.turnId, answers);
+          }
+        }
         const inputId = inputAt(eventTurnId, step?.createdAt ?? event.createdAt);
         const thinkingStepId = step?.stepId ?? priorThinking?.stepId;
         const thinkingStepNo = step?.stepNo ?? priorThinking?.stepNo;
@@ -80,17 +98,35 @@ export function createAgentConversationProjection(runtime: Pick<AgentSessionPort
         const prior = messages.get(messageId);
         const state = turn?.state === 'stopped' ? 'stopped' : turn?.state === 'failed' ? 'failed'
           : event.kind === 'model-progress' && turn?.state === 'active' ? 'streaming' : 'settled';
-        messages.set(messageId, { messageId, turnId, role: 'assistant', text: body.text,
-          createdAt: prior?.createdAt ?? event.createdAt, state });
+        messages.set(messageId, { messageId, turnId, ...(step ? { stepId: step.stepId } : {}), attemptId,
+          role: 'assistant', text: body.text, createdAt: prior?.createdAt ?? event.createdAt, state });
       }
       const tools: AgentConversation['tools'] = [...archive?.tools ?? []];
       const workspaces: AgentConversation['workspaces'] = [...archive?.workspaces ?? []];
+      const citations: NonNullable<AgentConversation['citations']> = [];
       for (const call of snapshot.toolCalls) {
         const step = steps.get(call.stepId);
         if (!step) continue;
         if (retiredAfter.has(step.turnId) && step.createdAt >= retiredAfter.get(step.turnId)!) continue;
         const inputId = inputAt(step.turnId, step.createdAt);
         const loaded = teachingSkillLoadedSchema.safeParse(record(record(call.result).data).loaded);
+        const cited = agentCitationSchema.safeParse(record(record(call.result).data).citation);
+        if (call.name === 'cite_source') {
+          if (!cited.success) continue;
+          // An incremental read may start after the citation Step or its answer. Refresh the
+          // projection when either changes so both the saved text and its attachment are visible.
+          if (after && (answersByTurn.has(step.turnId) || changedTools.has(call.toolCallId)))
+            return this.conversation(identity, sessionId);
+          // A tool-only model response can cite evidence for its following answer. Keep the
+          // original ToolCall, and bind its card to the first saved answer to the same input.
+          const reply = savedResponses.get(step.stepId) === false ? answersByTurn.get(step.turnId)?.find(candidate =>
+            candidate.stepNo > step.stepNo && inputAt(candidate.turnId, candidate.createdAt) === inputId) : undefined;
+          const stepId = reply?.stepId ?? step.stepId;
+          const attemptId = finalAttempts.get(stepId);
+          citations.push({ citation: cited.data, toolCallId: call.toolCallId, turnId: step.turnId, stepId,
+            ...(attemptId ? { attemptId } : {}), ...(inputId ? { inputId } : {}) });
+          continue;
+        }
         tools.push({ toolCallId: call.toolCallId, turnId: step.turnId, stepId: call.stepId,
           name: call.name, state: call.state, result: call.result, stepNo: step.stepNo, createdAt: call.createdAt,
           ...(inputId ? { inputId } : {}), ...(loaded.success ? { skill: loaded.data } : {}) });
@@ -99,13 +135,63 @@ export function createAgentConversationProjection(runtime: Pick<AgentSessionPort
         if (Object.keys(fixed).length) workspaces.push({ toolCallId: call.toolCallId, turnId: step.turnId,
           workspace: z.record(z.string(), z.json()).parse(fixed) });
       }
+      for (const event of events.filter(event => event.kind === 'inline-citations')) {
+        const body = record(event.body), step = steps.get(String(body.stepId));
+        if (!step || String(body.turnId) !== step.turnId) continue;
+        // Retired Turns drop every citation kind together: tool, inline and experiment-derived.
+        if (retiredAfter.has(step.turnId) && step.createdAt >= retiredAfter.get(step.turnId)!) continue;
+        const attemptId = uuid.safeParse(body.attemptId).success ? String(body.attemptId) : undefined;
+        const materials = Array.isArray(record(step.snapshot.context).materials)
+          ? (record(step.snapshot.context).materials as unknown[]).map(record) : [];
+        for (const value of Array.isArray(body.citations) ? body.citations.map(record) : []) {
+          const materialId = typeof value.materialId === 'string' ? value.materialId : '';
+          const claim = typeof value.claim === 'string' ? value.claim : '';
+          const material = materials.find(item => item.materialId === materialId);
+          if (!material || !claim || material.readState !== 'included' || material.citationAllowed !== true) continue;
+          const citation = agentCitationSchema.safeParse({ citationId: operationId('agent-inline-citation:' + event.seq + ':' + materialId),
+            claim, label: material.label, materialId, source: material.source, range: material.range,
+            version: material.version, digest: material.digest });
+          if (!citation.success) continue;
+          const inputId = inputAt(step.turnId, step.createdAt);
+          citations.push({ citation: citation.data, turnId: step.turnId, stepId: step.stepId,
+            ...(attemptId ? { attemptId } : {}), ...(inputId ? { inputId } : {}) });
+        }
+      }
+      if (snapshot.session.scenario === 'student-assistant') {
+        const experimentKey = (turnId: string, source: Record<string, unknown>) =>
+          source.kind === 'experiment-reference' ? turnId + ':' + String(source.executionRef) : null;
+        const cited = new Set(citations.map(item => experimentKey(item.turnId, item.citation.source)));
+        for (const attempt of snapshot.attempts) {
+          const step = steps.get(attempt.stepId);
+          if (!step || attempt.state !== 'completed' || !attempt.responseRef || step.state !== 'completed'
+            || turns.get(step.turnId)?.state !== 'completed') continue;
+          if (retiredAfter.has(step.turnId) && step.createdAt >= retiredAfter.get(step.turnId)!) continue;
+          const assembly = record(record(step.snapshot.attemptContexts)[attempt.attemptId]);
+          if (!Array.isArray(assembly.materials)) continue;
+          for (const material of assembly.materials.map(record)) {
+            const source = record(material.source), key = experimentKey(step.turnId, source);
+            if (!key || cited.has(key) || material.readState !== 'included' || material.citationAllowed !== true
+              || material.kind !== 'system-observation' || source.statusOnly !== false) continue;
+            const citation = agentCitationSchema.safeParse({ citationId: operationId('agent-experiment-evidence:' + key),
+              claim: '本轮读取的固定实验记录', label: material.label, materialId: material.materialId,
+              source, range: material.range, version: material.version, digest: material.digest });
+            if (!citation.success) continue;
+            const inputId = inputAt(step.turnId, step.createdAt);
+            citations.push({ citation: citation.data, turnId: step.turnId, stepId: step.stepId,
+              attemptId: attempt.attemptId, ...(inputId ? { inputId } : {}) });
+            cited.add(key);
+          }
+        }
+      }
+      const projectedCitations = after ? citations.filter(item => !item.toolCallId) : citations;
       return agentConversationSchema.parse({ sessionId, lastSeq: events.at(-1)?.seq ?? after,
         messages: [...messages.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.messageId.localeCompare(b.messageId)),
         turns: [...archive?.turns ?? [], ...snapshot.turns],
         inputs: [...archive?.inputs ?? [], ...snapshot.inputs.map(input => ({ inputId: input.inputId, turnId: input.turnId, version: input.version,
           state: input.state, text: input.input.text, createdAt: input.createdAt, canEdit: input.inputId === editableInput }))],
         questions: snapshot.questions.filter(question => !retired.has(question.turnId)), tools, workspaces,
-        thinking: [...thinking.values()], ...(contextUsage ? { contextUsage } : {}), ...(after === 0 ? { reset: true } : {}) });
+        thinking: [...thinking.values()], ...(projectedCitations.length ? { citations: projectedCitations } : {}),
+        ...(contextUsage ? { contextUsage } : {}), ...(after === 0 ? { reset: true } : {}) });
     },
   };
 }

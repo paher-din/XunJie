@@ -23,6 +23,7 @@ import { materialSearchInputSchema, personalMaterialReadSchema } from '@xunjie/c
 import { artifactPublishInput } from './tools-artifacts.js';
 import { teachingPublicArguments } from '../help-policy.js';
 import { json } from '../../capabilities/tool-support.js';
+import { allowsExecutionResult, authorizedPredictionPhase, resultsHidden } from '../../teaching-stage.js';
 
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(canonicalValue(value))).digest('hex');
 function fail(code: 'forbidden' | 'missing' | 'invalid' | 'identity-conflict' | 'corrupt' | 'unavailable'): never { throw new StorageError(code); }
@@ -30,7 +31,8 @@ const freeze = <T>(value: T): T => {
   if (value && typeof value === 'object') { Object.freeze(value); for (const child of Object.values(value)) freeze(child); }
   return value;
 };
-type HostScope = TeachingToolScope & { assertDispatch?: () => Promise<void>; device?: ExecutionDevice };
+type HostScope = TeachingToolScope & { assertDispatch?: () => Promise<void>; device?: ExecutionDevice;
+  resultView?: 'full' | 'status-only' };
 type Courses = Pick<ReturnType<typeof createCourses>, 'referenceText' | 'verifyComponentReference' | 'readComponent' | 'readComponentAlgorithm'>;
 /** Compatibility name for hosts already consuming this exported port. */
 export type TeachingToolsLearning = TeachingToolData;
@@ -75,13 +77,22 @@ export function createTeachingTools(options: {
     return { identity: scope.identity, activityId: scope.activity.activityId, ...(scope.sessionId ? { sessionId: scope.sessionId } : {}), runId: scope.runId,
       stepId: scope.stepId, snapshotId: scope.snapshotId, segmentId: scope.segmentId ?? null, input: scope.input, course: scope.activity.course ?? null };
   }
-  function approvedFile(scope: TeachingToolScope, objectId: string, contentId: string) {
-    const files = [...scope.input.works, ...scope.input.draft.bases];
-    const file = files.find(item => item.objectId === objectId && item.contentId === contentId);
-    const ref = scope.input.draft.references.find(item => item.source.kind === 'work'
-      && item.source.objectId === objectId && item.source.contentId === contentId);
-    if (!file && !ref) fail('forbidden');
-    return { file, ref };
+  async function approvedFile(scope: TeachingToolScope, objectId: string, contentId: string,
+    requestedOffset: unknown) {
+    for (const action of [...(scope.acceptedWorkActions ?? [scope.input])].reverse()) {
+      const file = [...action.works, ...action.draft.bases].find(item => item.objectId === objectId && item.contentId === contentId);
+      const refs = action.draft.references.filter(item => item.source.kind === 'work'
+        && item.source.objectId === objectId && item.source.contentId === contentId);
+      if (refs.length) {
+        const ref = refs.find(item => item.range.kind !== 'semantic'
+          && (typeof requestedOffset !== 'number' || (requestedOffset >= item.range.start && requestedOffset < item.range.end)));
+        if (!ref || ref.range.kind === 'semantic') continue;
+        await learning().drafts.verifyReferences(scope.identity, scope.activity.activityId, { references: [ref], bases: [] });
+        return { file, ref, range: ref.range };
+      }
+      if (file && file.kind !== 'state') return { file, ref: undefined, range: undefined };
+    }
+    fail('forbidden');
   }
   async function originalQuery(scope: TeachingToolScope, command: TeachingPreparedTool, requestId: string, approved = false) {
     const ref = scope.input.draft.references.find(item => item.source.kind === 'component'
@@ -124,7 +135,7 @@ export function createTeachingTools(options: {
         detail = { artifact, revision: await learning().artifacts.revision(scope.identity, scope.activity.activityId, artifactId, revisionId) };
       }
     } else if (name === 'read_work') {
-      const { file, ref } = approvedFile(scope, String(args.objectId), String(args.contentId));
+      const { file, ref } = await approvedFile(scope, String(args.objectId), String(args.contentId), args.offset);
       const version = await learning().works.inspectVersion(scope.identity, scope.activity.activityId,
         { objectId: String(args.objectId), contentId: String(args.contentId) });
       const sourceState = !version.retained ? 'missing' : version.isCurrent ? 'fixed-current'
@@ -324,11 +335,15 @@ export function createTeachingTools(options: {
       && query.statusKnowledge === 'confirmed') state = 'completed';
     if (command.effect === 'read') state = 'completed';
     if (command.name === 'execution_stop' && query.statusKnowledge === 'confirmed' && isTerminalExecutionState(query.state)) state = 'completed';
-    const artifact = query.output ? await learning().executions.artifact(scope.identity, scope.activity.activityId, query.requestId) : null;
+    const statusOnly = (scope as HostScope).resultView === 'status-only';
+    const visibleQuery = statusOnly ? { requestId: query.requestId, executionRef: query.executionRef, inputDigest: query.inputDigest,
+      state: query.state, statusKnowledge: query.statusKnowledge, stopRequested: query.stopRequested } : query;
+    const artifact = !statusOnly && query.output ? await learning().executions.artifact(scope.identity, scope.activity.activityId, query.requestId) : null;
     const cancelled = command.name !== 'execution_stop' && (control ? receipt?.status === 'cancelled'
       : query.statusKnowledge === 'confirmed' && query.state === 'cancelled');
-    return outcome(command, state, { query, ...(cancelled ? { cancelled: true } : {}), ...(receipt ? { controlReceipt: receipt } : {}), ...(artifact ? { artifact } : {}),
-      ...(control ? { operationObservation: query.session?.observations.find(item => item.controlId === control.controlId) ?? null,
+    return outcome(command, state, { query: visibleQuery, ...(statusOnly ? { resultWithheld: 'prediction-required' } : {}),
+      ...(cancelled ? { cancelled: true } : {}), ...(!statusOnly && receipt ? { controlReceipt: receipt } : {}), ...(artifact ? { artifact } : {}),
+      ...(!statusOnly && control ? { operationObservation: query.session?.observations.find(item => item.controlId === control.controlId) ?? null,
         controlState: { expectedSeq: control.expectedSeq, appliedSeq: query.session?.appliedSeq ?? null,
           effectApplied: receipt?.status === 'applied' ? true : receipt?.status === 'rejected' || receipt?.status === 'cancelled' ? false : null } } : {}),
       operationCompleted: state === 'completed' && !cancelled, sessionOngoing: !!query.session && ['running', 'paused'].includes(query.state) }, '原执行结果', query);
@@ -376,7 +391,7 @@ export function createTeachingTools(options: {
       return pdfReadingOutcome(scope, options.models, command, reading);
     }
     if (command.name === 'read_work') {
-      const { file, ref } = approvedFile(scope, String(a.objectId), String(a.contentId));
+      const { file, ref, range } = await approvedFile(scope, String(a.objectId), String(a.contentId), a.offset);
       let stored;
       try { stored = await learning().works.content(scope.identity, id, String(a.contentId)); }
       catch (error) {
@@ -406,14 +421,16 @@ export function createTeachingTools(options: {
           mediaType: content.mediaType, sourceState: 'unavailable', code: 'unsupported-media-type' }, content.name);
       // Text works may legitimately be much larger than the result schema. Return a bounded range of the
       // same immutable version and a real continuation handle instead of letting the whole Turn fail.
-      const total = content.value.length, offset = typeof a.offset === 'number' ? a.offset : 0;
+      const total = Math.min(content.value.length, range?.end ?? content.value.length);
+      const offset = typeof a.offset === 'number' ? a.offset : range?.start ?? 0;
       const length = typeof a.length === 'number' ? a.length : 4000;
       if (offset > total) return outcome(command, 'failed', { objectId: content.objectId, contentId: content.contentId,
         sourceState: 'unavailable', code: 'invalid', total }, content.name);
       const end = Math.min(total, offset + length);
       const bounded = { ...content, value: content.value.slice(offset, end) };
       return outcome(command, 'completed', { file: bounded, offset, length: end - offset, total,
-        nextOffset: end < total ? end : null, ...(command.basis.provenance as Record<string, unknown>) }, content.name);
+        nextOffset: end < total ? end : null, ...(range ? { authorizedRange: range } : {}),
+        ...(command.basis.provenance as Record<string, unknown>) }, content.name);
     }
     if (command.name === 'read_reference') {
       const reference = scope.input.draft.references.find(item => item.referenceId === a.referenceId)!;
@@ -599,11 +616,28 @@ export function createTeachingTools(options: {
   }
   async function execute(scope: TeachingToolScope, call: ToolCall, ctx: ToolContext): Promise<AgentToolResult> {
     await authorize(scope);
+    const records = learning().executionRecords;
+    const read = records ? (requestId: string) => records.read(scope.identity, scope.activity.activityId, requestId) : undefined;
+    const phase = await authorizedPredictionPhase(scope.activity, scope.input, read);
+    if (resultsHidden(phase) && call.name === 'course_operation')
+      return { kind: 'completed', outcome: 'error', summary: '课程要求先提交预测；提交前不能由 Agent 运行或读取实际结果。' };
+    if (call.name === 'read_reference') {
+      const reference = scope.input.draft.references.find(item => item.referenceId === call.input.referenceId);
+      if (reference?.source.kind === 'component' && reference.source.origin === 'execution-result'
+        && (resultsHidden(phase) || !reference.source.requestId
+          || !await allowsExecutionResult(scope.activity, reference.source.requestId, read)))
+        return { kind: 'completed', outcome: 'error', summary: '课程要求先提交预测；这份结果在提交前不可读取。' };
+    }
+    const readsResult = ['read_result', 'execution_query', 'execution_stop'].includes(call.name);
+    const resultRequestId = typeof call.input.requestId === 'string' ? call.input.requestId : '';
+    const effectiveScope: HostScope = readsResult && (resultsHidden(phase)
+      || !await allowsExecutionResult(scope.activity, resultRequestId, read))
+      ? { ...scope, resultView: 'status-only' } : scope;
     if (call.executionMode === 'background' && call.name !== 'course_operation')
       return { kind: 'completed', outcome: 'error', summary: '该工具不支持 background 模式' };
     const intent: ModelToolIntent = { callId: call.toolCallId, name: call.name, arguments: call.input };
-    const command = await prepare(scope, intent, call.toolCallId);
-    let result = await dispatch(scope, command);
+    const command = await prepare(effectiveScope, intent, call.toolCallId);
+    let result = await dispatch(effectiveScope, command);
     const control = command.basis.control as { controlId?: string } | undefined;
     const reference = { taskId: String(control?.controlId ?? command.basis.requestId ?? call.toolCallId),
       requestRef: String(command.basis.requestId ?? call.toolCallId) };
@@ -618,7 +652,7 @@ export function createTeachingTools(options: {
         return { kind: 'accepted', taskId: reference.taskId, summary: '任务已受理，终态通过任务通知返回。', resultRef: reference.taskId };
     }
     if (call.name === 'course_operation' && result.state === 'accepted') {
-      const waited = await waitTerminal(scope, command, ctx), query = waited.query;
+      const waited = await waitTerminal(effectiveScope, command, ctx), query = waited.query;
       if ((ctx.signal.reason as { code?: string } | undefined)?.code === 'host-interrupted')
         return { kind: 'interrupted', reason: 'host-interrupted' };
       if (waited.operation && ['completed', 'failed', 'not-dispatched'].includes(waited.operation.state)) result = waited.operation;
@@ -626,7 +660,7 @@ export function createTeachingTools(options: {
         // Foreground expiry is never a background acceptance: request cancellation and report only what is known.
         // Stop already owns a durable Turn fence; only a real business/deadline expiry cleans up here.
         if ((ctx.signal.reason as { code?: string } | undefined)?.code !== 'turn-stopped')
-          await stop(scope, command).catch(() => {});
+          await stop(effectiveScope, command).catch(() => {});
         const requestId = String(command.basis.requestId ?? command.arguments.requestId ?? command.commandId);
         result = outcome(command, 'unknown', { requestId, ...reference, foregroundTimedOut: true, ...(query ? { query } : {}) },
           '前台等待结束，执行效果未知；按任务引用请求取消并查询', query);

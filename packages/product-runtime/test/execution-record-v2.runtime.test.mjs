@@ -36,7 +36,10 @@ const common = event => Object.fromEntries(['version', 'sourceOwner', 'installat
 
 async function fixture(t) {
   const pg = await nativeFixture(), handles = [], cleanups = [];
-  t.after(async () => { for (const cleanup of cleanups.reverse()) await cleanup(); for (const storage of handles.reverse()) await storage.close(); await pg.close(); });
+  t.after(async () => {
+    try { for (const cleanup of cleanups.reverse()) await cleanup(); }
+    finally { try { for (const storage of handles.reverse()) await storage.close(); } finally { await pg.close(); } }
+  });
   async function open(name, migrations) {
     const binding = await provisionStorage({ admin: pg.admin, owner: { environmentId: randomUUID(), serviceId: randomUUID() }, password: randomUUID(), migrations });
     const storage = await openStorage({ binding, migrations, backend: createFileBackend({ id: name, root: join(pg.root, name) }) });
@@ -104,11 +107,20 @@ test('v2 execution publication retains original facts after lost replies and nev
   const transferId = randomUUID();
   await assert.rejects(send(call(original), { transferId, durable: true }), { code: 'unavailable' });
   assert.equal(await send(call(original), { transferId, durable: true }), null);
-  const terminal = { ...common(original), kind: 'status', query: { ...original.query, state: 'succeeded', confirmedSeq: 2 } };
+  const contentId = randomUUID();
+  await assert.rejects(f.learning.executionRecords.markDisplayed(f.identity, f.activity.activityId, original.requestId, contentId),
+    { code: 'missing' });
+  const terminal = { ...common(original), kind: 'status', query: { ...original.query, state: 'succeeded', confirmedSeq: 2,
+    output: { contentId, output: { value: 7 }, artifact: null } } };
   assert.equal(await send(call(terminal), { durable: true }), null);
   assert.equal(await send(call(terminal), { durable: true }), null);
   const record = await f.learning.executionRecords.read(f.identity, f.activity.activityId, original.requestId);
   assert.equal(record.executionRef, original.executionRef); assert.equal(record.query.state, 'succeeded');
+  const display = f.learning.executionRecords;
+  assert.equal(await display.wasDisplayed(f.identity, f.activity.activityId, record), false);
+  for (let attempt = 0; attempt < 2; attempt++)
+    assert.deepEqual(await display.markDisplayed(f.identity, f.activity.activityId, original.requestId, contentId), { recorded: true });
+  assert.equal(await display.wasDisplayed(f.identity, f.activity.activityId, record), true);
   assert.deepEqual(record.sourceOwner, f.device);
   assert.equal((await f.learning.executions.history(f.identity, f.activity.activityId)).entries.length, 0,
     'Received facts never become commands in the data owner.');
@@ -222,10 +234,15 @@ test('remote home query reads original records and owner conversation facts with
   const { createAgentRuntime, agentRuntimeMigrations } = await import('@xunjie/agent-runtime');
   const { createLearningQuery, learningObjectVersion } = await import('@xunjie/learning-space/learning-data/learning-query');
   const agentStorage = await f.open('conversation-agent', agentRuntimeMigrations);
-  const runtime = createAgentRuntime(agentStorage, { authorize: f.spaces.authorize }); f.beforeClose(() => runtime.close());
+  const runtime = createAgentRuntime(agentStorage, { authorize: f.spaces.authorize,
+    scenario: { id: 'student-assistant', version: 1, context: async () => ({ system: '', facts: {}, materials: [] }), tools: async () => [] },
+    gateway: { selection: { read: async () => ({ selected: null, version: 0 }) } },
+  });
+  f.beforeClose(() => runtime.close());
   const sessionId = randomUUID();
   await runtime.initialize({ sessionId, identity: f.identity, scenario: 'student-assistant', createdAt: new Date().toISOString() });
   await runtime.submit(f.identity, { sessionId, requestId: randomUUID(), text: '原会话中的实验记录说明', context: {} });
+  await runtime.drain();
   const conversationOwner = { ...agentStorage.owner, version: 1 };
   async function conversation(who, id) {
     const snapshot = await runtime.sessionSnapshot(who, id);

@@ -30,7 +30,24 @@ try{
   await gateway.selection.save(identity,{requestId:randomUUID(),expectedVersion:0,source:{kind:'personal',connectionId,owner:'self'}});
   const budget={maxSteps:16,maxToolCalls:64,maxInputTokens:1_048_576,maxOutputTokens:65_536,maxCallMs:10000,deadline:new Date(Date.now()+60000).toISOString()};
   const input=()=>({identity,sessionId:randomUUID(),turnId:randomUUID(),stepId:randomUUID(),system:'Synthetic audit',tools:[],history:[],text:'hello',images:[],toolResults:[],budget,spent:{inputTokens:0,outputTokens:0,inputReserved:0,outputReserved:0},signal:new AbortController().signal});
-  const memory=()=>{let state={};const attempts=[];return {attempts,sessionState:async()=>state,setSessionState:async(_id,s)=>{state=s;},visibleInputs:async()=>[],toolResultsByNative:async()=>new Map(),budgetOf:async()=>({budget,usage:{inputTokens:0,outputTokens:0,inputReserved:0,outputReserved:0}}),saveAttempt:async(_id,a)=>{attempts.push({...a});},finishAttempt:async(_id,id,a)=>Object.assign(attempts.find(item=>item.attemptId===id),a)};};
+  const memory=()=>{
+    let state={};const attempts=[],runtimes=new Map();
+    const turnRuntime=async turnId=>{
+      if (!runtimes.has(turnId)) {
+        const selection=await gateway.selection.read(identity), pinId=randomUUID();
+        const pinned=await gateway.selection.pin(identity,pinId,selection.version);
+        runtimes.set(turnId,{formatVersion:1,scenario:{id:'audit',version:1},createdAt:new Date().toISOString(),
+          model:{selectionVersion:selection.version,pinId,connection:pinned.choice.connection,source:pinned.source??{}}});
+      }
+      return runtimes.get(turnId);
+    };
+    return {attempts,turnRuntime,sessionState:async()=>state,setSessionState:async(_id,s)=>{state=s;},visibleInputs:async()=>[],
+      recentCompletedSteps:async()=>[],toolCallsForTurn:async()=>[],toolResultsByNative:async()=>new Map(),
+      attemptsOf:async stepId=>attempts.filter(item=>item.stepId===stepId),recordRequestCapacity:async()=>{},recordStepContext:async()=>{},
+      budgetOf:async()=>({budget,usage:{inputTokens:0,outputTokens:0,inputReserved:0,outputReserved:0}}),
+      saveAttempt:async(stepId,a)=>{attempts.push({...a,stepId});},
+      finishAttempt:async(_id,id,a)=>Object.assign(attempts.find(item=>item.attemptId===id),a)};
+  };
   {
     const store=memory(),adapter=createModelAdapter(gateway,store,{retryBackoffMs:[0,0],pollMs:5});let caught;
     try{await adapter.generate(input());}catch(error){caught=error.code;console.log('GWERR',error?.message,error?.stack);}

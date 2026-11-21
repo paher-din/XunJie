@@ -86,6 +86,25 @@ test('real course workspaces retain required/optional selections and reauthorize
   await validateSkills(f.storage);
 });
 
+test('school experiment readers require a live school login after logout and recover after relogin', { timeout: 60000 }, async t => {
+  const f = await skillFixture(t);
+  const schoolStorage = await f.open('school-logout', spaceCourseMigrations);
+  const spaces = createSpaces(schoolStorage);
+  const student = await spaces.createMember({ requestId: randomUUID(), loginName: 'logout-student', password: 'synthetic-school-password' });
+  const first = await spaces.login('logout-student', 'synthetic-school-password');
+  const olderTab = await spaces.login('logout-student', 'synthetic-school-password');
+  const firstAccess = await spaces.schoolSession(first.token), tabAccess = await spaces.schoolSession(olderTab.token);
+  assert.deepEqual(new Set(await spaces.activeSchoolSessions(student)), new Set([firstAccess.loginId, tabAccess.loginId]));
+  await spaces.logout(first.token, 'local-school-account');
+  assert.deepEqual(await spaces.activeSchoolSessions(student), []);
+  await assert.rejects(spaces.schoolSession(olderTab.token), { code: 'forbidden' });
+  const second = await spaces.login('logout-student', 'synthetic-school-password');
+  const secondAccess = await spaces.schoolSession(second.token);
+  assert.notEqual(secondAccess.loginId, firstAccess.loginId);
+  assert.deepEqual(await spaces.activeSchoolSessions(student), [secondAccess.loginId]);
+  await spaces.logout(second.token);
+});
+
 test('a session can keep an enabled historical package version after a personal library update', { timeout: 60000 }, async t => {
   const f = await skillFixture(t), original = packageInput('historical'), first = await f.skills.import(f.identity, original);
   await f.skills.import(f.identity, packageInput('historical', { skillId: first.skillId, packageVersion: '2',

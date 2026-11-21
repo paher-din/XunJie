@@ -152,9 +152,9 @@ function verify(home, id) {
   const cert = new X509Certificate(readFileSync(leaf));
   assert.equal(cert.checkIP('127.0.0.1'), '127.0.0.1');
   assert.equal(cert.checkHost('localhost'), 'localhost');
-  const publicKey = execFileSync('openssl', ['pkey', '-in', join(home, 'envs', id, 'tls', 'key.pem'), '-pubout'],
+  const publicKey = execFileSync('openssl', ['pkey', '-in', join(home, 'envs', id, 'tls', 'key.pem'), '-pubout', '-outform', 'DER'],
     { stdio: ['ignore', 'pipe', 'pipe'] });
-  assert.equal(cert.publicKey.export({ type: 'spki', format: 'pem' }).toString(), publicKey.toString());
+  assert.deepEqual(cert.publicKey.export({ type: 'spki', format: 'der' }), publicKey);
 }
 
 test('two environments cold boot concurrently under one CA; repeated up preserves root and leaves', { timeout: 30000 }, async t => {

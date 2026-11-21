@@ -12,6 +12,7 @@ import { testPreflight, testVerdict } from './test-payload.js';
 import { errorFacts, networkFailureReason } from './upstream-facts.js';
 import { fixedPermit } from './session-permits.js';
 import { createTransportCompletion } from './transport-completion.js';
+import { measureNativeCapacity } from './request-capacity.js';
 
 export const checkMigrations = [{ version: 2, name: 'durable-model-checks', sql: `
   CREATE TABLE model_attempts (id uuid PRIMARY KEY,scope text NOT NULL,body jsonb NOT NULL,input_digest text NOT NULL,
@@ -19,7 +20,9 @@ export const checkMigrations = [{ version: 2, name: 'durable-model-checks', sql:
   CREATE INDEX model_attempt_scope ON model_attempts(scope,created_at);
 ` }];
 export interface CheckSnapshot { connection: ModelConnection; credentialRef: string; source?: ModelAttempt['source'];
-  policy?: ModelCheckPolicy; payload?: NativePayload; tools?: ModelTool[]; applicationSchema?: Record<string, unknown>; segment?: ModelAttempt['segment']; retain?(tx: OwnedTransaction): Promise<void> }
+  policy?: ModelCheckPolicy; payload?: NativePayload; tools?: ModelTool[]; applicationSchema?: Record<string, unknown>;
+  segment?: ModelAttempt['segment']; projectedPortable?: { text: string; role?: 'user' | 'assistant'; entryId?: string;
+    resultRef?: string }[]; retain?(tx: OwnedTransaction): Promise<void> }
 export type ModelCleanupScope = Pick<SpaceIdentity, 'environmentId' | 'spaceId' | 'principalId'>;
 export type ModelCleanupStatus = Pick<ModelAttempt, 'attemptId' | 'state' | 'dispatched' | 'cancelRequested' | 'physicalRequestEnded'>;
 const cleanupScopeSchema = z.object({ environmentId: z.uuid(), spaceId: z.uuid(), principalId: z.uuid() }).strict();
@@ -141,6 +144,11 @@ export function createChecks(storage: OwnedStorage, owner: {
     if (result.resultRef) await storage.readResource(result.resultRef);
     return result;
   }
+  async function readRecorded(identity: SpaceIdentity, attemptId: string) {
+    const attempt = modelAttemptSchema.parse((await row(identity, attemptId)).body);
+    if (attempt.purpose !== 'learning') throw new StorageError('missing');
+    return attempt;
+  }
   async function responsesResult(body: ModelAttempt, bytes: Uint8Array) {
     const request = JSON.parse(Buffer.from(await storage.readResource(body.requestRef)).toString('utf8')) as NativePayload;
     if (!('input' in request)) throw new StorageError('corrupt');
@@ -214,6 +222,14 @@ export function createChecks(storage: OwnedStorage, owner: {
     const body = modelAttemptSchema.parse(found.body);
     const bytes = Buffer.from(await storage.readResource(body.requestRef));
     return JSON.parse(bytes.toString('utf8')) as Record<string, unknown>;
+  }
+  async function capacity(identity: SpaceIdentity, attemptId: string, remainingInputTokens: number) {
+    const found = await row(identity, attemptId);
+    const body = modelAttemptSchema.parse(found.body);
+    if (body.purpose !== 'learning') throw new StorageError('missing');
+    const encoded = await storage.readResource(body.requestRef);
+    return measureNativeCapacity(encoded, body.connection.contextWindow ?? null, body.limits.maxOutputTokens,
+      remainingInputTokens, 0.1);
   }
   async function list(identity: SpaceIdentity) {
     await owner.authorize(identity);
@@ -327,7 +343,9 @@ export function createChecks(storage: OwnedStorage, owner: {
         await snapshot.retain?.(tx);
         await tx.query('INSERT INTO model_attempts(id,scope,body,input_digest,credential_ref,state,physical_ended,input_metadata) VALUES($1,$2,$3,$4,$5,$6,true,$7)',
           [input.attemptId, scope, body, fingerprint, snapshot.credentialRef, body.state, input.purpose !== 'connection-check'
-            ? { input: input.input, ...(input.purpose === 'learning' && input.authority ? { initialAuthority: input.authority } : {}), ...(snapshot.tools ? { tools: snapshot.tools } : {}), ...(snapshot.applicationSchema ? { applicationSchema: snapshot.applicationSchema } : {}) } : null]);
+            ? { input: input.input, ...(input.purpose === 'learning' && input.authority ? { initialAuthority: input.authority } : {}),
+              ...(snapshot.tools ? { tools: snapshot.tools } : {}), ...(snapshot.applicationSchema ? { applicationSchema: snapshot.applicationSchema } : {}),
+              ...(snapshot.projectedPortable ? { projectedPortable: snapshot.projectedPortable } : {}) } : null]);
         await learningAdmission.enqueue(tx, identity, body, payload);
         if (diagnostic) await tx.query('DELETE FROM model_credentials WHERE id=$1 AND temporary=true', [snapshot.credentialRef]);
         await tx.reference('model-request:' + input.attemptId, request.resourceId);
@@ -494,6 +512,7 @@ export function createChecks(storage: OwnedStorage, owner: {
       if ((current.body as ModelAttempt).cancelRequested) controller.abort('cancel');
       const credential = await owner.credential(identity, ref);
       const payload = JSON.parse(Buffer.from(await storage.readResource(attempt.requestRef)).toString('utf8')) as NativePayload;
+      if (Buffer.byteLength(JSON.stringify(payload), 'utf8') > 1_000_000) throw new StorageError('invalid');
       await owner.assertDispatch(identity, attempt, ref);
       await storage.pendingIntents();
       if (closed) throw new StorageError('maintenance');
@@ -644,7 +663,7 @@ export function createChecks(storage: OwnedStorage, owner: {
       if (body.state === 'completed' && !body.resultRef) throw new StorageError('corrupt');
     }
   }
-  return { receive, read, list, requestPayload, progress, summary, dispatch, cancel, validate,
+  return { receive, read, readRecorded, list, requestPayload, capacity, progress, summary, dispatch, cancel, validate,
     cleanup: { status: cleanupStatus, cancel: (scope: ModelCleanupScope, id: string) => cancelCleanup(scope, id) },
     closeAdmission() { admissionClosed = true; },
     closeDispatch() { closed = true; },

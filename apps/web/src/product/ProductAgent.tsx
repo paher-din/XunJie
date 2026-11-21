@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AgentEmptyState, ChatViewport, Markdown } from '@xunjie/ui/chat'
 import { Button } from '@xunjie/ui/foundation'
+import { toast } from '@xunjie/ui/feedback'
 import type { AgentSession } from '@xunjie/contracts/agent-sessions'
 import type { SpaceIdentity } from '@xunjie/contracts/spaces'
 import { agentInputReceiptSchema } from '@xunjie/contracts/agent-runtime'
@@ -20,12 +21,36 @@ import { useConversationScroll } from './conversation-scroll'
 import { SessionQuestionBox } from './SessionQuestion'
 import './product-agent.css'
 import './conversation-empty-state.css'
+import type { CitationRecord } from '@xunjie/ui/chat'
+import { parseExperimentReference, type ExperimentReference } from './experiment-reference'
+import { coursePdfCitationSourceSchema, learningReferenceSchema } from '@xunjie/contracts/student-learning'
+import type { z } from 'zod'
+
+export interface CourseCitationLocation {
+  releaseId: string; materialId: string; materialSha256: string
+  sourceId?: string; identity?: Pick<SpaceIdentity, 'environmentId' | 'spaceId' | 'principalId' | 'kind'>
+  contentDigest?: string; from?: number; to?: number; page?: number
+  pdfReading?: z.infer<typeof coursePdfCitationSourceSchema>
+}
+
+export type CourseCitationDocument = { name: string; text: string } | { name: string; pdf: Blob; page: number }
+
+function CoursePdfOriginal({ pdf, page }: { pdf: Blob; page: number }) {
+  const [url, setUrl] = useState('')
+  useEffect(() => {
+    const original = URL.createObjectURL(pdf)
+    setUrl(original)
+    return () => URL.revokeObjectURL(original)
+  }, [pdf])
+  return url ? <a href={url + '#page=' + page} target="_blank" rel="noopener noreferrer">打开 PDF 第 {page} 页</a> : null
+}
 
 export function ProductAgent({ identity, spaceKey, namespace, sessionId, session: directorySession, onSession, onWorkspace, onWorkspaceCreated,
-  onSettings, selection, readOnly, viewActive = true }: {
+  onSettings, selection, readOnly, viewActive = true, onOpenCourseMaterial }: {
   identity: SpaceIdentity; spaceKey: string; namespace: string; sessionId?: string; session?: AgentSession
-  onSession(session: AgentSession): void; onWorkspace(activityId: string): void; onWorkspaceCreated(): void
+  onSession(session: AgentSession): void; onWorkspace(activityId: string, source?: Record<string, unknown>): void; onWorkspaceCreated(): void
   onSettings(): void; selection: ModelSelectionController; readOnly: boolean; viewActive?: boolean
+  onOpenCourseMaterial?: (source: CourseCitationLocation) => Promise<CourseCitationDocument>
 }) {
   const scope = JSON.stringify([namespace, spaceKey, identity.environmentId, identity.spaceId, identity.principalId])
   const client = useMemo(() => new AgentSessionsClient({ identity, spaceKey, namespace }), [scope])
@@ -50,7 +75,12 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
   const composer = useSessionDraft(client.scope, sessionId, 'composer', { text: '', editing: true, expectedVersion: 1 }, draftKey)
   const text = composer.value.text
   const [busy, setBusy] = useState(false), [error, setError] = useState('')
-  const [excluded, setExcluded] = useState<string[]>([]), [reading, setReading] = useState<{ name: string; text: string; images: string[]; record: SessionMaterialUpload; page: number; pageCount: number } | null>(null)
+  const [experiment, setExperiment] = useState<ExperimentReference | null>(null)
+  const experimentKey = 'xj.agent-experiment.' + namespace
+  const loadedExperiment = useRef('')
+  const [excluded, setExcluded] = useState<string[]>([]), [reading, setReading] = useState<{ name: string; text: string; images: string[]; record?: SessionMaterialUpload; page: number; pageCount: number } | null>(null)
+  const [courseReading, setCourseReading] = useState<CourseCitationDocument | null>(null)
+  const courseRead = useRef(0)
   const [pending, setPending] = useState(() => outbox.start())
   const viewKey = scope + ':' + sessionId
   const route = useRef(viewKey); route.current = viewKey
@@ -59,12 +89,22 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
   useEffect(() => { alive.current = true; return () => { alive.current = false } }, [])
   useEffect(() => {
     let live = true
-    setReading(null); setUploads([]); setExcluded([]); setMetadata(null); setBusy(false); setError(''); setPending(outbox.start())
+    courseRead.current++
+    setReading(null); setCourseReading(null); setUploads([]); setExcluded([]); setMetadata(null); setBusy(false); setError(''); setPending(outbox.start())
     if (sessionId) {
       void client.read(sessionId).then(value => { if (live) setMetadata(value) }).catch(cause => { if (live) setError(sessionError(cause)) })
     }
     return () => { live = false }
   }, [draftKey, client, sessionId])
+  useEffect(() => {
+    if (loadedExperiment.current === experimentKey) return
+    loadedExperiment.current = experimentKey
+    try {
+      const value = parseExperimentReference(JSON.parse(sessionStorage.getItem(experimentKey) ?? 'null'))
+      setExperiment(value)
+      if (value && !composer.value.text.trim()) void composer.change({ ...composer.value, text: value.question }).catch(() => {})
+    } catch { sessionStorage.removeItem(experimentKey) }
+  }, [experimentKey, composer])
   useViewPolling(async () => {
     if (!sessionId) return
     try { const items = await sessionUploads(client, sessionId); if (alive.current && route.current === viewKey) setUploads(items) }
@@ -101,6 +141,7 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
     try {
       const original = outbox.start()
       const value = await outbox.deliverStart(undefined, (session, input) => selectSkills(session.sessionId, input)); if (alive.current && route.current === viewKey) setPending(null)
+      if (experiment) { sessionStorage.removeItem(experimentKey); setExperiment(null) }
       if (alive.current && route.current === viewKey && !sessionId) {
         if (Array.isArray(original?.input.context.skills) && original.input.context.skills.length) {
           consumeSessionSkillSelection({ identity, spaceKey, namespace, nextSessionId: value.session.sessionId,
@@ -118,7 +159,7 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
       if (alive.current && route.current === viewKey) setError(sessionError(cause))
       skills.restoreVisible?.()
     } finally { if (alive.current && route.current === viewKey) setBusy(false) }
-  }, [outbox, draftKey, onSession, identity, spaceKey, namespace, client.scope, skills.choose])
+  }, [outbox, draftKey, onSession, identity, spaceKey, namespace, client.scope, skills.choose, experiment, experimentKey])
   useEffect(() => { if (pending && !sessionId && !readOnly && composer.ready) void completeStart() }, [client, composer.ready])
   async function ensureSession() {
     if (sessionId) return sessionId
@@ -162,7 +203,10 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
     try {
       await composer.protect()
       const context = { skills: selectedSkills, materials: uploads.filter(item => !excluded.includes(item.key)).map(item => ({ kind: item.kind === 'pdf' ? 'pdf' : 'personal-material',
-        scope: { kind: 'session', sessionId }, objectId: item.input.documentId ?? item.input.materialId, requestId: item.input.requestId })) }
+        scope: { kind: 'session', sessionId }, objectId: item.input.documentId ?? item.input.materialId, requestId: item.input.requestId })),
+        ...(experiment ? { experimentReferences: [{ activityId: experiment.activityId, requestId: experiment.requestId,
+          executionRef: experiment.executionRef, inputDigest: experiment.inputDigest, label: experiment.label,
+          source: experiment.source }] } : {}) }
       if (!sessionId) { const value = outbox.begin(text, JSON.parse(JSON.stringify(context))); setPending(value); await completeStart() }
       else {
         // Select fixed capabilities before delivery, with a protected request identity for retries.
@@ -173,6 +217,7 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
         await selectSkills(sessionId, choice)
         localStorage.removeItem(selectionKey)
         const receipt = agentInputReceiptSchema.parse(await controller.send(text, JSON.parse(JSON.stringify(context))))
+        if (experiment) { sessionStorage.removeItem(experimentKey); setExperiment(null) }
         if (selectedSkills.length) {
           consumeSessionSkillSelection({ identity, spaceKey, namespace, currentSessionId: sessionId, nextSessionId: sessionId,
             clientScope: client.scope, turnId: receipt.turnId })
@@ -187,12 +232,70 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
     finally { if (alive.current && route.current === viewKey) setBusy(false) }
   }
   async function openMaterial(record: SessionMaterialUpload, page = 1) {
+    courseRead.current++
+    setCourseReading(null)
     if (!sessionId) return
     setBusy(true)
     try { const value = await readSessionMaterial(client, sessionId, record, page)
       if (alive.current && route.current === viewKey) setReading({ ...value, record, name: record.input.name })
     } catch (cause) { if (alive.current && route.current === viewKey) setError(sessionError(cause)) }
     finally { if (alive.current && route.current === viewKey) setBusy(false) }
+  }
+  async function openCitation(item: CitationRecord) {
+    let source: Record<string, unknown> = item.citation.source as unknown as Record<string, unknown>
+    if (source.kind === 'tool-call' && source.source && typeof source.source === 'object' && !Array.isArray(source.source))
+      source = source.source as Record<string, unknown>
+    if (source.kind === 'experiment-reference' && typeof source.activityId === 'string') {
+      const fixed = source.source
+      if (fixed && typeof fixed === 'object' && !Array.isArray(fixed)) onWorkspace(source.activityId, fixed as Record<string, unknown>)
+      else toast.error('这条实验出处没有可核对的原始位置。')
+      return
+    }
+    if (source.kind === 'component' && typeof source.activityId === 'string') {
+      onWorkspace(source.activityId, source)
+      return
+    }
+    const parsedPdf = coursePdfCitationSourceSchema.safeParse(source)
+    const pdfReading = parsedPdf.success ? parsedPdf.data : undefined
+    if (pdfReading) source = pdfReading.reference
+    if (source.kind === 'course-material' && typeof source.releaseId === 'string') {
+      if (!onOpenCourseMaterial) { toast.error('课程资料入口当前不可用，固定出处仍保留。'); return }
+      const parsed = learningReferenceSchema.safeParse(source)
+      const ref = parsed.success ? parsed.data : null
+      const materialId = ref?.objectId ?? source.materialId
+      const materialSha256 = ref?.version ?? source.materialSha256
+      if (typeof materialId !== 'string' || typeof materialSha256 !== 'string') { toast.error('课程出处缺少固定版本。'); return }
+      const range = item.citation.range
+      const from = range?.offset ?? range?.start
+      const to = range?.end ?? (typeof from === 'number' && typeof range?.length === 'number' ? from + range.length : undefined)
+      const target = range?.target
+      const targetPages = target && typeof target === 'object' && !Array.isArray(target) ? target.pages : undefined
+      const page = pdfReading?.page ?? range?.page ?? (Array.isArray(range?.pages) ? range.pages[0] : undefined)
+        ?? (Array.isArray(targetPages) ? targetPages[0] : undefined) ?? source.page
+      const read = ++courseRead.current
+      const current = () => alive.current && route.current === viewKey && courseRead.current === read
+      setReading(null)
+      setCourseReading(null)
+      try {
+        const value = await onOpenCourseMaterial({ releaseId: source.releaseId, materialId, materialSha256,
+          ...(pdfReading ? { pdfReading } : {}),
+          ...(ref ? { sourceId: ref.sourceId, identity: ref.identity } : {}),
+          ...(typeof source.contentDigest === 'string' ? { contentDigest: source.contentDigest } : {}),
+          ...(typeof from === 'number' && typeof to === 'number' ? { from, to } : {}),
+          ...(typeof page === 'number' && Number.isInteger(page) && page > 0 ? { page } : {}) })
+        if (current()) setCourseReading(value)
+      } catch { if (current()) toast.error('这份课程资料的固定版本当前无法读取，原出处仍保留。') }
+      return
+    }
+    const objectId = typeof source.objectId === 'string' ? source.objectId
+      : typeof source.documentId === 'string' ? source.documentId
+        : typeof source.materialId === 'string' ? source.materialId : null
+    if (!objectId) { toast.error('这份出处当前没有可打开的固定原件。'); return }
+    const upload = uploads.find(record => record.input.documentId === objectId || record.input.materialId === objectId)
+    if (!upload) { toast.error('原资料已不在当前会话中，固定引用仍保留。'); return }
+    const candidates = [source.page, item.citation.range?.page, Array.isArray(item.citation.range?.pages)
+      ? item.citation.range.pages[0] : undefined].filter((value): value is number => Number.isInteger(value) && Number(value) > 0)
+    await openMaterial(upload, candidates[0] ?? 1)
   }
   const files = { items: uploads.filter(item => !excluded.includes(item.key)).map(item => ({ id: item.key, name: item.input.name,
     size: Math.floor(item.input.dataBase64.length * 3 / 4), ...(!item.confirmed ? { progress: 50 } : {}) })), busy: busy || uploads.some(item => !excluded.includes(item.key) && !item.confirmed), error: '',
@@ -202,14 +305,22 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
     {ownMetadata && <header className="product-conversation-head"><h1>{ownMetadata.title ?? '新对话'}</h1>{ownMetadata.archived && <span>已归档</span>}</header>}
     {sessionId ? <ChatViewport scrollerRef={scroll} onScroll={onScroll} onJump={onJump} phase={controller.active ? 'streaming' : undefined}
       busy={controller.active} padSuggestions={false} queued={false}>
-      <SessionConversation controller={controller} readOnly={!writable} onOpenWorkspace={onWorkspace} onWorkspaceCreated={onWorkspaceCreated} />
+      <SessionConversation controller={controller} readOnly={!writable} onOpenWorkspace={onWorkspace}
+        onWorkspaceCreated={onWorkspaceCreated} onOpenCitation={openCitation} />
+      {courseReading && <section className="product-conversation-inner session-material-reading" aria-label={courseReading.name}>
+        <h2>{courseReading.name}</h2>
+        <Button variant="outline" onClick={() => setCourseReading(null)}>返回对话</Button>
+        {'pdf' in courseReading ? <CoursePdfOriginal pdf={courseReading.pdf} page={courseReading.page} /> : <Markdown text={courseReading.text} />}
+      </section>}
       {reading && <section className="product-conversation-inner session-material-reading"><h2>{reading.name}</h2>
         <Button variant="outline" onClick={() => setReading(null)}>返回对话</Button><Markdown text={reading.text} />
-        {reading.pageCount > 1 && <nav aria-label="PDF 翻页"><Button variant="outline" disabled={busy || reading.page === 1} onClick={() => void openMaterial(reading.record, reading.page - 1)}>上一页</Button><span>{reading.page} / {reading.pageCount}</span><Button variant="outline" disabled={busy || reading.page === reading.pageCount} onClick={() => void openMaterial(reading.record, reading.page + 1)}>下一页</Button></nav>}
+        {reading.pageCount > 1 && reading.record && <nav aria-label="PDF 翻页"><Button variant="outline" disabled={busy || reading.page === 1} onClick={() => void openMaterial(reading.record!, reading.page - 1)}>上一页</Button><span>{reading.page} / {reading.pageCount}</span><Button variant="outline" disabled={busy || reading.page === reading.pageCount} onClick={() => void openMaterial(reading.record!, reading.page + 1)}>下一页</Button></nav>}
         {reading.images.map((src, index) => <img key={index} src={src} alt={`${reading.name} 第 ${reading.page + index} 页`} />)}</section>}
     </ChatViewport> : <div className="product-agent-body"><AgentEmptyState title="今天想探讨什么？" /></div>}
     <div className="product-agent-notices">
       {pending && <p role="status">原问题已保留。<Button variant="outline" disabled={busy} onClick={() => void completeStart()}>核对并继续原请求</Button></p>}
+      {experiment && <p role="status">已固定工作区实验「{experiment.label}」。<button type="button" disabled={busy}
+        onClick={() => { sessionStorage.removeItem(experimentKey); setExperiment(null) }}>移除引用</button></p>}
       {composer.error && <p role="alert">{composer.error} <button type="button" onClick={() => void composer.protect().catch(() => {})}>重试保留输入</button></p>}
       {error && <p role="alert">{error}</p>}
       {!picker.models.length && !readOnly && !selection.stale && <p>尚未配置模型。<button type="button" className="product-agent-settings-link" onClick={onSettings}>打开设置</button></p>}
@@ -227,7 +338,8 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
         onSend={send} canSend={composer.ready && !!text.trim() && !busy && !pending && writable && !picker.blocked && !uploads.some(item => !excluded.includes(item.key) && !item.confirmed)}
         submitting={busy || !writable} busy={controls.active && !hasDraft} onStop={controls.stop}
         onResume={controls.canResume && !hasDraft ? controls.resume : undefined} actionDisabled={controls.disabled} resumeLabel="继续生成"
-        files={files} skills={skills} selection={selection} readOnly={!writable} onModelSettings={onSettings} contextUsage={controller.conversation?.contextUsage} />}
+        files={files} skills={skills} selection={selection} modelLocked={controller.active} readOnly={!writable}
+        onModelSettings={onSettings} contextUsage={controller.conversation?.contextUsage} />}
     </ProductComposerDock>
   </div>
 }

@@ -1,7 +1,9 @@
-import type { AgentScenario, AgentTool, Facts, ScenarioInput } from '@xunjie/agent-runtime';
+import type { AgentScenario, AgentTool, Facts, HistoryEntry, ScenarioInput } from '@xunjie/agent-runtime';
 import { createUserQuestions, validateTeachingAnswer } from '../capabilities/user-questions/index.js';
 import { createConversationCompaction, type CompactionOptions } from '../capabilities/context-compaction/conversation.js';
 import { createLearningTools, type LearningToolsHost } from './tools/learning-tools.js';
+import { platformRules, ruleVersions, studentDuties } from '../rules.js';
+import { canonicalDigest } from '@xunjie/storage/identity';
 
 export interface StudentAssistantOptions {
   /** Product host supplies real owner sources and the fixed local personal creation ports. */
@@ -13,10 +15,11 @@ export interface StudentAssistantOptions {
   skills?: readonly AgentTool[];
   /** Host-owned authorized context for this Step, such as explicit session Skill instructions. */
   contextExtension?(input: ScenarioInput): Promise<string | undefined>;
+  experimentMaterials?(input: ScenarioInput): Promise<readonly import('@xunjie/agent-runtime').ContextMaterial[]>;
   compaction?: CompactionOptions | false;
 }
 
-const system = `你是循阶主页学习助手，帮助学生进行日常知识问答、阅读资料、查询本人获准的学习情况，并按明确意愿创建自主学习项目。
+const studentSceneSystem = `你是循阶主页学习助手，帮助学生进行日常知识问答、阅读资料、查询本人获准的学习情况，并按明确意愿创建自主学习项目。
 
 日常问答和上传资料不会创建项目或工作区。由你根据学习语义自行判断是否适合创建个人项目；不存在“明确要求就免提问”的路径，也没有独立分类模型。所有创建都必须先用 student_ask 征求本次明确同意：purpose=create_personal_project，附模型生成的 proposalKey（Session 内唯一）与拟创建的 personalProjectContent，提供固定选项 confirm（同意创建）/decline（暂不创建），保留自由文本回答与跳过。
 只有对应 student_ask 问题收到的真实同意才授权创建：固定 confirm 且内容匹配可直接创建；decline、skip、未回答、关闭或过期都不能创建。自由文本回答须由你在后续 Step 看到真实答案后自行语义判断，不确定就解释或继续提问，不要调用创建。结构化拒绝不能被你的叙述覆盖。普通新消息不是问题回答，不能用新消息措辞推测或伪造同意。
@@ -38,7 +41,14 @@ export function createStudentAssistant(options: StudentAssistantOptions): AgentS
     // Query provenance comes from the injected owner tools, never invented from input context.
     async context(input) {
       const extension = await options.contextExtension?.(input);
-      return { system: extension ? system + '\n\n' + extension : system, facts: {} as Facts, sources: [] };
+      const materials = [...inputMaterials(input), ...await options.experimentMaterials?.(input) ?? []];
+      const fixed = materials.length ? '\n\n本轮附带固定来源。标记 included 的正文是宿主刚按原身份和固定版本读取并提供的证据。'
+        + '固定实验若含 hostVerifiedStage=prediction-submitted，直接使用其中的原预测、确认结果和作品版本，按课程帮助规则解释差异。'
+        + '用 cite_source 和对应的 M- 开头的材料标识为具体判断提供出处。'
+        + '只有所需正文缺失时才使用学习查询或资料工具补读。固定引用只用于读取。' : '';
+      const system = [platformRules, studentDuties, studentSceneSystem, fixed, extension].filter(Boolean).join('\n\n---\n\n');
+      return { system, facts: {} as Facts, sources: [], materials,
+        ruleVersions: ruleVersions(undefined, 'student-assistant') };
     },
     async tools(input) {
       if (options.tools) {
@@ -50,8 +60,58 @@ export function createStudentAssistant(options: StudentAssistantOptions): AgentS
       if (!learning) throw new Error('missing-student-scene');
       return [...learning, questions, ...(options.documents ?? []), ...(options.skills ?? [])];
     },
+    async authorizeHistory(input, history) {
+      const host = options.learning;
+      if (!host?.historySource || !learning) return [...history];
+      const checked = new Map<string, Promise<boolean>>();
+      const allowed = (source: Facts) => {
+        const key = canonicalDigest(source);
+        let pending = checked.get(key);
+        if (!pending) {
+          pending = host.historySource!(input.identity, input.sessionId, source).catch(() => false);
+          checked.set(key, pending);
+        }
+        return pending;
+      };
+      const kept: HistoryEntry[] = [];
+      const dropped: string[] = [];
+      for (const entry of history) {
+        let permitted = true;
+        for (const source of entry.sources ?? []) if (!await allowed(source.source)) {
+          permitted = false;
+          break;
+        }
+        if (permitted) kept.push(entry); else dropped.push(entry.id);
+      }
+      if (!dropped.length) return kept;
+      kept.push({ id: 'authorization-notice:' + canonicalDigest([...dropped].sort()), version: 1, role: 'user',
+        text: `前文有 ${dropped.length} 条记录因原来源当前不可访问或无法核验，已从本轮模型上下文移除。`
+          + '不得推断其正文、结果或学生表现；如问题依赖这些记录，请说明缺口并从其余获准材料继续。' });
+      return kept;
+    },
     async validateAnswer(presentation, answer) { validateTeachingAnswer(presentation, answer); },
     ...(compaction ? { compaction: { provider: compaction.provider, maxPerTurn: compaction.maxPerTurn,
-      needed: compaction.needed, select: compaction.select } } : {}),
+      select: compaction.select } } : {}),
   };
+}
+
+function inputMaterials(input: ScenarioInput): import('@xunjie/agent-runtime').ContextMaterial[] {
+  const materials = new Map<string, import('@xunjie/agent-runtime').ContextMaterial>();
+  for (const entry of input.inputs ?? []) {
+    const context = entry.context;
+    const attachments = Array.isArray(context.materials) ? context.materials : [];
+    for (const raw of attachments) {
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) continue;
+      const value = raw as Record<string, unknown>;
+      if (typeof value.objectId !== 'string' || typeof value.kind !== 'string') continue;
+      const sourceId = 'attachment:' + value.kind + ':' + value.objectId;
+      materials.set(entry.inputId + ':' + sourceId, { materialId: 'M-' + canonicalDigest(sourceId).slice(0, 24), sourceId, inputId: entry.inputId,
+        kind: 'private-material', author: 'student', label: value.kind === 'pdf' ? '本轮 PDF 附件' : '本轮文本附件',
+        version: typeof value.version === 'string' || typeof value.version === 'number' ? String(value.version) : null,
+        range: null, digest: canonicalDigest(value), content: null, readState: 'reference-only',
+        readReason: '附件正文未自动装入上下文；请使用资料工具读取固定版本和范围。',
+        source: value as Facts, citationAllowed: true });
+    }
+  }
+  return [...materials.values()];
 }

@@ -13,6 +13,8 @@ export interface TeachingToolScope {
   identity: SpaceIdentity;
   activity: LearningActivity;
   input: ActionInput;
+  /** Fixed versions accepted earlier in this Session; read-only reauthorization only. */
+  acceptedWorkActions?: readonly ActionInput[];
   /** Kernel Turn id mapped to the gateway transport runId; tracking only, never an ownership fence. */
   runId: string;
   stepId: string;

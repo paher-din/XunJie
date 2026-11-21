@@ -11,7 +11,7 @@ import type { ExecutionRecord } from '../../tool-execution/ledger'
 import { analyzeCheck } from '../../tool-execution/adapters/alu-check'
 import { runtimeAction } from '../../tool-execution/runtime-action'
 import { useActivitySession } from '../../product/ActivitySession'
-import { RuntimeTool } from '../../product/RuntimeTool'
+import { RuntimeTool, type ComponentResultLocation } from '../../product/RuntimeTool'
 import { defaultAluState, encodeEnabledBasis, type AluState } from './state'
 import { WorkspaceReferencesProvider, WorkspaceReferenceList, useWorkspaceReferences } from '../../components/workspace/references'
 import { ALU_REFLECTION_MEDIA_TYPE, aluReflectionName } from '@xunjie/contracts/alu-learning'
@@ -28,7 +28,8 @@ beforeEach(() => {
 })
 afterEach(async () => { await act(async () => root?.unmount()); container.remove(); vi.unstubAllGlobals() })
 
-async function experiment(patch: Partial<AluState> = {}, split = false, version = 3, componentVersion = 4) {
+async function experiment(patch: Partial<AluState> = {}, split = false, version = 3, componentVersion = 4,
+  externalRequestId?: string, initialQueryFailures = 0) {
   const componentId = crypto.randomUUID(), scaffoldResourceId = crypto.randomUUID(), checkScaffoldId = crypto.randomUUID()
   const ports = { type: 'object', properties: Object.fromEntries(['A', 'B', 'M', 'S', 'Cin'].map(key => [key, { type: 'number' }])) }
   const operation = (operationId: string) => ({ operationId, effect: 'execute',
@@ -88,7 +89,7 @@ async function experiment(patch: Partial<AluState> = {}, split = false, version 
   snapshot = { ...snapshot, files: [code, stateFile()] }
   let runs = { ready: true, records: [enabled], error: '' }
   const submitted: AnyExecutionAction[] = []
-  let artifactAvailable = true, vcdText = probeVcd
+  let artifactAvailable = true, vcdText = probeVcd, queryCalls = 0, queryFailures = initialQueryFailures
   const artifact = vi.fn(async (requestId: string) => {
     if (!artifactAvailable) return null
     if (runs.records.find(record => record.requestId === requestId)?.action.execution.operation.operationId === 'check-all') {
@@ -110,17 +111,25 @@ async function experiment(patch: Partial<AluState> = {}, split = false, version 
   })
   const execution = { snapshot: () => runs, subscribe: (listener: () => void) => { runListeners.add(listener); return () => runListeners.delete(listener) },
     receiver: { identity: { receiverId: 'browser-execution' } }, submit: async (action: AnyExecutionAction) => { submitted.push(action) },
-    artifact, query: async () => null }
+    artifact, query: async () => { queryCalls++; if (queryFailures > 0) { queryFailures--; throw new Error('temporarily unavailable') } return null } }
   const actionsState = { items: [] }
   const actions = { subscribe: () => () => {}, snapshot: () => actionsState }
   vi.mocked(useActivitySession).mockReturnValue({ workspace, execution, actions } as unknown as ReturnType<typeof useActivitySession>)
   root = createRoot(container)
   const props = { activity, binding, spaceKey: 'school', namespace: 'new', authorized: true }
+  let location: ComponentResultLocation | undefined = externalRequestId ? {
+    requestId: externalRequestId, token: 'external-location-token',
+    range: { kind: 'semantic', formatVersion: 1, typeId: 'alu-waveform', version: 1,
+      target: { signalIds: ['tb.F[3:0]'], fromTick: '0', toTick: '10' }, start: 0, end: 1 },
+  } : undefined
   let generation = 0
   const render = () => root!.render(<WorkspaceReferencesProvider workspaceKey={key} onSubmit={() => {}}>
-    <ProbeReferences />{split && <RuntimeTool {...props} compact />}<RuntimeTool key={generation} {...props} /></WorkspaceReferencesProvider>)
+    <ProbeReferences />{split && <RuntimeTool {...props} compact />}<RuntimeTool key={generation} {...props}
+      {...(location ? { location } : {})} /></WorkspaceReferencesProvider>)
   await act(async () => render())
-  return { submitted, enabled, artifact, changes,
+  return { submitted, enabled, artifact, changes, queryCalls: () => queryCalls,
+    failQueries: (count: number) => { queryFailures = count },
+    relocate: (requestId: string, token: string) => { location = { ...location!, requestId, token }; render() },
     remount: () => { generation++; render() },
     unavailable: () => { artifactAvailable = false },
     replaceVcd: (text: string) => { vcdText = text },
@@ -395,6 +404,20 @@ describe('retained ALU semantic navigation', () => {
     expect(env.files()).toBe(files)
     expect(env.changes).toHaveLength(writes)
     expect(container.querySelector('.alu-board')!.innerHTML).toBe(board)
+    expect(env.submitted).toHaveLength(0)
+  })
+})
+
+describe('external location query recovery', () => {
+  it('retries the same failed location with a bound and starts a fresh budget for a newer token', async () => {
+    const env = await experiment({ selectedObservation: 'enabled', selectedObservationRevision: 0 }, false, 3, 4,
+      crypto.randomUUID(), 3)
+    await vi.waitFor(() => expect(env.queryCalls()).toBe(3), { timeout: 3500 })
+    await new Promise(resolve => setTimeout(resolve, 900))
+    expect(env.queryCalls(), '失败重试必须有明确边界，不能无限循环').toBe(3)
+    env.failQueries(3)
+    await act(async () => env.relocate(crypto.randomUUID(), 'newer-external-location'))
+    await vi.waitFor(() => expect(env.queryCalls()).toBe(6), { timeout: 3500 })
     expect(env.submitted).toHaveLength(0)
   })
 })

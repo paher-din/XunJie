@@ -19,6 +19,8 @@ import { parseAluBoardMapping } from './mapping'
 import { readCheckArtifact } from './check-report-reader'
 import { protectCompositionNavigation } from '../../components/workspace/compositionNavigation'
 import { aluCaseFromAction, newAluCaseDraft } from '@xunjie/contracts/alu-learning'
+import { predictionResultsHidden } from '@xunjie/contracts/course-help'
+import type { ExecutionVisibility } from '../../tool-execution/retention'
 import { editCase, isCurrentComparison, priorCaseSources, readCaseDraft } from './cases'
 import { AluCaseEditor, AluCaseResults } from './AluCases'
 import { componentSource, useSemanticSource } from '../../components/workspace/references/SemanticSource'
@@ -37,6 +39,39 @@ const sameCodeBasis = (left: ExecutionRecord, right: ExecutionRecord) =>
   codeSignature(left.action.execution.basis.works) === codeSignature(right.action.execution.basis.works)
 const errorText = (error: unknown) => error instanceof Error ? error.message : String(error)
 const settled = (record: ExecutionRecord) => record.query.statusKnowledge === 'confirmed' && isTerminalExecutionState(record.query.state)
+const executionStatusLabel: Partial<Record<ExecutionVisibility['state'], string>> = {
+  queued: '等待执行', running: '执行中', succeeded: '已完成', failed: '未完成', cancelled: '已停止',
+}
+const LOCATION_QUERY_ATTEMPTS = 3
+
+function useResultVisibility(enabled: boolean, requestId: string | undefined, contentId: string | undefined,
+  token: string | undefined, workIds: string) {
+  const { workspace, execution } = useActivitySession()
+  const key = JSON.stringify([requestId, contentId, token, workIds])
+  const [confirmed, setConfirmed] = useState<{ key: string; value: ExecutionVisibility | null }>()
+  useEffect(() => {
+    if (!enabled || !requestId) return
+    let active = true
+    let retry: ReturnType<typeof setTimeout> | undefined
+    const verify = async (attempt: number) => {
+      try {
+        await workspace.flush()
+        if (!active) return
+        const result = await execution.visibility(requestId)
+        if (!active) return
+        if (result?.workIds.join(',') === workIds) {
+          setConfirmed({ key, value: result })
+          return
+        }
+        if (attempt < 3) { retry = setTimeout(() => void verify(attempt + 1), 300 * 2 ** attempt); return }
+      } catch { if (!active) return }
+      setConfirmed({ key, value: null })
+    }
+    void verify(0)
+    return () => { active = false; clearTimeout(retry) }
+  }, [enabled, requestId, key, workIds, workspace, execution])
+  return enabled && confirmed?.key === key ? confirmed.value : undefined
+}
 
 function readingOf(record: ExecutionRecord | undefined, waiting: boolean): AluReading {
   if (waiting || !record) return { state: waiting ? 'waiting' : 'none' }
@@ -173,21 +208,37 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
       return false
     }
   }
-  const located = useRef<string | null>(null)
+  const [closedLocationToken, setClosedLocationToken] = useState<string>()
+  const resultLocation = !compact && location?.token !== closedLocationToken ? location : undefined
+  const locatedRecord = resultLocation ? records.find(record => record.requestId === resultLocation.requestId
+    && record.action.execution.instance.key === binding.key
+    && record.action.execution.instance.definitionDigest === binding.definition.digest) : undefined
+  const gated = predictionResultsHidden(activity.course?.helpPolicy)
+  const workIds = work.files.filter(file => file.kind === 'state' || file.kind === 'code').map(file => file.contentId).sort().join(',')
+  const locatedVisibility = useResultVisibility(authorized && gated, resultLocation?.requestId,
+    locatedRecord?.query.output?.contentId, resultLocation?.token, workIds)
+  // The learning owner's visibility projection already applies the current phase, version,
+  // inputs and prediction gate. Re-checking a name-scoped "before submission" helper here made
+  // a submitted check-all permanently invisible.
+  const locatedResult = authorized && locatedRecord && (!gated || locatedVisibility?.reveal === true) ? locatedRecord : undefined
+  const requestedLocation = useRef<{ token: string; attempts: number } | undefined>(undefined)
   useEffect(() => {
-    if (!location || compact || !work.ready || work.conflict || located.current === location.token) return
-    const original = records.find(record => record.requestId === location.requestId)
-    if (!original) { void execution.query(location.requestId).catch(() => {}); return }
-    located.current = location.token
-    if (workspace.isReadOnly()) return
-    writeState(previous => original.action.execution.operation.operationId === 'check-all'
-      ? { ...previous, selectedCheck: original.requestId, feedbackPolicy: 'live',
-        selectedCheckBasis: original.action.protocolVersion === 3 ? original.action.execution.basis.enabledBy?.requestId ?? '' : '' }
-      : { ...previous, selectedObservation: original.requestId, selectedObservationRevision: -1, feedbackPolicy: 'live',
-        selectedCase: original.action.protocolVersion === 3 && aluCaseFromAction(original.action) ? original.requestId : '',
-        ...(location.range?.kind === 'semantic' && location.range.typeId === 'alu-waveform'
-          ? { waveSelection: JSON.stringify({ requestId: original.requestId, range: location.range.target }) } : {}) })
-  }, [location, compact, work.ready, work.conflict, records, execution, workspace])
+    if (!authorized || !resultLocation || locatedRecord) return
+    const token = resultLocation.token, requestId = resultLocation.requestId
+    if (requestedLocation.current?.token !== token) requestedLocation.current = { token, attempts: 0 }
+    let active = true
+    let retry: ReturnType<typeof setTimeout> | undefined
+    const query = (attempt: number) => {
+      if (!active || requestedLocation.current?.token !== token) return
+      requestedLocation.current = { token, attempts: attempt + 1 }
+      void execution.query(requestId).catch(() => {
+        if (!active || requestedLocation.current?.token !== token || attempt + 1 >= LOCATION_QUERY_ATTEMPTS) return
+        retry = setTimeout(() => query(attempt + 1), 300 * 2 ** attempt)
+      })
+    }
+    query(0)
+    return () => { active = false; clearTimeout(retry) }
+  }, [authorized, resultLocation?.token, resultLocation?.requestId, locatedRecord, execution])
   const resetState = () => {
     try {
       const files = workspace.snapshot().files
@@ -419,7 +470,15 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
     ? records.find(record => record.action.execution.operation.operationId === 'check-all' && sameCodeBasis(record, enabledRecord))
     : undefined
   const selectedCheckRecord = alu.selectedCheck ? records.find(record => record.requestId === alu.selectedCheck) : undefined
-  const displayCheckRecord = alu.selectedCheck ? selectedCheckRecord : latestCheck ?? activeCheck
+  const locatedCheck = locatedResult?.action.execution.operation.operationId === 'check-all' ? locatedResult : undefined
+  const selectedCase = records.find(record => record.requestId === alu.selectedCase)
+  const submittedCase = records.find(record => record.requestId === alu.caseRequestId)
+  const predictionHeld = alu.feedbackPolicy === 'hold' && !isCurrentComparison(alu, submittedCase)
+  const normalCheck = predictionHeld ? undefined : alu.selectedCheck ? selectedCheckRecord : latestCheck ?? activeCheck
+  const checkVisibility = useResultVisibility(authorized && gated, normalCheck?.requestId,
+    normalCheck?.query.output?.contentId, undefined, workIds)
+  const displayCheckRecord = locatedCheck ?? (authorized && (!gated || !normalCheck?.query.output || checkVisibility?.reveal === true)
+    ? normalCheck : undefined)
   const checkActive = !!displayCheckRecord && !settled(displayCheckRecord)
   const checkMismatch = !!selectedCheckRecord && !!enabledRecord && !sameCodeBasis(selectedCheckRecord, enabledRecord)
 
@@ -464,9 +523,10 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
       if (typeof index !== 'number') return { ok: false, reason: '原反例范围不可用，固定副本仍保留。' }
       setCounterexampleLocation({ index, token: crypto.randomUUID() }); return { ok: true }
     } })
-  const locatedCounterexample = location?.requestId === displayCheckRecord?.requestId
-    && location?.range?.kind === 'semantic' && location.range.typeId === 'alu-counterexample'
-    && typeof location.range.target.index === 'number' ? { index: location.range.target.index, token: location.token } : counterexampleLocation
+  const locatedCounterexample = resultLocation?.requestId === displayCheckRecord?.requestId
+    && resultLocation?.range?.kind === 'semantic' && resultLocation.range.typeId === 'alu-counterexample'
+    && typeof resultLocation.range.target.index === 'number'
+    ? { index: resultLocation.range.target.index, token: resultLocation.token } : counterexampleLocation
 
   const selectedObservationRecord = alu.selectedObservation ? records.find(record => record.requestId === alu.selectedObservation) : undefined
   const observationHistory = alu.selectedObservationRevision === -1 && !!selectedObservationRecord
@@ -484,19 +544,59 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
   else if (boardObservation.current?.key !== boardKey) boardObservation.current = null
   const currentObservationRecord = observationCurrent ? selectedObservationRecord
     : observationHistory ? records.find(record => record.requestId === boardObservation.current?.requestId) : undefined
-  const selectedCase = records.find(record => record.requestId === alu.selectedCase)
-  const feedbackHeld = alu.feedbackPolicy === 'hold' && !isCurrentComparison(alu, selectedCase)
-  const currentReading = feedbackHeld ? { state: 'none' as const } : readingOf(currentObservationRecord, waitingForObservation || (!currentObservationRecord && !!basis))
-  const shownReading = feedbackHeld ? { state: 'none' as const } : observationHistory ? readingOf(selectedObservationRecord, false) : currentReading
-  const readingRecord = observationHistory ? selectedObservationRecord : currentObservationRecord
+  const feedbackHeld = predictionHeld && !locatedResult
+  const boardCandidate = predictionHeld ? undefined : currentObservationRecord
+  const boardVisibility = useResultVisibility(authorized && gated, boardCandidate?.requestId,
+    boardCandidate?.query.output?.contentId, undefined, workIds)
+  const boardRecord = authorized && (!gated || boardVisibility?.reveal === true) ? boardCandidate : undefined
+  const currentReading = predictionHeld ? { state: 'none' as const }
+    : readingOf(boardRecord, waitingForObservation || (!boardRecord && !!basis))
+  const locatedObservation = locatedResult && !locatedCheck ? locatedResult : undefined
+  const historyCandidate = !predictionHeld && observationHistory ? selectedObservationRecord : undefined
+  const caseCandidate = !predictionHeld && alu.selectedCase ? selectedCase : historyCandidate
+  const caseVisibility = useResultVisibility(authorized && gated, caseCandidate?.requestId,
+    caseCandidate?.query.output?.contentId, undefined, workIds)
+  const allowedCase = authorized && (!gated || caseVisibility?.reveal === true) ? caseCandidate : undefined
+  const readingRecord = resultLocation ? locatedObservation : observationHistory ? allowedCase : boardRecord
+  const shownReading = resultLocation || observationHistory ? readingOf(readingRecord, false) : currentReading
+  const comparisonRecord = resultLocation ? locatedObservation : alu.selectedCase ? allowedCase : readingRecord
   const readingState = readingRecord && settled(readingRecord) ? readingRecord.query.state : undefined
-  const shownInputs = observationHistory && selectedObservationRecord ? selectedObservationRecord.action.execution.parameters as Record<string, number> : controls
+  const shownInputs = (locatedObservation || observationHistory) && readingRecord
+    ? readingRecord.action.execution.parameters as Record<string, number> : controls
 
   const observations = records.filter(record => record.action.execution.operation.operationId !== 'check-all')
   const checks = records.filter(record => record.action.execution.operation.operationId === 'check-all')
   const enabledInputs = enabledRecord?.action.execution.parameters
+  const readout = useRef<HTMLParagraphElement>(null)
+  const displayed = useRef(new Set<string>())
+  const visibleReading = shownReading.state === 'binary' || shownReading.state === 'unknown'
+  const readoutRequest = readingRecord?.requestId, readoutContent = readingRecord?.query.output?.contentId
+  useEffect(() => {
+    const element = readout.current
+    if (!authorized || !element || !visibleReading || !readoutRequest || !readoutContent
+      || displayed.current.has(readoutContent) || typeof IntersectionObserver === 'undefined') return
+    let active = true
+    let retry: ReturnType<typeof setTimeout> | undefined
+    const acknowledge = async (attempt: number) => {
+      try {
+        if (await execution.markDisplayed?.(readoutRequest, readoutContent)) displayed.current.add(readoutContent)
+      } catch (error) {
+        // Local execution can render before its independently synchronized record is readable.
+        const code = (error as { code?: string }).code
+        if (active && attempt < 3 && (code === 'missing' || code === 'unavailable'))
+          retry = setTimeout(() => { void acknowledge(attempt + 1) }, 500 * 2 ** attempt)
+      }
+    }
+    const observer = new IntersectionObserver(entries => {
+      if (document.visibilityState !== 'visible' || !entries.some(entry => entry.isIntersecting)) return
+      observer.disconnect()
+      void acknowledge(0)
+    })
+    observer.observe(element)
+    return () => { active = false; clearTimeout(retry); observer.disconnect() }
+  }, [authorized, visibleReading, readoutRequest, readoutContent, execution])
   const currentReadout = shownReading.state === 'binary' || shownReading.state === 'unknown'
-    ? <p className="alu-readout-value"><b>F={shownReading.f}</b><span> </span><b>Cout={shownReading.cout}</b></p>
+    ? <p ref={readout} className="alu-readout-value"><b>F={shownReading.f}</b><span> </span><b>Cout={shownReading.cout}</b></p>
     : <p className="alu-readout-value alu-muted">{shownReading.state === 'waiting' ? '等待观察' : shownReading.state === 'incomplete' ? '观察不完整' : '尚未取得观察'}</p>
 
   return <section ref={toolHost} className={`execution-panel runtime-tool alu-tool ${compact ? 'runtime-tool-compact' : 'runtime-tool-full'}`}
@@ -532,6 +632,13 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
     {work.error && <p role="alert" className="alu-alert">作品暂时不可用：{work.error}</p>}
     {!mapping && <p role="alert" className="alu-alert">课程未提供兼容的固定板卡映射，实验未派发；请使用完整的课程发布。</p>}
     {feedbackHeld && <p role="status" className="alu-notice">预测编辑中，候选输入不自动观察，实际读数、历史和检查报告暂不展示。</p>}
+    {gated && resultLocation && !locatedResult && <p role="status" className="alu-notice">
+      {locatedVisibility === undefined ? '正在核对原实验当前的显示权限。'
+        : locatedVisibility === null ? '暂时无法核对原实验。'
+          : `原实验状态：${executionStatusLabel[locatedVisibility.state] ?? '状态待核实'}${locatedVisibility.statusKnowledge === 'unknown' ? '（待核实）' : ''}。`}
+      {locatedVisibility?.reveal === false && '结果当前已隐藏。'}
+      {locatedVisibility?.previouslyShown && '本结果曾向学生展示。'}
+    </p>}
     {current.stateError && <p role="alert" className="alu-alert">组件状态无法读取：{current.stateError}。未自动覆盖原状态。
       <button type="button" className="ws-btn ghost" disabled={!canWrite} onClick={resetState}>重建实验输入状态</button>
     </p>}
@@ -563,12 +670,12 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
       {manifest.stateVersion === 3 && <AluCaseEditor activity={activity} binding={binding} state={alu}
         stateFile={current.file} records={records} enabled={enabledRecord} canWrite={canWrite}
         canCompare={canAct && enabledUsable && !busy && !activeCheck && !activeObservation && !admission.busy}
-        writeState={writeState} onCompare={() => void compare()} />}
+        writeState={writeState} onCompare={() => { if (resultLocation) setClosedLocationToken(resultLocation.token); void compare() }} />}
       {mapping && <AluBoard values={controls} reading={currentReading} mapping={mapping} disabled={!canWrite} waiting={waitingForObservation}
         onChange={changeInput} />}
       <section className="alu-readout" aria-label="当前读数">
         <div>
-          <p className="alu-readout-inputs">{observationHistory ? '原输入' : '输入'} A={shownInputs.A} B={shownInputs.B} M={shownInputs.M} S={shownInputs.S} Cin={shownInputs.Cin} · {operationName(shownInputs as Pick<AluState, 'M' | 'S'>)}</p>
+          <p className="alu-readout-inputs">{locatedObservation || observationHistory ? '原输入' : '输入'} A={shownInputs.A} B={shownInputs.B} M={shownInputs.M} S={shownInputs.S} Cin={shownInputs.Cin} · {operationName(shownInputs as Pick<AluState, 'M' | 'S'>)}</p>
           {currentReadout}
           <p className="alu-hint">
             {readingState === 'failed' ? `观察未完成：${readingRecord?.query.reason?.detail ?? '真实执行失败'}`
@@ -596,7 +703,9 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
       </section>
       <NumericEditor values={controls} disabled={!canWrite} onChange={changeInput} />
       {manifest.stateVersion === 3 && <AluCaseResults activity={activity} binding={binding} state={alu} records={records}
-        fallbackRecord={readingRecord} suppressed={feedbackHeld} canWrite={canWrite} writeState={writeState} selectState={selectState} />}
+        record={comparisonRecord} locatedRange={resultLocation?.range}
+        suppressed={feedbackHeld || !!resultLocation && !locatedObservation}
+        canWrite={canWrite} writeState={writeState} selectState={selectState} />}
       <details className="alu-rules" open>
         <summary>公开行为、映射与采样规则</summary>
         <table><thead><tr><th>M</th><th>S</th><th>F</th><th>Cout</th></tr></thead><tbody>
@@ -617,10 +726,10 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
           <button type="button" className="ws-btn ghost" onClick={() => selectState(previous => ({ ...previous, selectedCheck: '', selectedCheckBasis: '' }))}>查看最新检查</button></p>}
       {checkMismatch && <p role="alert" className="alu-alert">这份报告对应另一份已启用作品，不是当前作品的检查；请核对运行记录。</p>}
       {alu.selectedCheck && !selectedCheckRecord && <p role="status">所选检查记录暂不可读，原选择仍保留，未改选其他报告。</p>}
-      {!feedbackHeld && displayCheckRecord?.query.statusKnowledge === 'unknown' && <p role="status">检查结果尚未确认，原记录仍保留，不显示通过。
+      {(!predictionHeld || locatedCheck) && displayCheckRecord?.query.statusKnowledge === 'unknown' && <p role="status">检查结果尚未确认，原记录仍保留，不显示通过。
         <button className="ws-btn ghost" onClick={() => void queryRecord(displayCheckRecord)}>核对状态</button>
         <button className="ws-btn ghost" onClick={() => void stopCheck(displayCheckRecord)}>停止检查</button></p>}
-      {!feedbackHeld && displayCheckRecord?.query.statusKnowledge !== 'unknown' && <CheckReportTool record={displayCheckRecord} active={checkActive}
+      {(!predictionHeld || locatedCheck) && displayCheckRecord?.query.statusKnowledge !== 'unknown' && <CheckReportTool record={displayCheckRecord} active={checkActive}
         canStart={canAct && !!basis && !!enabledRecord && enabledUsable && !activeCheck && !pendingCheck}
         report={reportState.recordId === displayCheckRecord?.requestId ? reportState.report : null}
         observations={reportState.recordId === displayCheckRecord?.requestId ? reportState.observations : null}
@@ -644,13 +753,13 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
         <button type="button" className="ws-btn ghost" onClick={() => void stopCheck(activeObservation ?? activeRun)}>停止原执行</button>
         <button type="button" className="ws-btn ghost" onClick={() => void queryRecord(activeObservation ?? activeRun)}>核对原执行</button>
       </div>}
-      {!feedbackHeld && <details className="alu-history"><summary>观察与检查记录（选择历史不改变开关）</summary>
+      {!predictionHeld && <details className="alu-history"><summary>观察与检查记录（选择历史不改变开关）</summary>
         <div className="alu-history-columns">
           <div><h3>观察</h3>
             {observations.length === 0 ? <p className="alu-hint">还没有自由观察或运行记录。</p>
               : <ul>{observations.slice(0, observationLimit).map(record => <li key={record.requestId}>
                 <button type="button" className="ws-btn ghost" onClick={() => selectState(previous => ({ ...previous,
-                  selectedObservation: record.requestId, selectedObservationRevision: -1, feedbackPolicy: 'live',
+                  selectedObservation: record.requestId, selectedObservationRevision: -1,
                   selectedCase: record.action.protocolVersion === 3 && aluCaseFromAction(record.action) ? record.requestId : '' }))}>查看</button>
                 <span>{record.action.execution.initiator.kind === 'agent' ? 'Agent 验证'
                   : record.action.execution.operation.operationId === 'run-single' ? '显式运行' : '自由观察'}</span>
@@ -673,7 +782,9 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
           </div>
         </div>
       </details>}
-      {!feedbackHeld && <ExecutionPanel activity={activity} binding={binding} authorized={authorized} />}
+      {!predictionHeld && <ExecutionPanel activity={activity} binding={binding} authorized={authorized}
+        requestIds={gated ? new Set([boardRecord, allowedCase, displayCheckRecord, locatedResult]
+          .filter(record => !!record).map(record => record.requestId)) : undefined} />}
     </>}
   </section>
 }

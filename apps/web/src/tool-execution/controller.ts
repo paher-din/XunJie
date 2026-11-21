@@ -157,6 +157,15 @@ export class ExecutionController {
       return this.canAccess() ? merged : null
     } catch { return this.canAccess() ? record.query : null /* An unreachable service never rewrites a confirmed fact. */ }
   }
+  async visibility(requestId: string) {
+    if (!this.canAccess()) return null
+    const result = await this.transport.visibility?.(requestId)
+    return this.canAccess() ? result ?? null : null
+  }
+  async markDisplayed(requestId: string, contentId: string) {
+    if (!this.canAccess() || this.readOnly) return null
+    return await this.transport.displayed?.(requestId, contentId) ?? null
+  }
   async artifact(requestId: string): Promise<ResultRecord | null> {
     if (!this.canAccess()) return null
     if(!this.readOnly) {

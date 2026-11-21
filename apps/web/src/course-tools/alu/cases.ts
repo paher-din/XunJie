@@ -28,7 +28,7 @@ export function priorCaseSources(records: ExecutionRecord[], enabled: ExecutionR
 
 export function isCurrentComparison(state: AluState, record: ExecutionRecord | undefined) {
   const capture = record?.action.protocolVersion === 3 ? aluCaseFromAction(record.action) : null
-  return !!capture && state.caseRequestId === record?.requestId && state.selectedCase === record.requestId
+  return !!capture && state.caseRequestId === record?.requestId
     && sameAluInputs(controlsOf(state), capture.inputs) && JSON.stringify(readCaseDraft(state.caseDraft)) === JSON.stringify(capture.draft)
 }
 
