@@ -20,6 +20,7 @@ test('school delivery leaves drafts, Agent inputs and unfinished works on the de
   const directory = await mkdtemp(join(tmpdir(), 'xj-local-school-study-'));
   const schoolRoot = join(directory, 'school'), deviceRoot = join(directory, 'device');
   const school = openProductRuntime({ root: schoolRoot, resources }), device = openProductRuntime({ root: deviceRoot, resources });
+  const secondDevice = openProductRuntime({ root: join(directory, 'second-device'), resources });
   let generations = 0, ledger;
   const provider = createServer(async (request, response) => {
     for await (const _ of request) { /* Synthetic local provider, no student input logs. */ }
@@ -96,6 +97,31 @@ test('school delivery leaves drafts, Agent inputs and unfinished works on the de
     const draft = (await deviceApi('drafts/' + copied.activityId, undefined, connected)).value;
     await deviceApi('drafts/' + copied.activityId, { requestId: randomUUID(), draftId: draft.draftId, baseRevision: draft.revision,
       question: '绝不上传学校的提问正文', references: [], bases: [] }, connected);
+    // The school has already acknowledged this member's one-time legacy export.
+    // A second installation still receives the course registration and keeps its own study data.
+    await schoolApi('study-transfer', undefined, member, 409);
+    await secondDevice.install({ profile: 'local' });
+    const secondState = await secondDevice.start();
+    const secondApi = (route, body, headers) => request(secondState.endpoint, route, body, headers);
+    const secondConnection = randomUUID();
+    await secondApi('client/start', { requestId: secondConnection, schoolEndpoint: schoolState.endpoint });
+    await schoolApi('connections/approve', { requestId: secondConnection }, member);
+    await secondApi('client/complete', { requestId: secondConnection });
+    const secondHeaders = { 'x-xj-space': 'school:' + secondConnection };
+    const secondCourses = (await secondApi('courses', undefined, secondHeaders)).value.courses;
+    assert.ok(secondCourses.some(course => course.courseId === courseId));
+    const secondActivities = (await secondApi('activities', undefined, secondHeaders)).value;
+    const secondCopy = secondActivities.find(activity => activity.activityId === copied.activityId);
+    assert.equal(secondCopy?.target.environmentId, secondState.environment.environmentId);
+    assert.equal(secondCopy.course.releaseId, copied.course.releaseId);
+    assert.deepEqual((await secondApi('workspaces/' + copied.activityId, undefined, secondHeaders)).value.files, []);
+    assert.equal((await secondApi('drafts/' + copied.activityId, undefined, secondHeaders)).value.question, '');
+    const secondFile = { ...file, objectId: randomUUID(), contentId: randomUUID(), value: '第二个本机环境的作品' };
+    await secondApi('workspaces/' + copied.activityId, { requestId: randomUUID(), baseRevision: 0, files: [secondFile] }, secondHeaders);
+    assert.deepEqual((await secondApi('workspaces/' + copied.activityId, undefined, secondHeaders)).value.files, [secondFile]);
+    assert.deepEqual((await deviceApi('workspaces/' + copied.activityId, undefined, connected)).value.files, [current]);
+    assert.equal((await deviceApi('drafts/' + copied.activityId, undefined, connected)).value.question, '绝不上传学校的提问正文');
+    await secondDevice.stop();
     const modelId = randomUUID();
     await deviceApi('models/connections', { requestId: randomUUID(), connectionId: modelId, expectedVersion: 0, name: '本机测试模型',
       protocol: 'chat-completions', baseUrl: `http://127.0.0.1:${provider.address().port}`, path: '/chat/completions',
@@ -195,7 +221,7 @@ test('school delivery leaves drafts, Agent inputs and unfinished works on the de
     }
   } finally {
     if (ledger) await ledger.close();
-    await Promise.allSettled([device.stop(), school.stop()]);
+    await Promise.allSettled([secondDevice.stop(), device.stop(), school.stop()]);
     provider.closeAllConnections(); await new Promise(resolve => provider.close(resolve));
     await rm(directory, { recursive: true, force: true });
   }
