@@ -4,13 +4,14 @@ import { modelContextPressurePolicy, modelLearningInputSchema, modelSegmentInput
 import type { LearningModelPort } from '@xunjie/model-gateway/service';
 import type { AgentNotification, AgentToolCall, AgentTurnBudget } from '@xunjie/contracts/agent-runtime';
 import type { AgentStore } from './store.js';
-import type { AgentScenario, ContextMaterial, Facts, HistoryEntry, HistorySource, Json, RuleVersion,
+import type { AgentScenario, ContextMaterial, Facts, HistoryEntry, HistorySource, RuleVersion,
   ScenarioInput, CompactionSource, HistoryProjection, HistoryProjectionReplacement, RequestCapacity } from './ports.js';
 import { conversationHistory, appendHistory, historyDigest } from './history.js';
 import { raceAbort, resolveGateway, type ModelGatewaySource } from './model.js';
 import { AgentError } from './errors.js';
 import { measureAttemptCapacity } from './capacity.js';
 import { citationToolDefinition } from './citations.js';
+import { readbackForSource, stepReadbackScope, type ReadbackPlan, type ReadbackScope } from './readback.js';
 
 /** Latest task facts the scene/product can resolve for explicit references or unresolved effects. */
 export interface TaskFactsPort {
@@ -19,7 +20,12 @@ export interface TaskFactsPort {
 }
 export interface TaskFact { taskId: string; taskVersion: string; name: string; status: string; summary: string; resultRef: string | null; priority: number; }
 export const TASK_FACT_LIMITS = Object.freeze({ maxItems: 8, maxChars: 8192, maxItemChars: 512 });
-export const TOOL_FEEDBACK_POLICY = Object.freeze({ recentCompletedSteps: 2, candidateBytes: 2048, summaryChars: 512 });
+export const TOOL_FEEDBACK_POLICY = Object.freeze({
+  recentCompletedSteps: 4,
+  candidateBytes: 8 * 1024,
+  summaryChars: 1200,
+  recentFeedbackBudgetBytes: 24 * 1024,
+});
 
 export interface ContextPlan {
   system: string; tools: Awaited<ReturnType<AgentScenario['tools']>>;
@@ -93,7 +99,11 @@ export async function buildContext(options: BuildContextOptions, input: Scenario
   const priorFeedbackDigest = typeof persisted.feedbackDigest === 'string' ? persisted.feedbackDigest : null;
   const priorCompressedKeys = Array.isArray(persisted.feedbackCompressedEntries)
     ? persisted.feedbackCompressedEntries.map(String) : [];
-  const projected = projectToolFeedback(history, recentToolSteps);
+  const projected = projectToolFeedback(history, {
+    recentStepIds: recentToolSteps,
+    readbackScope: stepReadbackScope(tools.map(tool => tool.definition), rules.versions),
+    currentStepId: input.stepId,
+  });
   history = projected.history;
   const feedbackChanged = priorFeedbackDigest !== projected.feedbackDigest;
   const feedbackRemoved = priorCompressedKeys.some(key => !projected.compressedKeys.includes(key))
@@ -212,34 +222,62 @@ interface ToolFeedbackProjection {
   compressedKeys: string[];
   missingNative: number;
 }
+export interface ToolFeedbackProjectionOptions {
+  /** Completed Step ids in the initial retention window (newest first is not required). */
+  recentStepIds: ReadonlySet<string>;
+  readbackScope: ReadbackScope;
+  currentStepId: string;
+}
+interface ParsedToolFeedback {
+  tool: string; kind: string; outcome: string; body: string; taskId: string; requestRef: string;
+}
+interface FeedbackItem { index: number; entry: HistoryEntry; bytes: number; parsed: ParsedToolFeedback | null; }
 const truncateChars = (value: string, max: number) => {
   const chars = Array.from(value);
-  return chars.length > max ? chars.slice(0, max).join('') + '…' : value;
+  return chars.length > max ? chars.slice(0, max - 1).join('') + '…' : value;
 };
-function readbackOf(entry: HistoryEntry): { sourceId: string; label: string; locator?: Facts }[] {
-  const found = new Map<string, { sourceId: string; label: string; locator?: Facts }>();
-  for (const source of entry.sources ?? []) {
-    if (source?.sourceId !== 'tool:' + entry.id
-      || typeof source.label !== 'string' || !source.label.trim()) continue;
-    if (source.source?.kind === 'student-answer' || source.source?.kind === 'tool-evidence') continue;
-    let fixed = source.source && typeof source.source === 'object' && !Array.isArray(source.source)
-      ? source.source as Facts : {};
-    if (fixed.kind === 'tool-call' && fixed.source && typeof fixed.source === 'object' && !Array.isArray(fixed.source))
-      fixed = fixed.source as Facts;
-    const locator: Facts = {};
-    for (const key of ['kind', 'objectId', 'contentId', 'requestId', 'materialId', 'materialSha256',
-      'readingId', 'documentId', 'documentSha256', 'activityId', 'executionRef', 'inputDigest',
-      'version', 'page', 'start', 'end', 'range', 'toolCallId', 'toolName']) {
-      if (typeof fixed[key] === 'string' || typeof fixed[key] === 'number'
-        || fixed[key] && typeof fixed[key] === 'object' && !Array.isArray(fixed[key]))
-        locator[key] = fixed[key] as Json;
-    }
-    if (source.range) locator.range = source.range;
-    found.set(source.sourceId, { sourceId: truncateChars(source.sourceId, 240),
-      label: truncateChars(source.label, 160), ...(Object.keys(locator).length ? { locator } : {}) });
-    if (found.size >= 8) break;
+function readbackOf(entry: HistoryEntry, scope: ReadbackScope): (ReadbackPlan & { sourceId: string; label: string })[] {
+  const source = entry.sources?.find(source => source?.sourceId === 'tool:' + entry.id);
+  if (!source || typeof source.label !== 'string' || !source.label.trim()) return [];
+  return readbackForSource(source.source, scope, source.range).map(plan => ({
+    sourceId: source.sourceId, label: truncateChars(source.label, 160), ...plan,
+  }));
+}
+function parseToolFeedback(entry: HistoryEntry): ParsedToolFeedback | null {
+  try {
+    const feedback: unknown = JSON.parse(entry.text);
+    if (!feedback || typeof feedback !== 'object' || Array.isArray(feedback)) return null;
+    const text = (key: string) => {
+      const value = (feedback as Record<string, unknown>)[key];
+      return typeof value === 'string' ? value : '';
+    };
+    const body = text('summary') || text('reason');
+    const outcome = text('outcome');
+    return { tool: text('tool'), kind: text('kind'), outcome, body, taskId: text('taskId'), requestRef: text('requestRef') };
+  } catch {
+    return null;
   }
-  return [...found.values()];
+}
+function shortToolFeedback(item: FeedbackItem, options: ToolFeedbackProjectionOptions): HistoryEntry | null {
+  const { entry, parsed } = item;
+  // Native pending batches are settled separately before dispatch. Failed and unknown
+  // results, student messages and the current Step remain outside this rewrite.
+  if (entry.feedbackCompressed || entry.stepId === options.currentStepId
+    || parsed?.kind !== 'completed' || parsed.outcome !== 'success' || !parsed.body.trim()) return null;
+  const readback = readbackOf(entry, options.readbackScope);
+  if (!readback.length) return null;
+  const short = JSON.stringify({
+    tool: parsed.tool,
+    kind: parsed.kind,
+    outcome: parsed.outcome,
+    summary: truncateChars(parsed.body.trim(), TOOL_FEEDBACK_POLICY.summaryChars),
+    ...(parsed.taskId ? { taskId: parsed.taskId } : {}),
+    ...(parsed.requestRef ? { requestRef: parsed.requestRef } : {}),
+    readback,
+    note: '早期工具反馈已压缩；需要完整细节时按 readWith 重新读取原版本。',
+  });
+  if (Buffer.byteLength(short, 'utf8') >= item.bytes) return null;
+  return { ...entry, text: short, feedbackCompressed: true };
 }
 function projectionOf(history: readonly HistoryEntry[]): HistoryProjection {
   const compacted = history.filter(entry => entry.feedbackCompressed)
@@ -251,50 +289,46 @@ function projectionOf(history: readonly HistoryEntry[]): HistoryProjection {
         ...(entry.nativeCallId ? { callId: entry.nativeCallId } : {}), text: entry.text }] : []) };
 }
 /**
- * Keep recent tool interaction intact. Older, large, pure-text results that still have a
- * real readback entry may be replaced by a short observation. The persisted history is
- * never changed: only this Step's model-visible projection is reduced.
+ * Keep recent tool interaction intact within a hard cumulative budget. Inside the recent
+ * window, oldest compressible feedback is shortened only when the window exceeds the
+ * budget. Outside the window, only individual text results above 8 KiB with a real
+ * readWith are shortened. The persisted history is never changed: only this Step's
+ * model-visible projection is reduced.
  */
-function projectToolFeedback(history: readonly HistoryEntry[], recentStepIds: ReadonlySet<string>): ToolFeedbackProjection {
-  const projected = history.map(entry => {
-    if (entry.kind !== 'tool-result' || entry.feedbackCompressed || entry.images?.length
-      || entry.readback !== true || entry.stepId && recentStepIds.has(entry.stepId)
-      || Buffer.byteLength(entry.text, 'utf8') <= TOOL_FEEDBACK_POLICY.candidateBytes) return entry;
-    const readback = readbackOf(entry);
-    if (!readback.length) return entry;
-    let feedback: Record<string, unknown>;
-    try {
-      const parsed = JSON.parse(entry.text) as unknown;
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return entry;
-      feedback = parsed as Record<string, unknown>;
-    } catch {
-      return entry;
-    }
-    const text = (key: string) => typeof feedback[key] === 'string' ? String(feedback[key]).trim() : '';
-    const tool = truncateChars(text('tool') || 'tool', 120);
-    const kind = truncateChars(text('kind') || 'unknown', 80);
-    const observation = text('summary') || text('reason');
-    if (!observation) return entry;
-    const short = JSON.stringify({
-      tool,
-      kind,
-      ...(text('outcome') ? { outcome: text('outcome') } : {}),
-      summary: truncateChars(observation, TOOL_FEEDBACK_POLICY.summaryChars),
-      ...(text('taskId') ? { taskId: truncateChars(text('taskId'), 240) } : {}),
-      ...(text('requestRef') ? { requestRef: truncateChars(text('requestRef'), 240) } : {}),
-      readback,
-      note: '早期工具反馈已压缩；完整结果只能按回读入口重新读取。',
-    });
-    if (Buffer.byteLength(short, 'utf8') >= Buffer.byteLength(entry.text, 'utf8')) return entry;
-    return { ...entry, text: short, feedbackCompressed: true };
+export function projectToolFeedback(history: readonly HistoryEntry[], options: ToolFeedbackProjectionOptions): ToolFeedbackProjection {
+  const items: FeedbackItem[] = history.flatMap((entry, index) => {
+    if (entry.kind !== 'tool-result' || entry.images?.length) return [];
+    const parsed = parseToolFeedback(entry);
+    return [{ index, entry, parsed, bytes: Buffer.byteLength(parsed?.body ?? entry.text, 'utf8') }];
   });
-  const compressed = projected.filter(entry => entry.feedbackCompressed)
+  const compressed = new Map<number, HistoryEntry>();
+  const recent = items.filter(item => item.entry.stepId && options.recentStepIds.has(item.entry.stepId));
+  let recentBytes = recent.reduce((total, item) => total + item.bytes, 0);
+  if (recentBytes > TOOL_FEEDBACK_POLICY.recentFeedbackBudgetBytes) {
+    // Oldest first, even inside the initial retention window. An unreadable or protected
+    // result contributes to the budget but cannot be deleted or rewritten to satisfy it.
+    for (const item of recent) {
+      if (recentBytes <= TOOL_FEEDBACK_POLICY.recentFeedbackBudgetBytes) break;
+      const short = shortToolFeedback(item, options);
+      if (!short) continue;
+      compressed.set(item.index, short);
+      recentBytes -= item.bytes - Buffer.byteLength(short.text, 'utf8');
+    }
+  }
+  for (const item of items) {
+    if (item.entry.stepId && options.recentStepIds.has(item.entry.stepId)) continue;
+    if (item.bytes <= TOOL_FEEDBACK_POLICY.candidateBytes) continue;
+    const short = shortToolFeedback(item, options);
+    if (short) compressed.set(item.index, short);
+  }
+  const projected = history.map((entry, index) => compressed.get(index) ?? entry);
+  const compressedKeys = projected.filter(entry => entry.feedbackCompressed)
     .map(entry => entry.id + '@' + entry.version);
   const missingNative = projected.filter(entry => entry.feedbackCompressed && !entry.nativeCallId && !entry.stepId).length;
   const projection = projectionOf(projected);
-  return { history: projected, feedbackDigest: compressed.length ? projection.projectionId : null,
+  return { history: projected, feedbackDigest: compressedKeys.length ? projection.projectionId : null,
     projectionId: projection.projectionId, replacements: projection.replacements,
-    compressedKeys: compressed, missingNative };
+    compressedKeys, missingNative };
 }
 
 const materialPriority: Record<ContextMaterial['kind'], number> = {
@@ -329,12 +363,25 @@ export function toolMaterial(call: AgentToolCall): ContextMaterial[] {
   const data = call.result.kind === 'completed' && call.result.data && typeof call.result.data === 'object'
     && !Array.isArray(call.result.data) ? call.result.data : {};
   const source = toolSource(call, data);
-  const range = typeof data.page === 'number'
+  const reading = data.reading && typeof data.reading === 'object' && !Array.isArray(data.reading) ? data.reading : null;
+  const reference = data.reference && typeof data.reference === 'object' && !Array.isArray(data.reference) ? data.reference : null;
+  const explicitRange = data.range ?? reference?.range;
+  const range: Facts | null = typeof data.page === 'number'
     ? { page: data.page, ...(typeof data.start === 'number' && typeof data.end === 'number' ? { start: data.start, end: data.end } : {}) }
+    : reading && Array.isArray(reading.requestedPages) ? {
+      pages: reading.requestedPages,
+      ...(reading.region !== undefined ? { region: reading.region } : {}),
+      ...(Array.isArray(reading.pages) ? { pageRanges: Object.fromEntries(reading.pages.flatMap(page => {
+        if (!page || typeof page !== 'object' || Array.isArray(page) || page.state !== 'ready'
+          || typeof page.page !== 'number' || typeof page.text !== 'string') return [];
+        return [[page.page, { start: 0, end: page.text.length }]];
+      })) } : {}),
+    }
+    : Array.isArray(data.searchedPages) ? { pages: data.searchedPages }
     : Array.isArray(data.visualPages) ? { pages: data.visualPages }
     : typeof data.start === 'number' && typeof data.end === 'number' ? { start: data.start, end: data.end }
     : typeof data.offset === 'number' && typeof data.length === 'number' ? { offset: data.offset, length: data.length }
-    : data.range && typeof data.range === 'object' && !Array.isArray(data.range) ? data.range : null;
+    : explicitRange && typeof explicitRange === 'object' && !Array.isArray(explicitRange) ? explicitRange : null;
   const content = JSON.stringify({ tool: call.name, kind: call.result.kind,
     summary: 'summary' in call.result ? call.result.summary : '', source });
   return [{ materialId: 'M-' + canonicalDigest('tool:' + call.toolCallId).slice(0, 24),

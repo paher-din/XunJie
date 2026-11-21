@@ -6,6 +6,7 @@ import type { ModelGatewaySource } from './model.js';
 import type { AgentScenario, AgentTool, ContextMaterial, HistoryEntry, ModelPort, ToolContext, AskInput, AskOutcome,
   Facts, ScenarioInput, Json, ToolEffectReference } from './ports.js';
 import { buildContext, toolMaterial, type TaskFactsPort } from './context.js';
+import { hasFixedReadback, stepReadbackScope } from './readback.js';
 import { createToolRegistry, executeTools } from './tools.js';
 import { appendHistory, conversationHistory, historyDigest } from './history.js';
 import { budgetExhausted } from './budgets.js';
@@ -30,26 +31,6 @@ export interface LoopDependencies {
 }
 const MAX_TOOLS_PER_RESPONSE = 8;
 const asJson = (value: unknown): Json => JSON.parse(JSON.stringify(value)) as Json;
-const sourceString = (source: Facts, key: string) => typeof source[key] === 'string' ? String(source[key]) : '';
-/** A source is compactable only when this Step actually exposes a reader for its fixed identity. */
-function hasFixedReadback(source: Facts, tools: ReadonlySet<string>): boolean {
-  const kind = sourceString(source, 'kind');
-  if (kind === 'work') return tools.has('read_work') && !!sourceString(source, 'objectId') && !!sourceString(source, 'contentId');
-  if (kind === 'component' || kind === 'experiment-reference') return (tools.has('read_result') || tools.has('execution_query'))
-    && !!sourceString(source, 'requestId');
-  if (kind === 'course-material') return tools.has('read_material') && !!sourceString(source, 'materialId')
-    && !!sourceString(source, 'materialSha256');
-  if (kind === 'personal-material') return tools.has('read_personal_material') && !!sourceString(source, 'materialId')
-    && !!sourceString(source, 'version');
-  if (kind === 'pdf') return (tools.has('read_pdf') || tools.has('read_pdf_text'))
-    && !!sourceString(source, 'documentId') && !!sourceString(source, 'documentSha256');
-  if (kind === 'tool-call') {
-    const nested = source.source;
-    return !!nested && typeof nested === 'object' && !Array.isArray(nested)
-      && hasFixedReadback(nested as Facts, tools);
-  }
-  return false;
-}
 
 /** The single readable main loop: runTurn → runStep → generate → executeTools. */
 export async function runTurn(deps: LoopDependencies, turnId: string): Promise<void> {
@@ -246,7 +227,7 @@ async function runStep(deps: LoopDependencies, turn: AgentTurn, step: AgentStep,
   const dispatchedMaterials = response.rebuilt ? plan.rebuildMaterials : plan.materials;
   const plannedCitation = createCitationTool(dispatchedMaterials);
   const plannedTools = [...plan.tools, plannedCitation];
-  const plannedToolNames = new Set(plannedTools.map(tool => tool.definition.name));
+  const readbackScope = stepReadbackScope(plannedTools.map(tool => tool.definition), plan.ruleVersions);
   const registry = createToolRegistry(plannedTools);
   const historySources = materialsAsHistorySources(dispatchedMaterials);
   const responseSources = [...new Map([...plan.history.flatMap(entry => entry.sources ?? []), ...historySources]
@@ -303,7 +284,7 @@ async function runStep(deps: LoopDependencies, turn: AgentTurn, step: AgentStep,
         kind: 'tool-result' as const,
         attemptId: response.attemptId,
         nativeCallId: call.nativeCallId,
-        readback: toolSources.some(source => hasFixedReadback(source.source, plannedToolNames)),
+        readback: toolSources.some(source => hasFixedReadback(source.source, readbackScope, source.range)),
         text: JSON.stringify({ tool: call.name, kind: call.result?.kind, outcome: feedbackOf(call.result).outcome,
           summary: call.result && 'summary' in call.result ? call.result.summary : call.result && 'reason' in call.result ? call.result.reason : '',
           ...effectReferences(call.result) }),
