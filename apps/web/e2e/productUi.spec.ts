@@ -290,6 +290,7 @@ test('personal notes keep text and formatting while typing common Markdown', asy
   await expect(editor.locator('strong em, em strong')).toHaveCount(0)
 
   const quote = editor.locator('blockquote p')
+  await quote.scrollIntoViewIfNeeded()
   const secondLine = await quote.evaluate(paragraph => {
     const text = paragraph.firstChild!
     const range = paragraph.ownerDocument.createRange()

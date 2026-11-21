@@ -210,7 +210,7 @@ it('renders bold and LaTeX in the editable document and appends its source as a 
   expect(editor.state.sliceDoc()).toBe('第一版内容')
   expect(host.querySelector('.personal-material-reading .wr-text-source')).toBeNull()
   expect(document.activeElement).toBe(editor.contentDOM)
-  const draftText = '# 标题\n\n**第二版内容**\n\n$x^2$\n\n$$\n\\frac{1}{2}\n$$\n\n| 左侧 | 右侧 |\n| --- | --- |\n| 重复内容 | 重复内容 |\n| 补充 |'
+  const draftText = '# 标题\n\n**第二版内容**\n\n$x^2$\n\n$$\n\\frac{1}{2}\n$$\n\n> 引用首行\n> 引用次行\n\n- 列表首行\n  列表次行\n\n| 左侧 | 右侧 |\n| --- | --- |\n| 重复内容 | 重复内容 |\n| 补充 |'
   await replaceDraft(editor, draftText)
   await waitFor(() => {
     expect(editor.contentDOM.querySelector('strong')?.textContent).toBe('第二版内容')
@@ -229,6 +229,11 @@ it('renders bold and LaTeX in the editable document and appends its source as a 
   expect(editor.contentDOM.querySelector('.personal-note-math')).toBeNull()
   expect(editor.contentDOM.textContent).toContain('$x^2$')
   expect(Array.from(editor.contentDOM.querySelectorAll('.personal-note-syntax'), mark => mark.textContent)).toEqual(['$', '$'])
+
+  await clickRenderedText(editor.contentDOM.querySelector('blockquote p')!, '引用首行\n引用'.length)
+  expect(editor.state.selection.main.head).toBe(draftText.indexOf('引用次行') + 2)
+  await clickRenderedText(editor.contentDOM.querySelector('li')!, '列表首行\n列表'.length)
+  expect(editor.state.selection.main.head).toBe(draftText.indexOf('列表次行') + 2)
 
   await clickRenderedText(editor.contentDOM.querySelector('td:nth-child(2)')!, 2)
   const cell = editor.contentDOM.querySelector<HTMLTextAreaElement>('td textarea')!
