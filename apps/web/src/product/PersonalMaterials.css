@@ -1,11 +1,12 @@
-.personal-materials { flex: 1; height: 100%; min-width: 0; min-height: 0; overflow: auto; padding: 16px 24px; color: var(--ink); background: var(--paper); font-size: 13px; }
+.personal-materials { display: flex; flex: 1; flex-direction: column; height: 100%; min-width: 0; min-height: 0; overflow: auto; padding: 16px 24px 12px; container-type: inline-size; color: var(--ink); background: var(--paper); font-size: 13px; }
 .personal-material-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
 .personal-material-toolbar > strong { flex: 1; min-width: 100px; overflow-wrap: anywhere; font-size: 15px; font-weight: 600; }
+.personal-material-toolbar-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-inline-start: auto; }
 .personal-materials .ws-btn { flex: none; white-space: normal; }
 .personal-material-muted { margin: 8px 0; color: var(--muted); font-size: 12px; }
 .personal-material-version { border: 1px solid var(--accent-line); border-radius: 6px; padding: 1px 8px; color: var(--accent-deep); background: var(--accent-soft); font-size: 12px; }
-.personal-material-reading { max-width: 960px; margin: 8px auto 20px; padding: 16px 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--raised); box-shadow: var(--panel-shadow); }
-.personal-material-reading .wr-text-source { min-height: 180px; max-height: calc(100vh - 280px); overflow: auto; padding: 4px; }
+.personal-material-reading { display: flex; flex: 1; flex-direction: column; box-sizing: border-box; width: 100%; max-width: 960px; min-height: 180px; margin-inline: auto; padding: 16px 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--raised); box-shadow: var(--panel-shadow); }
+.personal-material-reading .wr-text-source { flex: 1; min-height: 0; overflow: auto; padding: 4px; }
 .personal-material-reading .wr-text-source:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .personal-material-markdown .course-reader-markdown { font-size: 15px; line-height: 1.7; white-space: normal; }
 .personal-material-markdown .course-reader-markdown p { white-space: pre-line; }
@@ -13,9 +14,12 @@
 .personal-material-form label { display: grid; gap: 4px; color: var(--muted); font-size: 12px; }
 .personal-material-form input, .personal-material-form textarea { box-sizing: border-box; width: 100%; padding: 6px 8px; border: 1px solid var(--line-strong); border-radius: 6px; color: var(--ink); background: var(--paper); font: inherit; }
 .personal-material-form textarea { min-height: 120px; resize: vertical; white-space: pre-wrap; }
-.personal-material-editor { max-width: 960px; margin: 0 auto 20px; }
 .personal-material-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 4px; }
 .personal-material-pending { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
 .personal-material-error { color: var(--danger-deep); overflow-wrap: anywhere; font-size: 13px; }
 .personal-material-notice { color: var(--muted); overflow-wrap: anywhere; font-size: 12px; }
 @media (max-width: 640px) { .personal-materials { padding: 12px; } .personal-material-reading { padding: 12px; } }
+
+@container (max-width: 560px) {
+  .personal-material-toolbar-actions { flex-basis: 100%; justify-content: flex-end; }
+}

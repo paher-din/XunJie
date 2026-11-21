@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { expect, it } from 'vitest'
 import CourseMarkdown from './CourseMarkdown'
 import { courseMaterialOffsets } from './CourseMaterials'
-import { renderedMarkdownRange, selectedMarkdownOffsets } from './courseMarkdownSelection'
+import { renderedMarkdownRange, selectedMarkdownOffsets } from '@xunjie/ui/workspace/markdown-selection'
 
 function preview(text: string) {
   const root = document.createElement('div')

@@ -12,11 +12,14 @@ import { locateDomRange, locateTextRange, useTextReferenceSource, useWorkspaceRe
 import { acknowledgePersonalMaterialRequest, listPersonalMaterialRequests, retainPersonalMaterialRemove,
   retainPersonalMaterialSave, retainPersonalMaterialUpdate, type PersonalMaterialRequest } from '../reliable-workspace/personal-materials'
 import { learningRequest, workspaceScope } from './learningTransport'
-import { renderedMarkdownRange, selectedMarkdownOffsets } from './courseMarkdownSelection'
+import { renderedMarkdownRange, selectedMarkdownOffsets } from '@xunjie/ui/workspace/markdown-selection'
+import type { WorkspaceMarkdownEditorHandle } from '@xunjie/ui/workspace/markdown-editor'
 import './PersonalMaterials.css'
 import './course-material-reader.css'
 
 const CourseMarkdown = lazy(() => import('./CourseMarkdown'))
+const WorkspaceMarkdownEditor = lazy(() => import('@xunjie/ui/workspace/markdown-editor')
+  .then(module => ({ default: module.WorkspaceMarkdownEditor })))
 
 const MEDIA_LABEL: Record<PersonalMaterialMediaType, string> = { 'text/plain': '纯文本', 'text/markdown': 'Markdown' }
 const requestLabel = (request: PersonalMaterialRequest) => request.kind === 'save' ? '保存' : request.kind === 'update' ? '更新' : '移除'
@@ -269,6 +272,7 @@ export function usePersonalMaterials({ activity, spaceKey, namespace, authorized
     if (parsed.data.activityId !== activity.activityId)
       return { ok: false, reason: '个人笔记引用不属于当前活动，固定副本仍保留。' }
     if (operation.current) return { ok: false, reason: '正在处理个人笔记，请完成后再定位原引用。' }
+    if (editing) return { ok: false, reason: '请先保存或取消当前编辑，再定位笔记引用。' }
     const source = parsed.data
     const exact = reading && reading.material.materialId === source.materialId
       && reading.version.version === source.version && reading.version.sha256 === source.sha256
@@ -422,42 +426,44 @@ function PersonalMarkdown({ reading, source }: { reading: PersonalMaterialVersio
 }
 
 export function PersonalMaterials({ personal }: { personal: PersonalMaterialsController }) {
-  const { reading } = personal
+  const { reading, editing } = personal
   const [text, setText] = useState('')
-  useEffect(() => { setText(reading?.text ?? '') }, [reading?.text, personal.editing])
+  const noteEditor = useRef<WorkspaceMarkdownEditorHandle>(null)
+  const editButton = useRef<HTMLButtonElement>(null)
+  const wasEditing = useRef(false)
+  useEffect(() => { setText(reading?.text ?? '') }, [reading?.text, editing])
+  useEffect(() => {
+    if (!editing && wasEditing.current) editButton.current?.focus({ preventScroll: true })
+    wasEditing.current = editing
+  }, [editing])
   useEffect(() => () => { personal.clearReading() }, [personal.clearReading])
   if (!reading) return <PersonalMaterialEntries personal={personal} />
-  const source = sourceOf(reading)
   return <section className="personal-materials" aria-label="个人笔记阅读区" aria-busy={personal.busy}>
     <header className="personal-material-toolbar">
-      <button type="button" className="ws-btn ghost" disabled={personal.busy || personal.editing}
+      <button type="button" className="ws-btn ghost" disabled={personal.busy || editing}
         onClick={personal.clearReading}>返回笔记列表</button>
       <strong>{reading.version.name}</strong>
       <span className="personal-material-version">第 {reading.version.version} 版</span>
       {reading.version.version !== reading.material.currentVersion
         && <span className="personal-material-muted">当前材料已到第 {reading.material.currentVersion} 版</span>}
-      {!personal.editing && <button type="button" className="ws-btn ghost"
-        disabled={!personal.writable || personal.busy || !!reading.material.removedAt}
-        onClick={() => personal.beginEditing()}>更新为当前文本</button>}
+      <div className="personal-material-toolbar-actions">
+        {editing ? <>
+          <Button type="button" variant="outline" disabled={personal.busy} onClick={personal.cancelEditing}>取消</Button>
+          <Button type="button" disabled={!personal.writable || personal.busy || !text.trim()}
+            onClick={() => void personal.update({ text: noteEditor.current?.readDraft() ?? text })}>保存新版本</Button>
+        </> : <Button ref={editButton} type="button" variant="outline"
+          disabled={!personal.writable || personal.busy || !!reading.material.removedAt}
+          onClick={personal.beginEditing}>编辑笔记</Button>}
+      </div>
     </header>
     {reading.material.removedAt && <p className="personal-material-notice" role="status">这份材料已移除；固定版本仍可阅读和引用。</p>}
     <div className="personal-material-reading" data-personal-material-reading={`${reading.material.materialId}:${reading.version.version}`}>
       <Suspense fallback={<p className="personal-material-muted" role="status">正在排版…</p>}>
-        <PersonalMarkdown reading={reading} source={source} />
+        {editing ? <WorkspaceMarkdownEditor ref={noteEditor} initialText={reading.text} ariaLabel="更新个人笔记正文"
+          readOnly={personal.busy || !personal.writable} onChange={setText} autoFocus />
+          : <PersonalMarkdown reading={reading} source={sourceOf(reading)} />}
       </Suspense>
     </div>
-    {personal.editing && <div className="personal-material-form personal-material-editor">
-      <label>更新为当前文本
-        <textarea aria-label="更新个人笔记正文" value={text} rows={10} disabled={personal.busy}
-          onChange={event => setText(event.target.value)} />
-      </label>
-      <p className="personal-material-muted">保存后将追加第 {reading.material.currentVersion + 1} 版，当前正文保持可见。</p>
-      <div className="personal-material-actions">
-        <Button type="button" disabled={!personal.writable || personal.busy || !text.trim()}
-          onClick={() => void personal.update({ text })}>保存新版本</Button>
-        <Button type="button" variant="outline" disabled={personal.busy} onClick={personal.cancelEditing}>取消更新</Button>
-      </div>
-    </div>}
     {personal.busy && <p className="personal-material-muted" role="status">正在保存或读取个人笔记…</p>}
   </section>
 }
