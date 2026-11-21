@@ -1,0 +1,26 @@
+.course-reader-markdown > [data-markdown-start] { display: contents; }
+.course-reader-markdown > :first-child,
+.course-reader-markdown > [data-markdown-start]:first-child > :first-child { margin-top: 0; }
+.course-reader-markdown :is(h3, h4, h5, h6) { margin: 24px 0 8px; line-height: 1.5; }
+.course-reader-markdown h3 { font-size: 20px; }
+.course-reader-markdown :is(h4, h5, h6) { font-size: 17px; }
+.course-reader-markdown :is(p, ul, ol, blockquote) { margin: 0 0 12px; }
+.course-reader-markdown :is(ul, ol) { padding-inline-start: 24px; }
+.course-reader-markdown blockquote { padding-inline-start: 12px; border-inline-start: 1px solid var(--line-strong); color: var(--ink-soft); }
+.course-reader-markdown hr { border: 0; border-top: 1px solid var(--line); }
+.course-reader-markdown a { color: var(--accent-deep); text-underline-offset: 2px; }
+.course-reader-markdown strong { font-weight: 600; }
+.course-reader-markdown code { font: 13px/1.7 var(--font-mono); }
+.course-reader-markdown :not(pre) > code { padding: 2px 4px; border-radius: 4px; background: var(--chip-bg); }
+.course-reader-markdown pre, .course-reader-table, .course-reader-math-block {
+  max-width: 100%;
+  margin: 0 0 16px;
+  overflow: auto;
+}
+.course-reader-markdown pre { padding: 12px; border-radius: 8px; background: var(--chip-bg); }
+.course-reader-table { border: 1px solid var(--line); border-radius: 8px; }
+.course-reader-table table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.course-reader-table :is(th, td) { min-width: 64px; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+.course-reader-table th { background: var(--hover-bg); font-weight: 600; }
+.course-reader-table tbody tr:last-child td { border-bottom: 0; }
+.course-reader-math-block .katex-display { margin: 8px 0; }

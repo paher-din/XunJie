@@ -1,0 +1,19 @@
+.personal-material-editor { display: flex; flex: 1; min-width: 0; min-height: 0; font-size: 15px; line-height: 1.7; }
+.personal-material-editor .cm-editor { flex: 1; min-width: 0; }
+.personal-material-editor .cm-editor:focus-within { outline: 2px solid var(--focus-ring); outline-offset: 2px; border-radius: 8px; }
+.personal-material-editor .cm-scroller { font: inherit; }
+.personal-material-editor .cm-content { caret-color: var(--ink); }
+.personal-material-editor .cm-line { overflow-wrap: anywhere; }
+.personal-material-editor .cm-line.personal-note-heading { padding-block-end: 8px; font-size: 17px; font-weight: 600; line-height: 1.5; }
+.personal-material-editor .cm-line.personal-note-heading-3 { font-family: 'LXGW WenKai', 'Kaiti SC', STKaiti, serif; font-size: 20px; }
+.personal-material-editor .cm-line strong { font-weight: 600; }
+.personal-material-editor .cm-line code { padding: 2px 4px; border-radius: 4px; background: var(--chip-bg); font: 13px/1.7 var(--font-mono); }
+.personal-material-editor .personal-note-syntax { color: var(--muted); font-weight: 400; font-style: normal; }
+.personal-material-editor .course-reader-markdown { white-space: normal; }
+.personal-material-editor .course-reader-markdown p { white-space: pre-line; }
+.personal-note-link { color: var(--accent-deep); text-decoration: underline; text-underline-offset: 2px; }
+/* Keep rendered children’s vertical margins inside the height measured by CodeMirror. */
+.personal-note-block { display: flow-root; box-sizing: border-box; padding-inline: 4px; }
+.personal-note-block, .personal-note-block a, .personal-note-math, .personal-note-literal { cursor: text; }
+.personal-note-table :is(td, th):focus-within { background: var(--hover-bg); box-shadow: inset 0 0 0 2px var(--focus-ring); }
+.personal-note-cell-editor { display: block; box-sizing: border-box; width: 100%; min-width: 0; min-height: 1.7em; margin: 0; padding: 0; border: 0; outline: 0; background: transparent; color: inherit; font: inherit; text-align: inherit; resize: none; field-sizing: content; }

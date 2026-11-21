@@ -19,6 +19,17 @@ function Stage({ children, event, height = 480 }: { children: ReactNode; event?:
 }
 function useEvent() { return useState('') }
 
+const markdownSample = '# 实验记录\n\n核对 **进位** 和 *截断*。行内公式 $x^2$。\n\n> 第一行观察。\n> 第二行观察。\n\n| 输入 | 输出 |\n| --- | --- |\n| 0 | 1 |'
+function MarkdownEditorDemo({ readOnly = false }: { readOnly?: boolean }) {
+  const [text, setText] = useState(markdownSample)
+  return <Stage>
+    <div style={{ display: 'flex', minHeight: 350, maxWidth: 720 }}>
+      <W.WorkspaceMarkdownEditor initialText={markdownSample} readOnly={readOnly} onChange={setText} ariaLabel="编辑示例 Markdown" />
+    </div>
+    {!readOnly && <output>正文长度 {text.length}</output>}
+  </Stage>
+}
+
 const files: W.WorkspaceFile[] = [
   { fileId: 'example-main', path: 'main.c', lifecycle: 'active', confirmed: { text: 'int main(void) {\r\n    return 0;\r\n}\n', version: 2, lifecycle: 'active' } },
   { fileId: 'example-notes', path: 'notes.md', lifecycle: 'active', confirmed: null },
@@ -475,6 +486,10 @@ export const workspaceEntries: CatalogEntry[] = [
   entry('CodeRunCluster', 'CodeWorkspace', '旧版模拟确认簇，区分生命周期意图。', ['access/lifecyclePendingCount/unconfirmedCount/confirmedRevision/onSave'], [], [state('dirty', '正文与生命周期待确认', () => <CodeRunDemo />), state('paused', '暂停状态', () => <CodeRunDemo locked />)]),
   entry('FileStrip', 'FileStrip', '文件菜单、行内新建、实例回收／恢复与标签。', ['files/recycledFiles/openFiles/activeFileId', 'menuOpen/onMenuOpenChange/isDirty/isCreated/lifecyclePending', '权限／原因／操作回调'], ['FileTabs', '本地文件实例数据'], [state('interactive', '菜单／新建／回收恢复', () => <CodeDemo target="strip" />), state('readonly', '只读限制', () => <CodeDemo target="strip" readOnly />), state('empty', '空项目', () => <CodeDemo target="strip" empty />)]),
   entry('CodeEditorHost', 'CodeEditorHost', '实际 Monaco 编辑器；切换实例并验证撤销和原文选区。', ['workspaceKey/fileId/language/initialText', 'readOnly/readOnlyReason', 'onTextChange/onCursorChange/ref'], ['monaco-editor', '本地 worker', '模型注册表'], [state('editable', '编辑／同名实例切换', () => <EditorDemo />, 730), state('readonly', '只读与提示', () => <EditorDemo readOnly />, 730)]),
+  entry('WorkspaceMarkdownEditor', 'markdown/WorkspaceMarkdownEditor', '原位编辑 Markdown 和公式，聚焦时可改格式符号，表格按单元格编辑。', ['initialText/ariaLabel/readOnly', 'onChange/autoFocus/ref'], ['CodeMirror', 'Marked', 'KaTeX'], [
+    state('editable', '正文与单元格编辑', () => <MarkdownEditorDemo />),
+    state('readonly', '只读排版', () => <MarkdownEditorDemo readOnly />),
+  ]),
   ...(['CompareDiff', 'CompareReadOnly', 'ConflictCompare', 'CompareFile', 'VersionCompare', 'VersionRowView'] as const).map((name, index) => {
     const kinds = ['diff', 'read', 'conflict', 'file', 'versions', 'row'] as const
     const file = index < 2 ? 'CompareText' : index < 4 ? 'ConflictCompare' : 'VersionCompare'

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import 'fake-indexeddb/auto'
 import { act, useState } from 'react'
+import { EditorView } from '@codemirror/view'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import type { LearningActivity } from '@xunjie/contracts/learning-data'
@@ -39,6 +40,25 @@ const setInput = async (element: HTMLInputElement | HTMLTextAreaElement, value: 
   element.dispatchEvent(new Event('input', { bubbles: true }))
   await settle()
 })
+async function noteEditor() {
+  const find = () => host.querySelector<HTMLElement>('.personal-material-editor .cm-editor')
+  await waitFor(() => expect(find()).not.toBeNull())
+  return EditorView.findFromDOM(find()!)!
+}
+const replaceDraft = async (editor: EditorView, text: string) => act(async () => {
+  editor.dispatch({ changes: { from: 0, to: editor.state.doc.length, insert: text }, selection: { anchor: text.length } })
+  await settle()
+})
+async function clickRenderedText(element: HTMLElement, offset: number) {
+  const previous = document.caretRangeFromPoint
+  const hit = document.createRange()
+  hit.setStart(element.firstChild!, offset)
+  hit.collapse(true)
+  document.caretRangeFromPoint = () => hit
+  try {
+    await act(async () => element.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true })))
+  } finally { document.caretRangeFromPoint = previous }
+}
 const digest = async (text: string) => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',
   new TextEncoder().encode(text))), value => value.toString(16).padStart(2, '0')).join('')
 const decode = (value: string) => new TextDecoder().decode(Uint8Array.from(atob(value), char => char.charCodeAt(0)))
@@ -161,7 +181,7 @@ it('retains an add request and verifies the original requestId after an unknown 
   expect(decode(posts[0].dataBase64)).toBe('第一条正文')
 })
 
-it('appends a new version and keeps the reading content visible', async () => {
+it('renders bold and LaTeX in the editable document and appends its source as a new version', async () => {
   const activity = makeActivity()
   const material = await makeMaterial(activity.activityId, '学习记录', 'text/markdown', '第一版内容')
   const content = { material, version: material.versions[0], text: '第一版内容' }
@@ -185,15 +205,59 @@ it('appends a new version and keeps the reading content visible', async () => {
   await waitFor(() => expect(noteRows()).toHaveLength(1))
   await click(material.name)
   await waitFor(() => expect(host.querySelector('.personal-material-reading .wr-text-source')?.textContent).toBe('第一版内容'))
-  await click('更新为当前文本')
-  const editor = host.querySelector<HTMLTextAreaElement>('[aria-label="更新个人笔记正文"]')!
-  expect(editor.value).toBe('第一版内容')
-  await setInput(editor, '第二版内容')
+  await click('编辑笔记')
+  const editor = await noteEditor()
+  expect(editor.state.sliceDoc()).toBe('第一版内容')
+  expect(host.querySelector('.personal-material-reading .wr-text-source')).toBeNull()
+  expect(document.activeElement).toBe(editor.contentDOM)
+  const draftText = '# 标题\n\n**第二版内容**\n\n$x^2$\n\n$$\n\\frac{1}{2}\n$$\n\n> 引用首行\n> 引用次行\n\n- 列表首行\n  列表次行\n\n| 左侧 | 右侧 |\n| --- | --- |\n| 重复内容 | 重复内容 |\n| 补充 |'
+  await replaceDraft(editor, draftText)
+  await waitFor(() => {
+    expect(editor.contentDOM.querySelector('strong')?.textContent).toBe('第二版内容')
+    expect(editor.contentDOM.querySelectorAll('.katex')).toHaveLength(2)
+  })
+  await act(async () => editor.dispatch({ selection: { anchor: '# 标题'.length } }))
+  expect(editor.contentDOM.querySelector('[role="heading"] .personal-note-syntax')?.textContent).toBe('# ')
+  await act(async () => editor.dispatch({ selection: { anchor: draftText.indexOf('第二版内容') + 1 } }))
+  expect(editor.contentDOM.querySelector('[role="heading"]')?.textContent).toBe('标题')
+  expect(Array.from(editor.contentDOM.querySelectorAll('.personal-note-syntax'), mark => mark.textContent)).toEqual(['**', '**'])
+  expect(editor.contentDOM.querySelector('strong')?.textContent).toBe('第二版内容')
+  const exponent = Array.from(editor.contentDOM.querySelectorAll<HTMLElement>('.personal-note-math .katex-html .mord'))
+    .find(element => element.firstChild?.nodeValue === '2')!
+  await clickRenderedText(exponent, 1)
+  expect(editor.state.selection.main.head).toBe(draftText.indexOf('x^2') + 3)
+  expect(editor.contentDOM.querySelector('.personal-note-math')).toBeNull()
+  expect(editor.contentDOM.textContent).toContain('$x^2$')
+  expect(Array.from(editor.contentDOM.querySelectorAll('.personal-note-syntax'), mark => mark.textContent)).toEqual(['$', '$'])
+
+  await clickRenderedText(editor.contentDOM.querySelector('blockquote p')!, '引用首行\n引用'.length)
+  expect(editor.state.selection.main.head).toBe(draftText.indexOf('引用次行') + 2)
+  await clickRenderedText(editor.contentDOM.querySelector('li')!, '列表首行\n列表'.length)
+  expect(editor.state.selection.main.head).toBe(draftText.indexOf('列表次行') + 2)
+
+  await clickRenderedText(editor.contentDOM.querySelector('td:nth-child(2)')!, 2)
+  const cell = editor.contentDOM.querySelector<HTMLTextAreaElement>('td textarea')!
+  expect(cell.selectionStart).toBe(2)
+  expect(editor.contentDOM.querySelector('td')?.textContent).toBe('重复内容')
+  await setInput(cell, '**修改** | $y^2$')
+  await act(async () => cell.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true })))
+  expect(editor.contentDOM.querySelector('td:nth-child(2) strong')?.textContent).toBe('修改')
+  expect(document.activeElement?.getAttribute('aria-label')).toBe('第 2 行第 1 列')
+  const editedTable = draftText.replace('| 重复内容 | 重复内容 |', '| 重复内容 | **修改** \\| $y^2$ |')
+  expect(editor.state.sliceDoc()).toBe(editedTable)
+  await act(async () => document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })))
+  expect(updates).toHaveLength(0)
+  const emptyCell = editor.contentDOM.querySelector('tr:last-child td:nth-child(2)')!
+  await act(async () => emptyCell.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true })))
+  await setInput(editor.contentDOM.querySelector<HTMLTextAreaElement>('td textarea')!, '补齐内容')
   await click('保存新版本')
-  await waitFor(() => { expect(host.querySelector('.personal-material-version')?.textContent).toBe('第 2 版'); expect(host.querySelector('.personal-material-reading .wr-text-source')?.textContent).toBe('第二版内容') })
+  await waitFor(() => {
+    expect(host.querySelector('.personal-material-version')?.textContent).toBe('第 2 版')
+    expect(host.querySelector('.personal-material-reading .wr-text-source strong')?.textContent).toBe('第二版内容')
+  })
   expect(updates).toHaveLength(1)
   expect(updates[0]).toMatchObject({ materialId: material.materialId, expectedVersion: 1 })
-  expect(decode(updates[0].dataBase64 as string)).toBe('第二版内容')
+  expect(decode(updates[0].dataBase64 as string)).toBe(editedTable.replace('| 补充 |', '| 补充 | 补齐内容 |'))
 })
 
 it('locates an older fixed-version reference after the material gets a new version', async () => {
@@ -227,8 +291,8 @@ it('locates an older fixed-version reference after the material gets a new versi
   })
   await waitFor(() => expect(button('询问 Agent')).toBeTruthy())
   await click('询问 Agent')
-  await click('更新为当前文本')
-  await setInput(host.querySelector<HTMLTextAreaElement>('[aria-label="更新个人笔记正文"]')!, '第二版正文内容')
+  await click('编辑笔记')
+  await replaceDraft(await noteEditor(), '第二版正文内容')
   await click('保存新版本')
   await waitFor(() => expect(host.querySelector('.personal-material-version')?.textContent).toBe('第 2 版'))
   await click('probe-reference-locate')
