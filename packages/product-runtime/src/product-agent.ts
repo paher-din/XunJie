@@ -79,26 +79,26 @@ function inspectionScope(session: AgentSession, snapshot: Awaited<ReturnType<Age
   collectInspectionMaterials(scope, assembly?.materials);
   collectInspectionSources(scope, assembly?.historySources);
   for (const call of snapshot.toolCalls) {
-    if (call.stepId !== step.stepId) continue;
+    if (call.stepId !== step.stepId || call.attemptId !== attemptId) continue;
     collectInspectionSources(scope, toolMaterial(call).map(material => material.source));
   }
   return { activityIds: [...scope.activityIds].sort(), courseIds: [...scope.courseIds].sort() };
 }
 /** A prior Turn may be replayed inside the native request; it must fit the same approved scope. */
 function priorTurnsWithinScope(session: AgentSession, snapshot: Awaited<ReturnType<AgentSessionPort['sessionSnapshot']>>,
-  targetTurnId: string, targetScope: { activityIds: readonly string[]; courseIds: readonly string[] }) {
-  const index = snapshot.turns.findIndex(turn => turn.turnId === targetTurnId);
-  if (index <= 0) return true;
+  targetStepId: string, targetScope: { activityIds: readonly string[]; courseIds: readonly string[] }) {
+  const targetIndex = snapshot.steps.findIndex(step => step.stepId === targetStepId);
+  if (targetIndex < 0) return false;
   const activityIds = new Set(targetScope.activityIds), courseIds = new Set(targetScope.courseIds);
-  for (const turn of snapshot.turns.slice(0, index)) {
-    const steps = snapshot.steps.filter(step => step.turnId === turn.turnId);
-    const step = steps.at(-1);
-    if (!step) return false;
-    const attempt = snapshot.attempts.filter(item => item.stepId === step.stepId).at(-1);
-    const scope = inspectionScope(session, snapshot, step, attempt?.attemptId ?? '');
-    if (!scope.activityIds.length && !scope.courseIds.length) return false;
-    if (scope.activityIds.some(activityId => !activityIds.has(activityId))
-      || scope.courseIds.some(courseId => !courseIds.has(courseId))) return false;
+  for (const step of snapshot.steps.slice(0, targetIndex)) {
+    const attempts = snapshot.attempts.filter(item => item.stepId === step.stepId);
+    if (!attempts.length) return false;
+    for (const attempt of attempts) {
+      const scope = inspectionScope(session, snapshot, step, attempt.attemptId);
+      if (!scope.activityIds.length && !scope.courseIds.length) return false;
+      if (scope.activityIds.some(activityId => !activityIds.has(activityId))
+        || scope.courseIds.some(courseId => !courseIds.has(courseId))) return false;
+    }
   }
   return true;
 }
@@ -217,7 +217,7 @@ export function createProductAgent(options: ProductAgentOptions) {
     } | undefined;
     if (!assembly?.materials || !assembly.historySources) throw new StorageError('unavailable');
     const calls = 'purpose' in assembly && assembly.purpose === 'compaction'
-      ? [] : snapshot.toolCalls.filter(call => snapshot.steps.find(item => item.stepId === call.stepId)?.turnId === step.turnId);
+      ? [] : snapshot.toolCalls.filter(call => call.stepId === step.stepId && call.attemptId === attempt.attemptId);
     const receipts: HistoryEntry[] = [...assembly.historySources, ...assembly.materials.filter(material =>
       material.readState === 'included' || material.readState === 'reference-only'), ...calls.flatMap(toolMaterial)]
       .map((source, index) => ({ id: 'inspection:' + index, version: 1, role: 'user', text: '', sources: [source] }));
@@ -233,7 +233,7 @@ export function createProductAgent(options: ProductAgentOptions) {
       const surviving = new Set(allowed.map(entry => entry.id));
       if (!receipts.every(entry => surviving.has(entry.id))) throw new StorageError('forbidden');
     }
-    const requestInScope = priorTurnsWithinScope(session, snapshot, step.turnId, scope);
+    const requestInScope = priorTurnsWithinScope(session, snapshot, step.stepId, scope);
     const gateway = await resolveGateway(options.models, session.identity, sessionId);
     if (!gateway.checks.readRecorded) throw new StorageError('unavailable');
     const modelResult = requestInScope && attempt.requestRef
@@ -241,16 +241,16 @@ export function createProductAgent(options: ProductAgentOptions) {
     const request = modelResult ? await gateway.checks.requestPayload(session.identity, attempt.attemptId) : null;
     const capacities = step.snapshot.attemptCapacities as Record<string, unknown> | undefined;
     return { version: 1 as const, sessionId, turnId: step.turnId, stepId: step.stepId, attemptId: attempt.attemptId,
-      assembly, attempt, capacity: capacities?.[attempt.attemptId] ?? null, request, result: modelResult,
-      // A native request replaying an earlier unscoped/private Turn cannot be returned without
-      // exposing that prior content. The target-scoped assembly and tool receipts remain usable.
-      ...(!requestInScope ? { redaction: { request: 'mixed-session-history', result: 'mixed-session-history' } } : {}),
-      tools: calls.map(call => ({ toolCallId: call.toolCallId, name: call.name, state: call.state, result: call.result })),
-      citations: calls.filter(call => call.name === 'cite_source').flatMap(call => {
+      assembly: requestInScope ? assembly : null, attempt, capacity: capacities?.[attempt.attemptId] ?? null,
+      request: requestInScope ? request : null, result: requestInScope ? modelResult : null,
+      ...(!requestInScope ? { redaction: { assembly: 'mixed-session-history', request: 'mixed-session-history',
+        result: 'mixed-session-history', tools: 'mixed-session-history', citations: 'mixed-session-history' }, tools: [], citations: [] } : {
+        tools: calls.map(call => ({ toolCallId: call.toolCallId, name: call.name, state: call.state, result: call.result })),
+        citations: calls.filter(call => call.name === 'cite_source').flatMap(call => {
         const value = call.result?.kind === 'completed' && call.result.data && typeof call.result.data === 'object'
           && !Array.isArray(call.result.data) ? call.result.data.citation as Record<string, unknown> | undefined : undefined;
         return value ? [value] : [];
-      }) };
+        }) }) };
   }
   return { ...host,
     inspect,

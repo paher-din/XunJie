@@ -856,35 +856,24 @@ export async function createProductLearningApplication(context: {
             throw new StorageError('forbidden');
           const managed = await courses.listCourses(identity, true);
           const managedCourseIds = new Set(managed.courses.map(course => course.courseId));
+          // Every source in the returned Attempt must be inside the manager's current
+          // course authority. One approved activity can never authorize a mixed Attempt.
           for (const activityId of target.activityIds) {
-            try {
-              const activity = await learning.readForInspection(target.session.identity, activityId);
-              let courseId = activity.course?.courseId
-                ?? await courses.courseForActivity(target.session.identity, activityId);
-              let accessIdentity = target.session.identity;
-              if (!courseId) {
-                // A device study copy retains its original school activity (and identity) here;
-                // that is the only existing fact proving which course the copy belongs to.
-                const source = await learning.studyCopies.sourceActivity(target.session.identity, activityId)
-                  .catch(() => null);
-                if (source?.course) { courseId = source.course.courseId; accessIdentity = source.identity; }
-              }
-              if (!courseId || !managedCourseIds.has(courseId)) continue;
-              // Current course eligibility is rechecked for the target, so a withdrawn course
-              // closes inspection even when the historical activity body still names it.
-              if (await courses.hasAccess(accessIdentity, courseId)) return;
-            } catch (error) {
-              if (!(error instanceof StorageError)) throw error;
-              // A withdrawn/missing activity is not evidence of access; keep checking the rest.
+            let courseId = await courses.courseForActivity(target.session.identity, activityId);
+            let accessIdentity = target.session.identity;
+            if (!courseId) {
+              // A device study copy retains its original accepted course association.
+              const source = await learning.studyCopies.sourceActivity(target.session.identity, activityId)
+                .catch(() => null);
+              if (source?.course) { courseId = source.course.courseId; accessIdentity = source.identity; }
             }
+            if (!courseId || !managedCourseIds.has(courseId)
+              || !await courses.hasAccess(accessIdentity, courseId)) throw new StorageError('forbidden');
           }
-          // A course-material source has a verified courseId but no activity id. It is still
-          // target-specific evidence; require both management and the learner's current access.
           for (const courseId of target.courseIds) {
-            if (!managedCourseIds.has(courseId)) continue;
-            if (await courses.hasAccess(target.session.identity, courseId).catch(() => false)) return;
+            if (!managedCourseIds.has(courseId)
+              || !await courses.hasAccess(target.session.identity, courseId)) throw new StorageError('forbidden');
           }
-          throw new StorageError('forbidden');
         },
         workspaceRequest: projectWorkspaceRequest,
         readOnly: true,

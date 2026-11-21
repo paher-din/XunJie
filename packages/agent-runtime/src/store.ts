@@ -124,6 +124,9 @@ export const agentRuntimeMigrations: readonly Migration[] = [{ version: 1, name:
     operation text NOT NULL, input_digest text NOT NULL, body jsonb NOT NULL);
   CREATE TABLE agent_progress(attempt_id uuid NOT NULL REFERENCES agent_attempts(attempt_id), revision bigint NOT NULL CHECK(revision>0),
     body jsonb NOT NULL, event_id uuid NOT NULL UNIQUE REFERENCES agent_events(event_id), PRIMARY KEY(attempt_id,revision));
+` }, { version: 10, name: 'attempt-owned-tool-calls', sql: `
+  ALTER TABLE agent_tool_calls ADD COLUMN attempt_id uuid REFERENCES agent_attempts(attempt_id);
+  CREATE INDEX agent_tool_calls_attempt ON agent_tool_calls(attempt_id);
 ` }];
 
 type Row = Record<string, unknown>;
@@ -147,7 +150,8 @@ function attemptFromRow(row: Row): AgentAttempt {
     reserved: row.reserved, error: row.error ?? null, createdAt: iso(row.created_at), updatedAt: iso(row.updated_at) });
 }
 function toolCallFromRow(row: Row): AgentToolCall {
-  return agentToolCallSchema.parse({ toolCallId: row.tool_call_id, stepId: row.step_id, callIndex: Number(row.call_index),
+  return agentToolCallSchema.parse({ toolCallId: row.tool_call_id, stepId: row.step_id,
+    ...(row.attempt_id ? { attemptId: row.attempt_id } : {}), callIndex: Number(row.call_index),
     nativeCallId: row.native_call_id, name: row.name, input: facts(row.input), executionMode: row.execution_mode,
     state: row.state, result: row.result ?? null, taskId: row.task_id ?? null,
     createdAt: iso(row.created_at), updatedAt: iso(row.updated_at) });
@@ -709,9 +713,9 @@ export function createAgentStore(storage: OwnedStorage, options: StoreOptions) {
       await tx.query("UPDATE agent_steps SET state='executing', updated_at=clock_timestamp() WHERE step_id=$1", [stepId]);
       for (let index = 0; index < toolCalls.length; index++) {
         const call = toolCalls[index]!;
-        await tx.query(`INSERT INTO agent_tool_calls(tool_call_id,step_id,call_index,native_call_id,name,input,execution_mode,state)
-          VALUES($1,$2,$3,$4,$5,$6,$7,'pending') ON CONFLICT(tool_call_id) DO NOTHING`,
-          [call.toolCallId, stepId, index, call.nativeCallId, call.name, call.input, call.executionMode]);
+        await tx.query(`INSERT INTO agent_tool_calls(tool_call_id,step_id,attempt_id,call_index,native_call_id,name,input,execution_mode,state)
+          VALUES($1,$2,$3,$4,$5,$6,$7,$8,'pending') ON CONFLICT(tool_call_id) DO NOTHING`,
+          [call.toolCallId, stepId, attemptId, index, call.nativeCallId, call.name, call.input, call.executionMode]);
       }
       await appendEvent(tx, sessionId, 'assistant', { turnId: step.turn_id, stepId, attemptId, text: response.text, resultRef: response.resultRef,
         ...(response.contextUsage ? { contextUsage: response.contextUsage } : {}) });
@@ -856,10 +860,15 @@ export function createAgentStore(storage: OwnedStorage, options: StoreOptions) {
   async function toolResultsByNative(sessionId: string, nativeCallIds: readonly string[]): Promise<Map<string, AgentToolResult | null>> {
     const found = new Map<string, AgentToolResult | null>();
     for (const nativeCallId of nativeCallIds) {
-      const { rows: [row] } = await storage.read(`SELECT c.result FROM agent_tool_calls c
+      const { rows } = await storage.read(`SELECT c.result FROM agent_tool_calls c
         JOIN agent_steps s USING(step_id) JOIN agent_turns t USING(turn_id)
-        WHERE t.session_id=$1 AND c.native_call_id=$2 ORDER BY c.updated_at DESC LIMIT 1`, [sessionId, nativeCallId]);
-      if (row) found.set(nativeCallId, row.result ? agentToolResultSchema.parse(row.result) : null);
+        WHERE t.session_id=$1 AND c.native_call_id=$2 AND c.attempt_id IS NOT NULL
+        ORDER BY c.updated_at DESC LIMIT 2`, [sessionId, nativeCallId]);
+      // Native call IDs are provider-scoped and may repeat across Steps. Without a
+      // unique persisted owner, treating the newest row as the answer can settle the
+      // wrong Attempt after recovery. Force the provider to report an unknown result.
+      if (rows.length === 1) found.set(nativeCallId, rows[0]!.result ? agentToolResultSchema.parse(rows[0]!.result) : null);
+      else found.set(nativeCallId, null);
     }
     return found;
   }

@@ -200,6 +200,10 @@ export function createModelAdapter(source: ModelGatewaySource, store: AgentStore
               nativeHistorySources: JSON.parse(JSON.stringify(sources)),
               ...(input.factsDigest ? { nativeFactsDigest: input.factsDigest } : {}) }, input.turnId);
           }
+          // Recheck after the durable source binding and immediately before the
+          // irreversible gateway dispatch. The earlier check covers assembly,
+          // while this check closes the intervening persistence window.
+          await input.verifyContext?.({ rebuilt });
           fact = await raceAbort(gateway.checks.dispatch(input.identity, attemptId, { formatVersion: 1, permit }), input.signal);
         }
         const deadline = Math.min(Date.parse(input.budget.deadline), Date.now() + timeoutMs);
