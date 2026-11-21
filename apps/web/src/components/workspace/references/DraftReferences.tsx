@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { toast } from '@xunjie/ui/feedback'
 import { questionReferenceKey, questionReferenceSourceId } from '@xunjie/contracts/question-drafts'
 import type { QuestionReferenceInput } from '@xunjie/contracts/question-drafts'
 import type { ReliableQuestionDraft } from '../../../reliable-workspace/draft'
@@ -35,6 +36,7 @@ function DraftReferencesSession({ workspaceKey, draft, actions, children, delive
   const [notice, setNotice] = useState('')
   const sources = useRef(new Map<string, ReferenceSource>())
   const locateSequence = useRef(0)
+  useEffect(() => () => { locateSequence.current++ }, [viewActive])
   const gestures = useRef(new WeakSet<object>())
   const refs = useMemo(() => displayReferences(state.references, workspaceKey), [state.references, workspaceKey])
   const view = useRef({ open, pending }); view.current = { open, pending }
@@ -106,11 +108,18 @@ function DraftReferencesSession({ workspaceKey, draft, actions, children, delive
   const locate = async (reference: WorkspaceReference) => {
     const sequence = ++locateSequence.current
     if (reference.workspaceKey !== workspaceKey || !reference.source) { setNotice('引用属于其他工作区，当前无法定位。'); return }
+    const fallback = reference.source.kind === 'course-field' || reference.source.kind === 'component'
+      ? '原来源已不可用，引用副本仍保留。' : '原文件已不可用，引用副本仍保留。'
+    const showFailure = (message: string) => {
+      setNotice('')
+      toast.warning(message, { id: `reference-locate-${reference.id}` })
+    }
     try {
       const result = await sources.current.get(reference.sourceId)?.locate(reference)
       if (sequence !== locateSequence.current) return
-      setNotice(result?.ok ? '已定位引用来源。' : result?.reason ?? '来源当前不可用；引用副本仍然保留。')
-    } catch { if (sequence === locateSequence.current) setNotice('来源当前不可用；引用副本仍然保留。') }
+      if (result?.ok) setNotice('已定位引用来源。')
+      else showFailure(result?.reason ?? fallback)
+    } catch { if (sequence === locateSequence.current) showFailure(fallback) }
   }
   const submit = async () => {
     if (!receiver || !actionState.ready) { setNotice('真实 Agent 尚未接入，暂不能发送；问题与引用会自动保存在原工作区。'); return }
