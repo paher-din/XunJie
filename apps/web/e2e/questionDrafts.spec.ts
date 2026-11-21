@@ -1,5 +1,5 @@
 import { evidenceDirectory, evidencePath } from './evidence'
-import { renameWorkFile, deleteWorkFile, selectProductSpace, useEmbeddedSchoolFixture } from './support/product-ui'
+import { courseTaskCard, openCourseTasks, renameWorkFile, deleteWorkFile, selectProductSpace, useEmbeddedSchoolFixture } from './support/product-ui'
 import { test, expect, type Page } from '@playwright/test'
 import { randomUUID, createHash } from 'node:crypto'
 import { mkdtemp, mkdir, writeFile } from 'node:fs/promises'
@@ -65,8 +65,11 @@ async function selectText(page: Page, label: string, text: string) {
   let previous = '', stable = 0
   await expect.poll(async () => {
     points = await source.evaluate((el, text) => {
-      const node = el.firstChild!, start = node.textContent!.indexOf(text), end = start + text.length
-      if (start < 0) throw new Error('Text not present')
+      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
+      let node = walker.nextNode()
+      while (node && !node.textContent?.includes(text)) node = walker.nextNode()
+      if (!node) throw new Error('Text not present')
+      const start = node.textContent!.indexOf(text), end = start + text.length
       const first = document.createRange(), last = document.createRange()
       first.setStart(node, start); first.setEnd(node, start + 1)
       last.setStart(node, end - 1); last.setEnd(node, end)
@@ -139,26 +142,31 @@ test('course text and requirements stay as fixed references through collapse, re
     } else await route.continue()
   })
   const activityTitle = page.getByRole('heading', { name: '固定引用的任务', exact: true, level: 1 })
-  const activityCard = page.locator(`[data-activity-id="${activityId}"]`)
+  const courseCard = page.locator(`.course-region [data-course-id="${courseId}"]`)
+  const resume = async () => {
+    await openCourseTasks(page, '固定引用课程')
+    await courseTaskCard(page, '固定引用的任务').click()
+    await page.getByRole('dialog').getByRole('button', { name: '继续任务', exact: true }).click()
+    await expect(activityTitle).toBeVisible()
+  }
   await page.goto(endpoint + '/?space=school&activity=' + activityId)
   await expect(activityTitle).toBeVisible()
   const reader = page.getByRole('region', { name: '课程材料阅读', exact: true })
   const preview = reader.locator('.course-reader-markdown')
   const material = page.getByLabel('ALU 题目', { exact: true })
   await expect(reader).toHaveCount(0)
-  await page.getByRole('tab', { name: '课程材料', exact: true }).click()
+  await page.getByRole('tab', { name: '学习资料', exact: true }).click()
   await page.getByRole('region', { name: '课程材料', exact: true }).getByRole('button', { name: 'ALU 题目', exact: true }).click()
   await expect(preview.getByRole('heading', { name: 'ALU 题目' })).toBeVisible()
   await expect(preview.locator('math')).toHaveCount(2)
   await expect(preview.getByRole('table')).toContainText('输出')
   await expect(preview.locator('code')).toHaveText('$raw$')
-  await expect(material).toHaveCount(0)
+  await expect(material).toBeVisible()
+  await expect(reader.getByRole('button', { name: '原文与引用', exact: true })).toHaveCount(0)
   if (evidenceDirectory()) {
     await page.evaluate(() => document.fonts.ready)
     await page.screenshot({ path: evidencePath('152/course-material-preview.png') })
   }
-  await reader.getByRole('button', { name: '原文与引用', exact: true }).click()
-  await expect(material).toBeVisible()
   const selected = '完成 4 位加减与逻辑运算。'
   await selectText(page, 'ALU 题目', selected)
   await expect(page.getByRole('button', { name: '询问 Agent', exact: true })).toBeVisible()
@@ -210,23 +218,21 @@ test('course text and requirements stay as fixed references through collapse, re
   const collapseDetails = page.getByRole('button', { name: '收起目标与要求', exact: true })
   if (await collapseDetails.isVisible()) await collapseDetails.click()
   await page.getByRole('button', { name: /^定位引用 \d+：ALU 题目$/ }).click()
-  await expect(reader.getByRole('button', { name: '原文与引用', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await expect(preview.getByRole('heading', { name: 'ALU 题目' })).toBeVisible()
   await expect(material).toBeVisible()
   await expect(page.getByRole('region', { name: '通知' }).getByText('已定位引用来源。', { exact: true })).toBeVisible()
   expect(await page.evaluate(() => document.getSelection()?.toString())).toBe(selected)
   if (evidenceDirectory()) await page.screenshot({ path: evidencePath('152/course-material-located.png') })
   await page.getByRole('button', { name: '返回活动列表', exact: true }).click()
-  await activityCard.click()
-  await expect(activityTitle).toBeVisible()
+  await resume()
   await openComposer(page)
   await expect(question(page)).toHaveValue('为什么需要边界输入？')
   await expect(refs(page)).toHaveCount(2)
   await page.getByRole('button', { name: '返回活动列表', exact: true }).click()
   await selectProductSpace(page, '个人空间')
-  await expect(activityCard).toHaveCount(0)
+  await expect(courseCard).toHaveCount(0)
   await selectProductSpace(page, '学校空间')
-  await activityCard.click()
-  await expect(activityTitle).toBeVisible()
+  await resume()
   await openComposer(page)
   await expect(question(page)).toHaveValue('为什么需要边界输入？')
   await expect(refs(page)).toHaveCount(2)

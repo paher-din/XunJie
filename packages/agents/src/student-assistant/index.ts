@@ -1,4 +1,5 @@
 import type { AgentScenario, AgentTool, Facts, HistoryEntry, ScenarioInput } from '@xunjie/agent-runtime';
+import { modelMessageImagesSchema } from '@xunjie/contracts/model-connections';
 import { createUserQuestions, validateTeachingAnswer } from '../capabilities/user-questions/index.js';
 import { createConversationCompaction, type CompactionOptions } from '../capabilities/context-compaction/conversation.js';
 import { createLearningTools, type LearningToolsHost } from './tools/learning-tools.js';
@@ -38,6 +39,11 @@ export function createStudentAssistant(options: StudentAssistantOptions): AgentS
   const compaction = options.compaction === false ? undefined : createConversationCompaction(options.compaction ?? {});
   return {
     id: 'student-assistant', version: 2,
+    async messageImages(input, contexts) {
+      const images = contexts.flatMap(context => context.messageImages === undefined ? []
+        : modelMessageImagesSchema.parse(context.messageImages));
+      return images.length ? { scope: { kind: 'session', sessionId: input.sessionId }, images } : undefined;
+    },
     // Query provenance comes from the injected owner tools, never invented from input context.
     async context(input) {
       const extension = await options.contextExtension?.(input);

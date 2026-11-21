@@ -23,7 +23,7 @@ try{
  browser=await chromium.launch({channel:'chrome',headless:false});report.chrome=browser.version();
  const page=await browser.newPage({viewport:{width:1440,height:1000}});page.on('pageerror',e=>report.pageErrors=(report.pageErrors??[]).concat(e.message));
  const openConversation=async()=>{const button=page.getByRole('button',{name:/^(打开对话|问题与引用)$/});await button.waitFor();if(await button.getAttribute('aria-expanded')==='false')await button.click();};
- await page.goto(host.endpoint+'/?space=personal&activity='+activity.activityId);await page.getByRole('button',{name:'目标与材料',exact:true}).click();
+ await page.goto(host.endpoint+'/?space=personal&activity='+activity.activityId);await page.getByRole('tab',{name:'个人 PDF',exact:true}).click();
  let drop=true,uploadIdentity;
  await page.route('**/api/learning/pdf/'+activity.activityId,async intercepted=>{
   if(intercepted.request().method()==='POST'&&drop){drop=false;uploadIdentity=intercepted.request().postDataJSON();await intercepted.fetch();await intercepted.abort('failed');}
@@ -32,10 +32,11 @@ try{
  await page.locator('input[type=file][accept="application/pdf,.pdf"]').setInputFiles({name:'same.pdf',mimeType:'application/pdf',buffer:fixedPdf()});
  await expect.poll(async()=> (await api(route)).length).toBe(1);
  await expect(page.getByRole('button',{name:'核对并继续原请求',exact:true})).toBeEnabled();
- await page.reload();await page.getByRole('button',{name:'目标与材料',exact:true}).click();
+ await page.reload();await page.getByRole('tab',{name:'个人 PDF',exact:true}).click();
  await page.getByRole('button',{name:'核对并继续原请求',exact:true}).click();
  await page.getByRole('img',{name:'PDF 第 1 页固定页图',exact:true}).waitFor();
  const docs=await api(route);assert.equal(docs.length,1);assert.equal(docs[0].documentId,uploadIdentity.documentId);report.checks.push('lost-upload-confirmation-reload-original-identity');
+ const pdfTools=page.getByRole('button',{name:'PDF 工具侧栏',exact:true});if(await pdfTools.count())await pdfTools.click();
  await page.getByRole('button',{name:'相邻两页',exact:true}).click();await page.getByRole('img',{name:'PDF 第 2 页固定页图',exact:true}).waitFor();
  await page.getByRole('button',{name:'引用这两页',exact:true}).click();
  const question=page.locator('textarea:visible').last();await expect(question).toBeFocused();

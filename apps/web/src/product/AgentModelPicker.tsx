@@ -1,6 +1,7 @@
 import { PromptModelPicker, type PromptModelOption } from '@xunjie/ui/chat'
 import { useToastFeedback } from '@xunjie/ui/feedback'
 import type { Choice, ModelSelectionController } from './ModelSelection'
+import { modelAllowsImages } from '@xunjie/contracts/model-connections'
 
 export const modelChoiceId = (choice: Choice) => `${choice.kind}:${choice.connection.connectionId}`
 
@@ -21,6 +22,7 @@ export function useAgentModelPicker(selection: ModelSelectionController) {
   const change = (id: string) => { const choice = byId.get(id); if (choice) void selection.choose(choice) }
   useToastFeedback(!selection.stale ? selection.error : '')
   return { model, models, change, busy: selection.busy, stale: selection.stale,
+    supportsImages: !!selected && modelAllowsImages(selected.connection),
     error: selection.error, persistentError: selection.stale ? selection.error : '', notice: '',
     retry: () => { void selection.reload() }, blocked: selection.busy }
 
@@ -31,7 +33,7 @@ export function AgentModelPicker({ controller, disabled = false, onSettings }: {
   controller: AgentModelPickerController; disabled?: boolean; onSettings?(): void
 }) {
   return <div className="product-model-picker">
-    <PromptModelPicker model={controller.model} models={controller.models} onChange={controller.change}
+    <PromptModelPicker model={controller.model} models={controller.models} onChange={controller.change} align="start"
       disabled={disabled || controller.busy || controller.stale || !controller.models.length} />
     <AgentModelFeedback controller={controller} />
     {!controller.models.length && !controller.stale && onSettings && <button type="button" className="product-agent-settings-link" onClick={onSettings}>添加模型</button>}

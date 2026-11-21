@@ -150,6 +150,12 @@ async function runStep(deps: LoopDependencies, turn: AgentTurn, step: AgentStep,
       identity: session.identity, sessionId, turnId: turn.turnId, stepId: step.stepId,
       system: plan.system, tools: [...plan.tools, createCitationTool(plan.materials)].map(tool => tool.definition), history: plan.history,
       text: plan.text, rebuildText: plan.rebuildText, images: plan.images, toolResults: [], budget, spent: usage, signal,
+      ...(scenario.messageImages && inputs.length ? { messageImages: {
+        resolve: route => scenario.messageImages!(scenarioInput, inputs.map(item => item.input.context), route),
+        async assertActive() {
+          if (signal.aborted || !await deps.isActive(turn.turnId)) throw new AgentError('cancelled');
+        },
+      } } : {}),
       historyProjection: plan.historyProjection,
       historySources: materialsAsHistorySources(plan.materials),
       rebuildHistorySources: materialsAsHistorySources(plan.rebuildMaterials),

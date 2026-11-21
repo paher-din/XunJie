@@ -1,6 +1,6 @@
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import type { AgentExecutionMode, AgentToolResult, AgentTurnBudget, AgentRuntimeSession } from '@xunjie/contracts/agent-runtime';
-import type { ModelImageRef, ModelTool, ModelToolIntent, ModelToolResult, ModelUsage, ModelConnection } from '@xunjie/contracts/model-connections';
+import type { ModelImageAttachmentScope, ModelImageRef, ModelMessageImage, ModelTool, ModelToolIntent, ModelToolResult, ModelUsage, ModelConnection } from '@xunjie/contracts/model-connections';
 
 export type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
 export type Facts = { [key: string]: Json };
@@ -128,6 +128,12 @@ export interface ScenarioInput {
 }
 export interface ScenarioContext { system: string; facts: Facts; sources: Facts[];
   materials?: readonly ContextMaterial[]; ruleVersions?: readonly RuleVersion[]; }
+export interface MessageImageRoute { segmentId: string; includeRetained: boolean; }
+export interface MessageImages {
+  scope: ModelImageAttachmentScope;
+  images: readonly ModelMessageImage[];
+  retained?: readonly { image: ModelMessageImage; dataBase64: string }[];
+}
 export interface CompactionSource { messages: HistoryEntry[]; remainder: HistoryEntry[]; sourceDigest: string;
   sourceVersions: Facts; retainedDigest: string; policy: { maxSummaryTokens: number }; }
 export interface CompactionProvider {
@@ -139,6 +145,7 @@ export interface AgentScenario {
   id: string; version: number;
   context(input: ScenarioInput): Promise<ScenarioContext>;
   tools(input: ScenarioInput): Promise<readonly AgentTool[]>;
+  messageImages?(input: ScenarioInput, contexts: readonly Facts[], route: MessageImageRoute): Promise<MessageImages | undefined>;
   modelFacts?(facts: Facts): Facts;
   authorizeHistory?(input: ScenarioInput, history: readonly HistoryEntry[]): Promise<HistoryEntry[]>;
   validateAnswer?(presentation: Facts, answer: Facts): Promise<void>;
@@ -170,6 +177,7 @@ export interface GenerateInput {
   rebuildText?: string;
   factsDigest?: string;
   historyProjection?: HistoryProjection;
+  messageImages?: { resolve(route: MessageImageRoute): Promise<MessageImages | undefined>; assertActive(): Promise<void> };
   toolResults: readonly ModelToolResult[];
   budget: AgentTurnBudget;
   spent: { inputTokens: number; outputTokens: number; inputReserved: number; outputReserved: number };

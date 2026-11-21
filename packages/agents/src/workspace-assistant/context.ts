@@ -34,9 +34,13 @@ function courseRules(activity: LearningActivity) {
 }
 
 function referenceBlock(input: ActionInput) {
-  if (!input.draft.references.length) return '';
-  return '学生固定的引用片段：\n' + input.draft.references.map(reference =>
-    `【${reference.sourceName}；referenceId=${reference.referenceId}】\n来源：${JSON.stringify(reference.source)}\n${reference.copy}`).join('\n\n');
+  const images = input.draft.references.filter(reference => reference.source.kind === 'image');
+  const excerpts = input.draft.references.filter(reference => reference.source.kind !== 'image');
+  return [
+    excerpts.length ? '学生固定的引用片段：\n' + excerpts.map(reference =>
+      `【${reference.sourceName}；referenceId=${reference.referenceId}】\n来源：${JSON.stringify(reference.source)}\n${reference.copy}`).join('\n\n') : '',
+    images.length ? '学生随问题附带的图片文件名：' + JSON.stringify(images.map(reference => reference.sourceName)) : '',
+  ].filter(Boolean).join('\n\n');
 }
 
 function workBlock(input: ActionInput) {

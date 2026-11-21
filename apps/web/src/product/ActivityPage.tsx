@@ -141,7 +141,7 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
   useLayoutEffect(() => {
     if (!returnDetailsFocus.current) return
     returnDetailsFocus.current = false
-    const target = detailsOpen ? detailsCollapse.current : detailsToggle.current
+    const target = detailsOpen ? detailsCollapse.current : (courseWorkspace ? detailsRailToggle.current : detailsToggle.current)
     target?.focus({ preventScroll: true })
   }, [detailsOpen])
   const [dockPanel, setDockPanel] = useState<'task' | 'stash' | null>(null)

@@ -1,6 +1,6 @@
 import { StorageError } from '@xunjie/storage';
 import { canonicalDigest, operationId } from '@xunjie/storage/identity';
-import { modelLearningInputSchema, modelSegmentInputSchema, settleModelToolsSchema,
+import { modelAllowsImages, modelLearningInputSchema, modelSegmentInputSchema, settleModelToolsSchema, MODEL_MESSAGE_IMAGE_LIMIT,
   type ModelAttempt, type ModelToolResult } from '@xunjie/contracts/model-connections';
 import type { LearningModelPort } from '@xunjie/model-gateway/service';
 import type { AgentStore } from './store.js';
@@ -8,6 +8,7 @@ import type { GenerateInput, GeneratedResponse, ModelPort, Json } from './ports.
 import { portableHistory } from './history.js';
 import { AgentError, ContextCapacityError, ContextPressureError } from './errors.js';
 import { measureAttemptCapacity } from './capacity.js';
+import { resolveMessageImages } from './message-images.js';
 
 const delay = (ms: number, signal: AbortSignal) => new Promise<void>((resolve, reject) => {
   const timer = setTimeout(resolve, ms);
@@ -146,6 +147,9 @@ export function createModelAdapter(source: ModelGatewaySource, store: AgentStore
         segment = ensured.segment;
         segmentPorts.set(segment.segmentId, gateway);
       }
+      const allImages = input.messageImages
+        ? await resolveMessageImages(input.identity, input.messageImages, segment.segmentId, modelAllowsImages(segment.connection), gateway, images)
+        : images;
       const attemptNoActual = (await store.attemptsOf(input.stepId)).length + 1;
       const attemptId = operationId('agent-attempt:' + input.stepId + ':' + attemptNoActual);
       attemptPorts.set(attemptId, gateway);
@@ -162,13 +166,13 @@ export function createModelAdapter(source: ModelGatewaySource, store: AgentStore
         fact = await raceAbort(gateway.checks.receive(input.identity, modelLearningInputSchema.parse({
           attemptId, purpose: 'learning', segmentId: segment.segmentId, expectedSequence: segment.sequence,
           input: { text,
-            images, toolResults: input.toolResults, observations: [],
+            images: allImages, toolResults: input.toolResults, observations: [],
             ...(input.historyProjection ? { historyProjection: { ...input.historyProjection,
               baseProjectionId: segment.projectionId ?? null } } : {}) },
           limits: { maxOutputTokens: attemptMaxOutput, timeoutMs }, authority: { formatVersion: 1, permit },
         })), input.signal);
         if (fact.state === 'accepted') {
-          const capacity = await raceAbort(measureAttemptCapacity(gateway, { ...input, text }, connection, attemptId,
+          const capacity = await raceAbort(measureAttemptCapacity(gateway, { ...input, text, images: allImages }, connection, attemptId,
             attemptMaxOutput, remainingInput), input.signal);
           measured = capacity;
           await store.recordRequestCapacity(input.stepId, attemptId, capacity, fact.requestRef, rebuilt);

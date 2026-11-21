@@ -6,7 +6,10 @@ import type { AgentInput } from '@xunjie/contracts/agent-runtime'
 import { AgentSessionsClient, AgentSessionRequestError, SessionOutbox, mergeAgentConversation, type SessionSubject } from './agent-sessions'
 import { useViewPolling } from './useViewPolling'
 
-export const sessionError = (error: unknown) => error instanceof Error && error.name !== 'ZodError' ? error.message : '对话响应不完整，请刷新后核对原请求。'
+export function sessionError(error: unknown) {
+  if (error instanceof Error && error.name === 'TimeoutError') return '连接对话服务超时，请重试。'
+  return error instanceof Error && error.name !== 'ZodError' ? error.message : '对话响应不完整，请刷新后核对原请求。'
+}
 export function useAgentSessionHistory(subject?: SessionSubject, enabled = true) {
   const scope = subject ? JSON.stringify(subject) : ''
   const client = useMemo(() => subject ? new AgentSessionsClient(subject) : null, [scope])

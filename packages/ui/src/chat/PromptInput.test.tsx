@@ -11,6 +11,7 @@ beforeEach(() => {
   vi.useFakeTimers()
   ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
   vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+  vi.stubGlobal('IntersectionObserver', class { observe() {} disconnect() {} })
   node = document.createElement('div'); document.body.append(node); root = createRoot(node)
   props = { value: '问题', onChange: vi.fn(), onSend: vi.fn(), canSend: true, attachments: [],
     onAddFiles: vi.fn(), onRemoveAttachment: vi.fn(), attachmentTitle: '添加图片',
@@ -67,14 +68,16 @@ it('技能标记显示图标与名称，不提供关闭按钮，并保留退格�
   expect(remove).toHaveBeenCalledOnce()
 })
 
-it('模型和强度菜单保留受控选择、键盘操作、互斥退场及 Escape', () => {
+it('模型菜单挂到输入框外，保留受控选择、强度菜单互斥及 Escape', async () => {
   render()
-  act(() => button('切换模型').click())
+  await act(async () => button('切换模型').click())
   expect(button('切换模型').getAttribute('aria-expanded')).toBe('true')
-  const second = node.querySelectorAll('.prompt-model-item')[1]
-  act(() => second.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true })))
+  const menu = document.querySelector('.prompt-model-menu[role="menu"]')!
+  expect(node.contains(menu)).toBe(false)
+  const second = menu.querySelectorAll<HTMLElement>('[role="menuitemradio"]')[1]!
+  await act(async () => second.click())
   expect(props.onModelChange).toHaveBeenCalledWith('two')
-  expect(node.querySelector('.prompt-model-menu.closing')).not.toBeNull()
+  expect(button('切换模型').getAttribute('aria-expanded')).toBe('false')
   expect(node.querySelector('.prompt-model-label')?.textContent).toBe('第一个模型')
   act(() => vi.advanceTimersByTime(140))
   expect(node.querySelector('.prompt-model-menu')).toBeNull()
@@ -83,11 +86,12 @@ it('模型和强度菜单保留受控选择、键盘操作、互斥退场及 Esc
   act(() => button('切换思考强度').click())
   act(() => (node.querySelector('.mi-effort-option') as HTMLButtonElement).click())
   expect(props.onEffortChange).toHaveBeenCalledWith('two', '低')
-  act(() => button('切换模型').click())
+  await act(async () => button('切换模型').click())
   expect(node.querySelector('.prompt-model-menu.effort.closing')).not.toBeNull()
-  act(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })))
+  await act(async () => (document.activeElement ?? document.body).dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })))
   act(() => vi.advanceTimersByTime(140))
   expect(node.querySelector('.prompt-model-menu')).toBeNull()
+  expect(button('切换模型').getAttribute('aria-expanded')).toBe('false')
 })
 
 it('输入框按测量高度增减并封顶，保留宿主禁用状态、提示及停止操作', () => {

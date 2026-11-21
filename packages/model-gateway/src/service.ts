@@ -3,7 +3,7 @@ import { StorageError } from '@xunjie/storage';
 import { storageErrorCodes } from '@xunjie/contracts/storage';
 import { spaceIdentitySchema, type SpaceIdentity } from '@xunjie/contracts/spaces';
 import { modelSegmentInputSchema, modelSessionAuthoritySchema, settleModelToolsSchema, modelSegmentCloseSchema,
-  modelLearningInputSchema, modelImageInputSchema, modelImageRefSchema, modelSelectionSchema, modelChoiceSchema,
+  modelLearningInputSchema, modelImageInputSchema, modelImageRefSchema, modelImageAttachmentScopeSchema, modelSelectionSchema, modelChoiceSchema,
   modelAttemptSchema, modelConnectionSchema, modelProgressSchema, modelToolIntentSchema, modelSegmentBoundarySchema, modelSelectionSourceSchema } from '@xunjie/contracts/model-connections';
 import type { createModelGateway } from './index.js';
 import { nativeCapacitySchema } from './request-capacity.js';
@@ -41,7 +41,7 @@ const argumentSchemas = {
   'checks.dispatch': z.tuple([z.uuid(), modelSessionAuthoritySchema.optional()]),
   'checks.cancel': z.tuple([z.uuid()]),
   'results.retain': z.tuple([z.object({ requestId: z.uuid(), resultRef: z.uuid(), consumer: z.enum(['run', 'activity', 'delivery']), consumerId: z.uuid() }).strict()]),
-  'images.upload': z.tuple([modelImageInputSchema]),
+  'images.upload': z.tuple([modelImageInputSchema, z.uuid().optional()]),
   'images.read': z.tuple([modelImageRefSchema]),
 };
 // Native requests are reconstructed JSON, not arbitrary SDK objects. Validate the supported
@@ -122,7 +122,8 @@ const segment = z.object({ sessionId: z.uuid().optional(), segmentId: z.uuid(), 
   projectionId: z.string().regex(/^[a-f0-9]{64}$/).nullable(),
   pending: z.boolean(), closed: z.boolean(), pendingTools: z.array(modelToolIntentSchema) }).strict();
 const image = modelImageRefSchema.extend({ resourceId: z.uuid(), mediaType: z.literal('image/png'), byteLength: z.number().int().nonnegative().max(262144),
-  sha256: z.string().regex(/^[a-f0-9]{64}$/), source: modelImageRefSchema.extend({ transformation: z.string().min(1).max(200) }).optional() });
+  sha256: z.string().regex(/^[a-f0-9]{64}$/), attachmentScope: modelImageAttachmentScopeSchema.optional(),
+  source: modelImageRefSchema.extend({ transformation: z.string().min(1).max(200) }).optional() });
 const resultSchemas = {
   'selection.read': modelSelectionSchema,
   'selection.snapshot': z.object({ choice: modelChoiceSchema, source: modelAttemptSchema.shape.source.unwrap() }).strict(),

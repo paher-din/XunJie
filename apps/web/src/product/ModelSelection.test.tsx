@@ -29,7 +29,7 @@ function Harness({ subject = identity }: { subject?: SpaceIdentity }) {
 const render = async (subject = identity) => act(async () => { root.render(<Harness subject={subject} />); await settle() })
 async function choose(index: number) {
   await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="切换模型"]')!.click(); await settle() })
-  await act(async () => { host.querySelectorAll<HTMLElement>('[role="menuitemradio"]')[index]!.click(); await settle() })
+  await act(async () => { document.querySelectorAll<HTMLElement>('.prompt-model-menu [role="menuitemradio"]')[index]!.click(); await settle() })
   await act(async () => { await settle() })
 }
 beforeEach(async () => {

@@ -13,6 +13,9 @@ import { SessionConversation } from './SessionConversation'
 import { protectSessionUpload, deliverSessionUpload, sessionUploads, readSessionMaterial, type SessionMaterialUpload } from './session-materials'
 import { useViewPolling } from './useViewPolling'
 import { useSessionDraft, protectSessionDraft } from './session-drafts'
+import { MODEL_MESSAGE_IMAGE_LIMIT, modelMessageImagesSchema, type ModelMessageImage } from '@xunjie/contracts/model-connections'
+import { IMAGE_MODEL_HINT, isAgentImage, uploadAgentImage, useAgentImagePreviews, type AgentImageSource } from '../reliable-workspace/agent-images'
+import { learningSubjectRequest } from './learningTransport'
 import { ProductPromptInput, ProductComposerDock } from './ProductPromptInput'
 import { sessionComposerActions } from './session-composer'
 import { useSessionDraftSkills, sessionDraftSkillsKey, sessionSkillResetKey, consumeSessionSkillSelection } from './session-draft-skills'
@@ -45,6 +48,18 @@ function CoursePdfOriginal({ pdf, page }: { pdf: Blob; page: number }) {
   return url ? <a href={url + '#page=' + page} target="_blank" rel="noopener noreferrer">打开 PDF 第 {page} 页</a> : null
 }
 
+const imageDraftKey = (scope: string, sessionId: string) => 'xj.agent-image-draft.' + JSON.stringify([scope, sessionId])
+function readImageDraft(scope: string, sessionId?: string): ModelMessageImage[] {
+  if (!sessionId) return []
+  try { return modelMessageImagesSchema.parse(JSON.parse(localStorage.getItem(imageDraftKey(scope, sessionId)) ?? '[]')) }
+  catch { return [] }
+}
+function writeImageDraft(scope: string, sessionId: string, images: ModelMessageImage[]) {
+  const key = imageDraftKey(scope, sessionId)
+  if (images.length) localStorage.setItem(key, JSON.stringify(images))
+  else localStorage.removeItem(key)
+}
+
 export function ProductAgent({ identity, spaceKey, namespace, sessionId, session: directorySession, onSession, onWorkspace, onWorkspaceCreated,
   onSettings, selection, readOnly, viewActive = true, onOpenCourseMaterial }: {
   identity: SpaceIdentity; spaceKey: string; namespace: string; sessionId?: string; session?: AgentSession
@@ -56,11 +71,15 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
   const client = useMemo(() => new AgentSessionsClient({ identity, spaceKey, namespace }), [scope])
   const outbox = useMemo(() => new SessionOutbox(client), [client])
   const [metadata, setMetadata] = useState<AgentSession | null>(null), [uploads, setUploads] = useState<SessionMaterialUpload[]>([])
+  const [imageDraft, setImageDraft] = useState(() => ({ sessionId, images: readImageDraft(client.scope, sessionId) }))
+  const images = imageDraft.sessionId === sessionId ? imageDraft.images : []
+  const imagePreviews = useAgentImagePreviews(client.scope, images)
   const ownMetadata = directorySession?.sessionId === sessionId ? directorySession : metadata?.sessionId === sessionId ? metadata : null
   const writable = !readOnly && (!sessionId || !!ownMetadata && !ownMetadata.archived && !ownMetadata.deleted)
   const controller = useAgentSession(client, sessionId, writable, viewActive)
   const { scroller: scroll, atBottom, onScroll, onJump, backToBottom } = useConversationScroll()
   const picker = useAgentModelPicker(selection)
+  const needsImageModel = images.length > 0 && !picker.supportsImages
   const skills = useSessionDraftSkills(identity, spaceKey, namespace, sessionId)
   const controls = sessionComposerActions(controller, !writable)
   const pendingQuestion = controller.conversation?.questions.find(question => question.state === 'pending')
@@ -85,12 +104,14 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
   const viewKey = scope + ':' + sessionId
   const route = useRef(viewKey); route.current = viewKey
   const alive = useRef(true)
+  const attaching = useRef(false)
   const resettingSkills = useRef<string | null>(null)
   useEffect(() => { alive.current = true; return () => { alive.current = false } }, [])
   useEffect(() => {
     let live = true
     courseRead.current++
     setReading(null); setCourseReading(null); setUploads([]); setExcluded([]); setMetadata(null); setBusy(false); setError(''); setPending(outbox.start())
+    setImageDraft({ sessionId, images: readImageDraft(client.scope, sessionId) })
     if (sessionId) {
       void client.read(sessionId).then(value => { if (live) setMetadata(value) }).catch(cause => { if (live) setError(sessionError(cause)) })
     }
@@ -136,6 +157,14 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
     })
   }, [sessionId, controller.conversation?.turns, client.scope, clearSkills, skills.reload, viewKey])
   useEffect(() => { if (directorySession && directorySession.sessionId === sessionId) setMetadata(directorySession) }, [directorySession, sessionId])
+  useEffect(() => {
+    if (!sessionId || !controller.conversation || !images.length) return
+    const sent = new Set(controller.conversation.inputs.flatMap(input => (input.images ?? []).map(image => image.imageId)))
+    if (!images.some(image => sent.has(image.imageId))) return
+    const remaining = readImageDraft(client.scope, sessionId).filter(image => !sent.has(image.imageId))
+    writeImageDraft(client.scope, sessionId, remaining)
+    setImageDraft({ sessionId, images: remaining })
+  }, [client, sessionId, controller.conversation, images])
   const completeStart = useCallback(async () => {
     setBusy(true)
     try {
@@ -171,13 +200,27 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
     if (value.state !== 'ready') value = await client.create(input)
     return value.sessionId
   }
-  const addFiles = async (files: File[]) => {
-    if (!writable || busy) return
+  const addFiles = async (files: AgentImageSource[]) => {
+    if (!writable || busy || attaching.current || !files.length || !composer.ready) return
+    const imageFiles = files.filter(file => 'dataBase64' in file || isAgentImage(file))
+    if (images.length + imageFiles.length > MODEL_MESSAGE_IMAGE_LIMIT) {
+      setError(`每条消息最多附带 ${MODEL_MESSAGE_IMAGE_LIMIT} 张图片。`); return
+    }
+    attaching.current = true
     setBusy(true); setError('')
     try {
       const id = await ensureSession()
       const records: SessionMaterialUpload[] = []
-      for (const file of files) {
+      const draftImages = readImageDraft(client.scope, id)
+      for (const file of imageFiles) {
+        const image = await uploadAgentImage(client.scope, { kind: 'session', sessionId: id }, file,
+          body => learningSubjectRequest(identity, spaceKey, namespace, 'models/images', body))
+        if (draftImages.some(item => item.sha256 === image.sha256 && item.name === image.name)) continue
+        draftImages.push(image)
+        writeImageDraft(client.scope, id, draftImages)
+        if (alive.current && route.current === viewKey && sessionId) setImageDraft({ sessionId, images: [...draftImages] })
+      }
+      for (const file of files.filter((file): file is File => !('dataBase64' in file) && !isAgentImage(file))) {
         const record = await protectSessionUpload(client, id, file); records.push(record)
         if (alive.current && route.current === viewKey) setUploads(items => [...items.filter(item => item.key !== record.key), record])
       }
@@ -192,17 +235,18 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
       for (const record of records) await deliverSessionUpload(client, id, record)
       const items = await sessionUploads(client, id)
       if (alive.current && route.current === viewKey) setUploads(items)
-    } catch (cause) { if (alive.current && route.current === viewKey) setError(sessionError(cause)) }
-    finally { if (alive.current && route.current === viewKey) setBusy(false) }
+    } catch (cause) { if (alive.current && route.current === viewKey)
+      setError(cause instanceof Error && !('code' in cause) ? cause.message : sessionError(cause)) }
+    finally { attaching.current = false; if (alive.current && route.current === viewKey) setBusy(false) }
   }
   const send = async () => {
-    if (!writable || busy || !text.trim() || picker.blocked || !composer.ready) return
+    if (!writable || busy || attaching.current || !text.trim() || picker.blocked || needsImageModel || !composer.ready) return
     setError(''); setBusy(true)
     const selectedSkills = [...skills.selected]
     if (selectedSkills.length) skills.consumeVisible?.()
     try {
       await composer.protect()
-      const context = { skills: selectedSkills, materials: uploads.filter(item => !excluded.includes(item.key)).map(item => ({ kind: item.kind === 'pdf' ? 'pdf' : 'personal-material',
+      const context = { skills: selectedSkills, ...(images.length ? { messageImages: images } : {}), materials: uploads.filter(item => !excluded.includes(item.key)).map(item => ({ kind: item.kind === 'pdf' ? 'pdf' : 'personal-material',
         scope: { kind: 'session', sessionId }, objectId: item.input.documentId ?? item.input.materialId, requestId: item.input.requestId })),
         ...(experiment ? { experimentReferences: [{ activityId: experiment.activityId, requestId: experiment.requestId,
           executionRef: experiment.executionRef, inputDigest: experiment.inputDigest, label: experiment.label,
@@ -222,6 +266,12 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
           consumeSessionSkillSelection({ identity, spaceKey, namespace, currentSessionId: sessionId, nextSessionId: sessionId,
             clientScope: client.scope, turnId: receipt.turnId })
           skills.choose([])
+        }
+        if (images.length) {
+          const sent = new Set(images.map(image => image.imageId))
+          const remaining = readImageDraft(client.scope, sessionId).filter(image => !sent.has(image.imageId))
+          writeImageDraft(client.scope, sessionId, remaining)
+          if (alive.current && route.current === viewKey) setImageDraft({ sessionId, images: remaining })
         }
         await composer.clearIfMatches(text)
       }
@@ -297,9 +347,20 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
       ? item.citation.range.pages[0] : undefined].filter((value): value is number => Number.isInteger(value) && Number(value) > 0)
     await openMaterial(upload, candidates[0] ?? 1)
   }
-  const files = { items: uploads.filter(item => !excluded.includes(item.key)).map(item => ({ id: item.key, name: item.input.name,
-    size: Math.floor(item.input.dataBase64.length * 3 / 4), ...(!item.confirmed ? { progress: 50 } : {}) })), busy: busy || uploads.some(item => !excluded.includes(item.key) && !item.confirmed), error: '',
-    add: addFiles, remove: (id: string) => setExcluded(items => [...items, id]) }
+  const activeUploads = uploads.filter(item => !excluded.includes(item.key))
+  const files = { items: [
+    ...activeUploads.map(item => ({ id: item.key, name: item.input.name,
+      size: (item.remote && ('byteLength' in item.remote ? item.remote.byteLength : item.remote.versions.find(version => version.version === ('currentVersion' in item.remote! ? item.remote.currentVersion : 0))?.byteLength)) ?? Math.floor(item.input.dataBase64.length * 3 / 4),
+      ...(!item.confirmed ? { progress: 50 } : {}) })),
+    ...images.map(image => ({ id: image.imageId, name: image.name, attachmentKind: 'image' as const, src: imagePreviews[image.imageId] })),
+  ], busy: busy || activeUploads.some(item => !item.confirmed), error: '',
+  add: addFiles, remove: (id: string) => {
+    if (sessionId && images.some(image => image.imageId === id)) {
+      const remaining = readImageDraft(client.scope, sessionId).filter(image => image.imageId !== id)
+      writeImageDraft(client.scope, sessionId, remaining)
+      setImageDraft({ sessionId, images: remaining })
+    } else setExcluded(items => [...items, id])
+  } }
   const hasDraft = !!text.trim() || files.items.length > 0
   return <div className="agent-layout product-conversation product-agent">
     {ownMetadata && <header className="product-conversation-head"><h1>{ownMetadata.title ?? '新对话'}</h1>{ownMetadata.archived && <span>已归档</span>}</header>}
@@ -314,6 +375,9 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
       </section>}
       {reading && <section className="product-conversation-inner session-material-reading"><h2>{reading.name}</h2>
         <Button variant="outline" onClick={() => setReading(null)}>返回对话</Button><Markdown text={reading.text} />
+        {!!reading.images.length && <Button variant="outline" disabled={busy || !writable} onClick={() => void addFiles(reading.images.map((src, index) => ({
+          name: `${reading.name.slice(0, 200)} · 第 ${reading.page + index} 页`, dataBase64: src.slice('data:image/png;base64,'.length),
+        })))}>将此页添加为图片</Button>}
         {reading.pageCount > 1 && reading.record && <nav aria-label="PDF 翻页"><Button variant="outline" disabled={busy || reading.page === 1} onClick={() => void openMaterial(reading.record!, reading.page - 1)}>上一页</Button><span>{reading.page} / {reading.pageCount}</span><Button variant="outline" disabled={busy || reading.page === reading.pageCount} onClick={() => void openMaterial(reading.record!, reading.page + 1)}>下一页</Button></nav>}
         {reading.images.map((src, index) => <img key={index} src={src} alt={`${reading.name} 第 ${reading.page + index} 页`} />)}</section>}
     </ChatViewport> : <div className="product-agent-body"><AgentEmptyState title="今天想探讨什么？" /></div>}
@@ -323,6 +387,7 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
         onClick={() => { sessionStorage.removeItem(experimentKey); setExperiment(null) }}>移除引用</button></p>}
       {composer.error && <p role="alert">{composer.error} <button type="button" onClick={() => void composer.protect().catch(() => {})}>重试保留输入</button></p>}
       {error && <p role="alert">{error}</p>}
+      {needsImageModel && <p role="status">{IMAGE_MODEL_HINT}</p>}
       {!picker.models.length && !readOnly && !selection.stale && <p>尚未配置模型。<button type="button" className="product-agent-settings-link" onClick={onSettings}>打开设置</button></p>}
       {!writable && <p role="status">{ownMetadata?.archived ? '这段对话已归档，恢复后可以继续。' : '当前会话只读。'}</p>}
       {sessionId && uploads.length > 0 && <details><summary>会话资料</summary>{uploads.map(item => <div key={item.key}>
@@ -335,10 +400,10 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
       {pendingQuestion ? <SessionQuestionBox key={pendingQuestion.questionId + ':' + pendingQuestion.version}
         question={pendingQuestion} controller={controller} readOnly={!writable} />
         : <ProductPromptInput value={text} onChange={value => { void composer.change({ ...composer.value, text: value }).catch(() => {}) }} autoFocus
-        onSend={send} canSend={composer.ready && !!text.trim() && !busy && !pending && writable && !picker.blocked && !uploads.some(item => !excluded.includes(item.key) && !item.confirmed)}
+        onSend={send} canSend={composer.ready && !!text.trim() && !busy && !pending && writable && !picker.blocked && !needsImageModel && !uploads.some(item => !excluded.includes(item.key) && !item.confirmed)}
         submitting={busy || !writable} busy={controls.active && !hasDraft} onStop={controls.stop}
         onResume={controls.canResume && !hasDraft ? controls.resume : undefined} actionDisabled={controls.disabled} resumeLabel="继续生成"
-        files={files} skills={skills} selection={selection} modelLocked={controller.active} readOnly={!writable}
+        files={files} pasteImages skills={skills} selection={selection} modelLocked={controller.active} readOnly={!writable}
         onModelSettings={onSettings} contextUsage={controller.conversation?.contextUsage} />}
     </ProductComposerDock>
   </div>
