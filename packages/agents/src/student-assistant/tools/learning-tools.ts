@@ -7,7 +7,7 @@ import { learningPageSchema, learningReadSchema, learningSearchSchema, personalP
   type PersonalProjectCreate, type PersonalProjectMaterialReference, type LearningPage, type LearningDetail } from '@xunjie/contracts/student-learning';
 import type { AgentToolResult } from '@xunjie/contracts/agent-runtime';
 import type { AgentTool, Facts, ToolCall, ToolContext } from '@xunjie/agent-runtime';
-import { completed, errored, json, projectResult } from '../../capabilities/tool-support.js';
+import { completed, errored, json, projectResult, toolFeedbackBytes } from '../../capabilities/tool-support.js';
 import { verifyProjectCreation, type CreationQuestionsPort } from '../creation-policy.js';
 
 export interface WorkspaceSessionReceipt { sessionId: string; activityId: string; target: LearningTarget; ready: boolean; }
@@ -84,19 +84,55 @@ export function createLearningTools(host: LearningToolsHost): AgentTool[] {
     return { workspace, materials };
   }
 
+  /** Domain-specific bounded feedback for read_learning; never loses its continuation handle. */
+  function readLearningFeedback(detail: LearningDetail): AgentToolResult {
+    const originalLength = detail.text.length;
+    const reference = json(detail.reference) as Facts;
+    let text = detail.text;
+    const continuation = (nextOffset: number | null): Facts | undefined => nextOffset === null ? undefined : {
+      tool: 'read_learning',
+      reference,
+      ...(detail.pdf ? { page: detail.pdf.page } : {}),
+      range: { offset: nextOffset, length: Math.min(3000, Math.max(0, detail.range.total - nextOffset)) },
+    };
+    let projection: Facts;
+    for (;;) {
+      const nextOffset = detail.range.offset + text.length < detail.range.total
+        ? detail.range.offset + text.length : null;
+      const pdf = detail.pdf ? (text.length === originalLength ? detail.pdf : {
+        readingId: detail.pdf.readingId, documentId: detail.pdf.documentId, documentSha256: detail.pdf.documentSha256,
+        page: detail.pdf.page, range: detail.pdf.range,
+      }) : undefined;
+      projection = {
+        reference,
+        ...(detail.provenance ? { provenance: json(detail.provenance) } : {}),
+        ...(pdf ? { pdf } : {}),
+        text,
+        range: { offset: detail.range.offset, length: text.length, total: detail.range.total, nextOffset },
+        missing: detail.missing,
+        role: 'source-data',
+        ...(continuation(nextOffset) ? { readMore: continuation(nextOffset)! } : {}),
+      };
+      if (Buffer.byteLength(JSON.stringify(projection), 'utf8') <= toolFeedbackBytes || text.length <= 1) break;
+      text = text.slice(0, Math.max(1, Math.floor(text.length * 0.75)));
+    }
+    // The summary is bounded for the model; the complete fixed-version detail stays in data.
+    return completed(JSON.stringify(projection), json(detail));
+  }
+
   async function readTool(name: ToolName, call: ToolCall): Promise<AgentToolResult> {
     let result: unknown;
     if (name === 'read_learning') {
       const input = learningReadSchema.parse(call.input);
       const detail = await host.query.readLearning({ ...input, range: { ...input.range, length: Math.min(input.range.length, 3000) } });
-      if (detail.pdf && detail.text) return projectResult(json({ ...detail,
-        commonSource: { kind: 'course-pdf', reference: detail.reference, ...detail.pdf },
-        page: detail.pdf.page, start: detail.range.offset, end: detail.range.offset + detail.range.length,
-      }), JSON.stringify(detail));
-      if (input.page) return projectResult(json(detail), JSON.stringify(detail), 'error');
+      if (detail.pdf && detail.text) return readLearningFeedback(detail);
+      if (input.page) return errored(JSON.stringify({ reference: detail.reference, range: detail.range,
+        missing: detail.missing, role: 'source-data' }), json({ reference: detail.reference, range: detail.range,
+        missing: detail.missing, role: 'source-data' }));
       result = detail.provenance?.course?.helpPolicy.questions === 'disabled' ? { ...detail, text: '',
         range: { offset: input.range.offset, length: 0, total: 0, nextOffset: null },
         missing: [...new Set([...detail.missing, 'course-agent-help-disabled'])] } : detail;
+      return readLearningFeedback(result as LearningDetail);
     } else {
       const input = (name === 'list_learning_tasks' ? learningPageSchema : learningSearchSchema).parse(call.input);
       const args = { ...input, limit: Math.min(input.limit, 6) };

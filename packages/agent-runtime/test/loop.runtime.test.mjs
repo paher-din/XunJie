@@ -5,8 +5,6 @@ import { join } from 'node:path';
 import { createFileBackend, openStorage, provisionStorage } from '@xunjie/storage';
 import { nativeFixture } from '../../storage/test/native-fixture.mjs';
 import { createAgentRuntime, createAgentStore, agentRuntimeMigrations, validateAgentRuntime } from '../dist/index.js';
-import { projectToolFeedback, TOOL_FEEDBACK_POLICY, toolMaterial } from '../dist/context.js';
-import { readbackForSource, hasFixedReadback, stepReadbackScope } from '../dist/readback.js';
 
 const connection = { connectionId: randomUUID(), name: '测试模型', routeId: randomUUID(), version: 1,
   maxOutputTokens: 4096, contextWindow: 1_000_000, protocol: 'chat-completions', baseUrl: 'https://example.test/v1',
@@ -71,29 +69,13 @@ function echoTool(name = 'echo') {
     supportsBackground: false,
     async execute(call) { return { kind: 'completed', outcome: 'success', summary: 'echo:' + (call.input.value ?? '') }; } };
 }
-function hugeTool(name = 'huge', readback = true) {
-  return { definition: { name, description: '返回超过 8 KiB 的结果', inputSchema: { type: 'object', properties: { value: { type: 'string' } } } },
+function largeTool(name = 'large', readback = true) {
+  return { definition: { name, description: '返回大结果', inputSchema: { type: 'object', properties: { value: { type: 'string' } } } },
     supportsBackground: false,
     async execute(call) {
-      return { kind: 'completed', outcome: 'success', summary: '旧'.repeat(3500) + String(call.input.value ?? ''),
+      return { kind: 'completed', outcome: 'success', summary: 'x'.repeat(3000) + String(call.input.value ?? ''),
         ...(readback ? { data: { source: { kind: 'work', objectId: randomUUID(), contentId: randomUUID() } } } : {}) };
     } };
-}
-const allReadbackScope = { accepts: () => true };
-function feedbackEntry(options = {}) {
-  const id = options.id ?? randomUUID();
-  const stepId = options.stepId ?? randomUUID();
-  const source = options.source ?? { kind: 'work', objectId: randomUUID(), contentId: randomUUID() };
-  const text = options.text ?? JSON.stringify({ tool: options.tool ?? 'read_work', kind: options.kind ?? 'completed',
-    outcome: options.outcome ?? 'success', summary: options.summary ?? 'x'.repeat(9000) });
-  return { id, version: 1, role: 'user', kind: 'tool-result', stepId, turnId: options.turnId,
-    attemptId: options.attemptId ?? randomUUID(), nativeCallId: options.nativeCallId ?? ('native-' + id),
-    text, sources: options.sources ?? [{ sourceId: 'tool:' + id, label: '固定作品',
-      source: { kind: 'tool-call', toolCallId: id, nativeCallId: 'native-' + id, toolName: 'read_work', source },
-      ...(options.range ? { range: options.range } : {}) }] };
-}
-function feedbackBytes(entry) {
-  return Buffer.byteLength(entry.feedbackCompressed ? entry.text : JSON.parse(entry.text).summary, 'utf8');
 }
 function scenario(tools) {
   return { id: 'test', version: 1,
@@ -254,14 +236,15 @@ test('压缩候选在最终请求容量核验失败时不采用、不派发', as
   } finally { await h.close(); }
 });
 
-test('最终请求进入 80% 压力区时先做一次同步压缩，再由新请求重新核验', async () => {
-  let capacityCalls = 0;
+test('最终请求达到压缩阈值时先做一次同步压缩，压缩目标为最近 10% C-R', async () => {
+  let capacityCalls = 0, selectionTarget;
   const compact = {
     provider: { id: 'pressure-summary', version: 1,
       prompt: () => ({ system: '摘要', text: '摘要输入' }),
       parse: () => ({ facts: [] }) },
     maxPerTurn: 1,
-    select(history) {
+    select(history, _blocks, target) {
+      selectionTarget = target;
       const messages = history.slice(0, 1), remainder = history.slice(1);
       if (!messages.length) return null;
       return { messages, remainder, sourceDigest: 'a'.repeat(64), retainedDigest: 'b'.repeat(64),
@@ -270,7 +253,7 @@ test('最终请求进入 80% 压力区时先做一次同步压缩，再由新请
   };
   const pressureScenario = { ...scenario([]), compaction: compact };
   const ok = reason => ({ dispatchable: true, reason, requestFingerprint: 'd'.repeat(64), bytes: capacityCalls > 2 ? 900 : 1000,
-    inputEstimateTokens: 100, outputReserveTokens: 64, safetyMarginTokens: 3200, pressure: 0.5,
+    inputEstimateTokens: 100, outputReserveTokens: 8_000, safetyMarginTokens: 3_200, pressure: 0.5,
     pressureState: 'ok', contextWindow: 64_000, transportLimitBytes: 1_000_000 });
   const h = await harness([
     { text: '产生历史', toolIntents: [] },
@@ -293,13 +276,136 @@ test('最终请求进入 80% 压力区时先做一次同步压缩，再由新请
       && item.stepId === snap.steps.find(step => step.turnId === receipt.turnId).stepId);
     assert.deepEqual(mainAttempts.map(item => item.error), ['context-pressure', null]);
     assert.ok(snap.attempts.some(item => item.attemptNo >= 100), '执行了一次真实摘要尝试');
+    assert.equal(selectionTarget.recentTokens, 5_600, 'C=64,000, R=8,000: retainTokens = floor((64,000 - 8,000) * 10%) = 5,600');
     const { rows: [row] } = await h.storage.read('SELECT state FROM agent_runtime_sessions WHERE session_id=$1',
       [h.session.sessionId]);
     assert.ok(row.state.compactionAdoption);
   } finally { await h.close(); }
 });
 
-test('旧历史超过 64,000 字符时，低于最终请求的 80% 仍正常派发', async () => {
+test('压缩采用记录能定位实际摘要 Attempt，且原始工具结果仍按 ToolCall 保留', async () => {
+  let capacityCalls = 0, selectCount = 0;
+  const compact = {
+    provider: { id: 'trace-summary', version: 1, prompt: () => ({ system: '摘要', text: '摘要输入' }),
+      parse: () => ({ facts: [] }) },
+    maxPerTurn: 1,
+    select(history) {
+      selectCount++;
+      if (history.length < 3) return null;
+      return { messages: history.slice(0, 2), remainder: history.slice(2), sourceDigest: 'a'.repeat(64),
+        retainedDigest: 'b'.repeat(64), sourceVersions: { retainedIds: ['context'] }, policy: { maxSummaryTokens: 64 } };
+    },
+  };
+  const ok = () => ({ dispatchable: true, reason: 'ok', requestFingerprint: 'd'.repeat(64), bytes: capacityCalls > 3 ? 900 : 1000,
+    inputEstimateTokens: 100, outputReserveTokens: 8_000, safetyMarginTokens: 3_200, pressure: 0.5,
+    pressureState: 'ok', contextWindow: 64_000, transportLimitBytes: 1_000_000 });
+  const h = await harness([
+    { text: '调用工具', toolIntents: [{ callId: 'trace-call', name: 'large', arguments: { value: 'TOOL_ORIGINAL_MARKER' } }] },
+    { text: '工具完成', toolIntents: [] },
+    { text: '摘要结果', toolIntents: [] },
+    { text: '压缩后回答', toolIntents: [] },
+  ], [largeTool()], { capacity: () => (++capacityCalls === 3 ? { ...ok(), pressure: 0.8, pressureState: 'compact' } : ok()) },
+  undefined, { ...scenario([largeTool()]), compaction: compact });
+  try {
+    await h.runtime.submit(h.identity, input(h.session.sessionId, '第一轮'));
+    await h.settle();
+    const receipt = await h.runtime.submit(h.identity, input(h.session.sessionId, '触发压缩并保留原件'));
+    await h.settle();
+    const snap = await h.runtime.sessionSnapshot(h.identity, h.session.sessionId);
+    assert.equal(snap.turns.find(turn => turn.turnId === receipt.turnId).state, 'completed');
+    assert.ok(selectCount >= 1);
+    const { rows: [row] } = await h.storage.read('SELECT state FROM agent_runtime_sessions WHERE session_id=$1',
+      [h.session.sessionId]);
+    const adoption = row.state.compactionAdoption;
+    assert.ok(adoption?.attemptId, '压缩采用必须记录实际摘要 Attempt');
+    const summaryAttempt = snap.attempts.find(item => item.attemptId === adoption.attemptId);
+    assert.ok(summaryAttempt && summaryAttempt.attemptNo >= 100);
+    assert.equal(summaryAttempt.stepId, snap.steps.find(step => step.turnId === receipt.turnId).stepId);
+    const { rows: [tool] } = await h.storage.read('SELECT result FROM agent_tool_calls WHERE tool_call_id=$1',
+      [snap.toolCalls[0].toolCallId]);
+    assert.equal(tool.result.kind, 'completed');
+    assert.ok(tool.result.summary.includes('TOOL_ORIGINAL_MARKER'), '原始工具结果仍按 ToolCall 保留');
+    assert.ok(row.state.history.some(entry => entry.text.startsWith('已核对来源的历史摘要')));
+  } finally { await h.close(); }
+});
+
+test('摘要失败时保留原上下文，原请求仍可派发', async () => {
+  let capacityCalls = 0;
+  const compact = {
+    provider: { id: 'failing-summary', version: 1, prompt: () => ({ system: '摘要', text: '摘要输入' }),
+      parse() { throw new Error('invalid-summary'); } },
+    maxPerTurn: 1,
+    select(history) {
+      if (history.length < 3) return null;
+      return { messages: history.slice(0, 1), remainder: history.slice(1), sourceDigest: 'a'.repeat(64),
+        retainedDigest: 'b'.repeat(64), sourceVersions: { retainedIds: ['context'] }, policy: { maxSummaryTokens: 64 } };
+    },
+  };
+  const ok = () => ({ dispatchable: true, reason: 'ok', requestFingerprint: 'd'.repeat(64), bytes: 1000,
+    inputEstimateTokens: 100, outputReserveTokens: 8_000, safetyMarginTokens: 3_200, pressure: 0.5,
+    pressureState: 'ok', contextWindow: 64_000, transportLimitBytes: 1_000_000 });
+  const h = await harness([
+    { text: '第一轮完成', toolIntents: [] },
+    { text: '摘要结果', toolIntents: [] },
+    { text: '原上下文继续', toolIntents: [] },
+  ], [], { capacity: () => (++capacityCalls === 2 ? { ...ok(), pressure: 0.8, pressureState: 'compact' } : ok()) },
+  undefined, { ...scenario([]), compaction: compact });
+  try {
+    await h.runtime.submit(h.identity, input(h.session.sessionId, '第一轮'));
+    await h.settle();
+    const receipt = await h.runtime.submit(h.identity, input(h.session.sessionId, '触发摘要失败'));
+    await h.settle();
+    const snap = await h.runtime.sessionSnapshot(h.identity, h.session.sessionId);
+    assert.equal(snap.turns.find(turn => turn.turnId === receipt.turnId).state, 'completed');
+    const { rows: [row] } = await h.storage.read('SELECT state FROM agent_runtime_sessions WHERE session_id=$1',
+      [h.session.sessionId]);
+    assert.equal(row.state.compactionAdoption, undefined, '失败摘要不得采用');
+    assert.ok(row.state.history.some(entry => entry.text === '第一轮完成'), '原上下文保持');
+  } finally { await h.close(); }
+});
+
+test('压缩重试最多一次，仍达到阈值时返回容量缺口', async () => {
+  let summaries = 0, capacityCalls = 0;
+  const compact = {
+    provider: { id: 'retry-summary', version: 1, prompt: () => ({ system: '摘要', text: '摘要输入' }),
+      parse: () => { summaries += 1; return { facts: [] }; } },
+    maxPerTurn: 2,
+    select(history) {
+      if (history.length < 2) return null;
+      return { messages: history.slice(0, 1), remainder: history.slice(1), sourceDigest: 'a'.repeat(64),
+        retainedDigest: 'b'.repeat(64), sourceVersions: { retainedIds: ['context'] }, policy: { maxSummaryTokens: 64 } };
+    },
+  };
+  const base = { dispatchable: true, reason: 'ok', requestFingerprint: 'd'.repeat(64), bytes: 1000,
+    inputEstimateTokens: 51_200, outputReserveTokens: 8_000, safetyMarginTokens: 3_200, pressure: 1.2,
+    pressureState: 'compact', contextWindow: 64_000, transportLimitBytes: 1_000_000,
+    compactionHeadroomTokens: 4_096, compactionHeadroomSource: 'estimated', pressureBudgetTokens: 51_904,
+    thresholdTokens: 51_200, retainTokens: 5_600 };
+  const capacity = () => {
+    capacityCalls += 1;
+    return [3, 5, 7].includes(capacityCalls) ? base : { ...base, pressure: 0.4, pressureState: 'ok' };
+  };
+  const h = await harness([{ text: '第一轮完成', toolIntents: [] }, { text: '第二轮完成', toolIntents: [] },
+    { text: '第二段', toolIntents: [] }], [], { capacity }, undefined,
+  { ...scenario([]), compaction: compact });
+  try {
+    await h.runtime.submit(h.identity, input(h.session.sessionId, '历史' + 'x'.repeat(20_000)));
+    await h.settle();
+    await h.runtime.submit(h.identity, input(h.session.sessionId, '中间轮'));
+    await h.settle();
+    const before = summaries;
+    const receipt = await h.runtime.submit(h.identity, input(h.session.sessionId, '触发重试上限'));
+    await h.settle();
+    const snap = await h.runtime.sessionSnapshot(h.identity, h.session.sessionId);
+    const turn = snap.turns.find(item => item.turnId === receipt.turnId);
+    assert.equal(turn.state, 'failed');
+    assert.equal(turn.reason, 'context-capacity-gap');
+    assert.equal(summaries - before, 2, '初始一次 + 最多一次重试');
+    assert.equal(snap.attempts.filter(item => item.attemptNo >= 100).length, 2);
+  } finally { await h.close(); }
+});
+
+test('当前计量低于压缩阈值时旧历史正常派发且不调用摘要', async () => {
   let selections = 0;
   const compaction = { provider: { id: 'unexpected-summary', version: 1 },
     maxPerTurn: 2, select() { selections++; return null; } };
@@ -322,14 +428,9 @@ test('旧历史超过 64,000 字符时，低于最终请求的 80% 仍正常派�
 
 test('旧工具反馈已缩短时，摘要仍按原始历史基线合法采用', async () => {
   let capacityCalls = 0;
-  let compactedSource;
-  const tools = [hugeTool(), echoTool('read_work')];
   const compaction = {
     provider: { id: 'projection-summary', version: 1,
-      prompt: source => {
-        compactedSource = source;
-        return { system: '摘要', text: '摘要输入' };
-      },
+      prompt: () => ({ system: '摘要', text: '摘要输入' }),
       parse: () => ({ facts: [] }) },
     maxPerTurn: 1,
     select(history) {
@@ -339,19 +440,20 @@ test('旧工具反馈已缩短时，摘要仍按原始历史基线合法采用',
     },
   };
   const h = await harness([
-    { text: '调用旧工具', toolIntents: [{ callId: 'compact-old', name: 'huge', arguments: { value: '旧'.repeat(1000) + 'OLD_TAIL' } }] },
+    { text: '调用旧工具', toolIntents: [{ callId: 'compact-old', name: 'large', arguments: { value: 'OLD_TAIL' } }] },
     { text: '旧工具完成', toolIntents: [] },
-    { text: '第二轮工具', toolIntents: [{ callId: 'compact-recent', name: 'huge', arguments: { value: '新'.repeat(1000) + 'RECENT_TAIL' } }] },
+    { text: '第二轮工具', toolIntents: [{ callId: 'compact-recent', name: 'large', arguments: { value: 'RECENT_TAIL' } }] },
     { text: '近期工具完成', toolIntents: [] },
     { text: '摘要结果', toolIntents: [] },
     { text: '摘要后回答', toolIntents: [] },
-  ], tools, { capacity: () => {
+  ], [largeTool(), echoTool('read_work')], { capacity: () => {
     capacityCalls++;
     return { dispatchable: true, reason: 'ok', requestFingerprint: 'd'.repeat(64),
       bytes: capacityCalls === 5 ? 9000 : 2500, inputEstimateTokens: capacityCalls === 5 ? 3000 : 834,
       outputReserveTokens: 64, safetyMarginTokens: 400, pressure: capacityCalls === 5 ? 0.85 : 0.23,
       pressureState: capacityCalls === 5 ? 'compact' : 'ok', contextWindow: 4000, transportLimitBytes: 1_000_000 };
-  } }, undefined, { ...scenario(tools), compaction });
+  } }, undefined,
+  { ...scenario([largeTool(), echoTool('read_work')]), compaction });
   try {
     await h.runtime.submit(h.identity, input(h.session.sessionId, '第一轮'));
     await h.settle();
@@ -364,9 +466,6 @@ test('旧工具反馈已缩短时，摘要仍按原始历史基线合法采用',
     const { rows: [row] } = await h.storage.read('SELECT state FROM agent_runtime_sessions WHERE session_id=$1',
       [h.session.sessionId]);
     assert.ok(row.state.compactionAdoption, '合法摘要必须采用');
-    const compacted = compactedSource.messages.find(entry => entry.nativeCallId === 'compact-old');
-    assert.equal(JSON.parse(compacted.text).readback[0].readWith.tool, 'read_work');
-    assert.match(snap.toolCalls.find(call => call.nativeCallId === 'compact-old').result.summary, /OLD_TAIL/);
     assert.ok(row.state.history.some(entry => entry.text.startsWith('已核对来源的历史摘要')));
   } finally { await h.close(); }
 });
@@ -498,7 +597,7 @@ test('主模型暂时失败再成功：同一 Step 多 Attempt，工具只执行
     assert.equal(snap.toolCalls[0].result.summary, 'echo:retry');
     assert.equal(snap.turns.find(t => t.turnId === receipt.turnId).state, 'completed');
     const readStore = createAgentStore(h.storage, { ownerInstanceId: 'recent-step-reader' });
-    const recent = await readStore.recentCompletedSteps(h.session.sessionId, TOOL_FEEDBACK_POLICY.recentCompletedSteps);
+    const recent = await readStore.recentCompletedSteps(h.session.sessionId, 2);
     assert.equal(recent.length, 2);
     assert.equal(new Set(recent.map(step => step.stepId)).size, 2, 'Attempt 重试不额外占用一个近期 Step');
     assert.deepEqual(new Set(recent.map(step => step.stepId)), new Set(snap.steps.map(step => step.stepId)));
@@ -538,65 +637,48 @@ test('一个 Turn 的 Step 与工具后继续沿用开始时固定的模型；�
   } finally { await h.close(); }
 });
 
-test('窗口外的大工具反馈缩成观察与 readWith，最近四个 Step 预算内保留且不改变持久历史', async () => {
+test('工具结果按工具边界形成的历史直接进入后续请求，不因 Step 年龄被二次摘要', async () => {
   const h = await harness([
-    { text: '调用旧工具', toolIntents: [{ callId: 'old-call', name: 'huge', arguments: { value: 'OLD_TAIL_MARKER' } }] },
+    { text: '调用旧工具', toolIntents: [{ callId: 'old-call', name: 'large', arguments: { value: 'OLD_TAIL_MARKER' } }] },
     { text: '旧工具完成', toolIntents: [] },
-    { text: '调用近期工具甲', toolIntents: [{ callId: 'recent-a', name: 'huge', arguments: { value: 'RECENT_A' } }] },
-    { text: '近期工具甲完成', toolIntents: [] },
-    { text: '调用近期工具乙', toolIntents: [{ callId: 'recent-b', name: 'huge', arguments: { value: 'RECENT_B' } }] },
-    { text: '近期工具乙完成', toolIntents: [] },
-    { text: '第四轮追问', toolIntents: [] },
-  ], [hugeTool(), echoTool('read_work')]);
+    { text: '调用近期工具', toolIntents: [{ callId: 'recent-call', name: 'large', arguments: { value: 'RECENT_TAIL_MARKER' } }] },
+    { text: '近期工具完成', toolIntents: [] },
+    { text: '第三轮追问', toolIntents: [] },
+  ], [largeTool(), echoTool('read_work')]);
   try {
     await h.runtime.submit(h.identity, input(h.session.sessionId, '第一轮'));
     await h.settle();
     await h.runtime.submit(h.identity, input(h.session.sessionId, '第二轮'));
     await h.settle();
+    const segmentsBefore = h.gateway.segmentInputs.length;
     await h.runtime.submit(h.identity, input(h.session.sessionId, '第三轮'));
     await h.settle();
-    const beforeFourth = h.gateway.receives.length;
-    const segmentsBefore = h.gateway.segmentInputs.length;
-    await h.runtime.submit(h.identity, input(h.session.sessionId, '第四轮'));
-    await h.settle();
 
-    assert.equal(h.gateway.segmentInputs.length, segmentsBefore, '反馈表示变化应复用同一原生段');
-    const projection = h.gateway.receives[beforeFourth].input.historyProjection;
-    assert.equal(projection.replacements.length, 1, JSON.stringify(projection));
-    assert.equal(projection.replacements[0].callId, 'old-call');
-    assert.equal(projection.replacements[0].text.includes('OLD_TAIL_MARKER'), false);
-    assert.equal(projection.replacements[0].text.includes('早期工具反馈已压缩'), true);
-    const short = JSON.parse(projection.replacements[0].text);
-    assert.equal(short.readback[0].locator.kind, 'work');
-    assert.equal(short.readback[0].readWith.formatVersion, 1);
-    assert.equal(short.readback[0].readWith.tool, 'read_work');
-    assert.equal(short.readback[0].readWith.arguments.offset, 0);
-    assert.equal(short.readback[0].readWith.arguments.length, 8192);
-    assert.equal(typeof short.readback[0].readWith.arguments.objectId, 'string');
-    assert.equal(typeof short.readback[0].readWith.arguments.contentId, 'string');
-    assert.equal(projection.replacements.some(item => item.callId === 'recent-a' || item.callId === 'recent-b'), false,
-      '最近四个已完成 Step 的普通文本反馈在 24 KiB 预算内必须保持完整');
+    assert.equal(h.gateway.segmentInputs.length, segmentsBefore, '普通历史不应改变原生段');
+    const lastReceive = h.gateway.receives.at(-1);
+    assert.match(lastReceive.input.text, /第三轮/);
+    assert.equal(lastReceive.input.historyProjection, undefined,
+      '内核不再按历史年龄生成工具反馈投影');
 
     const { rows: [row] } = await h.storage.read('SELECT state FROM agent_runtime_sessions WHERE session_id=$1',
       [h.session.sessionId]);
     const old = row.state.history.find(item => item.nativeCallId === 'old-call');
-    assert.ok(old.text.includes('OLD_TAIL_MARKER'), '会话原件不得被投影覆盖');
+    assert.ok(old, '旧工具结果仍在历史中');
+    assert.ok(old.text.includes('OLD_TAIL_MARKER'), '工具边界形成的模型可见结果原样保留');
     assert.equal(old.feedbackCompressed, undefined);
-    assert.ok(row.state.feedbackCompressedEntries.length >= 1);
-    assert.equal(typeof row.state.feedbackDigest, 'string');
+    assert.equal(row.state.feedbackDigest ?? null, null);
+    assert.equal(row.state.feedbackCompressedEntries?.length ?? 0, 0);
   } finally { await h.close(); }
 });
 
-test('窗口外超过 8 KiB 但没有可执行回读入口的工具反馈保持完整', async () => {
+test('没有继续读取入口的超长工具结果仍保留工具真实输出，不静默改写历史', async () => {
   const h = await harness([
-    { text: '调用旧工具', toolIntents: [{ callId: 'old-no-readback', name: 'huge', arguments: { value: 'NO_READBACK_TAIL' } }] },
+    { text: '调用旧工具', toolIntents: [{ callId: 'old-no-readback', name: 'large', arguments: { value: 'NO_READBACK_TAIL' } }] },
     { text: '旧工具完成', toolIntents: [] },
-    { text: '第二轮工具', toolIntents: [{ callId: 'next-call', name: 'huge', arguments: { value: 'RECENT' } }] },
+    { text: '第二轮工具', toolIntents: [{ callId: 'next-call', name: 'large', arguments: { value: 'RECENT' } }] },
     { text: '第二轮完成', toolIntents: [] },
-    { text: '第三轮工具', toolIntents: [{ callId: 'next-call-2', name: 'huge', arguments: { value: 'RECENT_2' } }] },
-    { text: '第三轮完成', toolIntents: [] },
-    { text: '第四轮追问', toolIntents: [] },
-  ], [hugeTool('huge', false)]);
+    { text: '第三轮追问', toolIntents: [] },
+  ], [largeTool('large', false)]);
   try {
     await h.runtime.submit(h.identity, input(h.session.sessionId, '第一轮'));
     await h.settle();
@@ -604,240 +686,12 @@ test('窗口外超过 8 KiB 但没有可执行回读入口的工具反馈保持�
     await h.settle();
     await h.runtime.submit(h.identity, input(h.session.sessionId, '第三轮'));
     await h.settle();
-    const beforeFourth = h.gateway.receives.length;
-    await h.runtime.submit(h.identity, input(h.session.sessionId, '第四轮'));
-    await h.settle();
-    const projection = h.gateway.receives[beforeFourth].input.historyProjection;
-    assert.deepEqual(projection.replacements, []);
+    assert.equal(h.gateway.receives.at(-1).input.historyProjection, undefined);
     const { rows: [row] } = await h.storage.read('SELECT state FROM agent_runtime_sessions WHERE session_id=$1',
       [h.session.sessionId]);
     assert.ok(row.state.history.find(item => item.nativeCallId === 'old-no-readback').text.includes('NO_READBACK_TAIL'));
-    assert.equal(row.state.feedbackDigest, undefined);
+    assert.equal(row.state.feedbackDigest ?? null, null);
   } finally { await h.close(); }
-});
-
-test('工具反馈预算：最近四个 Step 累计不超过 24 KiB 时全部保留', () => {
-  const steps = ['s1', 's2', 's3', 's4'];
-  const history = steps.map((stepId, index) => feedbackEntry({ stepId, id: 'fb-' + index, summary: '字'.repeat(2048) }));
-  const projection = projectToolFeedback(history, { recentStepIds: new Set(steps),
-    readbackScope: allReadbackScope, currentStepId: 'current' });
-  assert.deepEqual(projection.replacements, []);
-  assert.ok(projection.history.every((entry, index) => entry.text === history[index].text));
-});
-
-test('工具反馈预算：第 5 个 Step 出现后窗口外的大结果缩成 readWith 摘要', () => {
-  const history = ['s1', 's2', 's3', 's4', 's5'].map((stepId, index) => feedbackEntry({ stepId, id: 'fb-' + index,
-    summary: index === 0 ? 'x'.repeat(9000) : 'tiny' }));
-  const projection = projectToolFeedback(history, { recentStepIds: new Set(['s2', 's3', 's4', 's5']),
-    readbackScope: allReadbackScope, currentStepId: 'current' });
-  assert.equal(projection.replacements.length, 1, JSON.stringify(projection.replacements));
-  assert.equal(projection.replacements[0].callId, 'native-fb-0');
-  const short = JSON.parse(projection.replacements[0].text);
-  assert.equal(short.tool, 'read_work');
-  assert.equal(short.outcome, 'success');
-  assert.equal(short.readback[0].readWith.tool, 'read_work');
-  assert.equal(short.readback[0].readWith.arguments.offset, 0);
-  assert.equal(short.readback[0].readWith.arguments.length, 8192);
-  assert.equal(projection.history[0].feedbackCompressed, true);
-  assert.equal(projection.history[1].feedbackCompressed, undefined);
-});
-
-test('工具反馈预算：最近四个 Step 累计超过 24 KiB 时最旧的可压缩结果被压缩到预算内', () => {
-  const steps = ['s1', 's2', 's3', 's4'];
-  const history = steps.map((stepId, index) => feedbackEntry({ stepId, id: 'fb-' + index, summary: '字'.repeat(2200),
-    turnId: 'same-turn' }));
-  const projection = projectToolFeedback(history, { recentStepIds: new Set(steps),
-    readbackScope: allReadbackScope, currentStepId: 'current' });
-  assert.deepEqual(projection.history.filter(entry => entry.feedbackCompressed).map(entry => entry.id), ['fb-0'],
-    '从最旧的可压缩项开始，直到累计回落到 24 KiB 内');
-  assert.equal(projection.history[2].feedbackCompressed, undefined);
-  assert.equal(projection.history[3].feedbackCompressed, undefined);
-  const retained = projection.history.reduce((sum, entry) => sum + feedbackBytes(entry), 0);
-  assert.ok(retained <= TOOL_FEEDBACK_POLICY.recentFeedbackBudgetBytes, '压缩后仍高于累计预算');
-});
-
-test('工具反馈预算：当前 Step 与最新失败状态不被压缩', () => {
-  const steps = ['s1', 's2', 's3', 's4'];
-  const history = [
-    feedbackEntry({ stepId: 's1', id: 'fb-0', summary: 'x'.repeat(10_000) }),
-    feedbackEntry({ stepId: 's2', id: 'fb-1', summary: 'x'.repeat(10_000) }),
-    feedbackEntry({ stepId: 's3', id: 'fb-failure', outcome: 'error', summary: 'x'.repeat(10_000) }),
-    feedbackEntry({ stepId: 's4', id: 'fb-3', summary: 'x'.repeat(10_000) }),
-    feedbackEntry({ stepId: 'current', id: 'fb-current', summary: 'x'.repeat(20_000) }),
-  ];
-  const projection = projectToolFeedback(history, { recentStepIds: new Set(steps),
-    readbackScope: allReadbackScope, currentStepId: 'current' });
-  assert.equal(projection.history.find(entry => entry.id === 'fb-failure').feedbackCompressed, undefined,
-    '最新失败状态必须保留原文');
-  assert.equal(projection.history.find(entry => entry.id === 'fb-current').feedbackCompressed, undefined,
-    '当前 Step 尚未完成的反馈必须保留原文');
-});
-
-test('工具反馈预算：未闭合工具批次与最新学生纠正不被压缩', () => {
-  const steps = ['s1', 's2', 's3', 's4'];
-  const history = [
-    ...steps.map((stepId, index) => feedbackEntry({ stepId, id: 'fb-' + index, summary: 'x'.repeat(10_000) })),
-    feedbackEntry({ stepId: 'open-step', id: 'fb-open', summary: 'x'.repeat(20_000) }),
-    { id: 'latest-correction', version: 1, role: 'user', text: '学生最新纠正：应读取 v7 而不是 v8' },
-  ];
-  const projection = projectToolFeedback(history, { recentStepIds: new Set(steps),
-    readbackScope: allReadbackScope, currentStepId: 'open-step' });
-  assert.equal(projection.history.find(entry => entry.id === 'fb-open').feedbackCompressed, undefined,
-    '最新未闭合工具批次必须保留原文');
-  assert.equal(projection.history.find(entry => entry.id === 'latest-correction').text, '学生最新纠正：应读取 v7 而不是 v8');
-});
-
-test('工具反馈预算：窗口外正文等于 8 KiB 的结果保持完整', () => {
-  const history = [feedbackEntry({ stepId: 's1', id: 'fb-small', summary: 'x'.repeat(8 * 1024) }),
-    ...['s2', 's3', 's4', 's5'].map((stepId, index) => feedbackEntry({ stepId, id: 'recent-' + index, summary: 'tiny' }))];
-  const projection = projectToolFeedback(history, { recentStepIds: new Set(['s2', 's3', 's4', 's5']),
-    readbackScope: allReadbackScope, currentStepId: 'current' });
-  assert.equal(projection.history[0].text, history[0].text);
-  assert.deepEqual(projection.replacements, []);
-});
-
-test('工具反馈预算：窗口外超过 8 KiB 且有 readWith 的结果生成观察和引用', () => {
-  const history = [feedbackEntry({ stepId: 's1', id: 'fb-old', summary: 'x'.repeat(12_000) }),
-    ...['s2', 's3', 's4', 's5'].map((stepId, index) => feedbackEntry({ stepId, id: 'recent-' + index, summary: 'tiny' }))];
-  const projection = projectToolFeedback(history, { recentStepIds: new Set(['s2', 's3', 's4', 's5']),
-    readbackScope: allReadbackScope, currentStepId: 'current' });
-  const short = JSON.parse(projection.history[0].text);
-  assert.equal(projection.history[0].feedbackCompressed, true);
-  assert.equal(short.summary.length > 0, true);
-  assert.equal(short.readback.length, 1);
-  assert.equal(short.readback[0].readWith.tool, 'read_work');
-  assert.match(short.note, /readWith/);
-});
-
-test('工具反馈预算：窗口外超过 8 KiB 但没有 readWith 的结果保持完整', () => {
-  const source = { kind: 'tool-evidence', toolCallId: 'legacy', toolName: 'legacy' };
-  const history = [feedbackEntry({ stepId: 's1', id: 'fb-no-readback', source, summary: 'x'.repeat(12_000) }),
-    ...['s2', 's3', 's4', 's5'].map((stepId, index) => feedbackEntry({ stepId, id: 'recent-' + index, summary: 'tiny' }))];
-  const projection = projectToolFeedback(history, { recentStepIds: new Set(['s2', 's3', 's4', 's5']),
-    readbackScope: allReadbackScope, currentStepId: 'current' });
-  assert.equal(projection.history[0].text, history[0].text);
-  assert.deepEqual(projection.replacements, []);
-});
-
-test('工具反馈预算：图像与无法缩小的反馈保留，证据可超过目标预算', () => {
-  const image = { ...feedbackEntry({ stepId: 'recent', summary: 'x'.repeat(9000) }),
-    images: [{ imageId: randomUUID(), version: 1 }] };
-  const unreadable = feedbackEntry({ stepId: 'recent', summary: 'x'.repeat(25_000), source: { kind: 'tool-evidence' } });
-  const small = feedbackEntry({ stepId: 'recent', summary: 'short' });
-  const history = [image, unreadable, small];
-  const projection = projectToolFeedback(history, { recentStepIds: new Set(['recent']),
-    readbackScope: allReadbackScope, currentStepId: 'current' });
-  assert.deepEqual(projection.history, history);
-  assert.deepEqual(projection.replacements, []);
-});
-
-test('工具反馈预算：摘要超过 1200 字符时截断并保留省略标记', () => {
-  const history = [feedbackEntry({ stepId: 's1', id: 'fb-long', summary: '观'.repeat(5000) }),
-    ...['s2', 's3', 's4', 's5'].map((stepId, index) => feedbackEntry({ stepId, id: 'recent-' + index, summary: 'tiny' }))];
-  const projection = projectToolFeedback(history, { recentStepIds: new Set(['s2', 's3', 's4', 's5']),
-    readbackScope: allReadbackScope, currentStepId: 'current' });
-  const short = JSON.parse(projection.history[0].text);
-  assert.equal(Array.from(short.summary).length, TOOL_FEEDBACK_POLICY.summaryChars);
-  assert.ok(short.summary.endsWith('…'));
-});
-
-const definition = (name, keys) => ({ name, inputSchema: { type: 'object', additionalProperties: false,
-  properties: Object.fromEntries(keys.map(key => [key, {}])), required: keys } });
-const workReader = definition('read_work', ['objectId', 'contentId', 'offset', 'length']);
-const courseReader = definition('read_material', ['materialId']);
-const personalReader = definition('read_personal_material', ['materialId', 'version', 'sha256', 'start', 'length']);
-const pdfReader = definition('read_pdf', ['documentId', 'sha256', 'pages', 'region']);
-const pdfTextReader = definition('read_pdf_text', ['documentId', 'sha256', 'readingId', 'page', 'start', 'length']);
-const resultReader = definition('read_result', ['requestId']);
-const executionReader = definition('execution_query', ['requestId']);
-const readWith = (tool, args) => ({ formatVersion: 1, tool, arguments: args });
-
-test('readbackForSource：work 固定版本与范围映射到 read_work', () => {
-  const objectId = randomUUID(), contentId = randomUUID();
-  const source = { kind: 'work', objectId, contentId };
-  const scope = stepReadbackScope([workReader], []);
-  assert.deepEqual(readbackForSource(source, scope, { offset: 1024, length: 9000 })[0].readWith,
-    readWith('read_work', { objectId, contentId, offset: 1024, length: 8192 }));
-  assert.deepEqual(readbackForSource(source, scope, { start: 100, end: 500 })[0].readWith,
-    readWith('read_work', { objectId, contentId, offset: 100, length: 400 }));
-});
-
-test('readbackForSource：course-material 仅在同一固定课程发布内映射到 read_material', () => {
-  const materialId = randomUUID(), releaseId = randomUUID(), contentDigest = 'b'.repeat(64);
-  const source = { kind: 'course-material', materialId, releaseId, contentDigest, materialSha256: 'a'.repeat(64) };
-  const course = { kind: 'course', id: releaseId, version: contentDigest };
-  const [plan] = readbackForSource(source, stepReadbackScope([courseReader], [course]));
-  assert.deepEqual(plan.readWith, readWith('read_material', { materialId }));
-  assert.equal(plan.locator.releaseId, releaseId);
-  assert.equal(plan.locator.contentDigest, contentDigest);
-  assert.deepEqual(readbackForSource(source, stepReadbackScope([courseReader], [{ ...course, id: randomUUID() }])), []);
-});
-
-test('readbackForSource：personal-material 保留固定版本、SHA256 与范围', () => {
-  const materialId = randomUUID(), sha256 = 'c'.repeat(64);
-  const scope = stepReadbackScope([personalReader], []);
-  const source = { kind: 'personal-material', materialId, version: 3, sha256 };
-  assert.deepEqual(readbackForSource(source, scope, { start: 10, end: 7000 })[0].readWith,
-    readWith('read_personal_material', { materialId, version: 3, sha256, start: 10, length: 6000 }));
-  assert.deepEqual(readbackForSource({ ...source, sha256: undefined }, scope), []);
-});
-
-test('readbackForSource：PDF reading 保留固定页码和范围，逐页生成 read_pdf_text', () => {
-  const documentId = randomUUID(), readingId = randomUUID(), sha256 = 'd'.repeat(64);
-  const source = { kind: 'pdf', documentId, documentSha256: sha256, readingId };
-  const [material] = toolMaterial({ toolCallId: randomUUID(), name: 'read_pdf', state: 'closed',
-    result: { kind: 'completed', outcome: 'success', summary: 'PDF', data: { source,
-      reading: { requestedPages: [7, 9], region: null, pages: [
-        { page: 7, state: 'ready', text: 'x'.repeat(3000) }, { page: 9, state: 'ready', text: 'page nine' },
-      ] } } } });
-  const scope = stepReadbackScope([pdfReader, pdfTextReader], []);
-  const plans = readbackForSource(material.source, scope, material.range);
-  assert.deepEqual(plans.map(plan => plan.readWith), [
-    readWith('read_pdf_text', { documentId, sha256, readingId, page: 7, start: 0, length: 2400 }),
-    readWith('read_pdf_text', { documentId, sha256, readingId, page: 9, start: 0, length: 9 }),
-  ]);
-  assert.deepEqual(readbackForSource(source, scope, { page: 7, start: 100, end: 500 })[0].readWith,
-    readWith('read_pdf_text', { documentId, sha256, readingId, page: 7, start: 100, length: 400 }));
-  assert.deepEqual(readbackForSource(source, stepReadbackScope([pdfReader], []), material.range), []);
-});
-
-test('readbackForSource：没有 readingId 的 PDF 用 read_pdf 重新取固定页和区域', () => {
-  const documentId = randomUUID(), sha256 = 'e'.repeat(64);
-  const source = { kind: 'pdf', documentId, documentSha256: sha256 };
-  const region = { x: 0.1, y: 0.2, width: 0.5, height: 0.5 };
-  const scope = stepReadbackScope([pdfReader, pdfTextReader], []);
-  assert.deepEqual(readbackForSource(source, scope, { pages: [3, 5], region })[0].readWith,
-    readWith('read_pdf', { documentId, sha256, pages: [3, 5], region }));
-  assert.deepEqual(readbackForSource(source, scope), []);
-});
-
-test('readbackForSource：component 与 experiment-reference 只读原执行，不重新派发', () => {
-  const requestId = randomUUID();
-  const component = { kind: 'component', requestId };
-  assert.deepEqual(readbackForSource(component, stepReadbackScope([resultReader, executionReader], []))[0].readWith,
-    readWith('read_result', { requestId }));
-  assert.deepEqual(readbackForSource({ ...component, kind: 'experiment-reference' }, stepReadbackScope([executionReader], []))[0].readWith,
-    readWith('execution_query', { requestId }));
-});
-
-test('readbackForSource：嵌套 tool-call 解包内部固定来源后再映射', () => {
-  const objectId = randomUUID(), contentId = randomUUID();
-  const nested = { kind: 'tool-call', source: { kind: 'tool-call', source: { kind: 'work', objectId, contentId } } };
-  const scope = stepReadbackScope([workReader], []);
-  assert.deepEqual(readbackForSource(nested, scope)[0].readWith,
-    readWith('read_work', { objectId, contentId, offset: 0, length: 8192 }));
-  assert.equal(hasFixedReadback(nested, scope), true);
-});
-
-test('readbackForSource：当前工具撤下或参数不匹配时保留原文', () => {
-  const source = { kind: 'work', objectId: randomUUID(), contentId: randomUUID() };
-  const original = { ...feedbackEntry({ source }), readback: true };
-  for (const scope of [stepReadbackScope([], []), stepReadbackScope([definition('read_work', ['referenceId'])], [])]) {
-    assert.deepEqual(readbackForSource(source, scope), []);
-    assert.equal(hasFixedReadback(source, scope), false);
-    assert.deepEqual(projectToolFeedback([original], { recentStepIds: new Set(), readbackScope: scope,
-      currentStepId: 'current' }).history, [original]);
-  }
 });
 
 test('本步材料可由 cite_source 固定到具体判断和来源', async () => {

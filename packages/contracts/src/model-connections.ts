@@ -46,6 +46,8 @@ export const modelConfigurationSchema = z.object({
   /** Learning calls use the values saved with the connection, never probe limits. */
   contextWindow: z.number().int().min(1).max(maximumModelTokenCount).optional(),
   maxOutputTokens: z.number().int().min(1).max(maximumModelTokenCount).optional(),
+  /** Route-provided compaction headroom; omitted means the kernel records an estimate. */
+  compactionHeadroomTokens: z.number().int().min(1).max(maximumModelTokenCount).optional(),
   /** Explicit permission to send images; missing retains the existing measured-route behavior. */
   imageInput: z.boolean().optional(),
   reasoningEffort: z.enum(modelReasoningEfforts).optional(),
@@ -169,22 +171,55 @@ export const modelUsageSchema = z.object({ state: z.enum(['final', 'partial', 'u
   inputTokens: z.number().nonnegative().optional(), outputTokens: z.number().nonnegative().optional(),
   totalTokens: z.number().nonnegative().optional(), cachedTokens: z.number().nonnegative().optional(),
   reasoningTokens: z.number().nonnegative().optional() }).strict();
-/** Calibratable first-version pressure policy shared by the kernel and the model owner. */
+/**
+ * Calibratable DeepSeek Harness-style pressure policy shared by the kernel and the model owner.
+ * The trigger is `min(C * 0.80, pressureBudget)` and the retained tail is 10% of `C - R`.
+ * Both are token budgets, never a message count, Step count or character count. Compaction
+ * reserves a separate headroom so the summary request can itself fit on the same route.
+ */
 export const modelContextPressurePolicy = Object.freeze({
-  version: 1 as const, compactAt: 0.8, target: 0.6, defaultSafetyRate: 0.05, imageSafetyRate: 0.1,
+  version: 2 as const, compactAt: 0.8, recentContextRate: 0.1,
+  defaultSafetyRate: 0.05, imageSafetyRate: 0.1,
+  minimumCompactionHeadroomTokens: 4_096, compactionRetries: 1,
 });
+export interface ModelCompactionBudget {
+  compactionHeadroomTokens: number;
+  /** `route` means supplied by the model connection; `estimated` is derived from current capacity settings. */
+  compactionHeadroomSource: 'route' | 'estimated';
+  pressureBudgetTokens: number;
+  thresholdTokens: number;
+  retainTokens: number;
+}
+/**
+ * `C` is the effective context window, `R` the completion output reserve and `Hc` the
+ * compaction headroom. A route may provide Hc; otherwise the current safety margin is used
+ * with a conservative summary-request floor and marked as an estimate.
+ */
+export function modelCompactionBudget(contextWindow: number, outputReserveTokens: number,
+  safetyMarginTokens: number | null, compactionHeadroomTokens?: number): ModelCompactionBudget {
+  const estimatedHeadroom = Math.max(modelContextPressurePolicy.minimumCompactionHeadroomTokens,
+    safetyMarginTokens ?? Math.ceil(contextWindow * modelContextPressurePolicy.defaultSafetyRate), 2_048);
+  const headroom = compactionHeadroomTokens ?? estimatedHeadroom;
+  const pressureBudgetTokens = contextWindow - outputReserveTokens - headroom;
+  const thresholdTokens = Math.min(Math.floor(contextWindow * modelContextPressurePolicy.compactAt), pressureBudgetTokens);
+  const retainTokens = Math.max(0, Math.floor((contextWindow - outputReserveTokens) * modelContextPressurePolicy.recentContextRate));
+  return { compactionHeadroomTokens: headroom, compactionHeadroomSource: compactionHeadroomTokens === undefined ? 'estimated' : 'route',
+    pressureBudgetTokens, thresholdTokens, retainTokens };
+}
 export function modelContextPressure(inputTokens: number, outputReserveTokens: number,
-  contextWindow: number | null, safetyRate: number = modelContextPressurePolicy.defaultSafetyRate) {
+  contextWindow: number | null, safetyRate: number = modelContextPressurePolicy.defaultSafetyRate,
+  compactionHeadroomTokens?: number) {
   if (contextWindow === null) return { pressure: null, state: 'unknown' as const,
-    safetyMarginTokens: null, availableInputTokens: null };
+    safetyMarginTokens: null, compaction: null };
   const safetyMarginTokens = Math.ceil(contextWindow * safetyRate);
-  const availableInputTokens = contextWindow - outputReserveTokens - safetyMarginTokens;
-  if (availableInputTokens <= 0) return { pressure: null, state: 'blocked' as const,
-    safetyMarginTokens, availableInputTokens };
-  const pressure = inputTokens / availableInputTokens;
-  return { pressure, safetyMarginTokens, availableInputTokens,
-    state: pressure > 1 ? 'blocked' as const
-      : pressure >= modelContextPressurePolicy.compactAt ? 'compact' as const : 'ok' as const };
+  const compaction = modelCompactionBudget(contextWindow, outputReserveTokens, safetyMarginTokens, compactionHeadroomTokens);
+  if (compaction.pressureBudgetTokens <= 0) return { pressure: null, state: 'blocked' as const,
+    safetyMarginTokens, compaction };
+  // `pressure` stays a diagnostic ratio against the pressure budget. The actual trigger and
+  // retained-tail budget are the explicit token fields in `compaction`.
+  const pressure = inputTokens / compaction.pressureBudgetTokens;
+  return { pressure, safetyMarginTokens, compaction,
+    state: inputTokens >= compaction.thresholdTokens ? 'compact' as const : 'ok' as const };
 }
 export const modelUpstreamSchema = modelDiagnosticFactsSchema;
 export const modelImageRefSchema = z.object({ imageId: z.uuid(), version: z.literal(1) }).strict();

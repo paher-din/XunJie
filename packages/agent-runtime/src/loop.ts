@@ -1,4 +1,5 @@
 import { canonicalDigest, operationId } from '@xunjie/storage/identity';
+import { modelContextPressurePolicy } from '@xunjie/contracts/model-connections';
 import type { AgentTurn, AgentStep, AgentToolCall, AgentNotification, AgentToolResult } from '@xunjie/contracts/agent-runtime';
 import type { ModelToolResult, ModelImageRef } from '@xunjie/contracts/model-connections';
 import type { AgentStore, AgentSessionInput } from './store.js';
@@ -119,7 +120,7 @@ async function runStep(deps: LoopDependencies, turn: AgentTurn, step: AgentStep,
   let plan = await buildContext({ store, gateway: deps.gateway, scenario, taskFacts: deps.taskFacts, budget, spent: usage, signal }, scenarioInput, { inputs, notifications });
   // The tool definition is stable for the whole Turn. Adding or removing it between Steps
   // would change the native prefix and force a second segment even when the route is fixed.
-  const generate = async (options: { smallerThanBytes?: number; allowPressureCompaction?: boolean } = {}) => {
+  const generate = async (options: { smallerThanBytes?: number; allowPressureCompaction?: boolean; enforcePressure?: boolean } = {}) => {
     await store.recordStepContext(step.stepId, {
       ruleVersions: asJson(plan.ruleVersions), materials: asJson(plan.materials.map(materialMetadata)),
       rebuildMaterials: asJson(plan.rebuildMaterials.map(materialMetadata)),
@@ -149,7 +150,6 @@ async function runStep(deps: LoopDependencies, turn: AgentTurn, step: AgentStep,
           if (signal.aborted || !await deps.isActive(turn.turnId)) throw new AgentError('cancelled');
         },
       } } : {}),
-      historyProjection: plan.historyProjection,
       historySources: materialsAsHistorySources(plan.materials),
       rebuildHistorySources: materialsAsHistorySources(plan.rebuildMaterials),
       factsDigest: plan.factsDigest,
@@ -174,12 +174,14 @@ async function runStep(deps: LoopDependencies, turn: AgentTurn, step: AgentStep,
       } } : {}),
       ...(plan.adoptCompaction ? { adoptContext: plan.adoptCompaction } : {}),
       ...(options.smallerThanBytes !== undefined ? { smallerThanBytes: options.smallerThanBytes } : {}),
+      ...(options.enforcePressure ? { enforcePressure: true } : {}),
       allowPressureCompaction: options.allowPressureCompaction ?? !plan.compacted,
       onProgress: progress => deps.onProgress(sessionId, turn.turnId, step.stepId, progress.attemptId, progress),
     });
   };
   let response;
   let revocationRetry = false;
+  let compactionsUsed = 0;
   try { response = await generate();
   } catch (error) {
     if (error instanceof AgentError && error.code === 'context-changed') {
@@ -191,17 +193,35 @@ async function runStep(deps: LoopDependencies, turn: AgentTurn, step: AgentStep,
         budget, spent: usage, signal }, scenarioInput, { inputs, notifications });
       response = await generate({ allowPressureCompaction: false });
     } else if (error instanceof ContextPressureError) {
-      const compacted = await buildContext({ store, gateway: deps.gateway, scenario, taskFacts: deps.taskFacts,
-        budget, spent: usage, signal, compactionBasis: error.capacity }, scenarioInput, { inputs, notifications });
-      plan = compacted;
-      try {
-        response = await generate({ allowPressureCompaction: false,
-          ...(plan.compacted ? { smallerThanBytes: error.capacity.bytes } : {}) });
-      } catch (candidateError) {
-        if (!plan.compacted || !(candidateError instanceof ContextCapacityError) || candidateError.sent) throw candidateError;
+      // DeepSeek Harness-style bounded retry: one initial compaction and at most one retry.
+      const maxCompactions = 1 + modelContextPressurePolicy.compactionRetries;
+      let pressureError = error;
+      for (;;) {
+        if (compactionsUsed >= maxCompactions) throw new AgentError('context-capacity-gap');
+        compactionsUsed += 1;
         plan = await buildContext({ store, gateway: deps.gateway, scenario, taskFacts: deps.taskFacts,
-          budget, spent: usage, signal }, scenarioInput, { inputs, notifications });
-        response = await generate({ allowPressureCompaction: false });
+          budget, spent: usage, signal, compactionBasis: pressureError.capacity }, scenarioInput, { inputs, notifications });
+        if (!plan.compacted) {
+          // No safe closed interval or summary failed: retain the original context. It may still
+          // dispatch when the original payload is physically admissible.
+          response = await generate({ allowPressureCompaction: false });
+          break;
+        }
+        const retryPermitted = compactionsUsed < maxCompactions;
+        try {
+          response = await generate({ allowPressureCompaction: retryPermitted, enforcePressure: !retryPermitted,
+            smallerThanBytes: pressureError.capacity.bytes });
+          break;
+        } catch (candidateError) {
+          if (candidateError instanceof ContextPressureError) { pressureError = candidateError; continue; }
+          if (!retryPermitted && candidateError instanceof ContextCapacityError)
+            throw new AgentError('context-capacity-gap');
+          if (!plan.compacted || !(candidateError instanceof ContextCapacityError) || candidateError.sent) throw candidateError;
+          plan = await buildContext({ store, gateway: deps.gateway, scenario, taskFacts: deps.taskFacts,
+            budget, spent: usage, signal }, scenarioInput, { inputs, notifications });
+          response = await generate({ allowPressureCompaction: false });
+          break;
+        }
       }
     } else {
       if (!(error instanceof AgentError) || !['context-capacity-exceeded', 'context-capacity-preflight'].includes(error.code)) throw error;
@@ -280,14 +300,16 @@ async function runStep(deps: LoopDependencies, turn: AgentTurn, step: AgentStep,
     const after = await store.sessionState(sessionId);
     const toolHistory = results.map(call => {
       const toolSources = materialsAsHistorySources(toolMaterial(call));
+      const feedback = feedbackOf(call.result);
       return { id: call.toolCallId, version: 1, role: 'user' as const, turnId: turn.turnId, stepId: step.stepId,
         kind: 'tool-result' as const,
         attemptId: response.attemptId,
         nativeCallId: call.nativeCallId,
+        toolName: call.name,
+        toolOutcome: feedback.outcome,
         readback: toolSources.some(source => hasFixedReadback(source.source, readbackScope, source.range)),
-        text: JSON.stringify({ tool: call.name, kind: call.result?.kind, outcome: feedbackOf(call.result).outcome,
-          summary: call.result && 'summary' in call.result ? call.result.summary : call.result && 'reason' in call.result ? call.result.reason : '',
-          ...effectReferences(call.result) }),
+        // Exactly the text the model saw at the tool boundary; never a second, age-based summary.
+        text: feedback.text,
         ...(call.result?.kind === 'completed' && call.result.images?.length ? { images: call.result.images } : {}),
         sources: [...historySources, ...toolSources] };
     });

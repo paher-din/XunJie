@@ -1,11 +1,14 @@
 import { measureNativeCapacity, type LearningModelPort } from '@xunjie/model-gateway/service';
-import type { ModelConnection } from '@xunjie/contracts/model-connections';
+import { modelContextPressurePolicy, type ModelConnection } from '@xunjie/contracts/model-connections';
 import type { GenerateInput, RequestCapacity } from './ports.js';
 
 export function requestCapacity(input: GenerateInput, connection: ModelConnection,
   payload: unknown, maxOutputTokens: number, remainingInputTokens: number): RequestCapacity {
-  return describeCapacity(input, connection, measureNativeCapacity(Buffer.from(JSON.stringify(payload ?? {})),
-    connection.contextWindow ?? null, maxOutputTokens, remainingInputTokens, 0.1));
+  const encoded = JSON.stringify(payload ?? {});
+  const imageCount = input.images.length + input.history.reduce((sum, entry) => sum + (entry.images?.length ?? 0), 0);
+  const safetyRate = imageCount > 0 ? modelContextPressurePolicy.imageSafetyRate : modelContextPressurePolicy.defaultSafetyRate;
+  return describeCapacity(input, connection, measureNativeCapacity(Buffer.from(encoded),
+    connection.contextWindow ?? null, maxOutputTokens, remainingInputTokens, safetyRate, connection.compactionHeadroomTokens));
 }
 
 export async function measureAttemptCapacity(gateway: LearningModelPort, input: GenerateInput,

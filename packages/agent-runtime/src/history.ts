@@ -20,8 +20,9 @@ export function portableHistory(history: readonly HistoryEntry[]) {
   });
 }
 export const historyDigest = (history: HistoryEntry[]) => canonicalDigest(history.map(({ id, version, text, role, turnId, stepId,
-  kind, attemptId, nativeCallId, readback, feedbackCompressed, images, sources }) =>
+  kind, attemptId, nativeCallId, toolName, toolOutcome, readback, feedbackCompressed, images, sources }) =>
   ({ id, version, role, text, ...(turnId ? { turnId } : {}), ...(stepId ? { stepId } : {}), ...(kind ? { kind } : {}),
-    ...(attemptId ? { attemptId } : {}), ...(nativeCallId ? { nativeCallId } : {}), ...(readback ? { readback } : {}),
+    ...(attemptId ? { attemptId } : {}), ...(nativeCallId ? { nativeCallId } : {}), ...(toolName ? { toolName } : {}),
+    ...(toolOutcome ? { toolOutcome } : {}), ...(readback ? { readback } : {}),
     ...(feedbackCompressed ? { feedbackCompressed } : {}),
     ...(images?.length ? { images } : {}), ...(sources?.length ? { sources } : {}) })));

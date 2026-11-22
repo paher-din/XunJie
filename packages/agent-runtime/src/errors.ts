@@ -14,6 +14,6 @@ export class ContextCapacityError extends AgentError {
 }
 export class ContextPressureError extends AgentError {
   constructor(readonly capacity: RequestCapacity) {
-    super('context-pressure', 'Final request crossed the 80% planning threshold');
+    super('context-pressure', 'Final request reached the DeepSeek Harness compaction threshold');
   }
 }

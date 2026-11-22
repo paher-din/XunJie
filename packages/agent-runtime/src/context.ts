@@ -1,17 +1,16 @@
 import { StorageError } from '@xunjie/storage';
 import { canonicalDigest, operationId } from '@xunjie/storage/identity';
-import { modelContextPressurePolicy, modelLearningInputSchema, modelSegmentInputSchema, type ModelImageRef } from '@xunjie/contracts/model-connections';
+import { modelCompactionBudget, modelLearningInputSchema, modelSegmentInputSchema, type ModelImageRef } from '@xunjie/contracts/model-connections';
 import type { LearningModelPort } from '@xunjie/model-gateway/service';
 import type { AgentNotification, AgentToolCall, AgentTurnBudget } from '@xunjie/contracts/agent-runtime';
 import type { AgentStore } from './store.js';
-import type { AgentScenario, ContextMaterial, Facts, HistoryEntry, HistorySource, RuleVersion,
-  ScenarioInput, CompactionSource, HistoryProjection, HistoryProjectionReplacement, RequestCapacity } from './ports.js';
+import type { AgentScenario, ContextMaterial, Facts, HistoryEntry, HistorySource, Json, RuleVersion,
+  ScenarioInput, CompactionSource, RequestCapacity } from './ports.js';
 import { conversationHistory, appendHistory, historyDigest } from './history.js';
 import { raceAbort, resolveGateway, type ModelGatewaySource } from './model.js';
 import { AgentError } from './errors.js';
 import { measureAttemptCapacity } from './capacity.js';
 import { citationToolDefinition } from './citations.js';
-import { readbackForSource, stepReadbackScope, type ReadbackPlan, type ReadbackScope } from './readback.js';
 
 /** Latest task facts the scene/product can resolve for explicit references or unresolved effects. */
 export interface TaskFactsPort {
@@ -20,12 +19,15 @@ export interface TaskFactsPort {
 }
 export interface TaskFact { taskId: string; taskVersion: string; name: string; status: string; summary: string; resultRef: string | null; priority: number; }
 export const TASK_FACT_LIMITS = Object.freeze({ maxItems: 8, maxChars: 8192, maxItemChars: 512 });
-export const TOOL_FEEDBACK_POLICY = Object.freeze({
-  recentCompletedSteps: 4,
-  candidateBytes: 8 * 1024,
-  summaryChars: 1200,
-  recentFeedbackBudgetBytes: 24 * 1024,
-});
+/**
+ * Independent material display budgets. They are not derived from the compaction
+ * threshold: the normal budget bounds a single step's inline material, while the
+ * pressure budget is a deliberately conservative 25% display cap applied before the
+ * final payload is measured. Omitted material remains available through its fixed
+ * reference/read entry; this does not truncate or summarize the original tool result.
+ */
+export const MATERIAL_INLINE_MAX_CHARS = 400_000;
+export const MATERIAL_PRESSURE_MAX_CHARS = 100_000;
 
 export interface ContextPlan {
   system: string; tools: Awaited<ReturnType<AgentScenario['tools']>>;
@@ -35,7 +37,6 @@ export interface ContextPlan {
   materials: ContextMaterial[]; ruleVersions: RuleVersion[];
   factsDigest: string;
   segmentEpoch: number; historyRebuilt: boolean; compacted: boolean;
-  historyProjection: HistoryProjection;
   adoptCompaction?: () => Promise<void>;
 }
 export interface BuildContextOptions {
@@ -68,8 +69,6 @@ export async function buildContext(options: BuildContextOptions, input: Scenario
   const exposedFacts = scenario.modelFacts?.(prepared.facts) ?? prepared.facts;
   let state = await store.sessionState(input.sessionId);
   let history = conversationHistory(state);
-  const recentToolSteps = new Set((await store.recentCompletedSteps(input.sessionId, TOOL_FEEDBACK_POLICY.recentCompletedSteps))
-    .map(step => step.stepId));
   // A real adopted input is a durable fact even when an earlier generate never completed: make it visible once.
   const compactedEntries = Array.isArray(state.compactedEntries) ? state.compactedEntries.map(String) : [];
   const exclude = [...history.map(item => item.id), ...compactedEntries, ...adopted.inputs.map(item => item.inputId)];
@@ -96,35 +95,26 @@ export async function buildContext(options: BuildContextOptions, input: Scenario
   const afterAuthorizationDigest = historyDigest(history);
   const rawHistoryDigest = beforeAuthorization;
   const persisted = await store.sessionState(input.sessionId);
-  const priorFeedbackDigest = typeof persisted.feedbackDigest === 'string' ? persisted.feedbackDigest : null;
-  const priorCompressedKeys = Array.isArray(persisted.feedbackCompressedEntries)
-    ? persisted.feedbackCompressedEntries.map(String) : [];
-  const projected = projectToolFeedback(history, {
-    recentStepIds: recentToolSteps,
-    readbackScope: stepReadbackScope(tools.map(tool => tool.definition), rules.versions),
-    currentStepId: input.stepId,
-  });
-  history = projected.history;
-  const feedbackChanged = priorFeedbackDigest !== projected.feedbackDigest;
-  const feedbackRemoved = priorCompressedKeys.some(key => !projected.compressedKeys.includes(key))
-    || (priorFeedbackDigest !== null && !priorCompressedKeys.length && feedbackChanged);
-  const feedbackCannotApply = feedbackChanged && (projected.missingNative > 0 || feedbackRemoved);
+  // Sessions written by the retired Step-window projection are rebuilt once from their durable
+  // full history. New tool results are never summarized by history age.
+  const legacyFeedbackProjection = (typeof persisted.feedbackDigest === 'string' && persisted.feedbackDigest.length > 0)
+    || (Array.isArray(persisted.feedbackCompressedEntries) && persisted.feedbackCompressedEntries.length > 0);
   const authorizedIds = new Set(history.map(entry => entry.id));
   const deniedEntries = conversationHistory(state).filter(entry => !authorizedIds.has(entry.id))
     .map(entry => entry.id).sort();
   const authorizationDigest = deniedEntries.length ? canonicalDigest(deniedEntries) : null;
   const historyRebuilt = rejectedNative || (state.authorizationDigest ?? null) !== authorizationDigest
     || beforeAuthorization !== afterAuthorizationDigest && !deniedEntries.length
-    || feedbackCannotApply;
+    || legacyFeedbackProjection;
   let segmentEpoch = typeof persisted.segmentEpoch === 'number' ? persisted.segmentEpoch : 0;
-  if (historyRebuilt || feedbackChanged) {
+  if (historyRebuilt || legacyFeedbackProjection) {
     state = await store.sessionState(input.sessionId);
     segmentEpoch = typeof state.segmentEpoch === 'number' ? state.segmentEpoch : 0;
     if (historyRebuilt) segmentEpoch += 1;
     await store.setSessionState(input.sessionId, { ...state,
       ...(historyRebuilt ? { segmentEpoch, authorizationDigest, nativeHistorySources: [] } : {}),
-      feedbackDigest: projected.feedbackDigest,
-      feedbackCompressedEntries: projected.compressedKeys }, input.turnId);
+      feedbackDigest: null,
+      feedbackCompressedEntries: [] }, input.turnId);
   }
 
   // Task-fact increment区: explicit references / unresolved effects / this step's notifications, deduped by taskId.
@@ -163,7 +153,15 @@ export async function buildContext(options: BuildContextOptions, input: Scenario
     .filter(call => authorizedEntries.has(call.toolCallId)).flatMap(toolMaterial)
     .map(material => ({ ...material, content: null, readState: 'reference-only' as const, visibleInHistory: true }));
   const allMaterials = [...(prepared.materials ?? []), ...toolMaterials];
-  const inlineRendered = renderMaterials(allMaterials);
+  // Under final-payload pressure, shrink optional material before asking for a history summary.
+  // Deduplication is always applied; this budget only lowers the inline range for less relevant
+  // material, which stays available through its fixed reference/read entry.
+  const compactionBudget = options.compactionBasis?.contextWindow
+    ? modelCompactionBudget(options.compactionBasis.contextWindow, options.compactionBasis.outputReserveTokens,
+      options.compactionBasis.safetyMarginTokens, options.compactionBasis.compactionHeadroomTokens ?? undefined)
+    : null;
+  const materialMaxChars = compactionBudget ? MATERIAL_PRESSURE_MAX_CHARS : MATERIAL_INLINE_MAX_CHARS;
+  const inlineRendered = renderMaterials(allMaterials, new Set(), materialMaxChars);
   const reuseNativeHistory = !historyRebuilt && !!state.segment && !!runtime
     && state.segmentSystemDigest === canonicalDigest(system)
     && state.segmentToolsDigest === canonicalDigest([...tools.map(tool => tool.definition), citationToolDefinition])
@@ -182,18 +180,23 @@ export async function buildContext(options: BuildContextOptions, input: Scenario
       item.input.text + section(byInput.get(item.inputId)!)).join('\n\n')
       + section(ungrouped) + (rebuilding || persisted.nativeFactsDigest === factsDigest ? '' : factsText) + factsSection;
   };
-  let rendered = visibleSourceIds.size ? renderMaterials(allMaterials, visibleSourceIds) : inlineRendered;
+  let rendered = visibleSourceIds.size ? renderMaterials(allMaterials, visibleSourceIds, materialMaxChars) : inlineRendered;
 
   const compaction = options.compactionBasis && (scenario.compactionFor ? await scenario.compactionFor(input) : scenario.compaction);
   let compacted = false;
   let adoptCompaction: ContextPlan['adoptCompaction'];
   if (runtime && compaction && options.compactionBasis) {
-    const { contextWindow, outputReserveTokens, safetyMarginTokens, bytes } = options.compactionBasis;
-    const availableInputTokens = (contextWindow ?? 0) - outputReserveTokens - safetyMarginTokens;
-    const source = compaction.select(history, [{ id: 'context',
-      content: { ...prepared, facts: exposedFacts } as unknown as Facts }],
-      availableInputTokens > 0 ? { targetInputBytes: Math.floor(availableInputTokens * modelContextPressurePolicy.target * 3),
-        currentInputBytes: bytes } : undefined);
+    const { bytes } = options.compactionBasis;
+    const recentTokens = options.compactionBasis.retainTokens ?? compactionBudget?.retainTokens ?? 0;
+    const retainedContext = {
+      system: prepared.system,
+      facts: exposedFacts,
+      sources: prepared.sources,
+      ruleVersions: prepared.ruleVersions ?? [],
+      materials: (prepared.materials ?? []).map(({ content: _content, ...material }) => material),
+    } as unknown as Facts;
+    const source = compaction.select(history, [{ id: 'context', content: retainedContext }],
+      recentTokens > 0 ? { recentTokens, currentInputTokens: Math.ceil(bytes / 3) } : undefined);
     if (source) {
       const beforeBytes = Buffer.byteLength(JSON.stringify(history), 'utf8');
       const summary = await runCompaction(options, input, source, compaction, segmentEpoch + 1, rawHistoryDigest);
@@ -210,125 +213,7 @@ export async function buildContext(options: BuildContextOptions, input: Scenario
     rebuildMaterials: inlineRendered.materials, images: [], inputIds: adopted.inputs.map(i => i.inputId),
     notificationIds: consumed.map(n => n.notificationId), materials: rendered.materials,
     ruleVersions: rules.versions, factsDigest, segmentEpoch, historyRebuilt, compacted,
-    historyProjection: projectionOf(history),
     ...(adoptCompaction ? { adoptCompaction } : {}) };
-}
-
-interface ToolFeedbackProjection {
-  history: HistoryEntry[];
-  feedbackDigest: string | null;
-  projectionId: string;
-  replacements: HistoryProjectionReplacement[];
-  compressedKeys: string[];
-  missingNative: number;
-}
-export interface ToolFeedbackProjectionOptions {
-  /** Completed Step ids in the initial retention window (newest first is not required). */
-  recentStepIds: ReadonlySet<string>;
-  readbackScope: ReadbackScope;
-  currentStepId: string;
-}
-interface ParsedToolFeedback {
-  tool: string; kind: string; outcome: string; body: string; taskId: string; requestRef: string;
-}
-interface FeedbackItem { index: number; entry: HistoryEntry; bytes: number; parsed: ParsedToolFeedback | null; }
-const truncateChars = (value: string, max: number) => {
-  const chars = Array.from(value);
-  return chars.length > max ? chars.slice(0, max - 1).join('') + '…' : value;
-};
-function readbackOf(entry: HistoryEntry, scope: ReadbackScope): (ReadbackPlan & { sourceId: string; label: string })[] {
-  const source = entry.sources?.find(source => source?.sourceId === 'tool:' + entry.id);
-  if (!source || typeof source.label !== 'string' || !source.label.trim()) return [];
-  return readbackForSource(source.source, scope, source.range).map(plan => ({
-    sourceId: source.sourceId, label: truncateChars(source.label, 160), ...plan,
-  }));
-}
-function parseToolFeedback(entry: HistoryEntry): ParsedToolFeedback | null {
-  try {
-    const feedback: unknown = JSON.parse(entry.text);
-    if (!feedback || typeof feedback !== 'object' || Array.isArray(feedback)) return null;
-    const text = (key: string) => {
-      const value = (feedback as Record<string, unknown>)[key];
-      return typeof value === 'string' ? value : '';
-    };
-    const body = text('summary') || text('reason');
-    const outcome = text('outcome');
-    return { tool: text('tool'), kind: text('kind'), outcome, body, taskId: text('taskId'), requestRef: text('requestRef') };
-  } catch {
-    return null;
-  }
-}
-function shortToolFeedback(item: FeedbackItem, options: ToolFeedbackProjectionOptions): HistoryEntry | null {
-  const { entry, parsed } = item;
-  // Native pending batches are settled separately before dispatch. Failed and unknown
-  // results, student messages and the current Step remain outside this rewrite.
-  if (entry.feedbackCompressed || entry.stepId === options.currentStepId
-    || parsed?.kind !== 'completed' || parsed.outcome !== 'success' || !parsed.body.trim()) return null;
-  const readback = readbackOf(entry, options.readbackScope);
-  if (!readback.length) return null;
-  const short = JSON.stringify({
-    tool: parsed.tool,
-    kind: parsed.kind,
-    outcome: parsed.outcome,
-    summary: truncateChars(parsed.body.trim(), TOOL_FEEDBACK_POLICY.summaryChars),
-    ...(parsed.taskId ? { taskId: parsed.taskId } : {}),
-    ...(parsed.requestRef ? { requestRef: parsed.requestRef } : {}),
-    readback,
-    note: '早期工具反馈已压缩；需要完整细节时按 readWith 重新读取原版本。',
-  });
-  if (Buffer.byteLength(short, 'utf8') >= item.bytes) return null;
-  return { ...entry, text: short, feedbackCompressed: true };
-}
-function projectionOf(history: readonly HistoryEntry[]): HistoryProjection {
-  const compacted = history.filter(entry => entry.feedbackCompressed)
-    .map(({ id, version, text }) => ({ id, version, text }))
-    .sort((a, b) => a.id.localeCompare(b.id) || a.version - b.version);
-  return { projectionId: canonicalDigest({ formatVersion: 1, compacted }),
-    replacements: history.flatMap(entry => entry.feedbackCompressed
-      ? [{ entryId: entry.id, ...(entry.attemptId ? { attemptId: entry.attemptId } : {}),
-        ...(entry.nativeCallId ? { callId: entry.nativeCallId } : {}), text: entry.text }] : []) };
-}
-/**
- * Keep recent tool interaction intact within a hard cumulative budget. Inside the recent
- * window, oldest compressible feedback is shortened only when the window exceeds the
- * budget. Outside the window, only individual text results above 8 KiB with a real
- * readWith are shortened. The persisted history is never changed: only this Step's
- * model-visible projection is reduced.
- */
-export function projectToolFeedback(history: readonly HistoryEntry[], options: ToolFeedbackProjectionOptions): ToolFeedbackProjection {
-  const items: FeedbackItem[] = history.flatMap((entry, index) => {
-    if (entry.kind !== 'tool-result' || entry.images?.length) return [];
-    const parsed = parseToolFeedback(entry);
-    return [{ index, entry, parsed, bytes: Buffer.byteLength(parsed?.body ?? entry.text, 'utf8') }];
-  });
-  const compressed = new Map<number, HistoryEntry>();
-  const recent = items.filter(item => item.entry.stepId && options.recentStepIds.has(item.entry.stepId));
-  let recentBytes = recent.reduce((total, item) => total + item.bytes, 0);
-  if (recentBytes > TOOL_FEEDBACK_POLICY.recentFeedbackBudgetBytes) {
-    // Oldest first, even inside the initial retention window. An unreadable or protected
-    // result contributes to the budget but cannot be deleted or rewritten to satisfy it.
-    for (const item of recent) {
-      if (recentBytes <= TOOL_FEEDBACK_POLICY.recentFeedbackBudgetBytes) break;
-      const short = shortToolFeedback(item, options);
-      if (!short) continue;
-      compressed.set(item.index, short);
-      recentBytes -= item.bytes - Buffer.byteLength(short.text, 'utf8');
-    }
-  }
-  for (const item of items) {
-    if (item.entry.stepId && options.recentStepIds.has(item.entry.stepId)) continue;
-    if (item.bytes <= TOOL_FEEDBACK_POLICY.candidateBytes) continue;
-    const short = shortToolFeedback(item, options);
-    if (short) compressed.set(item.index, short);
-  }
-  const projected = history.map((entry, index) => compressed.get(index) ?? entry);
-  const compressedKeys = projected.filter(entry => entry.feedbackCompressed)
-    .map(entry => entry.id + '@' + entry.version);
-  const missingNative = projected.filter(entry => entry.feedbackCompressed && !entry.nativeCallId && !entry.stepId).length;
-  const projection = projectionOf(projected);
-  return { history: projected, feedbackDigest: compressedKeys.length ? projection.projectionId : null,
-    projectionId: projection.projectionId, replacements: projection.replacements,
-    compressedKeys, missingNative };
 }
 
 const materialPriority: Record<ContextMaterial['kind'], number> = {
@@ -366,7 +251,7 @@ export function toolMaterial(call: AgentToolCall): ContextMaterial[] {
   const reading = data.reading && typeof data.reading === 'object' && !Array.isArray(data.reading) ? data.reading : null;
   const reference = data.reference && typeof data.reference === 'object' && !Array.isArray(data.reference) ? data.reference : null;
   const explicitRange = data.range ?? reference?.range;
-  const range: Facts | null = typeof data.page === 'number'
+  const baseRange = (typeof data.page === 'number'
     ? { page: data.page, ...(typeof data.start === 'number' && typeof data.end === 'number' ? { start: data.start, end: data.end } : {}) }
     : reading && Array.isArray(reading.requestedPages) ? {
       pages: reading.requestedPages,
@@ -380,13 +265,23 @@ export function toolMaterial(call: AgentToolCall): ContextMaterial[] {
     : Array.isArray(data.searchedPages) ? { pages: data.searchedPages }
     : Array.isArray(data.visualPages) ? { pages: data.visualPages }
     : typeof data.start === 'number' && typeof data.end === 'number' ? { start: data.start, end: data.end }
-    : typeof data.offset === 'number' && typeof data.length === 'number' ? { offset: data.offset, length: data.length }
-    : explicitRange && typeof explicitRange === 'object' && !Array.isArray(explicitRange) ? explicitRange : null;
+    : typeof data.offset === 'number' && typeof data.length === 'number' ? { offset: data.offset, length: data.length,
+      ...(typeof data.total === 'number' ? { total: data.total } : {}),
+      ...(typeof data.nextOffset === 'number' || data.nextOffset === null ? { nextOffset: data.nextOffset as Json } : {}) }
+    : explicitRange && typeof explicitRange === 'object' && !Array.isArray(explicitRange) ? explicitRange : null) as unknown as Facts | null;
+  const range = baseRange && typeof baseRange === 'object' && !Array.isArray(baseRange) ? {
+    ...baseRange,
+    ...(data.truncated === true || data.textTruncated === true ? { truncated: true } : {}),
+    ...(typeof data.nextStart === 'number' || data.nextStart === null ? { nextStart: data.nextStart as Json } : {}),
+    ...(data.readMore && typeof data.readMore === 'object' && !Array.isArray(data.readMore) ? { readMore: data.readMore as Json } : {}),
+  } : baseRange;
   const content = JSON.stringify({ tool: call.name, kind: call.result.kind,
     summary: 'summary' in call.result ? call.result.summary : '', source });
   return [{ materialId: 'M-' + canonicalDigest('tool:' + call.toolCallId).slice(0, 24),
     sourceId: 'tool:' + call.toolCallId, kind: 'tool-result', author: 'tool', label: call.name,
-    version: typeof source.version === 'string' ? source.version : call.toolCallId, range, digest: canonicalDigest(content), content,
+    version: typeof source.version === 'string' ? source.version
+      : typeof source.contentId === 'string' ? source.contentId : call.toolCallId,
+    range, digest: canonicalDigest(content), content,
     readState: 'included', source: { kind: 'tool-call', toolCallId: call.toolCallId, nativeCallId: call.nativeCallId,
       toolName: call.name, source }, citationAllowed: data.resultWithheld == null }];
 }
@@ -417,7 +312,8 @@ function toolSource(call: AgentToolCall, data: Facts): Facts {
   if (call.name === 'student_ask') return { kind: 'student-answer' };
   return { kind: 'tool-evidence', toolCallId: call.toolCallId, toolName: call.name };
 }
-function renderMaterials(input: readonly ContextMaterial[], visibleSourceIds: ReadonlySet<string> = new Set()) {
+function renderMaterials(input: readonly ContextMaterial[], visibleSourceIds: ReadonlySet<string> = new Set(),
+  maxChars = MATERIAL_INLINE_MAX_CHARS) {
   const ordered = dedupeMaterials(input);
   const materials: ContextMaterial[] = [];
   const lines: { inputId: string | undefined; text: string }[] = [];
@@ -432,7 +328,7 @@ function renderMaterials(input: readonly ContextMaterial[], visibleSourceIds: Re
     const alreadyVisible = seenBodies.has(identity)
       && (item.readState === 'included' || item.readState === 'reference-only');
     let content = item.content ?? '';
-    const room = Math.max(0, 400_000 - used - header.length - 160);
+    const room = Math.max(0, maxChars - used - header.length - 160);
     if (item.readState !== 'included' && item.readState !== 'reference-only') content = '';
     if (alreadyVisible) {
       const reason = '该固定版本已在本会话当前可见历史中发送，本步只保留引用和回读入口。';
@@ -451,7 +347,7 @@ function renderMaterials(input: readonly ContextMaterial[], visibleSourceIds: Re
         + (item.readReason ? '：' + item.readReason : '；可按固定来源读取。')}` });
     }
     used += header.length + content.length + 4;
-    if (used >= 400_000) break;
+    if (used >= maxChars) break;
   }
   return { materials, lines };
 }

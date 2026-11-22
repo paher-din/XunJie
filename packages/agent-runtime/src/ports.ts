@@ -108,19 +108,8 @@ export interface AgentTool {
 
 export interface HistoryEntry { id: string; version: number; role: 'user' | 'assistant'; text: string; resultRef?: string;
   turnId?: string; stepId?: string; kind?: 'message' | 'tool-result' | 'history-summary';
-  attemptId?: string; nativeCallId?: string; readback?: boolean; feedbackCompressed?: boolean; images?: ModelImageRef[]; sources?: HistorySource[]; }
-export interface HistoryProjectionReplacement {
-  entryId: string; attemptId?: string; callId?: string; text: string;
-}
-/**
- * The kernel's representation decision for existing history. Ordinary new messages do not
- * change this identity; a new value tells the Gateway which native results to replace.
- */
-export interface HistoryProjection {
-  projectionId: string;
-  replacements: HistoryProjectionReplacement[];
-}
-
+  attemptId?: string; nativeCallId?: string; toolName?: string; toolOutcome?: 'success' | 'error' | 'not-executed';
+  readback?: boolean; feedbackCompressed?: boolean; images?: ModelImageRef[]; sources?: HistorySource[]; }
 export interface ScenarioInputEntry { inputId: string; requestId?: string; text: string; context: Facts; }
 export interface ScenarioInput {
   identity: SpaceIdentity; sessionId: string; turnId: string; stepId: string;
@@ -151,8 +140,9 @@ export interface AgentScenario {
   validateAnswer?(presentation: Facts, answer: Facts): Promise<void>;
   compaction?: {
     provider: CompactionProvider; maxPerTurn: number;
+    /** `recentTokens` is the token budget kept as recent context (10% of B); it is never a message or Step count. */
     select(history: readonly HistoryEntry[], blocks: { id: string; content: Facts }[],
-      target?: { targetInputBytes?: number; currentInputBytes?: number }): CompactionSource | null;
+      target?: { recentTokens?: number; currentInputTokens?: number }): CompactionSource | null;
   };
   /** A per-session scene dispatcher resolves the concrete scene's compaction without hiding it. */
   compactionFor?(input: ScenarioInput): Promise<AgentScenario['compaction']>;
@@ -176,7 +166,6 @@ export interface GenerateInput {
   /** Text for a genuinely new native segment; may inline material omitted as a reference in text. */
   rebuildText?: string;
   factsDigest?: string;
-  historyProjection?: HistoryProjection;
   messageImages?: {
     resolve(route: MessageImageRoute): Promise<MessageImages | undefined>;
     restore?(route: MessageImageRoute): Promise<MessageImages | undefined>;
@@ -194,6 +183,8 @@ export interface GenerateInput {
   smallerThanBytes?: number;
   /** A final-payload pressure result may request one real compaction before dispatch. */
   allowPressureCompaction?: boolean;
+  /** After bounded compaction retries, a still-pressured payload is a capacity gap, not dispatchable. */
+  enforcePressure?: boolean;
   onProgress?(progress: { attemptId: string; text: string; revision: number; thinking?: string; tools?: readonly Json[] }): Promise<void>;
 }
 /** Wraps the existing Gateway communication steps for one logical generate; no second loop. */
@@ -218,6 +209,11 @@ export interface RequestCapacity {
   pressureState: 'ok' | 'compact' | 'blocked' | 'unknown';
   contextWindow: number | null;
   transportLimitBytes: number;
+  compactionHeadroomTokens: number | null;
+  compactionHeadroomSource: 'route' | 'estimated' | 'unknown';
+  pressureBudgetTokens: number | null;
+  thresholdTokens: number | null;
+  retainTokens: number | null;
   parts: { systemBytes: number; toolsBytes: number; historyBytes: number; currentBytes: number; imageCount: number };
 }
 

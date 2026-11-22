@@ -4,8 +4,10 @@ import { canonicalDigest } from '@xunjie/storage/identity';
 import type { CompactionProvider, CompactionSource, Facts, HistoryEntry } from '@xunjie/agent-runtime';
 
 /** Teaching summary content stays here; generic trigger/segment organization lives in the kernel. */
-export interface CompactionPolicy { maxSourceBytes: number; maxSummaryTokens: number; maxSummaryChars: number; maxPerTurn: number; recentBytes: number; }
-export const conversationCompactionPolicy = Object.freeze({ maxSourceBytes: 240_000, maxSummaryTokens: 2048, maxSummaryChars: 16000, maxPerTurn: 2, recentBytes: 24_000 });
+export interface CompactionPolicy { maxSourceBytes: number; maxSummaryTokens: number; maxSummaryChars: number; maxPerTurn: number; recentTokens: number; }
+/** The fallback token target matches 10% of `C - R` at the documented 64K boundary: floor(56,000 * 0.10). */
+export const conversationCompactionPolicy = Object.freeze({ maxSourceBytes: 240_000, maxSummaryTokens: 2048, maxSummaryChars: 16000, maxPerTurn: 2, recentTokens: 5_600 });
+const estimatedTokens = (value: unknown) => Math.ceil(Buffer.byteLength(JSON.stringify(value), 'utf8') / 3);
 export interface CompactionOptions { policy?: Partial<CompactionPolicy>; provider?: CompactionProvider; }
 const entry = z.object({ text: z.string().min(1).max(4000), sources: z.array(z.string()).min(1).max(32) }).strict();
 const result = z.object({ version: z.literal(1), sourceDigest: z.string(), retainedDigest: z.string(), retainedIds: z.array(z.string()),
@@ -35,36 +37,40 @@ export function createConversationCompaction(options: CompactionOptions = {}) {
   };
   return { policy, provider, maxPerTurn: policy.maxPerTurn,
     select(history: readonly HistoryEntry[], blocks: { id: string; content: Facts }[],
-      target?: { targetInputBytes?: number; currentInputBytes?: number }): CompactionSource | null {
+      target?: { recentTokens?: number; currentInputTokens?: number }): CompactionSource | null {
+      // A turn is the smallest closed boundary: never split a tool call from its result,
+      // and never split an assistant response from the tool batch that follows it.
       const groups: HistoryEntry[][] = [];
       for (const item of history) {
-        const current = groups.at(-1);
-        if (current?.[0]?.turnId === item.turnId && current) current.push(item);
+        const key = item.turnId ?? item.attemptId ?? item.stepId ?? item.id;
+        const previous = groups.at(-1)?.[0];
+        const previousKey = previous ? previous.turnId ?? previous.attemptId ?? previous.stepId ?? previous.id : null;
+        if (previous && previousKey === key) groups.at(-1)!.push(item);
         else groups.push([item]);
       }
-      const byGroup = groups.map(group => Buffer.byteLength(JSON.stringify(group), 'utf8'));
+      const byGroup = groups.map(estimatedTokens);
+      const recentTokens = Math.max(1, target?.recentTokens ?? policy.recentTokens);
       let recent = 0, split = groups.length;
-      while (split > 0 && recent < policy.recentBytes) recent += byGroup[--split]!;
-      let prefixEnd = split;
-      if (target?.targetInputBytes !== undefined && target.currentInputBytes !== undefined) {
-        // Keep the recent window intact and consume only enough closed old groups to
-        // move the estimate toward the 60% fallback target.
-        const releaseNeeded = Math.max(1, target.currentInputBytes - target.targetInputBytes);
-        let released = 0;
-        prefixEnd = 0;
-        while (prefixEnd < split && released < releaseNeeded) released += byGroup[prefixEnd++]!;
-      }
+      // Keep whole recent groups. The newest group is retained even when it alone exceeds
+      // the target: a partial turn could orphan an open tool call or the latest correction.
+      while (split > 0 && recent < recentTokens) recent += byGroup[--split]!;
+      if (split === 0) return null;
       const messages: HistoryEntry[] = [];
       let bytes = 0;
-      for (let index = 0; index < prefixEnd; index++) {
-        bytes += byGroup[index]!;
+      for (let index = 0; index < split; index++) {
+        bytes += Buffer.byteLength(JSON.stringify(groups[index]), 'utf8');
         if (bytes > policy.maxSourceBytes) break;
         messages.push(...groups[index]!);
       }
       if (!messages.length) return null;
+      // `remainder` starts where the summarized prefix ends; grouped history is contiguous,
+      // so slicing by summarized entry count preserves the original order exactly.
+      const remainder = history.slice(messages.length);
+      if (!remainder.length) return null;
       const retainedIds = blocks.map(block => block.id);
-      return { messages, remainder: history.slice(messages.length), sourceDigest: canonicalDigest(messages),
-        sourceVersions: { retainedIds, blocks: blocks.map(({ id, content }) => ({ id, digest: canonicalDigest(content) })) },
+      return { messages, remainder, sourceDigest: canonicalDigest(messages),
+        sourceVersions: { retainedIds, recentEntryIds: remainder.map(entry => entry.id).slice(0, 64),
+          blocks: blocks.map(({ id, content }) => ({ id, digest: canonicalDigest(content), content })) },
         retainedDigest: canonicalDigest(blocks), policy: { maxSummaryTokens: policy.maxSummaryTokens } };
     },
   };
