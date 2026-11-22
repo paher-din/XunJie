@@ -31,12 +31,14 @@ export interface ShellFrameProps {
   mainRef?: RefObject<HTMLElement | null>
   overlays?: ReactNode
   className?: string
+  /** Optional role badge rendered beside the horizontal wordmark, aligned to its cap height. */
+  brandRole?: string
 }
 
 /** Shared presentation only: callers own navigation, identity and page behavior. */
 export function ShellFrame({
   children, collapsed, onCollapsedChange, immersive, navigation, bottom, rail, toggle,
-  mainRef, overlays, className = '',
+  mainRef, overlays, className = '', brandRole,
 }: ShellFrameProps) {
   const sidebarHidden = collapsed || immersive
   const railVisible = collapsed && !immersive
@@ -58,6 +60,7 @@ export function ShellFrame({
       <aside className="sidebar" inert={sidebarHidden} aria-hidden={sidebarHidden ? true : undefined}>
         <div className="brand xunjie-brand">
           <XunjieLogo format="horizontal" label="循阶" />
+          {brandRole ? <span className="brand-role">{brandRole}</span> : null}
         </div>
         {navigation}
         {bottom}

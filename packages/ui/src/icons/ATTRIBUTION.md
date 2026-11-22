@@ -45,3 +45,5 @@
 `brand-github-native.svg` 原样取自 [GitHub Octicons 的 mark-github-16](https://github.com/primer/octicons/blob/68ec2de8d0ddfcbb7497da01d0b7d98eb5593020/icons/mark-github-16.svg)，以单色用于 GitHub 导入入口；图形本身未修改，填色随主题变化。Octicons 仓库采用 MIT 许可，GitHub 标识及商标仍依 [GitHub 品牌指南](https://brand.github.com/foundations/logo)使用；完整许可见组件包的 `THIRD_PARTY_NOTICES.md`。
 
 图标看板逐项显示来源、作者、许可和修改说明；此文件随应用源码保留，后续正式分发时一并放入第三方资源说明。
+
+`workbench` 为教师端侧栏「工作台」补绘的项目图形：四个圆角方格表示课程与任务的工作区；线性版沿用 24px 画布与 1.5px 线宽，粗体版以实心方格对应选中态，归属与许可同上述项目专属图形。

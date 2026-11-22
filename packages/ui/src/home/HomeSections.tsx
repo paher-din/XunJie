@@ -14,12 +14,12 @@ export function HomeCourseRegion({ selected, regionRef, children }: HomeCourseRe
 }
 
 export interface HomeSectionHeadingProps {
-  title: ReactNode; count: ReactNode; headingRef?: Ref<HTMLHeadingElement>
+  title: ReactNode; count?: ReactNode; headingRef?: Ref<HTMLHeadingElement>
   refresh?: { disabled: boolean; onRefresh: () => void }
 }
 export function HomeSectionHeading({ title, count, headingRef, refresh }: HomeSectionHeadingProps) {
   return <div className="sectionhead">
-    <h2 ref={headingRef} tabIndex={-1}>{title}<small>{count}</small></h2>
+    <h2 ref={headingRef} tabIndex={-1}>{title}{count != null && count !== '' ? <small>{count}</small> : null}</h2>
     {refresh && <button className="outline" type="button" disabled={refresh.disabled} onClick={refresh.onRefresh}>刷新任务</button>}
   </div>
 }

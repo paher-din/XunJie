@@ -2298,6 +2298,28 @@ export const iconCatalog = {
     "sourceUrl": "https://github.com/iconify/icon-sets/blob/master/json/solar.json",
     "modified": false
   },
+  "workbench": {
+    "label": "工作台",
+    "tone": "neutral",
+    "variant": "linear",
+    "usages": [
+      {
+        "label": "教师端侧栏工作台",
+        "group": "全局导航与账号",
+        "scope": "现有",
+        "reviewId": ""
+      }
+    ],
+    "files": {
+      "linear": "workbench-linear.svg",
+      "bold": "workbench-bold.svg"
+    },
+    "source": "项目自绘",
+    "author": "学习空间项目",
+    "license": "Project",
+    "sourceUrl": "",
+    "modified": false
+  },
   "question-circle": {
     "label": "帮助提示",
     "tone": "neutral",

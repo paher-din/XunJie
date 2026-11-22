@@ -1675,7 +1675,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       `|course-activities|course-activity-results/${id}|workspaces/${id}(?:/(?:receipts|contents)/${id})?` +
       `|drafts/${id}(?:/(?:receipts|revisions)/${id})?|intents/${id}(?:/capabilities|/${id}(?:/(?:dispatch|cancel))?)?|executions/${id}(?:/(?:agent-pending|agent-stops/${id}|agent/${id}/(?:claim|accept)|sessions|history(?:/${id})?|checkpoints(?:/${id})?|${id}(?:/(?:report|stop|result|control|artifact)|/controls/${id})?))?` +
       `|models/(?:selection|connections(?:/${id}/credential)?|providers|profiles|directory|capabilities|images|results/${id}|grants(?:/${id}/revoke)?|segments(?:/${id}(?:/(?:tool-results|close))?)?|checks(?:/${id}(?:/(?:dispatch|cancel))?)?|calls(?:/${id}(?:/(?:dispatch|cancel))?)?)` +
-      `|connections/revoke)$`).test(route)) {
+      `|manage/course-catalog|connections/revoke)$`).test(route)) {
       throw new StorageError('forbidden');
     }
     const savedConnection = await read(connectionId);
@@ -1723,7 +1723,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
         : call(connection, `intents/${legacyQuestion[1]}/${legacyQuestion[2]}`, undefined, true)));
       if (original?.input.receiver.kind === 'question') throw new StorageError('incompatible');
     }
-    if (localStudyMode(connection) && route !== 'connections/revoke') return studyForward(connection, route, body, search);
+    if (localStudyMode(connection) && route !== 'connections/revoke' && !route.startsWith('manage/')) return studyForward(connection, route, body, search);
     if (route.startsWith('models/')) return modelForward(connection, route, body);
     if (connection.agentBinding || connection.localBinding) {
       const identity = await modelAccess(connection);
@@ -1777,7 +1777,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       return value;
     }
     if (!connection.localBinding && local && JSON.stringify(connection.grant.target) === JSON.stringify(local.target)
-      && !['connections/revoke', 'courses'].includes(route) && !route.startsWith('releases/')) throw new StorageError('unavailable');
+      && !['connections/revoke', 'courses'].includes(route) && !route.startsWith('releases/') && !route.startsWith('manage/')) throw new StorageError('unavailable');
     let value: unknown;
     try { value = await call(connection, route + search, body, true); }
     catch (error) {

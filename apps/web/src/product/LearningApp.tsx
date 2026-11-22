@@ -24,6 +24,7 @@ import { ProductConversationHistory } from './ProductConversationHistory'
 import { ProductSettings, type ProductSettingsTab } from './ProductSettings'
 import { SettingsFailureBoundary } from './SettingsFailureBoundary'
 import { ProductProfile } from './ProductProfile'
+import { loadTeacherCatalog } from '../teacher-space/data'
 import { Toaster, toast, useToastFeedback } from '@xunjie/ui/feedback'
 import { SettingsStatus, TextInput } from '@xunjie/ui/settings'
 import { createBrowserRouter, RouterProvider, useBlocker, useLocation, useNavigate } from 'react-router-dom'
@@ -371,6 +372,15 @@ function LearningView() {
   const accountName = context ? context.account?.accountName ?? '本地学习空间' : '本地学习空间'
   const personalKey = context?.identities.find(item => item.identity.kind === 'personal')?.key
   const schoolKey = context?.account?.key
+  const [teacherAvailable, setTeacherAvailable] = useState(false)
+  useEffect(() => {
+    if (!context?.account?.key) { setTeacherAvailable(false); return }
+    let alive = true
+    loadTeacherCatalog(context.clientNamespace, context.account.key)
+      .then(value => { if (alive) setTeacherAvailable(value.available) })
+      .catch(() => { if (alive) setTeacherAvailable(false) })
+    return () => { alive = false }
+  }, [context?.account?.key, context?.clientNamespace])
   const readTaskSubmission = useCallback(async (activity: LearningActivity, signal: AbortSignal) => {
     const binding = activity.course
     if (!schoolKey || !binding) throw new Error('无法核对任务提交状态。')
@@ -1149,6 +1159,7 @@ function LearningView() {
     active={modelsOpen ? 'settings' : agentOpen ? 'agent' : 'home'}
     onHome={goHome} onAgent={openAgent} onSettings={() => openSettings()} onProfile={() => setProfileOpen(true)}
     onAgentIntent={prepareAgent}
+    accountItems={teacherAvailable ? [{ label: '教师空间', icon: 'clipboard-text', onSelect: () => location.assign('/?teacher=overview') }] : undefined}
     archivedCount={archivedCount} archiveOpen={archiveOpen} onArchiveOpenChange={setArchiveOpen}
     agentHistory={(close, visible) => <ProductConversationHistory sessions={conversationHistory.items.filter(item => item.scenario === 'student-assistant')}
       activeId={routeSessionId} archiveOpen={archiveOpen} query={historyQuery} error={conversationHistory.error}

@@ -1,6 +1,4 @@
 {
-  "frozenOn": "2026-10-10",
-  "source": "Approved color-polish-v2 review; Solar and OpenMoji SVG bodies from local Iconify snapshot; original custom SVGs from review; profile semantic additions: four unmodified Solar Linear bodies from iconify/icon-sets and one original analogy SVG; 2026-10-11 sun-linear.svg 项目自绘（本地快照无太阳图形，按 Solar Linear 同风格补绘）、model-linear.svg 项目自绘（模型语义）; 2026-11-10 provider-custom-linear.svg 项目自绘（自定义供应商接入）; brand-github-native.svg 来自 GitHub Octicons 原始图形（见 ATTRIBUTION.md）",
   "assets": {
     "add-linear.svg": "11b8cc61c3e1a94aa66880d91fdabcfff42071e30dcb7e28db35147de910f20e",
     "alt-arrow-down-linear.svg": "ee2188dc0f0ba9f91ad7e6e0c0fb0aa8e5c8cc778c008bed363d3dc6096d592c",
@@ -114,5 +112,9 @@
     "volume-loud-linear.svg": "bb7600509ec8cb107e6d825a383e83e75cbb73eae8a0b729fec11f0c0a611951",
     "wallet-linear.svg": "f8c66253d72736d65f50d14108afb8ba4d08d64b7efb9ab45db5e49425b0a2a6",
     "provider-custom-linear.svg": "7da5ed3ef6435824d0596e3fc77b778d31be96071fc9fd8c569d61ef4743e68c"
-  }
+  },
+  "frozenOn": "2026-10-10",
+  "source": "Approved color-polish-v2 review; Solar and OpenMoji SVG bodies from local Iconify snapshot; original custom SVGs from review; profile semantic additions: four unmodified Solar Linear bodies from iconify/icon-sets and one original analogy SVG; 2026-10-11 sun-linear.svg 项目自绘（本地快照无太阳图形，按 Solar Linear 同风格补绘）、model-linear.svg 项目自绘（模型语义）; 2026-11-10 provider-custom-linear.svg 项目自绘（自定义供应商接入）; brand-github-native.svg 来自 GitHub Octicons 原始图形（见 ATTRIBUTION.md）",
+  "workbench-bold.svg": "1d8892df983821ea5b7608a2d574134a2c8c3fff152410d0f76f9dfe59b551b1",
+  "workbench-linear.svg": "2639ede0b6322c572a59984effb7b11a69d68bb1f541f5fcb7d516beafc18fbb"
 }

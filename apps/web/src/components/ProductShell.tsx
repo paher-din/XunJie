@@ -1,10 +1,21 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { AccountAvatar, RailHistoryPanel, ShellFrame, SidebarNavigation, SidebarRailNavigation, SidebarToggle, useShellNavigation } from '@xunjie/ui/foundation'
-import { Icon } from '../icons'
+import { Icon, type IconName } from '../icons'
 import { THEME_OPTIONS, useTheme } from '../lib/theme'
 import { ThemeMenu } from './ThemeMenu'
 import './product-shell.css'
 
+export interface ShellNavItem {
+  id: string
+  label: string
+  icon: IconName
+  activeIcon?: IconName
+}
+export interface ShellAccountItem {
+  label: string
+  icon: IconName
+  onSelect: () => void
+}
 export interface ProductShellProps {
   children: ReactNode
   immersive: boolean
@@ -18,8 +29,15 @@ export interface ProductShellProps {
   avatar?: string | null
   agentHistory?: (close: () => void, visible: boolean) => ReactNode
   archivedCount?: number
+  /** Optional role badge beside the brand wordmark. */
+  brandRole?: string
   archiveOpen?: boolean
   onArchiveOpenChange?: (open: boolean) => void
+  /** A different primary navigation replaces the student one; history only belongs to it when omitted. */
+  navItems?: ShellNavItem[]
+  onNavItem?: (id: string) => void
+  activeNavItem?: string
+  accountItems?: ShellAccountItem[]
 }
 
 function ProductThemeButton({ visible, rail = false }: { visible: boolean; rail?: boolean }) {
@@ -56,9 +74,9 @@ function ProductThemeButton({ visible, rail = false }: { visible: boolean; rail?
   </div>
 }
 
-function ProductAccount({ name, avatar, visible, rail, onProfile, onSettings }: {
+function ProductAccount({ name, avatar, visible, rail, onProfile, onSettings, items = [] }: {
   name: string; avatar?: string | null; visible: boolean; rail?: boolean
-  onProfile: () => void; onSettings: () => void
+  onProfile: () => void; onSettings: () => void; items?: ShellAccountItem[]
 }) {
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -112,13 +130,17 @@ function ProductAccount({ name, avatar, visible, rail, onProfile, onSettings }: 
       <button type="button" className="account-menu-item" role="menuitem" onClick={() => choose(onSettings)}>
         <Icon name="settings" size={16} /><span className="am-label">设置</span>
       </button>
+      {items.map(item => <button key={item.label} type="button" className="account-menu-item" role="menuitem" onClick={() => choose(item.onSelect)}>
+        <Icon name={item.icon} size={16} /><span className="am-label">{item.label}</span>
+      </button>)}
     </div>
   </div>
 }
 
 /** Product presentation consumes real data and callbacks; it owns no business services or routing. */
 export function ProductShell({ children, immersive, accountName, avatar, onHome, onAgent, onSettings, onProfile, active,
-  agentHistory, archivedCount = 0, archiveOpen = false, onArchiveOpenChange, onAgentIntent }: ProductShellProps) {
+  agentHistory, archivedCount = 0, archiveOpen = false, onArchiveOpenChange, onAgentIntent, brandRole,
+  navItems, onNavItem, activeNavItem, accountItems }: ProductShellProps) {
   const { collapsed, toggle, setCollapsed } = useShellNavigation()
   const toggleRef = useRef<HTMLButtonElement>(null)
   const mainRef = useRef<HTMLElement>(null)
@@ -153,16 +175,28 @@ export function ProductShell({ children, immersive, accountName, avatar, onHome,
     return () => document.removeEventListener('keydown', escape)
   }, [railPanelVisible, railPanel, archiveOpen, closeRailPanel])
 
-  return <ShellFrame className="product-shell" collapsed={collapsed} onCollapsedChange={setCollapsed} immersive={immersive} mainRef={mainRef}
-    navigation={<SidebarNavigation onHome={active === 'home'} onAgent={active === 'agent'} history={agentHistory?.(() => {}, !collapsed && !immersive && active === 'agent')} openHome={onHome} openAgent={onAgent} prepareAgent={onAgentIntent} />}
+  return <ShellFrame className="product-shell" brandRole={brandRole} collapsed={collapsed} onCollapsedChange={setCollapsed} immersive={immersive} mainRef={mainRef}
+    navigation={navItems ? <nav className="side-nav" aria-label="主导航">
+      {navItems.map(item => <button key={item.id} type="button" className={'sidebtn' + (activeNavItem === item.id ? ' active' : '')}
+        aria-current={activeNavItem === item.id ? 'page' : undefined} onClick={() => onNavItem?.(item.id)}>
+        <span className="navicon"><Icon name={activeNavItem === item.id ? item.activeIcon ?? item.icon : item.icon} size={20}
+          variant={activeNavItem === item.id ? 'bold' : 'linear'} /></span>{item.label}
+      </button>)}
+    </nav> : <SidebarNavigation onHome={active === 'home'} onAgent={active === 'agent'} history={agentHistory?.(() => {}, !collapsed && !immersive && active === 'agent')} openHome={onHome} openAgent={onAgent} prepareAgent={onAgentIntent} />}
     bottom={<div className="side-bottom">
-      <ProductAccount name={accountName} avatar={avatar} visible={!collapsed && !immersive} onProfile={onProfile} onSettings={onSettings} />
+      <ProductAccount name={accountName} avatar={avatar} visible={!collapsed && !immersive} onProfile={onProfile} onSettings={onSettings} items={accountItems} />
       <button type="button" className={'side-icon' + (active === 'settings' ? ' active' : '')} data-tip="设置与帮助" aria-label="设置与帮助" onClick={onSettings}><Icon name="settings" size={16} /></button>
       <ProductThemeButton visible={!collapsed && !immersive} />
     </div>}
     toggle={<SidebarToggle collapsed={collapsed} buttonRef={toggleRef} onToggle={toggle} />}
     rail={<>
-      <nav aria-label="主导航">
+      {navItems ? <nav className="rail-nav-custom" aria-label="主导航">
+        {navItems.map(item => <button key={item.id} className={'railbtn' + (activeNavItem === item.id ? ' active' : '')} type="button"
+          title={item.label} aria-label={item.label} onClick={() => onNavItem?.(item.id)}>
+          <Icon name={activeNavItem === item.id ? item.activeIcon ?? item.icon : item.icon} size={20}
+            variant={activeNavItem === item.id ? 'bold' : 'linear'} />
+        </button>)}
+      </nav> : <nav aria-label="主导航">
         <SidebarRailNavigation onHome={active === 'home'} onAgent={active === 'agent'} panel={railPanel}
           prepareAgent={onAgentIntent}
           archivedCount={archivedCount} archiveOpen={archiveOpen} showEmptyArchive
@@ -183,10 +217,10 @@ export function ProductShell({ children, immersive, accountName, avatar, onHome,
             if (railPanel === 'search') closeRailPanel()
             else { onArchiveOpenChange?.(false); setRailPanel('search') }
           }} />
-      </nav>
+      </nav>}
       <div className="product-rail-bottom">
         <ProductThemeButton visible={railVisible} rail />
-        <ProductAccount name={accountName} avatar={avatar} visible={railVisible} rail onProfile={onProfile} onSettings={onSettings} />
+        <ProductAccount name={accountName} avatar={avatar} visible={railVisible} rail onProfile={onProfile} onSettings={onSettings} items={accountItems} />
       </div>
     </>}
     overlays={<RailHistoryPanel visible={railPanelVisible} panelRef={railPanelRef} onClose={closeRailPanel}>
