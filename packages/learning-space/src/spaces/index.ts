@@ -265,7 +265,7 @@ export function createSpaces(storage: OwnedStorage, options: { sessionLifetimeMs
   async function beginConnection(value: { requestId: string; clientId: string; challenge: string }) {
     const input = z.object({ requestId: z.uuid(), clientId: z.uuid(), challenge: z.string().regex(/^[A-Za-z0-9_-]{43}$/) }).strict().parse(value);
     await storage.request({ requestId: input.requestId, fingerprint: digest(input) }, async tx => {
-      await tx.query("INSERT INTO authorizations(id,client_id,challenge,expires_at) VALUES ($1,$2,$3,clock_timestamp()+interval '5 minutes')",
+      await tx.query("INSERT INTO authorizations(id,client_id,challenge,expires_at) VALUES ($1,$2,$3,clock_timestamp()+interval '15 minutes')",
         [input.requestId, input.clientId, input.challenge]);
       return null;
     });
@@ -279,6 +279,14 @@ export function createSpaces(storage: OwnedStorage, options: { sessionLifetimeMs
       if (!result.rowCount) fail('forbidden');
       return null;
     });
+  }
+  async function connectionStatus(requestId: string) {
+    id.parse(requestId);
+    const { rows: [row] } = await storage.read(`SELECT CASE WHEN expires_at<=clock_timestamp() THEN 'expired'
+      WHEN principal_id IS NULL THEN 'pending' ELSE 'approved' END AS state, expires_at
+      FROM authorizations WHERE id=$1`, [requestId]);
+    if (!row) return { state: 'missing' as const };
+    return { state: row.state as 'expired' | 'pending' | 'approved', expiresAt: new Date(row.expires_at as string | Date).toISOString() };
   }
   async function exchangeConnection(requestId: string, verifier: string) {
     id.parse(requestId); z.string().regex(/^[A-Za-z0-9_-]{43,128}$/).parse(verifier);
@@ -317,5 +325,5 @@ export function createSpaces(storage: OwnedStorage, options: { sessionLifetimeMs
     await storage.read('SELECT a.principal_id FROM accounts a JOIN memberships m ON m.principal_id=a.principal_id');
   }
   return { personal, readPersonal, verifyPassword, schoolSpace, createMember, setMembership, setMemberPermission, hasMemberPermission, login, authenticate, authorize, account, lookup, schoolSession, activeSchoolSessions, bindMember, resolveBinding,
-    logout, authenticateConnection, readConnection, authorizeConnection, beginConnection, approveConnection, exchangeConnection, revokeConnection, adminRevokeConnection, validate };
+    logout, authenticateConnection, readConnection, authorizeConnection, beginConnection, approveConnection, connectionStatus, exchangeConnection, revokeConnection, adminRevokeConnection, validate };
 }

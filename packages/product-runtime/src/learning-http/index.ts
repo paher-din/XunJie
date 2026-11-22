@@ -446,6 +446,9 @@ export function createLearningEntry(options: {
             result = await options.learning.executions.reclaim(input.sessionRef);
           } else throw new StorageError('missing');
         }
+      } else if (route === 'connections/status' && method === 'GET') {
+        const requestId = z.uuid().parse(new URL(request.url!, endpoint).searchParams.get('requestId'));
+        result = await spaces.connectionStatus(requestId);
       } else if (route === 'connections/start' && method === 'POST') {
         const input = z.object({ requestId: z.uuid(), clientId: z.uuid(), challenge: z.string() }).strict().parse(await readLearningBody(request));
         result = await spaces.beginConnection(input);

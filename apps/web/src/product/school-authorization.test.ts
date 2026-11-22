@@ -20,7 +20,7 @@ it('keeps returned requests tied to the same client namespace and original reque
 it('expires pending authentication while retaining a completed connection for a failed context read', () => {
   vi.spyOn(Date, 'now').mockReturnValue(1000000)
   rememberSchoolConnection('client', pending)
-  vi.mocked(Date.now).mockReturnValue(1300001)
+  vi.mocked(Date.now).mockReturnValue(1900001)
   expect(restoreSchoolConnection('client', requestId)).toBeNull()
   rememberSchoolConnection('client', { ...pending, connectionId: requestId })
   expect(restoreSchoolConnection('client', requestId)?.connectionId).toBe(requestId)

@@ -4,6 +4,7 @@ const pendingAuthorization = z.object({ requestId: z.uuid(), authorizationUrl: z
 const savedAuthorization = pendingAuthorization.extend({ connectionId: z.string().optional(), authenticated: z.boolean().optional(), createdAt: z.number() })
 export type PendingSchoolConnection = z.infer<typeof pendingAuthorization> & { connectionId?: string; authenticated?: boolean }
 const pendingKey = (namespace: string) => 'xj.school-authorization.' + namespace
+const authorizationLifetimeMs = 15 * 60 * 1000
 
 /** Store only the public request, never the device verifier or a school credential. */
 export function rememberSchoolConnection(namespace: string, pending: PendingSchoolConnection | null) {
@@ -20,9 +21,9 @@ export function restoreSchoolConnection(namespace: string, returnedRequestId: st
   try {
     const saved = savedAuthorization.parse(JSON.parse(localStorage.getItem(pendingKey(namespace)) ?? 'null'))
     if (returnedRequestId && saved.requestId !== returnedRequestId) return null
-    // School authorizations expire after five minutes. A confirmed connection can
+    // School authorizations expire after fifteen minutes. A confirmed connection can
     // still retry its context read after that window.
-    if (!saved.connectionId && Date.now() - saved.createdAt >= 5 * 60 * 1000) return null
+    if (!saved.connectionId && Date.now() - saved.createdAt >= authorizationLifetimeMs) return null
     const { createdAt: _, ...pending } = saved
     return { ...pending, authenticated: pending.authenticated || returnedRequestId === saved.requestId }
   } catch { return null }

@@ -34,6 +34,8 @@ let starts: Array<{ requestId: string; schoolEndpoint: string }>
 let revoked: Array<{ space: string; connectionId: string }>
 let waitForRevoke: Promise<void> | null
 let activityAvailable: boolean, failLogin: boolean, failApproval: boolean, failApprovalForbidden: boolean
+let authorizationStatus: 'pending' | 'expired' | 'missing' | 'approved'
+let failAuthorizationStatus: boolean
 let approvals: Array<{ requestId: string }>
 const personal = { environmentId: '00000000-0000-4000-8000-000000000001', spaceId: '00000000-0000-4000-8000-000000000002', principalId: '00000000-0000-4000-8000-000000000003', kind: 'personal', name: '个人学习空间' }
 const school = { environmentId: '00000000-0000-4000-8000-000000000004', spaceId: '00000000-0000-4000-8000-000000000005', principalId: '00000000-0000-4000-8000-000000000006', kind: 'school', name: '示例学校' }
@@ -78,7 +80,7 @@ beforeEach(() => {
   vi.spyOn(window, 'open').mockReturnValue(null)
   vi.mocked(returnToSchoolClient).mockReset().mockReturnValue(false)
   profile = 'local'; connected = false; failStart = false; failRefresh = false; failRevoke = false; connectionRequest = ''; completeCalls = 0; starts = []; revoked = []; waitForRevoke = null; activityAvailable = false
-  failLogin = false; failApproval = false; failApprovalForbidden = false; approvals = []
+  failLogin = false; failApproval = false; failApprovalForbidden = false; authorizationStatus = 'pending'; failAuthorizationStatus = false; approvals = []
   localStorage.clear(); sessionStorage.clear()
   host = document.createElement('div'); document.body.append(host); root = createRoot(host)
   vi.stubGlobal('fetch', vi.fn(async (url: string, options: RequestInit = {}) => {
@@ -88,6 +90,11 @@ beforeEach(() => {
       return response({ clientNamespace: 'test', profile, identities: profile === 'school'
         ? connected ? [{ key: 'school', identity: school }] : []
         : [{ key: 'personal', identity: personal }, ...(connected ? [{ key: 'school:connection', identity: school }] : [])] })
+    }
+    if (route.startsWith('connections/status')) {
+      if (failAuthorizationStatus) return response({ error: 'unavailable' }, 503)
+      return response({ state: authorizationStatus,
+        ...(authorizationStatus === 'pending' ? { expiresAt: new Date(Date.now() + 900000).toISOString() } : {}) })
     }
     if (route === 'activities') return response(activityAvailable ? [activity] : [])
     if (route === 'activities/' + activity.activityId) return response(activity)
@@ -194,6 +201,28 @@ it('authenticates the original device request during sign-in without an intermed
   expect(approvals).toEqual([{ requestId }])
   expect(host.textContent).not.toContain('认证并返回客户端')
   expect(host.querySelector('[data-sonner-toast][data-type="success"]')?.textContent).toContain('学校认证已完成')
+})
+
+it('shows an expired school request before asking for credentials', async () => {
+  profile = 'school'; authorizationStatus = 'expired'
+  const requestId = '00000000-0000-4000-8000-000000000022'
+  const returnTo = 'http://127.0.0.1:57417/?settings=account&schoolAuthorization=' + requestId
+  history.replaceState(null, '', '/?authorize=' + requestId + '&returnTo=' + encodeURIComponent(returnTo))
+  await act(async () => { root.render(<LearningApp />); await settle() })
+  expect(host.textContent).toContain('学校认证请求已过期或不属于此客户端')
+  expect(host.querySelector('input[type="password"]')).toBeNull()
+  expect(host.querySelector<HTMLAnchorElement>('.product-school-auth-link')?.href).toBe(returnTo)
+})
+
+it('offers login instead of blocking when the request status cannot be checked', async () => {
+  profile = 'school'; failAuthorizationStatus = true
+  const requestId = '00000000-0000-4000-8000-000000000023'
+  history.replaceState(null, '', '/?authorize=' + requestId)
+  await act(async () => { root.render(<LearningApp />); await settle() })
+  expect(host.textContent).toContain('暂时无法核对学校认证请求')
+  expect(host.querySelector('input[type="password"]')).toBeNull()
+  await click('继续登录')
+  expect(host.querySelector('input[type="password"]')).not.toBeNull()
 })
 
 it('keeps the shared login and entered account available after authentication fails', async () => {

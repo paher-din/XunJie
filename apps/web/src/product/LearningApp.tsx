@@ -372,6 +372,13 @@ function LearningView() {
   }
   const materialUrl = useRef('')
   const authorize = new URLSearchParams(location.search).get('authorize')
+  const [authorizationState, setAuthorizationState] = useState<'checking' | 'pending' | 'expired' | 'missing' | 'approved' | 'error'>(authorize ? 'checking' : 'pending')
+  const [authorizationAttempt, setAuthorizationAttempt] = useState(0)
+  let authorizationReturnUrl: string | null = null
+  if (authorize) {
+    try { authorizationReturnUrl = schoolAuthorizationReturnUrl(authorize, new URLSearchParams(location.search).get('returnTo')) }
+    catch { /* The client is still reachable from the tab that opened this page. */ }
+  }
   const identity = context?.identities.find(item => item.key === key)?.identity
   const accountName = context ? context.account?.accountName ?? '本地学习空间' : '本地学习空间'
   const personalKey = context?.identities.find(item => item.identity.kind === 'personal')?.key
@@ -385,6 +392,27 @@ function LearningView() {
       .catch(() => {})
     return () => { alive = false }
   }, [context?.account?.key, context?.clientNamespace])
+  useEffect(() => {
+    if (!authorize) return
+    let alive = true
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const controller = new AbortController()
+    const abort = setTimeout(() => controller.abort(), 10000)
+    setAuthorizationState('checking')
+    void api('connections/status?requestId=' + encodeURIComponent(authorize), undefined, undefined, controller.signal).then(value => {
+      if (!alive) return
+      const status = value as { state?: unknown; expiresAt?: unknown }
+      const state = status.state === 'pending' || status.state === 'approved' || status.state === 'expired' || status.state === 'missing'
+        ? status.state : 'error'
+      setAuthorizationState(state)
+      if (state === 'pending' && typeof status.expiresAt === 'string') {
+        const remaining = new Date(status.expiresAt).getTime() - Date.now()
+        if (remaining <= 0) setAuthorizationState('expired')
+        else timer = setTimeout(() => { if (alive) setAuthorizationState('expired') }, remaining)
+      }
+    }).catch(() => { if (alive) setAuthorizationState('error') })
+    return () => { alive = false; clearTimeout(abort); if (timer) clearTimeout(timer); controller.abort() }
+  }, [authorize, authorizationAttempt])
   const readTaskSubmission = useCallback(async (activity: LearningActivity, signal: AbortSignal) => {
     const binding = activity.course
     if (!schoolKey || !binding) throw new Error('无法核对任务提交状态。')
@@ -1142,7 +1170,23 @@ function LearningView() {
     if (saved && remove && routeSessionId === id) openAgent()
     return saved
   }
-  if (schoolLoginRequired) return <SessionLogin entryRole="student" loginName={loginName} password={password}
+  const authorizationGate = authorize && authorizationState !== 'pending'
+    ? <div className="content home-page"><section className="product-connection" aria-labelledby="authorization-status-title">
+      <h2 id="authorization-status-title">学校认证</h2>
+      {authorizationState === 'checking'
+        ? <p role="status">正在核对学校认证请求…</p>
+        : authorizationState === 'error'
+          ? <><p role="alert">暂时无法核对学校认证请求，请重试。</p>
+            <button type="button" className="outline" onClick={() => setAuthorizationAttempt(value => value + 1)}>重新核对</button>
+            <button type="button" className="outline" onClick={() => setAuthorizationState('pending')}>继续登录</button></>
+          : authorizationState === 'approved'
+            ? <><p role="status">学校认证已完成，请返回客户端完成连接。</p>
+              {authorizationReturnUrl && <a className="outline product-school-auth-link" href={authorizationReturnUrl}>返回客户端</a>}</>
+            : <><p role="alert">学校认证请求已过期或不属于此客户端，请返回客户端重新发起认证。</p>
+              <p>不需要重新输入账号密码；客户端会重新发起认证。</p>
+              {authorizationReturnUrl && <a className="outline product-school-auth-link" href={authorizationReturnUrl}>返回客户端</a>}</>}
+    </section></div> : null
+  if (schoolLoginRequired) return authorizationGate ?? <SessionLogin entryRole="student" loginName={loginName} password={password}
     busy={busy} logoutFailed={false} accountRef={schoolAccount}
     description={authorize ? '使用学校账号登录并认证，完成后将返回客户端。' : '使用学校账号登录，继续你的学习。'}
     submitLabel={authorize ? '登录并认证' : undefined}
