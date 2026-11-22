@@ -18,7 +18,7 @@
   border-top: 0;
 }
 .t-section-flush .sectionhead {
-  margin: 0 0 14px;
+  margin: 0 0 16px;
 }
 
 /* ---------- 概览：豆腐块面板 ---------- */
@@ -28,15 +28,15 @@
   background: var(--sunken);
 }
 .t-inbox-card {
-  padding-bottom: 18px;
+  padding-bottom: 20px;
   overflow: hidden;
 }
 .t-overview-card .sectionhead,
 .t-board-summary .sectionhead {
-  margin: 0 0 14px;
+  margin: 0 0 16px;
 }
 .t-board-summary {
-  margin-bottom: 28px;
+  margin-bottom: 24px;
 }
 
 /* ---------- 待处理：紧凑表格 ---------- */
@@ -96,7 +96,7 @@
 .t-inbox-table th:first-child,
 .t-inbox-table td:first-child {
   width: 68px;
-  padding-left: 18px;
+  padding-left: 0;
 }
 .t-inbox-table th:nth-child(2) {
   width: auto;
@@ -291,7 +291,7 @@
   .t-inbox-table th:first-child,
   .t-inbox-table td:first-child {
     width: 62px;
-    padding-left: 14px;
+    padding-left: 0;
   }
   .t-inbox-table th:last-child,
   .t-inbox-table td:last-child {
@@ -327,7 +327,7 @@
   flex-direction: column;
   justify-content: space-between;
   gap: 12px;
-  padding: 18px 20px;
+  padding: 20px;
 }
 .t-kpi-card small {
   font-size: 12px;
@@ -345,7 +345,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(260px, 1fr);
   gap: 16px;
-  margin-top: 28px;
+  margin-top: 24px;
 }
 .t-module.t-overview-card {
   padding: 20px;
@@ -513,12 +513,18 @@
   font-variant-numeric: tabular-nums;
 }
 .t-data-note {
-  margin-top: 22px;
+  margin: 16px 0 12px;
   font-size: 12px;
   color: var(--muted);
 }
 
 /* ---------- 工作台 ---------- */
+.teacher-page .course-tiles {
+  gap: 16px;
+}
+.teacher-page .course-tile-body {
+  padding: 16px 16px 0;
+}
 .t-course-meta {
   margin: -6px 0 18px;
   font-size: 12.5px;

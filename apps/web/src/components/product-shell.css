@@ -1,3 +1,8 @@
+/* 产品壳内容区：宽度越大越接近 32px，收窄时连续过渡到 24px，避免 1100px 处跳变。 */
+.product-shell .content {
+  padding: 28px clamp(24px, 2.4vw, 32px) 32px;
+}
+
 .product-shell .rail .theme-wrap {
   position: absolute;
   left: 15px;

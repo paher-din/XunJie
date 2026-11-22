@@ -1,3 +1,24 @@
+/* 学生首页：首块 32px，区块之间 32px，标题/卡片之间 16px。 */
+.product-home .dash-section {
+  margin: 0 0 32px;
+}
+.product-home .dash-sec-head {
+  margin-bottom: 16px;
+}
+.product-home .dash-grid {
+  padding: 12px;
+  gap: 12px;
+}
+.product-home .course-region .sectionhead {
+  margin: 0 0 16px;
+}
+.product-home .course-tiles {
+  gap: 16px;
+}
+.product-home .course-tile-body {
+  padding: 16px 16px 0;
+}
+
 .product-home-categories {
   display: flex;
   gap: 4px;
