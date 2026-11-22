@@ -417,12 +417,21 @@ i.t-pulse-key-missing {
   color: var(--accent-deep);
 }
 .t-pulse-task {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   margin-left: -4px;
   padding: 1px 4px;
   border-radius: 4px;
   color: var(--muted);
   font-size: 12px;
   font-weight: 400;
+}
+.t-pulse-task-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .t-pulse-task:hover {
   color: var(--ink-soft);

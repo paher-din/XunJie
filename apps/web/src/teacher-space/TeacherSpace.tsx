@@ -410,7 +410,10 @@ function CoursePulseRow({ item, onOpen, onTask }: { item: CoursePulseRowData; on
       <button type="button" className="t-pulse-course" onClick={onOpen}>{item.course.name}</button>
       {item.task
         ? <button type="button" className="t-pulse-task" title={item.task.title}
-          aria-label={`打开任务：${item.task.title}（${item.course.name}）`} onClick={onTask}>{item.task.title}</button>
+          aria-label={`打开任务：${item.task.title}（${item.course.name}）`} onClick={onTask}>
+          <span className="t-pulse-task-title">{item.task.title}</span>
+          <Icon name="alt-arrow-right" size={13} />
+        </button>
         : <span className="t-pulse-empty">尚未发布任务</span>}
     </span>
     <button type="button" className="t-pulse-energy" aria-label={`打开${ariaLabel}`} onClick={onOpen}>
