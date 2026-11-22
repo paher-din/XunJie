@@ -7,6 +7,9 @@ import { LearningApp } from './LearningApp'
 import { toast } from '@xunjie/ui/feedback'
 import { returnToSchoolClient } from './school-authorization'
 
+const loadTeacherCatalog = vi.hoisted(() => vi.fn())
+vi.mock('../teacher-space/data', () => ({ loadTeacherCatalog }))
+
 vi.mock('./school-authorization', async importOriginal => ({
   ...await importOriginal<typeof import('./school-authorization')>(), returnToSchoolClient: vi.fn(() => false),
 }))
@@ -79,6 +82,7 @@ beforeEach(() => {
   vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener() {}, removeEventListener() {} }))
   vi.spyOn(window, 'open').mockReturnValue(null)
   vi.mocked(returnToSchoolClient).mockReset().mockReturnValue(false)
+  loadTeacherCatalog.mockReset().mockResolvedValue({ available: false, courses: [] })
   profile = 'local'; connected = false; failStart = false; failRefresh = false; failRevoke = false; connectionRequest = ''; completeCalls = 0; starts = []; revoked = []; waitForRevoke = null; activityAvailable = false
   failLogin = false; failApproval = false; failApprovalForbidden = false; authorizationStatus = 'pending'; failAuthorizationStatus = false; approvals = []
   localStorage.clear(); sessionStorage.clear()
@@ -225,6 +229,17 @@ it('tells an already signed-in school user that re-authorization needs no passwo
   expect(host.textContent).toContain('当前学校登录仍然有效')
   expect(host.textContent).not.toContain('认证并返回客户端')
   expect(host.querySelector<HTMLAnchorElement>('.product-school-auth-link')?.href).toBe(returnTo)
+})
+
+it('keeps an authenticated teacher on the approval page for a school request', async () => {
+  profile = 'school'; connected = true; authorizationStatus = 'expired'
+  loadTeacherCatalog.mockResolvedValue({ available: true, courses: [] })
+  const requestId = '00000000-0000-4000-8000-000000000027'
+  history.replaceState(null, '', '/?authorize=' + requestId)
+  await act(async () => { root.render(<LearningApp />); await settle() })
+  expect(host.textContent).toContain('学校认证请求已过期')
+  expect(host.textContent).toContain('当前学校登录仍然有效')
+  expect(loadTeacherCatalog).not.toHaveBeenCalled()
 })
 
 it('offers login instead of blocking when the request status cannot be checked', async () => {
