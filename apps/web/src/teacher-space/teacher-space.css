@@ -604,10 +604,6 @@ i.t-pulse-key-missing {
   font-size: 15px;
   margin: 0;
 }
-.t-module-note {
-  font-size: 12px;
-  color: var(--muted);
-}
 .t-legend {
   display: inline-flex;
   align-items: center;

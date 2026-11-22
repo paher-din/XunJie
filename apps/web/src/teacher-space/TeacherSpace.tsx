@@ -315,7 +315,7 @@ function Overview({ courses, cohort, onCourse, onWorkbench }: {
           </div>}
       </div>
       <article className="t-overview-card t-module t-rhythm-card" aria-labelledby="t-rhythm-title">
-        <header className="t-module-head"><h3 id="t-rhythm-title">提交节奏</h3><span className="t-module-note">近 3 周</span></header>
+        <header className="t-module-head"><h3 id="t-rhythm-title">提交与反馈</h3></header>
         <div className="t-rhythm">
           <WeekBars submissions={cohort.submissions} />
           <FeedbackRing covered={feedbackCovered} total={feedbackTotal} />
