@@ -439,7 +439,7 @@ i.t-pulse-key-missing {
 }
 .t-pulse-energy {
   display: flex;
-  width: 168px;
+  width: 280px;
   flex: none;
   flex-direction: column;
   align-items: flex-end;
@@ -453,9 +453,9 @@ i.t-pulse-key-missing {
 }
 .t-pulse-meter {
   display: grid;
-  grid-template-columns: repeat(25, minmax(0, 1fr));
+  grid-template-columns: repeat(40, minmax(0, 1fr));
   gap: 2px;
-  width: 168px;
+  width: 280px;
   height: 24px;
 }
 .t-pulse-meter-cell {
@@ -1425,9 +1425,20 @@ button.t-project-row:hover {
   }
 }
 
+@media (max-width: 1120px) {
+  .t-pulse-energy,
+  .t-pulse-meter {
+    width: 200px;
+  }
+}
+
 @media (max-width: 960px) {
   .t-pulse-key {
     display: none;
+  }
+  .t-pulse-energy,
+  .t-pulse-meter {
+    width: 168px;
   }
 }
 
@@ -1456,10 +1467,10 @@ button.t-project-row:hover {
     gap: 16px;
   }
   .t-pulse-energy {
-    width: 144px;
+    width: 168px;
   }
   .t-pulse-meter {
-    width: 144px;
+    width: 168px;
     height: 20px;
   }
   .t-pulse-ring {
@@ -1510,10 +1521,10 @@ button.t-project-row:hover {
     gap: 12px;
   }
   .t-pulse-energy {
-    width: 136px;
+    width: 168px;
   }
   .t-pulse-meter {
-    width: 136px;
+    width: 168px;
     height: 18px;
   }
   .t-pulse-meta {

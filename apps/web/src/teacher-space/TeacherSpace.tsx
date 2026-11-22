@@ -76,13 +76,14 @@ const PULSE_STATE_LABELS: Record<SubmissionState, string> = {
   done: '已完成', revised: '待复核', pending: '待审阅', feedback: '已反馈',
 }
 
-/** Allocate the 25 fixed-height segments by status share; the exact numbers stay beside the bar. */
+const PULSE_SEGMENTS = 40
+/** Allocate the 40 fixed-height segments by status share; the exact numbers stay beside the bar. */
 function pulseMeter(item: CoursePulseRowData) {
-  if (!item.task || item.assigned <= 0) return Array.from({ length: 25 }, () => 'missing' as const)
+  if (!item.task || item.assigned <= 0) return Array.from({ length: PULSE_SEGMENTS }, () => 'missing' as const)
   const groups = [...PULSE_STATES.map(state => ({ state, count: item.statusCounts[state] })), { state: 'missing' as const, count: item.missing }]
-  const raw = groups.map(group => group.count / item.assigned * 25)
+  const raw = groups.map(group => group.count / item.assigned * PULSE_SEGMENTS)
   const cells = raw.map(value => Math.floor(value))
-  let remainder = 25 - cells.reduce((sum, value) => sum + value, 0)
+  let remainder = PULSE_SEGMENTS - cells.reduce((sum, value) => sum + value, 0)
   const fractions = raw.map((value, index) => ({ index, fraction: value - Math.floor(value) }))
     .sort((a, b) => b.fraction - a.fraction || a.index - b.index)
   for (let index = 0; index < fractions.length && remainder > 0; index += 1) {
@@ -419,7 +420,7 @@ function CoursePulseRow({ item, onOpen, onTask }: { item: CoursePulseRowData; on
       <span className="t-pulse-meta">
         <small>{justPublished ? '尚无提交' : release}</small>
         {item.task
-          ? justPublished ? <b>刚发布</b> : <b>{item.submitted}/{item.assigned}{percent != null && <i> · {percent}%</i>}</b>
+          ? justPublished ? <b>刚发布</b> : <b>{percent != null && <i>{percent}% · </i>}{item.submitted}/{item.assigned}</b>
           : <b>—</b>}
       </span>
     </button>
