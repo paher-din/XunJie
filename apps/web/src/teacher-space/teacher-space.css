@@ -406,7 +406,7 @@ i.t-pulse-key-missing {
   text-overflow: ellipsis;
   white-space: nowrap;
   cursor: pointer;
-  transition: color 150ms var(--ease-s), background 150ms var(--ease-s);
+  transition: color 150ms var(--ease-s);
 }
 .t-pulse-course {
   color: var(--ink);
@@ -425,10 +425,7 @@ i.t-pulse-key-missing {
   font-weight: 400;
 }
 .t-pulse-task:hover {
-  background: var(--accent-soft);
-  color: var(--accent-deep);
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  color: var(--ink-soft);
 }
 .t-pulse-course:focus-visible,
 .t-pulse-task:focus-visible,
