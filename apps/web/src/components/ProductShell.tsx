@@ -24,7 +24,8 @@ export interface ProductShellProps {
   onAgent: () => void
   onAgentIntent?: () => void
   onSettings: () => void
-  onProfile: () => void
+  /** Omit on surfaces that have no personal profile, e.g. the teacher space. */
+  onProfile?: () => void
   active?: 'home' | 'agent' | 'settings'
   avatar?: string | null
   agentHistory?: (close: () => void, visible: boolean) => ReactNode
@@ -76,7 +77,7 @@ function ProductThemeButton({ visible, rail = false }: { visible: boolean; rail?
 
 function ProductAccount({ name, avatar, visible, rail, onProfile, onSettings, items = [] }: {
   name: string; avatar?: string | null; visible: boolean; rail?: boolean
-  onProfile: () => void; onSettings: () => void; items?: ShellAccountItem[]
+  onProfile?: () => void; onSettings: () => void; items?: ShellAccountItem[]
 }) {
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -124,9 +125,9 @@ function ProductAccount({ name, avatar, visible, rail, onProfile, onSettings, it
       role="menu" aria-label="账户" aria-hidden={!open || !visible} inert={!open || !visible}>
       <div className="am-head">{accountAvatar}<span className="am-who"><span className="am-name">{name}</span></span></div>
       <div className="am-sep" />
-      <button type="button" className="account-menu-item" role="menuitem" onClick={() => choose(onProfile)}>
+      {onProfile && <button type="button" className="account-menu-item" role="menuitem" onClick={() => choose(onProfile)}>
         <Icon name="user-rounded" size={16} /><span className="am-label">个人资料</span><Icon name="alt-arrow-right" size={14} className="am-chev" />
-      </button>
+      </button>}
       <button type="button" className="account-menu-item" role="menuitem" onClick={() => choose(onSettings)}>
         <Icon name="settings" size={16} /><span className="am-label">设置</span>
       </button>

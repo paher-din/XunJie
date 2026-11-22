@@ -1,7 +1,15 @@
-import { useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { CourseBreadcrumb, CourseTiles, HomeSectionHeading, HomeStatus } from '@xunjie/ui/home'
+import { ConfirmationDialog } from '@xunjie/ui/foundation'
+import { SettingsStatus } from '@xunjie/ui/settings'
+import type { SpaceIdentity } from '@xunjie/contracts/spaces'
 import { ProductShell } from '../components/ProductShell'
 import { Icon } from '../icons'
+import { ProductSettings, type ProductSettingsTab } from '../product/ProductSettings'
+import { SchoolConnectionRow, SchoolSessionRow } from '../product/SchoolConnectionRows'
+import { SettingsFailureBoundary } from '../product/SettingsFailureBoundary'
+import { useModelSelection } from '../product/ModelSelection'
+import { LearningReadCache } from '../product/learning-read-cache'
 import './teacher-space.css'
 import {
   loadTeacherCatalog, submissionLabel, teacherCohort,
@@ -11,7 +19,11 @@ import {
 interface TeacherContext {
   clientNamespace: string
   account: { key: string; accountName: string; schoolName?: string } | null
+  identities?: { key: string; identity: SpaceIdentity }[]
+  readOnly?: boolean
 }
+
+const PersonalModelSettings = lazy(() => import('../product/PersonalModelSettings').then(module => ({ default: module.PersonalModelSettings })))
 
 type TeacherView = 'overview' | 'workbench'
 type InboxKind = 'pending' | 'revised' | 'draft' | 'stalled'
@@ -80,6 +92,8 @@ export function TeacherSpace() {
   const [courseId, setCourseId] = useState<string | null>(null)
   const [courseTab, setCourseTab] = useState<'review' | 'design'>('review')
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [settingsTab, setSettingsTab] = useState<ProductSettingsTab>('account')
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -89,7 +103,7 @@ export function TeacherSpace() {
       if (!cancelled) setContext(value)
     }).catch(reason => { if (!cancelled) setError(reason instanceof Error ? reason.message : '学习空间暂时无法连接。') })
     return () => { cancelled = true }
-  }, [])
+  }, [attempt])
 
   useEffect(() => {
     if (!context?.account?.key) return
@@ -98,21 +112,29 @@ export function TeacherSpace() {
       .then(value => { if (!cancelled) setCatalog(value) })
       .catch(reason => { if (!cancelled) setError(reason instanceof Error ? reason.message : '课程目录暂时无法读取。') })
     return () => { cancelled = true }
+  }, [context, attempt])
+
+  // A non-teacher account belongs to the student surface, including after logout.
+  useEffect(() => {
+    if (context && !context.account) location.replace('/')
   }, [context])
+  useEffect(() => {
+    if (catalog && !catalog.available) location.replace('/')
+  }, [catalog])
 
   const cohort = useMemo(() => teacherCohort(catalog?.courses ?? []), [catalog])
 
+  const retry = () => { setError(''); setContext(null); setCatalog(null); setAttempt(value => value + 1) }
   const content = !context ? <div className="content teacher-page">
-    {error ? <p role="alert" className="t-inline-error">{error}</p> : <p role="status" className="t-loading">正在连接学校空间…</p>}
+    {error ? <div role="alert" className="t-inline-error"><p>{error}</p><button type="button" className="outline" onClick={retry}>重试</button></div>
+      : <p role="status" className="t-loading">正在连接学校空间…</p>}
   </div> : !context.account ? <div className="content teacher-page">
-    <p role="alert">当前设备没有绑定学校账号，无法进入教师空间。</p>
-    <button type="button" className="outline" onClick={() => location.assign('/')}>返回学生空间</button>
+    <p role="status" className="t-loading">正在返回学生端…</p>
   </div> : !catalog ? <div className="content teacher-page">
-    {error ? <p role="alert" className="t-inline-error">{error}</p> : <p role="status" className="t-loading">正在读取课程目录…</p>}
+    {error ? <div role="alert" className="t-inline-error"><p>{error}</p><button type="button" className="outline" onClick={retry}>重试</button></div>
+      : <p role="status" className="t-loading">正在读取课程目录…</p>}
   </div> : !catalog.available ? <div className="content teacher-page">
-    <h1 className="t-gate-title">这个账号没有教学权限</h1>
-    <p className="t-gate-text">教师空间只对拥有课程管理权限的学校成员开放。当前账号 <strong>{context.account.accountName}</strong> 只能查看学生空间。</p>
-    <button type="button" className="outline" onClick={() => location.assign('/')}>返回学生空间</button>
+    <p role="status" className="t-loading">正在返回学生端…</p>
   </div> : <TeacherWorkspace catalog={catalog} cohort={cohort} view={view} courseId={courseId} courseTab={courseTab}
     onView={next => { setView(next); if (next === 'overview') setCourseId(null) }}
     onCourse={(id, tab = 'review') => { setCourseId(id); setCourseTab(tab); setView('workbench') }}
@@ -120,15 +142,17 @@ export function TeacherSpace() {
 
   return <>
     {catalog?.available && context?.account ? <ProductShell immersive={false} brandRole="教师" accountName={context.account.accountName}
-      onHome={() => {}} onAgent={() => {}} onSettings={() => setSettingsOpen(true)} onProfile={() => setSettingsOpen(true)}
+      active={settingsOpen ? 'settings' : undefined}
+      onHome={() => { setSettingsOpen(false); setView('overview'); setCourseId(null) }}
+      onAgent={() => {}}
+      onSettings={() => setSettingsOpen(true)}
       navItems={[{ id: 'overview', label: '教学概览', icon: 'home-2', activeIcon: 'home-2' },
         { id: 'workbench', label: '工作台', icon: 'workbench', activeIcon: 'workbench' }]}
-      onNavItem={id => { setView(id as TeacherView); setCourseId(null) }} activeNavItem={view}
-      accountItems={[{ label: '返回学生空间', icon: 'home-2', onSelect: () => location.assign('/') }]}>
-      {content}
+      onNavItem={id => { setSettingsOpen(false); setView(id as TeacherView); setCourseId(null) }}
+      activeNavItem={settingsOpen ? undefined : view}>
+      {settingsOpen ? <TeacherSettingsPage context={context} account={context.account} tab={settingsTab}
+        onTab={setSettingsTab} onClose={() => setSettingsOpen(false)} /> : content}
     </ProductShell> : content}
-    {settingsOpen && context?.account && <TeacherSettings name={context.account.accountName} school={context.account.schoolName ?? '学校空间'}
-      onClose={() => setSettingsOpen(false)} />}
   </>
 }
 
@@ -554,26 +578,6 @@ function DesignPane({ course, projects, onProjects }: {
   </div>
 }
 
-function TeacherSettings({ name, school, onClose }: { name: string; school: string; onClose: () => void }) {
-  useEffect(() => {
-    const close = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose() }
-    document.addEventListener('keydown', close)
-    return () => document.removeEventListener('keydown', close)
-  }, [onClose])
-  return <div className="t-sheet-layer" onClick={onClose}>
-    <section className="t-sheet" role="dialog" aria-modal="true" aria-label="教师空间设置" onClick={event => event.stopPropagation()}>
-      <header><h2>设置</h2><button type="button" className="t-icon-btn" aria-label="关闭设置" onClick={onClose}><Icon name="close" size={16} /></button></header>
-      <dl className="t-sheet-meta">
-        <div><dt>当前账号</dt><dd>{name}</dd></div>
-        <div><dt>学校空间</dt><dd>{school}</dd></div>
-        <div><dt>教学权限</dt><dd>课程管理</dd></div>
-      </dl>
-      <p className="t-sheet-note">教师空间沿用学生端的账户与外观设置；学生画像、模型等个人设置仍在学生空间里管理。</p>
-      <button type="button" className="outline" onClick={() => location.assign('/?settings=account')}>打开学生端设置</button>
-    </section>
-  </div>
-}
-
 function courseName(courses: TeacherCourse[], id: string) {
   return courses.find(course => course.courseId === id)?.name ?? '课程'
 }
@@ -583,4 +587,75 @@ function taskTitleOf(courses: TeacherCourse[], id: string) {
     if (task) return task.title
   }
   return '任务'
+}
+
+function TeacherSettingsPage({ context, account, tab, onTab, onClose }: {
+  context: TeacherContext; account: { key: string; accountName: string; schoolName?: string }
+  tab: ProductSettingsTab; onTab: (tab: ProductSettingsTab) => void; onClose: () => void
+}) {
+  const schoolIdentity = context.identities?.find(item => item.identity.kind === 'school')
+  const identity = schoolIdentity?.identity
+  const selection = useModelSelection(identity, schoolIdentity?.key ?? 'school', context.clientNamespace)
+  const cache = useMemo(() => new LearningReadCache(), [context.clientNamespace, schoolIdentity?.key])
+  const [mode, setMode] = useState<'disconnect' | 'replace' | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const school = account.schoolName ?? account.accountName
+
+  const request = async (route: string, body: unknown) => {
+    const response = await fetch('/api/learning/' + route, { method: 'POST', credentials: 'same-origin', redirect: 'error',
+      headers: { 'content-type': 'application/json', 'x-xj-space': account.key, 'x-xj-namespace': context.clientNamespace },
+      body: JSON.stringify(body) })
+    if (!response.ok) {
+      const value = await response.json().catch(() => ({})) as { error?: string }
+      throw new Error(value.error === 'forbidden' ? '当前账号已失效，请重新登录学校。' : '操作尚未完成，请稍后重试。')
+    }
+  }
+
+  const logout = async () => {
+    setBusy(true); setError('')
+    try { await request('logout', {}); location.replace('/') }
+    catch (reason) { setError(reason instanceof Error ? reason.message : '操作尚未完成，请稍后重试。'); setBusy(false) }
+  }
+
+  const revoke = async () => {
+    setBusy(true); setError('')
+    try {
+      const connectionId = account.key.startsWith('school:') ? account.key.slice(7) : ''
+      if (!connectionId) throw new Error('当前设备没有可解绑的学校连接。')
+      await request('connections/revoke', { connectionId })
+      if (mode === 'replace') location.assign('/?settings=school')
+      else location.replace('/')
+    } catch (reason) { setError(reason instanceof Error ? reason.message : '操作尚未完成，请稍后重试。'); setBusy(false) }
+  }
+
+  const closeDialog = () => { if (!busy) { setMode(null); setError('') } }
+
+  return <>
+    <ProductSettings accountName={account.accountName} schoolName={school} readOnly={context.readOnly}
+      accountState={{ status: 'ready' }} hiddenTabs={['portrait']} initialTab={tab} onTabChange={onTab}
+      schoolControls={<TeacherSchoolConnection school={school} busy={busy}
+        onRebind={() => { setError(''); setMode('replace') }}
+        onDisconnect={() => { setError(''); setMode('disconnect') }}
+        onLogout={() => void logout()} />}
+      modelSettings={identity ? <SettingsFailureBoundary key={context.clientNamespace + (schoolIdentity?.key ?? 'school') + identity.principalId} onBack={onClose}><Suspense
+        fallback={<SettingsStatus tone="loading" title="正在读取个人设置" />}><PersonalModelSettings identity={identity}
+        spaceKey={schoolIdentity?.key ?? 'school'} namespace={context.clientNamespace} selection={selection} readOnly={context.readOnly} cache={cache} />
+      </Suspense></SettingsFailureBoundary> : null} />
+    <ConfirmationDialog open={!!mode} title={mode === 'replace' ? '换绑学校？' : '断开学校连接？'}
+      description={<>{mode === 'replace' && '先解绑当前账号，再绑定新的学校账号。'}断开后，将无法在此访问<strong>「{school}」</strong>的学习内容。本机数据会保留，重新绑定原账号后可继续学习。</>}
+      confirmLabel={mode === 'replace' ? '确认解绑并换绑' : '确认断开'} busy={busy} error={error}
+      onClose={closeDialog} onConfirm={() => void revoke()} />
+  </>
+}
+
+function TeacherSchoolConnection({ school, busy, onRebind, onDisconnect, onLogout }: {
+  school: string; busy: boolean; onRebind: () => void; onDisconnect: () => void; onLogout: () => void
+}) {
+  return <section className="product-school" tabIndex={-1} aria-busy={busy || undefined}>
+    <h2>学校连接</h2>
+    <div className="product-school-list"><SchoolConnectionRow name={school} busy={busy}
+      onRebind={() => onRebind()} onDisconnect={() => onDisconnect()} /></div>
+    <SchoolSessionRow busy={busy} onLogout={onLogout} />
+  </section>
 }

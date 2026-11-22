@@ -24,6 +24,7 @@ import { ProductConversationHistory } from './ProductConversationHistory'
 import { ProductSettings, type ProductSettingsTab } from './ProductSettings'
 import { SettingsFailureBoundary } from './SettingsFailureBoundary'
 import { ProductProfile } from './ProductProfile'
+import { SchoolConnectionRow, SchoolSessionRow } from './SchoolConnectionRows'
 import { loadTeacherCatalog } from '../teacher-space/data'
 import { Toaster, toast, useToastFeedback } from '@xunjie/ui/feedback'
 import { SettingsStatus, TextInput } from '@xunjie/ui/settings'
@@ -372,13 +373,13 @@ function LearningView() {
   const accountName = context ? context.account?.accountName ?? '本地学习空间' : '本地学习空间'
   const personalKey = context?.identities.find(item => item.identity.kind === 'personal')?.key
   const schoolKey = context?.account?.key
-  const [teacherAvailable, setTeacherAvailable] = useState(false)
   useEffect(() => {
-    if (!context?.account?.key) { setTeacherAvailable(false); return }
+    if (!context?.account?.key) return
     let alive = true
+    // Teacher accounts own the teacher workspace; this also covers a completed login/binding.
     loadTeacherCatalog(context.clientNamespace, context.account.key)
-      .then(value => { if (alive) setTeacherAvailable(value.available) })
-      .catch(() => { if (alive) setTeacherAvailable(false) })
+      .then(value => { if (alive && value.available) location.replace('/?teacher=overview') })
+      .catch(() => {})
     return () => { alive = false }
   }, [context?.account?.key, context?.clientNamespace])
   const readTaskSubmission = useCallback(async (activity: LearningActivity, signal: AbortSignal) => {
@@ -993,27 +994,20 @@ function LearningView() {
     </Button>
   const schoolControls = context && <section className="product-school" tabIndex={-1} aria-busy={busy || undefined}><h2>学校连接</h2>
       {context.profile !== 'school' && (schoolIdentities.length > 0 ? <div className="product-school-list">
-        {schoolIdentities.map(item => <div className="product-school-row" key={item.key}>
-          <div className="product-school-name"><span className="product-school-icon"><Icon name="link" size={18} /></span>
-            <div><strong>{context.account?.schoolName ?? item.identity.name}</strong><span className="product-school-status">已绑定</span></div></div>
-          <div className="product-school-row-actions">
-          {!schoolFormOpen && !pendingConnection && <button type="button" className="product-school-rebind" disabled={busy}
-            onClick={event => {
-              disconnectTrigger.current = event.currentTarget
-              disconnectSection.current = event.currentTarget.closest<HTMLElement>('.product-school')
-              setDisconnectError(''); setDisconnectTarget({ key: item.key, name: context.account?.schoolName ?? item.identity.name, replace: true })
-            }}>换绑学校</button>}
-          {item.key.startsWith('school:') && <button type="button" className="product-school-disconnect" aria-label={`断开${item.identity.name}的连接`} disabled={busy}
-            onClick={event => {
-              disconnectTrigger.current = event.currentTarget
-              disconnectSection.current = event.currentTarget.closest<HTMLElement>('.product-school')
-              setDisconnectError(''); setDisconnectTarget({ key: item.key, name: item.identity.name })
-            }}>断开连接</button>}
-          </div>
-        </div>)}
+        {schoolIdentities.map(item => <SchoolConnectionRow key={item.key} name={context.account?.schoolName ?? item.identity.name} busy={busy}
+          onRebind={!schoolFormOpen && !pendingConnection ? event => {
+            disconnectTrigger.current = event.currentTarget
+            disconnectSection.current = event.currentTarget.closest<HTMLElement>('.product-school')
+            setDisconnectError(''); setDisconnectTarget({ key: item.key, name: context.account?.schoolName ?? item.identity.name, replace: true })
+          } : undefined}
+          onDisconnect={item.key.startsWith('school:') ? event => {
+            disconnectTrigger.current = event.currentTarget
+            disconnectSection.current = event.currentTarget.closest<HTMLElement>('.product-school')
+            setDisconnectError(''); setDisconnectTarget({ key: item.key, name: item.identity.name })
+          } : undefined} />)}
       </div> : schoolConnectionForm)}
       {context.profile !== 'school' && schoolIdentities.length > 0 && (schoolFormOpen || pendingConnection) && schoolConnectionForm}
-      {context.identities.some(item => item.key === 'school') ? <div className="product-school-session"><span className="product-school-status">已登录此学校</span><button type="button" className="outline" disabled={busy} onClick={() => void action(async () => {
+      {context.identities.some(item => item.key === 'school') ? <SchoolSessionRow busy={busy} onLogout={() => void action(async () => {
         const authentication = ++authEpoch.current
         await protectActivity()
         await api('logout', {}); if (authentication !== authEpoch.current) return
@@ -1031,7 +1025,7 @@ function LearningView() {
           setKey(nextKey)
           setReload(value => value + 1)
         }
-      })}>{busy ? '正在退出…' : '退出学校登录'}</button></div> : null}
+      })} /> : null}
     </section>
   const preview = !modelsOpen && taskPreview && (taskPreview.activityId
     ? taskPreview.activityId === opened?.activityId : taskPreview.search === route.search) ? taskPreview : null
@@ -1159,7 +1153,6 @@ function LearningView() {
     active={modelsOpen ? 'settings' : agentOpen ? 'agent' : 'home'}
     onHome={goHome} onAgent={openAgent} onSettings={() => openSettings()} onProfile={() => setProfileOpen(true)}
     onAgentIntent={prepareAgent}
-    accountItems={teacherAvailable ? [{ label: '教师空间', icon: 'clipboard-text', onSelect: () => location.assign('/?teacher=overview') }] : undefined}
     archivedCount={archivedCount} archiveOpen={archiveOpen} onArchiveOpenChange={setArchiveOpen}
     agentHistory={(close, visible) => <ProductConversationHistory sessions={conversationHistory.items.filter(item => item.scenario === 'student-assistant')}
       activeId={routeSessionId} archiveOpen={archiveOpen} query={historyQuery} error={conversationHistory.error}

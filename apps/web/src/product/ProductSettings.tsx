@@ -24,6 +24,8 @@ export interface ProductSettingsProps {
   modelSettings: ReactNode
   /** Initial selection only; use "models" when opening from a learning activity. */
   initialTab?: ProductSettingsTab
+  /** Tabs that do not apply to this surface, e.g. the student portrait in the teacher space. */
+  hiddenTabs?: ProductSettingsTab[]
   focusSchool?: boolean
   onTabChange?: (tab: ProductSettingsTab) => void
 }
@@ -37,14 +39,17 @@ const tabs: ReadonlyArray<{ id: ProductSettingsTab; label: string; icon: IconNam
 ]
 /** Business operations and identity changes remain owned by the caller. */
 export function ProductSettings({ accountName, schoolName, isLocal = false, readOnly = false, accountState = { status: 'ready' },
-  schoolControls, accountFeedback, modelSettings, initialTab = 'account', focusSchool = false, onTabChange }: ProductSettingsProps) {
-  const [active, setActive] = useState<ProductSettingsTab>(initialTab)
-  const [personalVisited, setPersonalVisited] = useState(initialTab === 'agent' || initialTab === 'models')
-  const activeTabIndex = Math.max(0, tabs.findIndex(tab => tab.id === active))
+  schoolControls, accountFeedback, modelSettings, initialTab = 'account', focusSchool = false, hiddenTabs, onTabChange }: ProductSettingsProps) {
+  const visibleTabs = tabs.filter(tab => !hiddenTabs?.includes(tab.id))
+  const visibleKey = hiddenTabs?.join('|') ?? ''
+  const initialVisible = visibleTabs.some(tab => tab.id === initialTab) ? initialTab : 'account'
+  const [active, setActive] = useState<ProductSettingsTab>(initialVisible)
+  const [personalVisited, setPersonalVisited] = useState(initialVisible === 'agent' || initialVisible === 'models')
+  const activeTabIndex = Math.max(0, visibleTabs.findIndex(tab => tab.id === active))
   const id = useId()
   const body = useRef<HTMLDivElement>(null)
   const school = useRef<HTMLDivElement>(null)
-  useEffect(() => setActive(initialTab), [initialTab])
+  useEffect(() => { setActive(initialVisible) }, [initialTab, visibleKey])
   useEffect(() => { if (active === 'agent' || active === 'models') setPersonalVisited(true) }, [active])
   useEffect(() => {
     if (body.current) body.current.scrollTop = 0
@@ -65,7 +70,7 @@ export function ProductSettings({ accountName, schoolName, isLocal = false, read
     <aside className="st-nav">
       <p className="st-title">设置</p>
       <nav aria-label="设置导航" style={{ '--product-settings-tab-index': activeTabIndex } as CSSProperties}>
-        {tabs.map(tab => <button key={tab.id} type="button" id={`${id}-${tab.id}-nav`}
+        {visibleTabs.map(tab => <button key={tab.id} type="button" id={`${id}-${tab.id}-nav`}
           className={active === tab.id ? 'st-nav-item active' : 'st-nav-item'}
           aria-current={active === tab.id ? 'page' : undefined}
           aria-controls={`${id}-${tab.id === 'agent' || tab.id === 'models' ? 'personal' : tab.id}`} onClick={() => select(tab.id)}>
@@ -76,7 +81,7 @@ export function ProductSettings({ accountName, schoolName, isLocal = false, read
     <div className="st-body" ref={body}>
       <div className="st-body-in">
         <header className="product-settings-heading" key={active}>
-          <h1>{tabs.find(tab => tab.id === active)?.label}</h1>
+          <h1>{visibleTabs.find(tab => tab.id === active)?.label ?? visibleTabs[0]?.label}</h1>
         </header>
         <section id={`${id}-account`} aria-labelledby={`${id}-account-nav`}
           hidden={active !== 'account'} inert={active !== 'account'} className="product-settings-pane">
