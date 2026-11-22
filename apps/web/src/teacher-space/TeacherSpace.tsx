@@ -305,7 +305,6 @@ function Overview({ courses, cohort, onCourse, onWorkbench }: {
             <span><i className="t-pulse-key-revised" />待复核</span>
             <span><i className="t-pulse-key-pending" />待审阅</span>
             <span><i className="t-pulse-key-feedback" />已反馈</span>
-            <span><i className="t-pulse-key-missing" />未提交</span>
           </div>
         </div>
         {coursePulse.length === 0 ? <p className="t-inbox-empty">当前没有在教课程。</p>

@@ -368,9 +368,6 @@ i.t-pulse-key-pending {
 i.t-pulse-key-feedback {
   background: var(--t-feedback);
 }
-i.t-pulse-key-missing {
-  background: var(--t-missing);
-}
 .t-pulse-list {
   display: flex;
   flex-direction: column;
