@@ -36,7 +36,7 @@ let profile: 'local' | 'school', connected: boolean, failStart: boolean, failRef
 let starts: Array<{ requestId: string; schoolEndpoint: string }>
 let revoked: Array<{ space: string; connectionId: string }>
 let waitForRevoke: Promise<void> | null
-let activityAvailable: boolean, failLogin: boolean, failApproval: boolean, failApprovalForbidden: boolean
+let activityAvailable: boolean, failLogin: boolean, failApproval: boolean, failApprovalForbidden: boolean, failApprovalExpired: boolean
 let authorizationStatus: 'pending' | 'expired' | 'missing' | 'approved'
 let failAuthorizationStatus: boolean
 let approvals: Array<{ requestId: string }>
@@ -84,7 +84,7 @@ beforeEach(() => {
   vi.mocked(returnToSchoolClient).mockReset().mockReturnValue(false)
   loadTeacherCatalog.mockReset().mockResolvedValue({ available: false, courses: [] })
   profile = 'local'; connected = false; failStart = false; failRefresh = false; failRevoke = false; connectionRequest = ''; completeCalls = 0; starts = []; revoked = []; waitForRevoke = null; activityAvailable = false
-  failLogin = false; failApproval = false; failApprovalForbidden = false; authorizationStatus = 'pending'; failAuthorizationStatus = false; approvals = []
+  failLogin = false; failApproval = false; failApprovalForbidden = false; failApprovalExpired = false; authorizationStatus = 'pending'; failAuthorizationStatus = false; approvals = []
   localStorage.clear(); sessionStorage.clear()
   host = document.createElement('div'); document.body.append(host); root = createRoot(host)
   vi.stubGlobal('fetch', vi.fn(async (url: string, options: RequestInit = {}) => {
@@ -127,9 +127,14 @@ beforeEach(() => {
       if (failLogin) return response({ error: 'forbidden' }, 403)
       connected = true; return response({})
     }
+    if (route === 'logout') {
+      connected = false
+      return response({ loggedOut: true })
+    }
     if (route === 'connections/approve') {
       approvals.push(JSON.parse(options.body as string))
-      return failApprovalForbidden ? response({ error: 'forbidden' }, 403)
+      return failApprovalExpired ? response({ error: 'expired' }, 410)
+        : failApprovalForbidden ? response({ error: 'forbidden' }, 403)
         : failApproval ? response({ error: 'unavailable' }, 503) : response({})
     }
     throw new Error('Unexpected route ' + route)
@@ -190,6 +195,9 @@ it('uses the shared login page before a school identity exists, then opens the r
   expect(host.querySelector('.session-card')).toBeNull()
   expect(host.textContent).toContain('已登录此学校')
   expect(button('退出学校登录')).not.toBeNull()
+  sessionStorage.setItem('xj.teacher-space.v1', '{"stale":true}')
+  await click('退出学校登录')
+  expect(sessionStorage.getItem('xj.teacher-space.v1')).toBeNull()
 })
 
 it('authenticates the original device request during sign-in without an intermediate approval', async () => {
@@ -289,7 +297,7 @@ it('retries the same authorization after login succeeds but approval fails, with
 })
 
 it('names an expired school authorization instead of blaming an activity space', async () => {
-  profile = 'school'; failApprovalForbidden = true
+  profile = 'school'; failApprovalExpired = true
   const requestId = '00000000-0000-4000-8000-000000000025'
   history.replaceState(null, '', '/?authorize=' + requestId)
   await act(async () => { root.render(<LearningApp />); await settle() })
@@ -298,6 +306,19 @@ it('names an expired school authorization instead of blaming an activity space',
   await click('登录并认证')
   expect(host.querySelector('[data-sonner-toast][data-type="error"]')?.textContent).toContain('学校认证请求已过期')
   expect(host.querySelector('[data-sonner-toast][data-type="error"]')?.textContent).not.toContain('原活动仍属于原空间')
+})
+
+it('does not call a refused approval expired', async () => {
+  profile = 'school'; failApprovalForbidden = true
+  const requestId = '00000000-0000-4000-8000-000000000028'
+  history.replaceState(null, '', '/?authorize=' + requestId)
+  await act(async () => { root.render(<LearningApp />); await settle() })
+  await fill('input[autocomplete="username"]', 'student')
+  await fill('input[type="password"]', 'password')
+  await click('登录并认证')
+  const error = host.querySelector('[data-sonner-toast][data-type="error"]')?.textContent ?? ''
+  expect(error).toContain('不属于当前学校账号')
+  expect(error).not.toContain('学校认证请求已过期')
 })
 
 it('returns directly to the originating account page after sign-in and authorization succeed', async () => {
@@ -380,6 +401,7 @@ it('returns to an unfinished authorization and lets the user correct the school 
 
 it.each(['personal', 'school:connection'])('manages the one connected school from %s without another switch', async space => {
   connected = true
+  sessionStorage.setItem('xj.teacher-space.v1', '{"stale":true}')
   history.replaceState(null, '', '/?space=' + encodeURIComponent(space) + '&settings=account')
   await act(async () => { root.render(<LearningApp />); await settle() })
   expect(host.textContent).toContain('示例学校')
@@ -399,6 +421,7 @@ it.each(['personal', 'school:connection'])('manages the one connected school fro
   await click('断开连接')
   await clickDialog('确认断开')
   expect(revoked).toEqual([{ space: 'school:connection', connectionId: 'connection' }])
+  expect(sessionStorage.getItem('xj.teacher-space.v1')).toBeNull()
   expect(new URLSearchParams(location.search).get('space')).toBe('personal')
   expect(button('添加学校')).not.toBeNull()
   expect(host.querySelector('input[type="url"]')).toBeNull()

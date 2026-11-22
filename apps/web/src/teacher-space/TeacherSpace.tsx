@@ -754,6 +754,8 @@ function TeacherSettingsPage({ context, account, tab, onTab, onClose }: {
       const connectionId = account.key.startsWith('school:') ? account.key.slice(7) : ''
       if (!connectionId) throw new Error('当前设备没有可解绑的学校连接。')
       await request('connections/revoke', { connectionId })
+      clearTeacherCache()
+      try { sessionStorage.removeItem('xj.works-context.v1') } catch { /* Optional reopening hint only. */ }
       if (mode === 'replace') location.assign('/?settings=school')
       else location.replace('/')
     } catch (reason) { setError(reason instanceof Error ? reason.message : '操作尚未完成，请稍后重试。'); setBusy(false) }

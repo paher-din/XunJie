@@ -92,7 +92,11 @@ export function loadTeacherCatalog(namespace: string, connectionKey: string): Pr
     headers: { 'content-type': 'application/json', 'x-xj-space': connectionKey, 'x-xj-namespace': namespace },
     body: '{}',
   }).then(async response => {
-    if (response.status === 403) return { available: false, courses: [] }
+    if (response.status === 403) {
+      // Permission can be granted while this tab stays open. A denial is not a catalog fact.
+      catalogCache.delete(cacheKey)
+      return { available: false, courses: [] }
+    }
     if (!response.ok) throw new Error('课程目录暂时无法读取。')
     const body = await response.json() as { courses?: unknown }
     return { available: true, courses: parseCourses(body.courses) }

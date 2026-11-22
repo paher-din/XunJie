@@ -147,7 +147,7 @@ export function createStorageSample(storage: OwnedStorage) {
 const statusByCode: Record<StorageErrorCode, number> = {
   invalid: 400, incompatible: 409, 'migration-busy': 503, conflict: 409, 'identity-conflict': 409,
   'commit-unknown': 503, unavailable: 503, forbidden: 403, missing: 404, corrupt: 500,
-  'upload-unknown': 503, maintenance: 503, 'stale-generation': 409, 'resource-busy': 409, 'resource-gone': 410,
+  'upload-unknown': 503, maintenance: 503, 'stale-generation': 409, 'resource-busy': 409, 'resource-gone': 410, expired: 410,
 };
 const wireSaveSchema = z.object({
   requestId: requestIdSchema,

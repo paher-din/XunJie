@@ -43,6 +43,7 @@ import { acquireLock, atomicJson, exists, readJson } from './io.js';
 import { boundedJsonResponse, runtimeResourcePathPattern, runtimeResourceResponseBytes,executionArtifactRoute,executionArtifactResponseBytes,
   runtimeResourceRoute } from './resource-response.js';
 import { createOutboundConnection, RuntimeConnectionError } from './connections.js';
+import { mergeOptionalSchoolChecks } from './optional-school-checks.js';
 import type { InstalledConfiguration } from './runtime.js';
 import { openProductRuntime } from './runtime.js';
 import { schoolDeviceSetupResultSchema } from './school-device-setup.js';
@@ -945,10 +946,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       const own = (await models.checks.list(identity)).filter(item => item.purpose === 'connection-check');
       // The school's check history is optional context. A school without a model
       // service must not take down the locally configured model settings.
-      let remote: z.infer<typeof modelAttemptSchema>[] = [];
-      try { remote = z.array(modelAttemptSchema).parse(await remoteCall()); }
-      catch (error) { if (!(error instanceof StorageError) || error.code !== 'unavailable') throw error; }
-      return [...own, ...remote].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 50);
+      return mergeOptionalSchoolChecks(own, () => remoteCall());
     }
     if (/^models\/(?:checks|calls)\/[^/]+(?:\/(?:dispatch|cancel))?$/.test(route)) {
       const binding = await models.routing.read(identity, 'attempt', route.split('/')[2]!);

@@ -26,6 +26,7 @@ import { SettingsFailureBoundary } from './SettingsFailureBoundary'
 import { ProductProfile } from './ProductProfile'
 import { SchoolConnectionRow, SchoolSessionRow } from './SchoolConnectionRows'
 import { loadTeacherCatalog } from '../teacher-space/data'
+import { clearTeacherCache } from '../teacher-space/teacher-cache'
 import { Toaster, toast, useToastFeedback } from '@xunjie/ui/feedback'
 import { SettingsStatus, TextInput } from '@xunjie/ui/settings'
 import { createBrowserRouter, RouterProvider, useBlocker, useLocation, useNavigate } from 'react-router-dom'
@@ -104,7 +105,7 @@ const messages: Record<string, string> = {
   missing: '无法找到或无权访问这项内容，请返回列表核对。',
   'identity-conflict': '这个请求已使用其他内容，请先核对原请求结果。',
   unavailable: '暂时无法连接原服务，请稍后重试。',
-  invalid: '请检查填写的内容。', maintenance: '学习服务正在维护，请稍后重试。',
+  invalid: '请检查填写的内容。', maintenance: '学习服务正在维护，请稍后重试。', expired: '这次请求已过期，请重新发起。',
   corrupt: '课程材料或发布版本已损坏，请联系课程管理员。', 'resource-busy': '材料正在准备中，请稍后重试。',
 }
 async function requestLearning(path: string, body?: unknown, key?: string, signal?: AbortSignal, namespace?: string): Promise<unknown> {
@@ -131,9 +132,13 @@ async function sendLearningRequest(path: string, body?: unknown, key?: string, s
   return result
 }
 const errorText = (error: unknown) => error instanceof Error ? error.message : '操作未完成，请重试。'
-const schoolAuthorizationError = (error: unknown) => (error as { code?: string })?.code === 'forbidden'
-  ? new Error('学校认证请求已过期，请重新发起学校连接。')
-  : error
+const schoolAuthorizationError = (error: unknown) => {
+  const code = (error as { code?: string })?.code
+  if (code === 'expired') return new Error('学校认证请求已过期，请返回客户端重新发起认证。')
+  if (code === 'forbidden') return new Error('这次认证请求不属于当前学校账号，或已被其他设备处理。请核对账号后重新发起。')
+  if (code === 'missing') return new Error('学校认证请求已失效，请重新发起学校连接。')
+  return error
+}
 const definitive = new Set(['invalid', 'forbidden', 'missing', 'corrupt', 'identity-conflict'])
 const formatBytes = (value: number) => value < 1024 ? `${value} B` : value < 1024 * 1024 ? `${(value / 1024).toFixed(1)} KB` : `${(value / 1024 / 1024).toFixed(1)} MB`
 
@@ -931,6 +936,7 @@ function LearningView() {
     const authentication = ++authEpoch.current
     await protectActivity()
     await api('connections/revoke', { connectionId: schoolKey.slice(7) }, schoolKey)
+    clearTeacherCache()
     if (authentication !== authEpoch.current) return
     if (currentView.current.key === schoolKey) await protectActivity()
     const current = currentView.current.context
@@ -1013,6 +1019,8 @@ function LearningView() {
           let connectionId = pendingConnection.connectionId
           if (!connectionId) {
             let connection: { connectionId: string }
+            // A new connection must not inherit the previous account's offline context.
+            try { sessionStorage.removeItem('xj.works-context.v1') } catch { /* Optional hint. */ }
             try { connection = await api('client/complete', { requestId: pendingConnection.requestId }) as { connectionId: string } }
             catch (cause) { throw schoolAuthorizationError(cause) }
             if (generation !== epoch.current) return
@@ -1070,7 +1078,7 @@ function LearningView() {
       {context.identities.some(item => item.key === 'school') ? <SchoolSessionRow busy={busy} onLogout={() => void action(async () => {
         const authentication = ++authEpoch.current
         await protectActivity()
-        await api('logout', {}); if (authentication !== authEpoch.current) return
+        await api('logout', {}); clearTeacherCache(); if (authentication !== authEpoch.current) return
         // Authentication outlives a view switch; a later login still supersedes this response.
         if (currentView.current.key === 'school') await protectActivity()
         if (authentication !== authEpoch.current || !currentView.current.context) return
@@ -1186,12 +1194,14 @@ function LearningView() {
     if (saved && remove && routeSessionId === id) openAgent()
     return saved
   }
-  const schoolSessionActive = context?.identities.some(item => item.key === 'school') ?? false
+  const schoolSessionActive = context ? context.identities.some(item => item.key === 'school') : undefined
   const authorizationExpiredTitle = authorizationState === 'missing'
     ? '这个认证请求已失效或不属于此客户端。' : '学校认证请求已过期。'
-  const authorizationExpiredHelp = schoolSessionActive
-    ? '当前学校登录仍然有效。返回客户端重新发起认证后，可直接确认，不需要重新输入账号密码。'
-    : '返回客户端重新发起认证。学校链接会保留，但需要重新登录学校账号。'
+  const authorizationExpiredHelp = schoolSessionActive === undefined
+    ? '返回客户端重新发起认证。学校链接会保留；当前学校登录状态仍在核对。'
+    : schoolSessionActive
+      ? '当前学校登录仍然有效。返回客户端重新发起认证后，可直接确认，不需要重新输入账号密码。'
+      : '返回客户端重新发起认证。学校链接会保留，但需要重新登录学校账号。'
   const authorizationGate = authorize && authorizationState !== 'pending'
     ? <div className="content home-page"><section className="product-connection" aria-labelledby="authorization-status-title">
       <h2 id="authorization-status-title">学校认证</h2>
@@ -1215,6 +1225,8 @@ function LearningView() {
     onLoginNameChange={setLoginName} onPasswordChange={setPassword}
     onSubmit={() => void action(async generation => {
       ++authEpoch.current
+      // Login may switch accounts; never let an old cached space list seed the new view.
+      try { sessionStorage.removeItem('xj.works-context.v1') } catch { /* Optional hint. */ }
       await api('login', { loginName, password }); if (generation !== epoch.current) return
       setPassword('')
       if (authorize) {

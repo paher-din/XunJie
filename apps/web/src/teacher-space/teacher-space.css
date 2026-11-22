@@ -1,9 +1,9 @@
 /* 教师空间：沿用教学端 token；概览以圆角豆腐块组织模块。 */
 .teacher-page {
-  --t-done: #5aa77c;
-  --t-revised: #bf9a45;
-  --t-pending: #4d7fce;
-  --t-feedback: #8a94a6;
+  --t-done: var(--indicator-green);
+  --t-revised: var(--indicator-amber-ink);
+  --t-pending: var(--accent);
+  --t-feedback: var(--muted);
   --t-missing: var(--line);
 }
 
@@ -1429,7 +1429,7 @@ button.t-project-row:hover {
     gap: 4px;
   }
   .t-pulse-meta small {
-    font-size: 10.5px;
+    font-size: 11px;
   }
   .t-pulse-meta b {
     font-size: 11.5px;

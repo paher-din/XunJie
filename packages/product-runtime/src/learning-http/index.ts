@@ -62,6 +62,7 @@ export function learningFailure(response: ServerResponse, error: unknown) {
   }
   const code = error instanceof StorageError ? error.code : error instanceof z.ZodError ? 'invalid' : 'unavailable';
   const status = code === 'forbidden' ? 403 : code === 'missing' ? 404 : code === 'invalid' ? 400
+    : code === 'expired' ? 410
     : ['conflict', 'identity-conflict', 'incompatible', 'commit-unknown'].includes(code) ? 409 : 503;
   sendLearning(response, status, { error: code });
 }
