@@ -2,7 +2,6 @@ import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { CourseBreadcrumb, CourseTiles, HomeSectionHeading, HomeStatus } from '@xunjie/ui/home'
 import { ConfirmationDialog } from '@xunjie/ui/foundation'
 import { SettingsStatus } from '@xunjie/ui/settings'
-import type { SpaceIdentity } from '@xunjie/contracts/spaces'
 import { ProductShell } from '../components/ProductShell'
 import { Icon } from '../icons'
 import { ProductSettings, type ProductSettingsTab } from '../product/ProductSettings'
@@ -15,13 +14,7 @@ import {
   latestTaskOf, loadTeacherCatalog, submissionLabel, teacherCohort,
   type SubmissionState, type TeacherCatalog, type TeacherCourse, type TeacherDraft, type TeacherRelease, type TeacherSubmission, type TeacherTask,
 } from './data'
-
-interface TeacherContext {
-  clientNamespace: string
-  account: { key: string; accountName: string; schoolName?: string } | null
-  identities?: { key: string; identity: SpaceIdentity }[]
-  readOnly?: boolean
-}
+import { clearTeacherCache, readTeacherCache, writeTeacherCache, type TeacherContext } from './teacher-cache'
 
 const PersonalModelSettings = lazy(() => import('../product/PersonalModelSettings').then(module => ({ default: module.PersonalModelSettings })))
 
@@ -130,8 +123,9 @@ function reviewInboxRows(courses: TeacherCourse[], submissions: TeacherSubmissio
 }
 
 export function TeacherSpace() {
-  const [context, setContext] = useState<TeacherContext | null>(null)
-  const [catalog, setCatalog] = useState<TeacherCatalog | null>(null)
+  const initialCache = useMemo(() => readTeacherCache(), [])
+  const [context, setContext] = useState<TeacherContext | null>(initialCache?.context ?? null)
+  const [catalog, setCatalog] = useState<TeacherCatalog | null>(initialCache?.catalog ?? null)
   const [error, setError] = useState('')
   const [view, setView] = useState<TeacherView>(() => new URLSearchParams(location.search).get('teacher') === 'workbench' ? 'workbench' : 'overview')
   const [courseId, setCourseId] = useState<string | null>(null)
@@ -145,17 +139,35 @@ export function TeacherSpace() {
     fetch('/api/learning/context', { credentials: 'same-origin' }).then(async response => {
       if (!response.ok) throw new Error('教学空间暂时无法连接。')
       const value = await response.json() as TeacherContext
-      if (!cancelled) setContext(value)
-    }).catch(reason => { if (!cancelled) setError(reason instanceof Error ? reason.message : '教学空间暂时无法连接。') })
+      if (cancelled) return
+      const changed = initialCache && (value.clientNamespace !== initialCache.context.clientNamespace
+        || value.account?.key !== initialCache.context.account?.key)
+      if (changed) { setCatalog(null); clearTeacherCache() }
+      if (!value.account) { setCatalog(null); clearTeacherCache() }
+      setError(''); setContext(value)
+    }).catch(reason => {
+      if (cancelled) return
+      // A failed context check invalidates the painted cache; it must not keep
+      // showing a previous account's workspace behind an error.
+      clearTeacherCache(); setContext(null); setCatalog(null)
+      setError(reason instanceof Error ? reason.message : '教学空间暂时无法连接。')
+    })
     return () => { cancelled = true }
-  }, [attempt])
+  }, [attempt, initialCache])
 
   useEffect(() => {
     if (!context?.account?.key) return
     let cancelled = false
     loadTeacherCatalog(context.clientNamespace, context.account.key)
-      .then(value => { if (!cancelled) setCatalog(value) })
-      .catch(reason => { if (!cancelled) setError(reason instanceof Error ? reason.message : '课程目录暂时无法读取。') })
+      .then(value => {
+        if (cancelled) return
+        setCatalog(value)
+        if (value.available) writeTeacherCache(context, value)
+        else clearTeacherCache()
+      })
+      .catch(reason => {
+        if (!cancelled) setError(reason instanceof Error ? reason.message : '课程目录暂时无法读取。')
+      })
     return () => { cancelled = true }
   }, [context, attempt])
 
@@ -169,15 +181,15 @@ export function TeacherSpace() {
 
   const cohort = useMemo(() => teacherCohort(catalog?.courses ?? []), [catalog])
 
-  const retry = () => { setError(''); setContext(null); setCatalog(null); setAttempt(value => value + 1) }
+  const retry = () => { clearTeacherCache(); setError(''); setContext(null); setCatalog(null); setAttempt(value => value + 1) }
   const content = !context ? <div className="content teacher-page">
     {error ? <div role="alert" className="t-inline-error"><p>{error}</p><button type="button" className="outline" onClick={retry}>重试</button></div>
-      : <p role="status" className="t-loading">正在连接学校教学空间…</p>}
+      : <p role="status" className="t-loading">正在打开教学空间…</p>}
   </div> : !context.account ? <div className="content teacher-page">
     <p role="status" className="t-loading">正在返回学生端…</p>
   </div> : !catalog ? <div className="content teacher-page">
     {error ? <div role="alert" className="t-inline-error"><p>{error}</p><button type="button" className="outline" onClick={retry}>重试</button></div>
-      : <p role="status" className="t-loading">正在读取课程目录…</p>}
+      : <p role="status" className="t-loading">正在打开教学空间…</p>}
   </div> : !catalog.available ? <div className="content teacher-page">
     <p role="status" className="t-loading">正在返回学生端…</p>
   </div> : <TeacherWorkspace catalog={catalog} cohort={cohort} view={view} courseId={courseId} courseTab={courseTab}
