@@ -117,7 +117,7 @@ test('第一批固定案例保留不同作品版本、学生预测和工具结�
 });
 
 test('压缩源只选完整旧 Turn，C 语言新版本和测试反馈一起保留', () => {
-  const { select } = createConversationCompaction({ policy: { recentBytes: 1 } });
+  const { select } = createConversationCompaction({ policy: { recentTokens: 1 } });
   const history = [
     { id: 'v3-message', turnId: 'old-turn', role: 'user', version: 1, text: cLanguageCase.workV3.value },
     { id: 'v3-prediction', turnId: 'old-turn', role: 'user', version: 1, text: cLanguageCase.prediction },
@@ -130,15 +130,46 @@ test('压缩源只选完整旧 Turn，C 语言新版本和测试反馈一起保�
   assert.deepEqual(source.remainder, history.slice(2));
 });
 
-test('60% 回落目标只选择需要的闭合旧前缀并保留近期组', () => {
-  const compaction = createConversationCompaction({ policy: { recentBytes: 1 } });
+test('压缩按 10% C-R 的 token 目标保留近期组，不按消息条数', () => {
+  const compaction = createConversationCompaction({ policy: { recentTokens: 1 } });
   const history = Array.from({ length: 8 }, (_, index) => ({
     id: 'turn-' + index, turnId: 'turn-' + index, role: 'user', version: 1, text: 'x'.repeat(1200),
   }));
-  const source = compaction.select(history, [], { currentInputBytes: 12_000, targetInputBytes: 6_000 });
+  const source = compaction.select(history, [], { currentInputTokens: 52_800, recentTokens: 1_500 });
   assert.ok(source);
-  assert.ok(source.messages.length >= 2 && source.messages.length < history.length);
+  const recentTokens = source.remainder.reduce((sum, entry) =>
+    sum + Math.ceil(Buffer.byteLength(JSON.stringify([entry]), 'utf8') / 3), 0);
+  assert.ok(recentTokens >= 1_500, '近期部分至少达到 token 目标');
+  assert.ok(source.remainder.length >= 1 && source.remainder.length < history.length);
   assert.deepEqual(source.remainder, history.slice(source.messages.length));
   assert.ok(source.remainder.some(entry => entry.turnId === 'turn-7'));
-  assert.doesNotMatch(compaction.provider.prompt(source).text, /turn-7/);
+  const prompt = JSON.parse(compaction.provider.prompt(source).text);
+  assert.equal(prompt.messages.some(message => message.turnId === 'turn-7'), false,
+    '最近组只出现在 remainder，不进入摘要输入');
+});
+
+test('没有安全闭合旧区间时返回 null，保留原上下文', () => {
+  const compaction = createConversationCompaction({ policy: { recentTokens: 5_600 } });
+  const history = [
+    { id: 'current-question', turnId: 'current', role: 'user', version: 1, text: '当前问题' },
+    { id: 'current-tool', turnId: 'current', role: 'assistant', version: 1, text: '未闭合工具批次', toolName: 'read_work' },
+  ];
+  assert.equal(compaction.select(history, [], { recentTokens: 5_600 }), null);
+});
+
+test('同一 Turn 的工具调用与结果不会被压缩切点拆开', () => {
+  const compaction = createConversationCompaction({ policy: { recentTokens: 1 } });
+  const history = [
+    { id: 'old-user', turnId: 'old', role: 'user', version: 1, text: '旧问题' },
+    { id: 'call-1', turnId: 'pair', role: 'assistant', version: 1, text: '调用工具', toolName: 'read_work' },
+    { id: 'result-1', turnId: 'pair', role: 'user', version: 1, text: '工具结果', kind: 'tool-result', attemptId: 'call-1', nativeCallId: 'native-1' },
+    { id: 'call-2', turnId: 'pair', role: 'assistant', version: 1, text: '再次调用', toolName: 'read_work' },
+    { id: 'result-2', turnId: 'pair', role: 'user', version: 1, text: '工具结果 2', kind: 'tool-result', attemptId: 'call-2', nativeCallId: 'native-2' },
+  ];
+  const source = compaction.select(history, [], { recentTokens: 1 });
+  const summarized = new Set(source.messages.map(entry => entry.id));
+  assert.equal(summarized.has('call-1'), summarized.has('result-1'), '调用与结果必须同进同出');
+  assert.equal(summarized.has('call-2'), summarized.has('result-2'), '第二批也必须同进同出');
+  assert.deepEqual(source.remainder.map(entry => entry.id), ['call-1', 'result-1', 'call-2', 'result-2'],
+    '最新未闭合工具批次整体保留');
 });

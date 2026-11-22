@@ -12,7 +12,8 @@ import { testPreflight, testVerdict } from './test-payload.js';
 import { errorFacts, networkFailureReason } from './upstream-facts.js';
 import { fixedPermit } from './session-permits.js';
 import { createTransportCompletion } from './transport-completion.js';
-import { measureNativeCapacity } from './request-capacity.js';
+import { encodedImageCount, measureNativeCapacity } from './request-capacity.js';
+import { modelContextPressurePolicy } from '@xunjie/contracts/model-connections';
 
 export const checkMigrations = [{ version: 2, name: 'durable-model-checks', sql: `
   CREATE TABLE model_attempts (id uuid PRIMARY KEY,scope text NOT NULL,body jsonb NOT NULL,input_digest text NOT NULL,
@@ -228,8 +229,10 @@ export function createChecks(storage: OwnedStorage, owner: {
     const body = modelAttemptSchema.parse(found.body);
     if (body.purpose !== 'learning') throw new StorageError('missing');
     const encoded = await storage.readResource(body.requestRef);
+    const safetyRate = encodedImageCount(encoded) > 0
+      ? modelContextPressurePolicy.imageSafetyRate : modelContextPressurePolicy.defaultSafetyRate;
     return measureNativeCapacity(encoded, body.connection.contextWindow ?? null, body.limits.maxOutputTokens,
-      remainingInputTokens, 0.1);
+      remainingInputTokens, safetyRate, body.connection.compactionHeadroomTokens);
   }
   async function list(identity: SpaceIdentity) {
     await owner.authorize(identity);

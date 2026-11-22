@@ -7,7 +7,7 @@ import { learningPageSchema, learningReadSchema, learningSearchSchema, personalP
   type PersonalProjectCreate, type PersonalProjectMaterialReference, type LearningPage, type LearningDetail } from '@xunjie/contracts/student-learning';
 import type { AgentToolResult } from '@xunjie/contracts/agent-runtime';
 import type { AgentTool, Facts, ToolCall, ToolContext } from '@xunjie/agent-runtime';
-import { completed, errored, json, projectResult } from '../../capabilities/tool-support.js';
+import { completed, errored, json, projectResult, toolFeedbackBytes } from '../../capabilities/tool-support.js';
 import { verifyProjectCreation, type CreationQuestionsPort } from '../creation-policy.js';
 
 export interface WorkspaceSessionReceipt { sessionId: string; activityId: string; target: LearningTarget; ready: boolean; }
@@ -50,6 +50,61 @@ const descriptions: Record<ToolName, string> = {
 const inputSchemaOf = (name: ToolName) => z.toJSONSchema(schemas[name], { io: 'input',
   override({ jsonSchema }) { if (jsonSchema.format === 'uuid') delete jsonSchema.format; } });
 
+const unreadableLearningItem = '条目内容超过本次反馈上限，当前领域工具没有提供该条目的安全继续读取参数；模型未收到完整条目。';
+
+function utf8Prefix(text: string, maximumBytes: number) {
+  const bytes = Buffer.from(text, 'utf8');
+  let end = Math.min(bytes.length, Math.max(0, maximumBytes));
+  const decoder = new TextDecoder('utf-8', { fatal: true });
+  while (end > 0) {
+    try { return decoder.decode(bytes.subarray(0, end)); } catch { end--; }
+  }
+  return '';
+}
+
+function utf16Prefix(text: string, maximumUnits: number) {
+  let end = Math.min(text.length, Math.max(0, maximumUnits));
+  if (end < text.length && end > 0 && /[\uD800-\uDBFF]/.test(text[end - 1]!)) end--;
+  return text.slice(0, end);
+}
+
+type LearningSummaryItem = LearningPage['items'][number] & { excerptTruncated?: boolean; unreadable?: string };
+
+function minimalLearningItem(item: LearningPage['items'][number]): LearningSummaryItem {
+  return { reference: item.reference, title: utf8Prefix(item.title, 300), excerpt: '', dueAt: item.dueAt,
+    missing: [...item.missing], excerptTruncated: true, unreadable: unreadableLearningItem };
+}
+
+function boundedLearningPage(page: LearningPage, query: Record<string, unknown>) {
+  let items: LearningSummaryItem[] = page.items.map(item => ({ ...item }));
+  let nextOffset = page.nextOffset;
+  const projection = () => ({ ...page, query, items, nextOffset });
+  const fits = () => Buffer.byteLength(JSON.stringify(projection()), 'utf8') <= toolFeedbackBytes;
+  while (!fits()) {
+    if (items.length > 1) {
+      items = items.slice(0, -1);
+      nextOffset = page.offset + items.length;
+      continue;
+    }
+    if (items.length === 1) {
+      const item = items[0]!;
+      if (item.excerptTruncated && !item.excerpt.length) break;
+      if (item.excerptTruncated || !item.excerpt.length) items = [minimalLearningItem(item)];
+      else items = [{ ...item, excerpt: utf8Prefix(item.excerpt, Math.floor(Buffer.byteLength(item.excerpt, 'utf8') * 0.75)),
+        excerptTruncated: true, unreadable: unreadableLearningItem }];
+      continue;
+    }
+    break;
+  }
+  let summary = JSON.stringify(projection());
+  if (Buffer.byteLength(summary, 'utf8') > toolFeedbackBytes) {
+    summary = JSON.stringify({ query, offset: page.offset, limit: page.limit, nextOffset,
+      items: items.length ? [minimalLearningItem(items[0]!)] : [],
+      unreadable: '学习搜索结果的固定元数据超过反馈上限，模型未收到完整结果。' });
+  }
+  return { summary, items };
+}
+
 /** Concrete scenario tools; the kernel owns the serial loop and result pairing. */
 export function createLearningTools(host: LearningToolsHost): AgentTool[] {
   const identity = spaceIdentitySchema.parse(host.localPersonalIdentity), target = learningTargetSchema.parse(host.localLearningTarget);
@@ -84,29 +139,71 @@ export function createLearningTools(host: LearningToolsHost): AgentTool[] {
     return { workspace, materials };
   }
 
+  /** Domain-specific bounded feedback for read_learning; never loses its continuation handle. */
+  function readLearningFeedback(detail: LearningDetail): AgentToolResult {
+    const originalLength = detail.text.length;
+    const reference = json(detail.reference) as Facts;
+    let visibleOffset = detail.range.offset;
+    let text = detail.text;
+    if (visibleOffset > 0 && text.length && /[\uDC00-\uDFFF]/.test(text[0]!)) {
+      visibleOffset += 1;
+      text = text.slice(1);
+    }
+    if (text.length && /[\uD800-\uDBFF]/.test(text[text.length - 1]!)) text = text.slice(0, -1);
+    const continuation = (nextOffset: number | null): Facts | undefined => nextOffset === null ? undefined : {
+      tool: 'read_learning',
+      reference,
+      ...(detail.pdf ? { page: detail.pdf.page } : {}),
+      range: { offset: nextOffset, length: Math.min(3000, Math.max(0, detail.range.total - nextOffset)) },
+    };
+    let projection: Facts;
+    for (;;) {
+      const nextOffset = visibleOffset + text.length < detail.range.total
+        ? visibleOffset + text.length : null;
+      const pdf = detail.pdf ? (text.length === originalLength ? detail.pdf : {
+        readingId: detail.pdf.readingId, documentId: detail.pdf.documentId, documentSha256: detail.pdf.documentSha256,
+        page: detail.pdf.page, range: detail.pdf.range,
+      }) : undefined;
+      projection = {
+        reference,
+        ...(detail.provenance ? { provenance: json(detail.provenance) } : {}),
+        ...(pdf ? { pdf } : {}),
+        text,
+        range: { offset: visibleOffset, length: text.length, total: detail.range.total, nextOffset },
+        missing: detail.missing,
+        role: 'source-data',
+        ...(continuation(nextOffset) ? { readMore: continuation(nextOffset)! } : {}),
+      };
+      if (Buffer.byteLength(JSON.stringify(projection), 'utf8') <= toolFeedbackBytes || text.length <= 1) break;
+      text = utf16Prefix(text, Math.max(1, Math.floor(text.length * 0.75)));
+    }
+    // The summary is bounded for the model; the complete fixed-version detail stays in data.
+    return completed(JSON.stringify(projection), json(detail));
+  }
+
   async function readTool(name: ToolName, call: ToolCall): Promise<AgentToolResult> {
     let result: unknown;
     if (name === 'read_learning') {
       const input = learningReadSchema.parse(call.input);
       const detail = await host.query.readLearning({ ...input, range: { ...input.range, length: Math.min(input.range.length, 3000) } });
-      if (detail.pdf && detail.text) return projectResult(json({ ...detail,
-        commonSource: { kind: 'course-pdf', reference: detail.reference, ...detail.pdf },
-        page: detail.pdf.page, start: detail.range.offset, end: detail.range.offset + detail.range.length,
-      }), JSON.stringify(detail));
-      if (input.page) return projectResult(json(detail), JSON.stringify(detail), 'error');
+      if (detail.pdf && detail.text) return readLearningFeedback(detail);
+      if (input.page) return errored(JSON.stringify({ reference: detail.reference, range: detail.range,
+        missing: detail.missing, role: 'source-data' }), json({ reference: detail.reference, range: detail.range,
+        missing: detail.missing, role: 'source-data' }));
       result = detail.provenance?.course?.helpPolicy.questions === 'disabled' ? { ...detail, text: '',
         range: { offset: input.range.offset, length: 0, total: 0, nextOffset: null },
         missing: [...new Set([...detail.missing, 'course-agent-help-disabled'])] } : detail;
+      return readLearningFeedback(result as LearningDetail);
     } else {
       const input = (name === 'list_learning_tasks' ? learningPageSchema : learningSearchSchema).parse(call.input);
       const args = { ...input, limit: Math.min(input.limit, 6) };
-      const page = name === 'list_learning_tasks' ? await host.query.listLearningTasks(args) : await host.query.searchLearning(args);
-      result = { ...page, items: page.items.map(item => item.provenance?.course?.helpPolicy.questions === 'disabled'
+      const pageResult = name === 'list_learning_tasks' ? await host.query.listLearningTasks(args) : await host.query.searchLearning(args);
+      result = { ...pageResult, items: pageResult.items.map(item => item.provenance?.course?.helpPolicy.questions === 'disabled'
         ? { ...item, excerpt: '', missing: [...new Set([...item.missing, 'course-agent-help-disabled'])] } : item) };
       const bounded = result as LearningPage;
-      while (JSON.stringify(bounded).length > 8192 && bounded.items.length > 1) {
-        bounded.items.pop(); bounded.nextOffset = bounded.offset + bounded.items.length;
-      }
+      const query = { ...input } as Record<string, unknown>;
+      const boundedPage = boundedLearningPage(bounded, query);
+      return completed(boundedPage.summary, json({ ...bounded, query }));
     }
     return projectResult(json(result), JSON.stringify(result));
   }

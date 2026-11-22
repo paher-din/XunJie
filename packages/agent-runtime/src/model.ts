@@ -5,7 +5,7 @@ import { modelAllowsImages, modelLearningInputSchema, modelSegmentInputSchema, s
 import type { LearningModelPort } from '@xunjie/model-gateway/service';
 import type { AgentStore } from './store.js';
 import type { GenerateInput, GeneratedResponse, ModelPort, Json } from './ports.js';
-import { portableHistory } from './history.js';
+import { portableHistory, toolFeedback } from './history.js';
 import { AgentError, ContextCapacityError, ContextPressureError } from './errors.js';
 import { measureAttemptCapacity } from './capacity.js';
 import { resolveMessageImages } from './message-images.js';
@@ -50,9 +50,7 @@ export function createModelAdapter(source: ModelGatewaySource, store: AgentStore
     const feedback = pending.map(callId => {
       const result = results.get(callId) ?? null;
       if (!result) return { callId, outcome: 'error' as const, text: '宿主重启，副作用结果未知', images: [] };
-      if (result.kind === 'completed') return { callId, outcome: result.outcome === 'success' ? 'success' as const : 'error' as const, text: result.summary, images: result.images ?? [] };
-      if (result.kind === 'accepted') return { callId, outcome: 'success' as const, text: result.summary, images: [] };
-      return { callId, outcome: 'error' as const, text: result.reason, images: [] };
+      return { callId, ...toolFeedback(result) };
     });
     return await gateway.segments.settle(input.identity, actual.segmentId, settleModelToolsSchema.parse({
       requestId: operationId('agent-settle-recovered:' + actual.segmentId + ':' + actual.sequence),
@@ -68,8 +66,7 @@ export function createModelAdapter(source: ModelGatewaySource, store: AgentStore
     // A recovered segment may still owe one settlement per original native call, even when the new Turn
     // starts at a different prefix boundary. Settle before either reusing or closing it.
     if (actual && !actual.closed && actual.pendingTools?.length) actual = await settleRecovered(gateway, input, actual);
-    if (actual && !actual.closed && state.prefixDigest === prefixDigest
-      && (!input.historyProjection?.projectionId || actual.projectionId)) {
+    if (actual && !actual.closed && state.prefixDigest === prefixDigest) {
       // Backfill identity used by material deduplication when reopening a segment
       // created before these fields existed. The matching prefix proves the basis.
       if (state.segmentSystemDigest !== canonicalDigest(input.system)
@@ -95,7 +92,6 @@ export function createModelAdapter(source: ModelGatewaySource, store: AgentStore
       requestId, segmentId: operationId('agent-model-segment:' + requestId), sessionId: input.sessionId,
       source: { selected: true, selectionVersion: runtime.model.selectionVersion, pinId: runtime.model.pinId }, purpose: 'learning',
       prefix: { system: input.system, tools: input.tools }, portable: portableHistory(input.history),
-      projectionId: input.historyProjection?.projectionId,
       ...(actual ? { previousSegmentId: actual.segmentId } : {}),
     }));
     const current = await store.sessionState(input.sessionId);
@@ -166,9 +162,7 @@ export function createModelAdapter(source: ModelGatewaySource, store: AgentStore
         fact = await raceAbort(gateway.checks.receive(input.identity, modelLearningInputSchema.parse({
           attemptId, purpose: 'learning', segmentId: segment.segmentId, expectedSequence: segment.sequence,
           input: { text,
-            images: allImages, toolResults: input.toolResults, observations: [],
-            ...(input.historyProjection ? { historyProjection: { ...input.historyProjection,
-              baseProjectionId: segment.projectionId ?? null } } : {}) },
+            images: allImages, toolResults: input.toolResults, observations: [] },
           limits: { maxOutputTokens: attemptMaxOutput, timeoutMs }, authority: { formatVersion: 1, permit },
         })), input.signal);
         if (fact.state === 'accepted') {
@@ -177,20 +171,23 @@ export function createModelAdapter(source: ModelGatewaySource, store: AgentStore
           measured = capacity;
           await store.recordRequestCapacity(input.stepId, attemptId, capacity, fact.requestRef, rebuilt);
           const notSmaller = input.smallerThanBytes !== undefined && capacity.bytes >= input.smallerThanBytes;
-          if (!capacity.dispatchable || notSmaller) {
-            const reason = notSmaller ? 'request-not-smaller' : capacity.reason;
-            await gateway.checks.cancel(input.identity, attemptId);
-            await store.finishAttempt(input.stepId, attemptId, { state: 'failed',
-              usage: { state: 'final', inputTokens: 0, outputTokens: 0 },
-              responseRef: null, error: reason });
-            throw new ContextCapacityError(capacity.bytes, false, reason, capacity);
-          }
+          // Pressure is a planning signal and is handled before hard admission: the budget may
+          // still be physically dispatchable but must first use its bounded compaction retries.
           if (capacity.pressureState === 'compact' && input.allowPressureCompaction) {
             await gateway.checks.cancel(input.identity, attemptId);
             await store.finishAttempt(input.stepId, attemptId, { state: 'failed',
               usage: { state: 'final', inputTokens: 0, outputTokens: 0 },
               responseRef: null, error: 'context-pressure' });
             throw new ContextPressureError(capacity);
+          }
+          if (!capacity.dispatchable || notSmaller || (capacity.pressureState === 'compact' && input.enforcePressure)) {
+            const reason = notSmaller ? 'request-not-smaller' : capacity.pressureState === 'compact' && input.enforcePressure
+              ? 'context-pressure' : capacity.reason;
+            await gateway.checks.cancel(input.identity, attemptId);
+            await store.finishAttempt(input.stepId, attemptId, { state: 'failed',
+              usage: { state: 'final', inputTokens: 0, outputTokens: 0 },
+              responseRef: null, error: reason });
+            throw new ContextCapacityError(capacity.bytes, false, reason, capacity);
           }
           await input.verifyContext?.({ rebuilt });
           await input.adoptContext?.();

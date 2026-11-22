@@ -1,6 +1,7 @@
 import { canonicalDigest, operationId } from '@xunjie/storage/identity';
-import type { AgentTurn, AgentStep, AgentToolCall, AgentNotification, AgentToolResult } from '@xunjie/contracts/agent-runtime';
-import type { ModelToolResult, ModelImageRef } from '@xunjie/contracts/model-connections';
+import { modelContextPressurePolicy } from '@xunjie/contracts/model-connections';
+import type { AgentTurn, AgentStep, AgentToolCall, AgentNotification } from '@xunjie/contracts/agent-runtime';
+import type { ModelToolResult } from '@xunjie/contracts/model-connections';
 import type { AgentStore, AgentSessionInput } from './store.js';
 import type { ModelGatewaySource } from './model.js';
 import type { AgentScenario, AgentTool, ContextMaterial, HistoryEntry, ModelPort, ToolContext, AskInput, AskOutcome,
@@ -8,7 +9,7 @@ import type { AgentScenario, AgentTool, ContextMaterial, HistoryEntry, ModelPort
 import { buildContext, toolMaterial, type TaskFactsPort } from './context.js';
 import { hasFixedReadback, stepReadbackScope } from './readback.js';
 import { createToolRegistry, executeTools } from './tools.js';
-import { appendHistory, conversationHistory, historyDigest } from './history.js';
+import { appendHistory, conversationHistory, historyDigest, toolFeedback } from './history.js';
 import { budgetExhausted } from './budgets.js';
 import { AgentError, ContextCapacityError, ContextPressureError } from './errors.js';
 import { createCitationTool } from './citations.js';
@@ -119,7 +120,7 @@ async function runStep(deps: LoopDependencies, turn: AgentTurn, step: AgentStep,
   let plan = await buildContext({ store, gateway: deps.gateway, scenario, taskFacts: deps.taskFacts, budget, spent: usage, signal }, scenarioInput, { inputs, notifications });
   // The tool definition is stable for the whole Turn. Adding or removing it between Steps
   // would change the native prefix and force a second segment even when the route is fixed.
-  const generate = async (options: { smallerThanBytes?: number; allowPressureCompaction?: boolean } = {}) => {
+  const generate = async (options: { smallerThanBytes?: number; allowPressureCompaction?: boolean; enforcePressure?: boolean } = {}) => {
     await store.recordStepContext(step.stepId, {
       ruleVersions: asJson(plan.ruleVersions), materials: asJson(plan.materials.map(materialMetadata)),
       rebuildMaterials: asJson(plan.rebuildMaterials.map(materialMetadata)),
@@ -149,7 +150,6 @@ async function runStep(deps: LoopDependencies, turn: AgentTurn, step: AgentStep,
           if (signal.aborted || !await deps.isActive(turn.turnId)) throw new AgentError('cancelled');
         },
       } } : {}),
-      historyProjection: plan.historyProjection,
       historySources: materialsAsHistorySources(plan.materials),
       rebuildHistorySources: materialsAsHistorySources(plan.rebuildMaterials),
       factsDigest: plan.factsDigest,
@@ -174,12 +174,14 @@ async function runStep(deps: LoopDependencies, turn: AgentTurn, step: AgentStep,
       } } : {}),
       ...(plan.adoptCompaction ? { adoptContext: plan.adoptCompaction } : {}),
       ...(options.smallerThanBytes !== undefined ? { smallerThanBytes: options.smallerThanBytes } : {}),
+      ...(options.enforcePressure ? { enforcePressure: true } : {}),
       allowPressureCompaction: options.allowPressureCompaction ?? !plan.compacted,
       onProgress: progress => deps.onProgress(sessionId, turn.turnId, step.stepId, progress.attemptId, progress),
     });
   };
   let response;
   let revocationRetry = false;
+  let compactionsUsed = 0;
   try { response = await generate();
   } catch (error) {
     if (error instanceof AgentError && error.code === 'context-changed') {
@@ -191,17 +193,35 @@ async function runStep(deps: LoopDependencies, turn: AgentTurn, step: AgentStep,
         budget, spent: usage, signal }, scenarioInput, { inputs, notifications });
       response = await generate({ allowPressureCompaction: false });
     } else if (error instanceof ContextPressureError) {
-      const compacted = await buildContext({ store, gateway: deps.gateway, scenario, taskFacts: deps.taskFacts,
-        budget, spent: usage, signal, compactionBasis: error.capacity }, scenarioInput, { inputs, notifications });
-      plan = compacted;
-      try {
-        response = await generate({ allowPressureCompaction: false,
-          ...(plan.compacted ? { smallerThanBytes: error.capacity.bytes } : {}) });
-      } catch (candidateError) {
-        if (!plan.compacted || !(candidateError instanceof ContextCapacityError) || candidateError.sent) throw candidateError;
+      // DeepSeek Harness-style bounded retry: one initial compaction and at most one retry.
+      const maxCompactions = 1 + modelContextPressurePolicy.compactionRetries;
+      let pressureError = error;
+      for (;;) {
+        if (compactionsUsed >= maxCompactions) throw new AgentError('context-capacity-gap');
+        compactionsUsed += 1;
         plan = await buildContext({ store, gateway: deps.gateway, scenario, taskFacts: deps.taskFacts,
-          budget, spent: usage, signal }, scenarioInput, { inputs, notifications });
-        response = await generate({ allowPressureCompaction: false });
+          budget, spent: usage, signal, compactionBasis: pressureError.capacity }, scenarioInput, { inputs, notifications });
+        if (!plan.compacted) {
+          // No safe closed interval or summary failed: retain the original context. It may still
+          // dispatch when the original payload is physically admissible.
+          response = await generate({ allowPressureCompaction: false });
+          break;
+        }
+        const retryPermitted = compactionsUsed < maxCompactions;
+        try {
+          response = await generate({ allowPressureCompaction: retryPermitted, enforcePressure: !retryPermitted,
+            smallerThanBytes: pressureError.capacity.bytes });
+          break;
+        } catch (candidateError) {
+          if (candidateError instanceof ContextPressureError) { pressureError = candidateError; continue; }
+          if (!retryPermitted && candidateError instanceof ContextCapacityError)
+            throw new AgentError('context-capacity-gap');
+          if (!plan.compacted || !(candidateError instanceof ContextCapacityError) || candidateError.sent) throw candidateError;
+          plan = await buildContext({ store, gateway: deps.gateway, scenario, taskFacts: deps.taskFacts,
+            budget, spent: usage, signal }, scenarioInput, { inputs, notifications });
+          response = await generate({ allowPressureCompaction: false });
+          break;
+        }
       }
     } else {
       if (!(error instanceof AgentError) || !['context-capacity-exceeded', 'context-capacity-preflight'].includes(error.code)) throw error;
@@ -275,19 +295,21 @@ async function runStep(deps: LoopDependencies, turn: AgentTurn, step: AgentStep,
       contextFor: call => toolContext(deps, session.identity, turn, step, call, response.segmentId, plan.inputIds, originInputId, visibleAnswerInputIds) })
       .then(outcome => { if (outcome === 'stopped') throw new AgentError('cancelled'); });
     const results = await store.toolCallsOf(step.stepId);
-    const feedback: ModelToolResult[] = results.map(call => ({ callId: call.nativeCallId, ...feedbackOf(call.result) }));
+    const feedback: ModelToolResult[] = results.map(call => ({ callId: call.nativeCallId, ...toolFeedback(call.result, call.name) }));
     const settled = await model.settleTools(session.identity, response.segmentId, response.segmentSequence, feedback);
     const after = await store.sessionState(sessionId);
     const toolHistory = results.map(call => {
       const toolSources = materialsAsHistorySources(toolMaterial(call));
+      const feedback = toolFeedback(call.result, call.name);
       return { id: call.toolCallId, version: 1, role: 'user' as const, turnId: turn.turnId, stepId: step.stepId,
         kind: 'tool-result' as const,
         attemptId: response.attemptId,
         nativeCallId: call.nativeCallId,
+        toolName: call.name,
+        toolOutcome: feedback.outcome,
         readback: toolSources.some(source => hasFixedReadback(source.source, readbackScope, source.range)),
-        text: JSON.stringify({ tool: call.name, kind: call.result?.kind, outcome: feedbackOf(call.result).outcome,
-          summary: call.result && 'summary' in call.result ? call.result.summary : call.result && 'reason' in call.result ? call.result.reason : '',
-          ...effectReferences(call.result) }),
+        // Exactly the text the model saw at the tool boundary; never a second, age-based summary.
+        text: feedback.text,
         ...(call.result?.kind === 'completed' && call.result.images?.length ? { images: call.result.images } : {}),
         sources: [...historySources, ...toolSources] };
     });
@@ -334,21 +356,6 @@ function materialsAsHistorySources(materials: readonly ContextMaterial[]) {
       ...(material.readState === 'included' && material.content !== null ? { inlineDigest: material.digest } : {}),
       ...(material.range ? { range: material.range } : {}) });
   return [...sources.values()];
-}
-function feedbackOf(result: AgentToolResult | null): { outcome: 'success' | 'error' | 'not-executed'; text: string; images: ModelImageRef[] } {
-  if (!result) return { outcome: 'not-executed', text: '工具未执行', images: [] };
-  switch (result.kind) {
-    case 'completed': return { outcome: result.outcome === 'success' ? 'success' : 'error', text: result.summary, images: result.images ?? [] };
-    case 'accepted': return { outcome: 'success', text: result.summary, images: [] };
-    case 'not_started': return { outcome: 'not-executed', text: result.reason, images: [] };
-    case 'interrupted': return { outcome: 'not-executed', text: result.reason, images: [] };
-    case 'outcome_unknown': return { outcome: 'error', text: JSON.stringify({ kind: result.kind, reason: result.reason, ...effectReferences(result) }), images: [] };
-  }
-}
-function effectReferences(result: AgentToolResult | null): { taskId?: string; requestRef?: string } {
-  if (result?.kind === 'accepted') return { taskId: result.taskId };
-  if (result?.kind !== 'outcome_unknown') return {};
-  return { ...(result.taskId ? { taskId: result.taskId } : {}), ...(result.requestRef ? { requestRef: result.requestRef } : {}) };
 }
 function toolContext(deps: LoopDependencies, identity: ScenarioInput['identity'], turn: AgentTurn, step: AgentStep, call: AgentToolCall,
   segmentId: string, inputIds: string[], originInputId: string | null, visibleAnswerInputIds: readonly string[]): ToolContext {
