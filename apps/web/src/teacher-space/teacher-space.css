@@ -335,12 +335,6 @@
 .t-pulse-head .sectionhead {
   margin: 0;
 }
-.t-pulse-note {
-  margin: 5px 0 0;
-  color: var(--muted);
-  font-size: 11.5px;
-  letter-spacing: 0.01em;
-}
 .t-pulse-key {
   display: flex;
   flex-wrap: wrap;
@@ -389,16 +383,7 @@ i.t-pulse-key-missing {
   align-items: center;
   gap: 24px;
   width: 100%;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  text-align: left;
-}
-.t-pulse-row:hover {
-  filter: none;
-}
-.t-pulse-row:hover .t-pulse-copy strong {
-  color: var(--accent-deep);
+  min-width: 0;
 }
 .t-pulse-copy {
   display: flex;
@@ -407,22 +392,53 @@ i.t-pulse-key-missing {
   align-items: flex-start;
   gap: 4px;
 }
-.t-pulse-copy strong {
+.t-pulse-course,
+.t-pulse-task {
+  display: block;
+  max-width: 100%;
   overflow: hidden;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  line-height: 1.45;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 150ms var(--ease-s), background 150ms var(--ease-s);
+}
+.t-pulse-course {
   color: var(--ink);
   font-size: 13px;
   font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  transition: color 150ms var(--ease-s);
 }
-.t-pulse-copy span {
-  overflow: hidden;
+.t-pulse-course:hover {
+  color: var(--accent-deep);
+}
+.t-pulse-task {
+  margin-left: -4px;
+  padding: 1px 4px;
+  border-radius: 4px;
   color: var(--muted);
   font-size: 12px;
   font-weight: 400;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+}
+.t-pulse-task:hover {
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.t-pulse-course:focus-visible,
+.t-pulse-task:focus-visible,
+.t-pulse-energy:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.t-pulse-empty {
+  color: var(--muted);
+  font-size: 12px;
 }
 .t-pulse-energy {
   display: flex;
@@ -431,6 +447,12 @@ i.t-pulse-key-missing {
   flex-direction: column;
   align-items: flex-end;
   gap: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  text-align: right;
+  cursor: pointer;
 }
 .t-pulse-meter {
   display: grid;
@@ -761,6 +783,58 @@ i.t-pulse-key-missing {
   color: var(--ink);
   font-weight: 600;
   box-shadow: 0 0 0 1px var(--line), 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.t-task-focus {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: -8px 0 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--sunken);
+}
+.t-task-focus-main {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+.t-task-focus-main span {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+.t-task-focus-main strong {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.t-task-focus-main small {
+  color: var(--muted);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.t-task-focus-clear {
+  flex: none;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent-deep);
+  font-family: inherit;
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.t-task-focus-clear:hover {
+  color: var(--ink);
 }
 
 /* ---------- 作业审阅 ---------- */
@@ -1351,7 +1425,7 @@ button.t-project-row:hover {
   .t-rhythm-card .t-week-bars {
     flex: 1 1 100%;
     max-width: 220px;
-    height: 120px;
+    height: 110px;
   }
   .t-rhythm-card .t-pulse-feedback {
     margin: 0 auto;

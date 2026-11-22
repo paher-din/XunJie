@@ -130,6 +130,7 @@ export function TeacherSpace() {
   const [view, setView] = useState<TeacherView>(() => new URLSearchParams(location.search).get('teacher') === 'workbench' ? 'workbench' : 'overview')
   const [courseId, setCourseId] = useState<string | null>(null)
   const [courseTab, setCourseTab] = useState<'review' | 'design'>('review')
+  const [courseTaskId, setCourseTaskId] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [settingsTab, setSettingsTab] = useState<ProductSettingsTab>('account')
   const [attempt, setAttempt] = useState(0)
@@ -192,20 +193,20 @@ export function TeacherSpace() {
       : <p role="status" className="t-loading">正在打开教学空间…</p>}
   </div> : !catalog.available ? <div className="content teacher-page">
     <p role="status" className="t-loading">正在返回学生端…</p>
-  </div> : <TeacherWorkspace catalog={catalog} cohort={cohort} view={view} courseId={courseId} courseTab={courseTab}
-    onView={next => { setView(next); if (next === 'overview') setCourseId(null) }}
-    onCourse={(id, tab = 'review') => { setCourseId(id); setCourseTab(tab); setView('workbench') }}
-    onBackToCourses={() => setCourseId(null)} />
+  </div> : <TeacherWorkspace catalog={catalog} cohort={cohort} view={view} courseId={courseId} courseTab={courseTab} courseTaskId={courseTaskId}
+    onView={next => { setView(next); if (next === 'overview') setCourseId(null); setCourseTaskId(null) }}
+    onCourse={(id, tab = 'review', taskId = null) => { setCourseId(id); setCourseTab(tab); setCourseTaskId(taskId); setView('workbench') }}
+    onBackToCourses={() => { setCourseId(null); setCourseTaskId(null) }} />
 
   return <>
     {catalog?.available && context?.account ? <ProductShell immersive={false} brandRole="教师" accountName={context.account.accountName}
       active={settingsOpen ? 'settings' : undefined}
-      onHome={() => { setSettingsOpen(false); setView('overview'); setCourseId(null) }}
+      onHome={() => { setSettingsOpen(false); setView('overview'); setCourseId(null); setCourseTaskId(null) }}
       onAgent={() => {}}
       onSettings={() => setSettingsOpen(true)}
       navItems={[{ id: 'overview', label: '教学概览', icon: 'home-2', activeIcon: 'home-2' },
         { id: 'workbench', label: '工作台', icon: 'workbench', activeIcon: 'workbench' }]}
-      onNavItem={id => { setSettingsOpen(false); setView(id as TeacherView); setCourseId(null) }}
+      onNavItem={id => { setSettingsOpen(false); setView(id as TeacherView); setCourseId(null); setCourseTaskId(null) }}
       activeNavItem={settingsOpen ? undefined : view}>
       {settingsOpen ? <TeacherSettingsPage context={context} account={context.account} tab={settingsTab}
         onTab={setSettingsTab} onClose={() => setSettingsOpen(false)} /> : content}
@@ -213,13 +214,13 @@ export function TeacherSpace() {
   </>
 }
 
-function TeacherWorkspace({ catalog, cohort, view, courseId, courseTab, onView, onCourse, onBackToCourses }: {
+function TeacherWorkspace({ catalog, cohort, view, courseId, courseTab, courseTaskId, onView, onCourse, onBackToCourses }: {
   catalog: TeacherCatalog; cohort: ReturnType<typeof teacherCohort>
-  view: TeacherView; courseId: string | null; courseTab: 'review' | 'design'
-  onView: (view: TeacherView) => void; onCourse: (id: string, tab?: 'review' | 'design') => void; onBackToCourses: () => void
+  view: TeacherView; courseId: string | null; courseTab: 'review' | 'design'; courseTaskId: string | null
+  onView: (view: TeacherView) => void; onCourse: (id: string, tab?: 'review' | 'design', taskId?: string | null) => void; onBackToCourses: () => void
 }) {
   const course = catalog.courses.find(item => item.courseId === courseId)
-  if (course) return <CourseWorkspace key={course.courseId + courseTab} course={course} cohort={cohort} initialTab={courseTab} onBack={onBackToCourses} />
+  if (course) return <CourseWorkspace key={course.courseId + courseTab + (courseTaskId ?? '')} course={course} cohort={cohort} initialTab={courseTab} initialTaskId={courseTaskId} onBack={onBackToCourses} />
   return view === 'overview'
     ? <Overview courses={catalog.courses} cohort={cohort} onCourse={onCourse} onWorkbench={() => onView('workbench')} />
     : <Workbench courses={catalog.courses} cohort={cohort} onCourse={onCourse} />
@@ -227,7 +228,7 @@ function TeacherWorkspace({ catalog, cohort, view, courseId, courseTab, onView, 
 
 function Overview({ courses, cohort, onCourse, onWorkbench }: {
   courses: TeacherCourse[]; cohort: ReturnType<typeof teacherCohort>
-  onCourse: (id: string, tab?: 'review' | 'design') => void; onWorkbench: () => void
+  onCourse: (id: string, tab?: 'review' | 'design', taskId?: string | null) => void; onWorkbench: () => void
 }) {
   const pending = cohort.submissions.filter(item => item.state === 'pending')
   const revised = cohort.submissions.filter(item => item.state === 'revised')
@@ -297,7 +298,6 @@ function Overview({ courses, cohort, onCourse, onWorkbench }: {
         <div className="t-pulse-head">
           <div className="t-pulse-heading">
             <HomeSectionHeading title={<span id="t-board-title">课程进展</span>} count={`${courses.length} 门`} />
-            <p className="t-pulse-note" title="每格约 4%，按提交状态着色，不代表单个学生">每格约 4% · 按状态着色</p>
           </div>
           <div className="t-pulse-key" aria-label="状态颜色">
             <span><i className="t-pulse-key-done" />已完成</span>
@@ -310,7 +310,8 @@ function Overview({ courses, cohort, onCourse, onWorkbench }: {
         {coursePulse.length === 0 ? <p className="t-inbox-empty">当前没有在教课程。</p>
           : <div className="t-pulse-list">
             {coursePulse.map(item => <CoursePulseRow key={item.course.courseId} item={item}
-              onOpen={() => onCourse(item.course.courseId)} />)}
+              onOpen={() => onCourse(item.course.courseId)}
+              onTask={() => item.task && onCourse(item.course.courseId, 'review', item.task.taskId)} />)}
           </div>}
       </div>
       <article className="t-overview-card t-module t-rhythm-card" aria-labelledby="t-rhythm-title">
@@ -395,20 +396,23 @@ function Overview({ courses, cohort, onCourse, onWorkbench }: {
   </div>
 }
 
-function CoursePulseRow({ item, onOpen }: { item: CoursePulseRowData; onOpen: () => void }) {
+function CoursePulseRow({ item, onOpen, onTask }: { item: CoursePulseRowData; onOpen: () => void; onTask: () => void }) {
   const percent = item.task ? percentOf(item.submitted, item.assigned) : null
   const meter = pulseMeter(item)
   const release = item.release?.publishedAt ? releaseAgeText(item.release.publishedAt) : '—'
   const justPublished = Boolean(item.task && item.submitted === 0 && item.release?.publishedAt && isFreshRelease(item.release.publishedAt))
   const percentLabel = percent == null ? '' : `，约 ${percent}%`
   const statusSummary = [...PULSE_STATES.map(state => `${PULSE_STATE_LABELS[state]} ${item.statusCounts[state]}`), `未提交 ${item.missing}`].join('，')
-  const ariaLabel = `${item.course.name}：${item.task ? `最新任务${item.task.title}，已提交 ${item.submitted}/${item.assigned}${percentLabel}；${statusSummary}` : '尚未发布任务'}`
-  return <button type="button" className="t-pulse-row" aria-label={ariaLabel} onClick={onOpen}>
+  const ariaLabel = `${item.course.name}：${item.task ? `任务${item.task.title}，已提交 ${item.submitted}/${item.assigned}${percentLabel}；${statusSummary}` : '尚未发布任务'}`
+  return <div className="t-pulse-row">
     <span className="t-pulse-copy">
-      <strong>{item.course.name}</strong>
-      <span title={item.task?.title}>{item.task ? `最新任务 · ${item.task.title}` : '尚未发布任务'}</span>
+      <button type="button" className="t-pulse-course" onClick={onOpen}>{item.course.name}</button>
+      {item.task
+        ? <button type="button" className="t-pulse-task" title={item.task.title}
+          aria-label={`打开任务：${item.task.title}（${item.course.name}）`} onClick={onTask}>{item.task.title}</button>
+        : <span className="t-pulse-empty">尚未发布任务</span>}
     </span>
-    <span className="t-pulse-energy">
+    <button type="button" className="t-pulse-energy" aria-label={`打开${ariaLabel}`} onClick={onOpen}>
       <span className="t-pulse-meter" aria-hidden="true" title={statusSummary}>
         {meter.map((state, index) => <span key={index} className="t-pulse-meter-cell" data-state={state} />)}
       </span>
@@ -418,8 +422,8 @@ function CoursePulseRow({ item, onOpen }: { item: CoursePulseRowData; onOpen: ()
           ? justPublished ? <b>刚发布</b> : <b>{item.submitted}/{item.assigned}{percent != null && <i> · {percent}%</i>}</b>
           : <b>—</b>}
       </span>
-    </span>
-  </button>
+    </button>
+  </div>
 }
 
 function FeedbackRing({ covered, total }: { covered: number; total: number }) {
@@ -476,13 +480,17 @@ function Workbench({ courses, cohort, onCourse }: { courses: TeacherCourse[]; co
   </div>
 }
 
-function CourseWorkspace({ course, cohort, initialTab, onBack }: {
+function CourseWorkspace({ course, cohort, initialTab, initialTaskId, onBack }: {
   course: TeacherCourse; cohort: ReturnType<typeof teacherCohort>; initialTab: 'review' | 'design'
+  initialTaskId?: string | null
   onBack: () => void
 }) {
   const [tab, setTab] = useState<'review' | 'design'>(initialTab)
+  const [taskScope, setTaskScope] = useState<string | null>(initialTaskId ?? null)
   const [submissions, setSubmissions] = useState<TeacherSubmission[]>(() => cohort.submissions.filter(item => item.courseId === course.courseId))
   const [projects, setProjects] = useState<TeacherDraft[]>(() => cohort.drafts.filter(item => item.courseId === course.courseId))
+  const scopedTask = taskScope ? course.tasks.find(item => item.taskId === taskScope) : undefined
+  const scopedCount = scopedTask ? submissions.filter(item => item.taskId === scopedTask.taskId).length : 0
   return <div className="content teacher-page">
     <CourseBreadcrumb title={course.name} onBack={() => onBack()} />
     <p className="t-course-meta">{course.tasks.length} 个任务 · {cohort.students.length} 名学生 · {course.tasks.reduce((sum, task) => sum + task.releases.length, 0)} 个发布版本</p>
@@ -494,8 +502,16 @@ function CourseWorkspace({ course, cohort, initialTab, onBack }: {
         tabIndex={tab === 'design' ? 0 : -1} className={tab === 'design' ? 'on' : ''} onClick={() => setTab('design')}
         onKeyDown={event => { if (event.key !== 'ArrowLeft') return; event.preventDefault(); setTab('review'); requestAnimationFrame(() => document.getElementById('t-tab-review')?.focus()) }}>任务设计</button>
     </div>
+    {scopedTask && tab === 'review' && <div className="t-task-focus">
+      <div className="t-task-focus-main">
+        <span>当前任务</span>
+        <strong>{scopedTask.title}</strong>
+        <small>{scopedCount} 份提交</small>
+      </div>
+      <button type="button" className="t-task-focus-clear" onClick={() => setTaskScope(null)}>查看全部任务</button>
+    </div>}
     {tab === 'review'
-      ? <div id="t-panel-review" role="tabpanel" aria-labelledby="t-tab-review"><ReviewPane course={course} submissions={submissions}
+      ? <div id="t-panel-review" role="tabpanel" aria-labelledby="t-tab-review"><ReviewPane key={scopedTask?.taskId ?? 'all'} course={course} submissions={submissions} taskId={scopedTask?.taskId ?? null}
         onChange={next => setSubmissions(current => current.map(item => item.submissionId === next.submissionId ? next : item))} /></div>
       : <div id="t-panel-design" role="tabpanel" aria-labelledby="t-tab-design"><DesignPane course={course} projects={projects} onProjects={setProjects} /></div>}
   </div>
@@ -506,20 +522,22 @@ const filters: { id: 'all' | SubmissionState; label: string }[] = [
   { id: 'feedback', label: '已反馈' }, { id: 'done', label: '已完成' },
 ]
 
-function ReviewPane({ course, submissions, onChange }: {
-  course: TeacherCourse; submissions: TeacherSubmission[]; onChange: (submission: TeacherSubmission) => void
+function ReviewPane({ course, submissions, taskId, onChange }: {
+  course: TeacherCourse; submissions: TeacherSubmission[]; taskId?: string | null; onChange: (submission: TeacherSubmission) => void
 }) {
+  const scoped = taskId ? submissions.filter(item => item.taskId === taskId) : submissions
   const [filter, setFilter] = useState<'all' | SubmissionState>('pending')
-  const [selectedId, setSelectedId] = useState(() => submissions.find(item => item.state === 'pending')?.submissionId ?? submissions[0]?.submissionId)
-  const visible = filter === 'all' ? submissions : submissions.filter(item => item.state === filter)
-  const selected = submissions.find(item => item.submissionId === selectedId) ?? visible[0]
+  const [selectedId, setSelectedId] = useState(() => scoped.find(item => item.state === 'pending')?.submissionId ?? scoped[0]?.submissionId)
+  const visible = filter === 'all' ? scoped : scoped.filter(item => item.state === filter)
+  const selected = scoped.find(item => item.submissionId === selectedId) ?? visible[0]
   const [feedback, setFeedback] = useState(selected?.feedback ?? '')
   const [saved, setSaved] = useState('')
 
   useEffect(() => { setFeedback(selected?.feedback ?? ''); setSaved('') }, [selectedId])
 
-  if (submissions.length === 0) return <div className="t-review-empty">
-    <h3>还没有学生提交</h3><p>发布任务后，学生的提交会按状态进入这里。</p>
+  if (scoped.length === 0) return <div className="t-review-empty">
+    <h3>{taskId ? '这个任务还没有提交' : '还没有学生提交'}</h3>
+    <p>{taskId ? '学生提交后，会按状态出现在这里。' : '发布任务后，学生的提交会按状态进入这里。'}</p>
   </div>
 
   const save = (state: SubmissionState) => {
@@ -532,7 +550,7 @@ function ReviewPane({ course, submissions, onChange }: {
     <aside className="t-review-list" aria-label="提交清单">
       <div className="t-filter" role="group" aria-label="按状态筛选">
         {filters.map(item => <button key={item.id} type="button" className={filter === item.id ? 'on' : ''} aria-pressed={filter === item.id}
-          onClick={() => setFilter(item.id)}>{item.label}<small>{item.id === 'all' ? submissions.length : submissions.filter(entry => entry.state === item.id).length}</small></button>)}
+          onClick={() => setFilter(item.id)}>{item.label}<small>{item.id === 'all' ? scoped.length : scoped.filter(entry => entry.state === item.id).length}</small></button>)}
       </div>
       <div className="t-submission-list">
         {visible.length === 0 ? <p className="t-list-empty">这个状态没有提交。</p> : visible.map(item => <button key={item.submissionId} type="button"
