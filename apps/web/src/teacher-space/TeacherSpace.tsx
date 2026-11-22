@@ -235,13 +235,6 @@ function Overview({ courses, cohort, onCourse, onWorkbench }: {
   const revised = cohort.submissions.filter(item => item.state === 'revised')
   const submittedStudents = new Set(cohort.submissions.map(item => item.studentId))
   const stalled = cohort.students.filter(student => !submittedStudents.has(student.studentId))
-  const distribution = courses.map(course => {
-    const owns = cohort.submissions.filter(item => item.courseId === course.courseId)
-    const counts = { done: 0, pending: 0, revised: 0, feedback: 0, missing: 0 }
-    for (const item of owns) counts[item.state] += 1
-    counts.missing = Math.max(0, cohort.students.length - owns.length)
-    return { course, counts, total: cohort.students.length }
-  })
   const inboxRows: InboxRow[] = [
     ...reviewInboxRows(courses, cohort.submissions, 'pending'),
     ...reviewInboxRows(courses, cohort.submissions, 'revised'),
@@ -368,30 +361,6 @@ function Overview({ courses, cohort, onCourse, onWorkbench }: {
         </div>}
     </section>
 
-    <div className="t-board">
-        <article className="t-overview-card t-module">
-          <header className="t-module-head"><h3>学生进度分布</h3><span className="t-legend">
-            <i className="t-dot t-dot-done" />已完成<i className="t-dot t-dot-revised" />待复核<i className="t-dot t-dot-pending" />待审阅<i className="t-dot t-dot-feedback" />已反馈<i className="t-dot t-dot-missing" />未提交
-          </span></header>
-          <div className="t-progress-rows">
-            {distribution.map(({ course, counts, total }) => {
-              const segments = [
-                { key: 'done', value: counts.done }, { key: 'revised', value: counts.revised },
-                { key: 'pending', value: counts.pending }, { key: 'feedback', value: counts.feedback },
-                { key: 'missing', value: counts.missing },
-              ]
-              return <div key={course.courseId} className="t-progress-row">
-                <button type="button" className="t-progress-name" onClick={() => onCourse(course.courseId)}>{course.name}</button>
-                <div className="t-stack" role="img" aria-label={`${course.name}：已完成 ${counts.done}，待复核 ${counts.revised}，待审阅 ${counts.pending}，已反馈 ${counts.feedback}，未提交 ${counts.missing}`}>
-                  {segments.map(segment => segment.value > 0 && <span key={segment.key} className={`t-seg t-seg-${segment.key}`}
-                    style={{ flexGrow: segment.value }} />)}
-                </div>
-                <span className="t-progress-count">{counts.done}<small>/{total}</small></span>
-              </div>
-            })}
-          </div>
-        </article>
-      </div>
     <p className="t-data-note">课程与任务来自学校发布的真实目录；学生、提交、草稿为界面预览用的示例数据，接入审阅接口后替换。</p>
   </div>
 }

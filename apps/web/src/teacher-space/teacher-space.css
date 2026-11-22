@@ -593,9 +593,6 @@ i.t-pulse-key-feedback {
   letter-spacing: -0.4px;
 }
 
-.t-board {
-  margin-top: 24px;
-}
 .t-module.t-overview-card {
   padding: 20px;
 }
@@ -609,102 +606,6 @@ i.t-pulse-key-feedback {
 .t-module-head h3 {
   font-size: 15px;
   margin: 0;
-}
-.t-legend {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  font-size: 11.5px;
-  color: var(--muted);
-}
-.t-legend .t-dot {
-  margin-left: 6px;
-}
-.t-legend .t-dot:first-child {
-  margin-left: 0;
-}
-.t-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  display: inline-block;
-}
-.t-dot-done {
-  background: var(--t-done);
-}
-.t-dot-revised {
-  background: var(--t-revised);
-}
-.t-dot-pending {
-  background: var(--t-pending);
-}
-.t-dot-feedback {
-  background: var(--t-feedback);
-}
-.t-dot-missing {
-  background: var(--t-missing);
-}
-
-.t-progress-rows {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.t-progress-row {
-  display: grid;
-  grid-template-columns: 170px minmax(0, 1fr) 44px;
-  align-items: center;
-  gap: 14px;
-}
-.t-progress-name {
-  font-size: 13px;
-  color: var(--ink-soft);
-  text-align: left;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.t-progress-name:hover {
-  color: var(--ink);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-.t-stack {
-  display: flex;
-  height: 10px;
-  border-radius: 5px;
-  overflow: hidden;
-  background: var(--t-missing);
-}
-.t-seg {
-  flex-basis: 0;
-  min-width: 3px;
-}
-.t-seg-done {
-  background: var(--t-done);
-}
-.t-seg-revised {
-  background: var(--t-revised);
-}
-.t-seg-pending {
-  background: var(--t-pending);
-}
-.t-seg-feedback {
-  background: var(--t-feedback);
-}
-.t-seg-missing {
-  background: var(--t-missing);
-}
-.t-progress-count {
-  font-size: 13px;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink-soft);
-}
-.t-progress-count small {
-  color: var(--muted);
 }
 
 .t-week-bars {
@@ -1499,9 +1400,6 @@ button.t-project-row:hover {
   }
   .t-review-detail {
     padding-left: 0;
-  }
-  .t-progress-row {
-    grid-template-columns: 120px minmax(0, 1fr) 40px;
   }
   .t-designer-head {
     grid-template-columns: 1fr;
