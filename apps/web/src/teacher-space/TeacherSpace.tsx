@@ -400,7 +400,7 @@ function CoursePulseRow({ item, onOpen, onTask }: { item: CoursePulseRowData; on
 
 function FeedbackRing({ covered, total }: { covered: number; total: number }) {
   const percent = percentOf(covered, total)
-  const radius = 20
+  const radius = 22
   const circumference = 2 * Math.PI * radius
   const offset = circumference * (1 - (percent ?? 0) / 100)
   return <div className="t-pulse-feedback">
@@ -409,9 +409,9 @@ function FeedbackRing({ covered, total }: { covered: number; total: number }) {
       <span>{total ? `${covered}/${total} 份提交` : '暂无提交'}</span>
     </div>
     <div className="t-pulse-ring" role="img" aria-label={percent == null ? '反馈覆盖：暂无提交' : `反馈覆盖 ${percent}%，${covered}/${total} 份提交已反馈`}>
-      <svg viewBox="0 0 48 48" aria-hidden="true">
-        <circle className="t-pulse-ring-track" cx="24" cy="24" r={radius} />
-        {percent != null && <circle className="t-pulse-ring-value" cx="24" cy="24" r={radius}
+      <svg viewBox="0 0 52 52" aria-hidden="true">
+        <circle className="t-pulse-ring-track" cx="26" cy="26" r={radius} />
+        {percent != null && <circle className="t-pulse-ring-value" cx="26" cy="26" r={radius}
           style={{ strokeDasharray: circumference, strokeDashoffset: offset }} />}
       </svg>
       <b>{percent == null ? '—' : `${percent}%`}</b>
@@ -423,18 +423,26 @@ function WeekBars({ submissions }: { submissions: TeacherSubmission[] }) {
   const groups = [0, 1, 2].map(week => {
     const start = Date.UTC(2026, 10, 2 + week * 7)
     const end = start + 7 * 86400000
-    return submissions.filter(item => {
+    const owns = submissions.filter(item => {
       const time = new Date(item.submittedAt).getTime()
       return time >= start && time < end
-    }).length
+    })
+    return { total: owns.length, covered: owns.filter(item => item.state !== 'pending').length }
   })
-  const max = Math.max(1, ...groups)
-  return <div className="t-week-bars" role="img" aria-label={`近三周提交：${groups.join('、')} 份`}>
-    {groups.map((value, index) => <div key={index} className="t-week">
-      <span className="t-week-bar" style={{ height: `${Math.max(6, Math.round(value / max * 100))}%` }} />
-      <b>{value}</b>
-      <small>{['11-02', '11-09', '11-16'][index]}</small>
-    </div>)}
+  const max = Math.max(1, ...groups.map(group => group.total))
+  const description = groups.map((group, index) => `${['11-02', '11-09', '11-16'][index]} 提交 ${group.total}、已反馈 ${group.covered}`).join('；')
+  return <div className="t-week-bars" role="img" aria-label={`近三周提交与反馈覆盖：${description}`}>
+    {groups.map((group, index) => {
+      const barHeight = group.total ? Math.max(14, Math.round(group.total / max * 100)) : 0
+      const coveredHeight = group.total ? Math.max(10, Math.round(group.covered / group.total * 100)) : 0
+      return <div key={index} className="t-week">
+        <span className="t-week-bar" style={{ height: `${barHeight}%` }}>
+          {group.covered > 0 && <i style={{ height: `${coveredHeight}%` }} />}
+        </span>
+        <b>{group.total}</b>
+        <small>{['11-02', '11-09', '11-16'][index]}</small>
+      </div>
+    })}
   </div>
 }
 
