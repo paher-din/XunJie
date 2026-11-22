@@ -4,7 +4,7 @@
   --t-revised: #bf9a45;
   --t-pending: #4d7fce;
   --t-feedback: #8a94a6;
-  --t-missing: #e4e4e1;
+  --t-missing: var(--line);
 }
 
 .t-section {
@@ -337,6 +337,42 @@
   font-size: 11.5px;
   letter-spacing: 0.01em;
 }
+.t-pulse-key {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px 12px;
+  padding-top: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.t-pulse-key span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.t-pulse-key i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--t-missing);
+}
+i.t-pulse-key-done {
+  background: var(--t-done);
+}
+i.t-pulse-key-revised {
+  background: var(--t-revised);
+}
+i.t-pulse-key-pending {
+  background: var(--t-pending);
+}
+i.t-pulse-key-feedback {
+  background: var(--t-feedback);
+}
+i.t-pulse-key-missing {
+  background: var(--t-missing);
+}
 .t-pulse-list {
   display: flex;
   flex-direction: column;
@@ -345,9 +381,9 @@
 }
 .t-pulse-row {
   display: grid;
-  grid-template-columns: 56px minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 14px;
+  gap: 24px;
   width: 100%;
   padding: 0;
   border: 0;
@@ -360,26 +396,11 @@
 .t-pulse-row:hover .t-pulse-copy strong {
   color: var(--accent-deep);
 }
-.t-pulse-grid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  grid-template-rows: repeat(5, 1fr);
-  gap: 2px;
-  width: 56px;
-  height: 56px;
-  flex: none;
-}
-.t-pulse-cell {
-  border-radius: 2px;
-  background: var(--paper);
-}
-.t-pulse-cell[data-filled='true'] {
-  background: var(--accent);
-}
 .t-pulse-copy {
   display: flex;
   min-width: 0;
   flex-direction: column;
+  align-items: flex-start;
   gap: 4px;
 }
 .t-pulse-copy strong {
@@ -399,18 +420,52 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.t-pulse-meta {
+.t-pulse-energy {
   display: flex;
-  min-width: 96px;
+  width: 168px;
+  flex: none;
   flex-direction: column;
   align-items: flex-end;
-  gap: 4px;
-  text-align: right;
+  gap: 6px;
+}
+.t-pulse-meter {
+  display: grid;
+  grid-template-columns: repeat(25, minmax(0, 1fr));
+  gap: 2px;
+  width: 168px;
+  height: 24px;
+}
+.t-pulse-meter-cell {
+  border-radius: 2px;
+  background: var(--t-missing);
+}
+.t-pulse-meter-cell[data-state='done'] {
+  background: var(--t-done);
+}
+.t-pulse-meter-cell[data-state='revised'] {
+  background: var(--t-revised);
+}
+.t-pulse-meter-cell[data-state='pending'] {
+  background: var(--t-pending);
+}
+.t-pulse-meter-cell[data-state='feedback'] {
+  background: var(--t-feedback);
+}
+.t-pulse-meter-cell[data-state='missing'] {
+  background: var(--t-missing);
+}
+.t-pulse-meta {
+  display: flex;
+  width: 100%;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
 }
 .t-pulse-meta small {
   color: var(--muted);
   font-size: 11px;
   font-weight: 400;
+  white-space: nowrap;
 }
 .t-pulse-meta b {
   color: var(--ink);
@@ -424,6 +479,16 @@
   font-size: 11px;
   font-style: normal;
   font-weight: 400;
+}
+.t-rhythm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+.t-rhythm .t-pulse-feedback {
+  margin-left: auto;
 }
 .t-pulse-feedback {
   display: flex;
@@ -1288,10 +1353,16 @@ button.t-project-row:hover {
     gap: 16px;
   }
   .t-pulse-row {
-    grid-template-columns: 48px minmax(0, 1fr) auto;
-    gap: 12px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 16px;
   }
-  .t-pulse-grid,
+  .t-pulse-energy {
+    width: 144px;
+  }
+  .t-pulse-meter {
+    width: 144px;
+    height: 20px;
+  }
   .t-pulse-ring {
     width: 48px;
     height: 48px;
@@ -1300,7 +1371,7 @@ button.t-project-row:hover {
     font-size: 18px;
   }
   .t-pulse-meta {
-    min-width: 84px;
+    gap: 6px;
   }
   .t-review {
     grid-template-columns: minmax(0, 1fr);
@@ -1322,22 +1393,26 @@ button.t-project-row:hover {
 }
 
 @media (max-width: 620px) {
-  .t-pulse-head {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 14px;
-  }
-  .t-pulse-feedback {
-    align-self: flex-end;
+  .t-pulse-key {
+    display: none;
   }
   .t-pulse-row {
-    grid-template-columns: 48px minmax(0, 1fr);
+    gap: 12px;
+  }
+  .t-pulse-energy {
+    width: 136px;
+  }
+  .t-pulse-meter {
+    width: 136px;
+    height: 18px;
   }
   .t-pulse-meta {
-    grid-column: 2;
-    min-width: 0;
-    flex-direction: row;
-    align-items: baseline;
-    justify-content: space-between;
+    gap: 4px;
+  }
+  .t-pulse-meta small {
+    font-size: 10.5px;
+  }
+  .t-pulse-meta b {
+    font-size: 11.5px;
   }
 }

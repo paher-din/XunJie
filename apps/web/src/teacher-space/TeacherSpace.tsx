@@ -50,7 +50,8 @@ interface CoursePulseRowData {
   release: TeacherRelease | null
   submitted: number
   assigned: number
-  rate: number
+  missing: number
+  statusCounts: Record<SubmissionState, number>
 }
 
 const dateText = (iso: string) => {
@@ -76,6 +77,27 @@ const isFreshRelease = (iso: string) => {
 }
 
 const percentOf = (part: number, total: number) => total ? Math.round(part / total * 100) : null
+
+const PULSE_STATES: SubmissionState[] = ['done', 'revised', 'pending', 'feedback']
+const PULSE_STATE_LABELS: Record<SubmissionState, string> = {
+  done: '已完成', revised: '待复核', pending: '待审阅', feedback: '已反馈',
+}
+
+/** Allocate the 25 fixed-height segments by status share; the exact numbers stay beside the bar. */
+function pulseMeter(item: CoursePulseRowData) {
+  if (!item.task || item.assigned <= 0) return Array.from({ length: 25 }, () => 'missing' as const)
+  const groups = [...PULSE_STATES.map(state => ({ state, count: item.statusCounts[state] })), { state: 'missing' as const, count: item.missing }]
+  const raw = groups.map(group => group.count / item.assigned * 25)
+  const cells = raw.map(value => Math.floor(value))
+  let remainder = 25 - cells.reduce((sum, value) => sum + value, 0)
+  const fractions = raw.map((value, index) => ({ index, fraction: value - Math.floor(value) }))
+    .sort((a, b) => b.fraction - a.fraction || a.index - b.index)
+  for (let index = 0; index < fractions.length && remainder > 0; index += 1) {
+    cells[fractions[index]!.index] += 1
+    remainder -= 1
+  }
+  return groups.flatMap((group, index) => Array.from({ length: cells[index] ?? 0 }, () => group.state))
+}
 
 /** One row is one decision unit: a task with its waiting submissions, or one draft. */
 function reviewInboxRows(courses: TeacherCourse[], submissions: TeacherSubmission[], kind: 'pending' | 'revised'): InboxRow[] {
@@ -238,13 +260,18 @@ function Overview({ courses, cohort, onCourse, onWorkbench }: {
   const coursePulse: CoursePulseRowData[] = courses.map(course => {
     const latest = latestTaskOf(course)
     const assigned = cohort.students.length
-    if (!latest) return { course, task: null, release: null, submitted: 0, assigned, rate: 0 }
-    const submitted = new Set(cohort.submissions
-      .filter(item => item.courseId === course.courseId && item.taskId === latest.task.taskId)
-      .map(item => item.studentId)).size
+    const emptyCounts: Record<SubmissionState, number> = { done: 0, revised: 0, pending: 0, feedback: 0 }
+    if (!latest) return { course, task: null, release: null, submitted: 0, assigned, missing: assigned, statusCounts: emptyCounts }
+    const latestSubmissions = new Map<string, TeacherSubmission>()
+    for (const item of cohort.submissions) {
+      if (item.courseId === course.courseId && item.taskId === latest.task.taskId) latestSubmissions.set(item.studentId, item)
+    }
+    const statusCounts = { ...emptyCounts }
+    for (const item of latestSubmissions.values()) statusCounts[item.state] += 1
+    const submitted = latestSubmissions.size
     return {
       course, task: latest.task, release: latest.release, submitted, assigned,
-      rate: assigned ? Math.min(1, submitted / assigned) : 0,
+      missing: Math.max(0, assigned - submitted), statusCounts,
     }
   })
   const openInboxRow = (row: InboxRow) => {
@@ -258,9 +285,15 @@ function Overview({ courses, cohort, onCourse, onWorkbench }: {
         <div className="t-pulse-head">
           <div className="t-pulse-heading">
             <HomeSectionHeading title={<span id="t-board-title">课程进展</span>} count={`${courses.length} 门`} />
-            <p className="t-pulse-note" title="格阵表示班级提交比例，不代表单个学生">每格约 4% · 比例格阵</p>
+            <p className="t-pulse-note" title="每格约 4%，按提交状态着色，不代表单个学生">每格约 4% · 按状态着色</p>
           </div>
-          <FeedbackRing covered={feedbackCovered} total={feedbackTotal} />
+          <div className="t-pulse-key" aria-label="状态颜色">
+            <span><i className="t-pulse-key-done" />已完成</span>
+            <span><i className="t-pulse-key-revised" />待复核</span>
+            <span><i className="t-pulse-key-pending" />待审阅</span>
+            <span><i className="t-pulse-key-feedback" />已反馈</span>
+            <span><i className="t-pulse-key-missing" />未提交</span>
+          </div>
         </div>
         {coursePulse.length === 0 ? <p className="t-inbox-empty">当前没有在教课程。</p>
           : <div className="t-pulse-list">
@@ -341,7 +374,10 @@ function Overview({ courses, cohort, onCourse, onWorkbench }: {
 
         <article className="t-overview-card t-module">
           <header className="t-module-head"><h3>提交节奏</h3><span className="t-module-note">近 3 周</span></header>
-          <WeekBars submissions={cohort.submissions} />
+          <div className="t-rhythm">
+            <WeekBars submissions={cohort.submissions} />
+            <FeedbackRing covered={feedbackCovered} total={feedbackTotal} />
+          </div>
         </article>
       </div>
     <p className="t-data-note">课程与任务来自学校发布的真实目录；学生、提交、草稿为界面预览用的示例数据，接入审阅接口后替换。</p>
@@ -350,24 +386,27 @@ function Overview({ courses, cohort, onCourse, onWorkbench }: {
 
 function CoursePulseRow({ item, onOpen }: { item: CoursePulseRowData; onOpen: () => void }) {
   const percent = item.task ? percentOf(item.submitted, item.assigned) : null
-  const filled = item.task ? Math.min(25, Math.max(0, Math.round(item.rate * 25))) : 0
+  const meter = pulseMeter(item)
   const release = item.release?.publishedAt ? releaseAgeText(item.release.publishedAt) : '—'
   const justPublished = Boolean(item.task && item.submitted === 0 && item.release?.publishedAt && isFreshRelease(item.release.publishedAt))
   const percentLabel = percent == null ? '' : `，约 ${percent}%`
-  const ariaLabel = `${item.course.name}：${item.task ? `最新任务${item.task.title}，已提交 ${item.submitted}/${item.assigned}${percentLabel}` : '尚未发布任务'}`
+  const statusSummary = [...PULSE_STATES.map(state => `${PULSE_STATE_LABELS[state]} ${item.statusCounts[state]}`), `未提交 ${item.missing}`].join('，')
+  const ariaLabel = `${item.course.name}：${item.task ? `最新任务${item.task.title}，已提交 ${item.submitted}/${item.assigned}${percentLabel}；${statusSummary}` : '尚未发布任务'}`
   return <button type="button" className="t-pulse-row" aria-label={ariaLabel} onClick={onOpen}>
-    <span className="t-pulse-grid" aria-hidden="true">
-      {Array.from({ length: 25 }, (_, index) => <span key={index} className="t-pulse-cell" data-filled={index < filled ? 'true' : 'false'} />)}
-    </span>
     <span className="t-pulse-copy">
       <strong>{item.course.name}</strong>
       <span title={item.task?.title}>{item.task ? `最新任务 · ${item.task.title}` : '尚未发布任务'}</span>
     </span>
-    <span className="t-pulse-meta">
-      <small>{justPublished ? '尚无提交' : release}</small>
-      {item.task
-        ? justPublished ? <b>刚发布</b> : <b>{item.submitted}/{item.assigned}{percent != null && <i> · {percent}%</i>}</b>
-        : <b>—</b>}
+    <span className="t-pulse-energy">
+      <span className="t-pulse-meter" aria-hidden="true" title={statusSummary}>
+        {meter.map((state, index) => <span key={index} className="t-pulse-meter-cell" data-state={state} />)}
+      </span>
+      <span className="t-pulse-meta">
+        <small>{justPublished ? '尚无提交' : release}</small>
+        {item.task
+          ? justPublished ? <b>刚发布</b> : <b>{item.submitted}/{item.assigned}{percent != null && <i> · {percent}%</i>}</b>
+          : <b>—</b>}
+      </span>
     </span>
   </button>
 }
