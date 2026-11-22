@@ -33,7 +33,7 @@ let profile: 'local' | 'school', connected: boolean, failStart: boolean, failRef
 let starts: Array<{ requestId: string; schoolEndpoint: string }>
 let revoked: Array<{ space: string; connectionId: string }>
 let waitForRevoke: Promise<void> | null
-let activityAvailable: boolean, failLogin: boolean, failApproval: boolean
+let activityAvailable: boolean, failLogin: boolean, failApproval: boolean, failApprovalForbidden: boolean
 let approvals: Array<{ requestId: string }>
 const personal = { environmentId: '00000000-0000-4000-8000-000000000001', spaceId: '00000000-0000-4000-8000-000000000002', principalId: '00000000-0000-4000-8000-000000000003', kind: 'personal', name: '个人学习空间' }
 const school = { environmentId: '00000000-0000-4000-8000-000000000004', spaceId: '00000000-0000-4000-8000-000000000005', principalId: '00000000-0000-4000-8000-000000000006', kind: 'school', name: '示例学校' }
@@ -78,7 +78,7 @@ beforeEach(() => {
   vi.spyOn(window, 'open').mockReturnValue(null)
   vi.mocked(returnToSchoolClient).mockReset().mockReturnValue(false)
   profile = 'local'; connected = false; failStart = false; failRefresh = false; failRevoke = false; connectionRequest = ''; completeCalls = 0; starts = []; revoked = []; waitForRevoke = null; activityAvailable = false
-  failLogin = false; failApproval = false; approvals = []
+  failLogin = false; failApproval = false; failApprovalForbidden = false; approvals = []
   localStorage.clear(); sessionStorage.clear()
   host = document.createElement('div'); document.body.append(host); root = createRoot(host)
   vi.stubGlobal('fetch', vi.fn(async (url: string, options: RequestInit = {}) => {
@@ -118,7 +118,8 @@ beforeEach(() => {
     }
     if (route === 'connections/approve') {
       approvals.push(JSON.parse(options.body as string))
-      return failApproval ? response({ error: 'unavailable' }, 503) : response({})
+      return failApprovalForbidden ? response({ error: 'forbidden' }, 403)
+        : failApproval ? response({ error: 'unavailable' }, 503) : response({})
     }
     throw new Error('Unexpected route ' + route)
   }))
@@ -228,6 +229,18 @@ it('retries the same authorization after login succeeds but approval fails, with
   await click('认证并返回客户端')
   expect(approvals).toEqual([{ requestId }, { requestId }])
   expect(vi.mocked(fetch).mock.calls.filter(([url]) => url === '/api/learning/login')).toHaveLength(1)
+})
+
+it('names an expired school authorization instead of blaming an activity space', async () => {
+  profile = 'school'; failApprovalForbidden = true
+  const requestId = '00000000-0000-4000-8000-000000000025'
+  history.replaceState(null, '', '/?authorize=' + requestId)
+  await act(async () => { root.render(<LearningApp />); await settle() })
+  await fill('input[autocomplete="username"]', 'student')
+  await fill('input[type="password"]', 'password')
+  await click('登录并认证')
+  expect(host.querySelector('[data-sonner-toast][data-type="error"]')?.textContent).toContain('学校认证请求已过期')
+  expect(host.querySelector('[data-sonner-toast][data-type="error"]')?.textContent).not.toContain('原活动仍属于原空间')
 })
 
 it('returns directly to the originating account page after sign-in and authorization succeed', async () => {

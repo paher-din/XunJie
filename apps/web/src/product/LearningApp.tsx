@@ -131,6 +131,9 @@ async function sendLearningRequest(path: string, body?: unknown, key?: string, s
   return result
 }
 const errorText = (error: unknown) => error instanceof Error ? error.message : '操作未完成，请重试。'
+const schoolAuthorizationError = (error: unknown) => (error as { code?: string })?.code === 'forbidden'
+  ? new Error('学校认证请求已过期，请重新发起学校连接。')
+  : error
 const definitive = new Set(['invalid', 'forbidden', 'missing', 'corrupt', 'identity-conflict'])
 const formatBytes = (value: number) => value < 1024 ? `${value} B` : value < 1024 * 1024 ? `${(value / 1024).toFixed(1)} KB` : `${(value / 1024 / 1024).toFixed(1)} MB`
 
@@ -949,7 +952,8 @@ function LearningView() {
   async function authenticateSchoolClient() {
     if (!authorize) return false
     const returnUrl = schoolAuthorizationReturnUrl(authorize, new URLSearchParams(location.search).get('returnTo'))
-    await api('connections/approve', { requestId: authorize })
+    try { await api('connections/approve', { requestId: authorize }) }
+    catch (cause) { throw schoolAuthorizationError(cause) }
     if (returnToSchoolClient(returnUrl)) return true
     const params = new URLSearchParams(location.search)
     params.delete('authorize'); params.delete('returnTo')
@@ -964,7 +968,9 @@ function LearningView() {
       <button type="button" className="primary" disabled={busy} aria-busy={busy || undefined} onClick={() => void action(async generation => {
         let connectionId = pendingConnection.connectionId
         if (!connectionId) {
-          const connection = await api('client/complete', { requestId: pendingConnection.requestId }) as { connectionId: string }
+          let connection: { connectionId: string }
+          try { connection = await api('client/complete', { requestId: pendingConnection.requestId }) as { connectionId: string } }
+          catch (cause) { throw schoolAuthorizationError(cause) }
           if (generation !== epoch.current) return
           connectionId = connection.connectionId
           rememberPendingConnection({ ...pendingConnection, connectionId })
