@@ -313,6 +313,13 @@ function Overview({ courses, cohort, onCourse, onWorkbench }: {
               onOpen={() => onCourse(item.course.courseId)} />)}
           </div>}
       </div>
+      <article className="t-overview-card t-module t-rhythm-card" aria-labelledby="t-rhythm-title">
+        <header className="t-module-head"><h3 id="t-rhythm-title">提交节奏</h3><span className="t-module-note">近 3 周</span></header>
+        <div className="t-rhythm">
+          <WeekBars submissions={cohort.submissions} />
+          <FeedbackRing covered={feedbackCovered} total={feedbackTotal} />
+        </div>
+      </article>
     </section>
 
     <section className="t-overview-card t-inbox-card" aria-labelledby="t-pending-title">
@@ -381,14 +388,6 @@ function Overview({ courses, cohort, onCourse, onWorkbench }: {
                 <span className="t-progress-count">{counts.done}<small>/{total}</small></span>
               </div>
             })}
-          </div>
-        </article>
-
-        <article className="t-overview-card t-module">
-          <header className="t-module-head"><h3>提交节奏</h3><span className="t-module-note">近 3 周</span></header>
-          <div className="t-rhythm">
-            <WeekBars submissions={cohort.submissions} />
-            <FeedbackRing covered={feedbackCovered} total={feedbackTotal} />
           </div>
         </article>
       </div>
