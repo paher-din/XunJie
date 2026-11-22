@@ -12,8 +12,8 @@ import { useModelSelection } from '../product/ModelSelection'
 import { LearningReadCache } from '../product/learning-read-cache'
 import './teacher-space.css'
 import {
-  loadTeacherCatalog, submissionLabel, teacherCohort,
-  type SubmissionState, type TeacherCatalog, type TeacherCourse, type TeacherDraft, type TeacherSubmission,
+  latestTaskOf, loadTeacherCatalog, submissionLabel, teacherCohort,
+  type SubmissionState, type TeacherCatalog, type TeacherCourse, type TeacherDraft, type TeacherRelease, type TeacherSubmission, type TeacherTask,
 } from './data'
 
 interface TeacherContext {
@@ -44,6 +44,15 @@ interface InboxRow {
   ariaLabel: string
 }
 
+interface CoursePulseRowData {
+  course: TeacherCourse
+  task: TeacherTask | null
+  release: TeacherRelease | null
+  submitted: number
+  assigned: number
+  rate: number
+}
+
 const dateText = (iso: string) => {
   const date = new Date(iso)
   return `${date.getMonth() + 1} 月 ${date.getDate()} 日`
@@ -53,6 +62,20 @@ const timeText = (iso: string) => {
   const date = new Date(iso)
   return `${date.getMonth() + 1}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }
+
+const releaseAgeText = (iso: string) => {
+  const time = new Date(iso).getTime()
+  if (!Number.isFinite(time)) return '发布日期未知'
+  const days = Math.max(0, Math.floor((Date.now() - time) / 86_400_000))
+  return days === 0 ? '今天发布' : `发布 ${days} 天`
+}
+
+const isFreshRelease = (iso: string) => {
+  const time = new Date(iso).getTime()
+  return Number.isFinite(time) && Date.now() - time < 2 * 86_400_000
+}
+
+const percentOf = (part: number, total: number) => total ? Math.round(part / total * 100) : null
 
 /** One row is one decision unit: a task with its waiting submissions, or one draft. */
 function reviewInboxRows(courses: TeacherCourse[], submissions: TeacherSubmission[], kind: 'pending' | 'revised'): InboxRow[] {
@@ -210,6 +233,20 @@ function Overview({ courses, cohort, onCourse, onWorkbench }: {
     }] : []),
   ]
   const inboxCount = pending.length + revised.length + cohort.drafts.length
+  const feedbackTotal = cohort.submissions.length
+  const feedbackCovered = cohort.submissions.filter(item => item.state !== 'pending').length
+  const coursePulse: CoursePulseRowData[] = courses.map(course => {
+    const latest = latestTaskOf(course)
+    const assigned = cohort.students.length
+    if (!latest) return { course, task: null, release: null, submitted: 0, assigned, rate: 0 }
+    const submitted = new Set(cohort.submissions
+      .filter(item => item.courseId === course.courseId && item.taskId === latest.task.taskId)
+      .map(item => item.studentId)).size
+    return {
+      course, task: latest.task, release: latest.release, submitted, assigned,
+      rate: assigned ? Math.min(1, submitted / assigned) : 0,
+    }
+  })
   const openInboxRow = (row: InboxRow) => {
     if (row.action === 'workbench') onWorkbench()
     else if (row.courseId) onCourse(row.courseId, row.action)
@@ -217,12 +254,19 @@ function Overview({ courses, cohort, onCourse, onWorkbench }: {
 
   return <div className="content teacher-page teacher-page--overview">
     <section className="t-board-summary" aria-labelledby="t-board-title">
-      <HomeSectionHeading title={<span id="t-board-title">数据看板</span>} />
-      <div className="t-kpi-grid">
-        <article className="t-overview-card t-kpi-card"><small>在教课程</small><strong>{courses.length}</strong></article>
-        <article className="t-overview-card t-kpi-card"><small>已发布任务</small><strong>{courses.reduce((sum, course) => sum + course.tasks.filter(task => task.releases.length > 0).length, 0)}</strong></article>
-        <article className="t-overview-card t-kpi-card"><small>课程学生</small><strong>{cohort.students.length}</strong></article>
-        <article className="t-overview-card t-kpi-card"><small>待处理</small><strong>{inboxCount}</strong></article>
+      <div className="t-overview-card t-pulse-card">
+        <div className="t-pulse-head">
+          <div className="t-pulse-heading">
+            <HomeSectionHeading title={<span id="t-board-title">课程进展</span>} count={`${courses.length} 门`} />
+            <p className="t-pulse-note" title="格阵表示班级提交比例，不代表单个学生">每格约 4% · 比例格阵</p>
+          </div>
+          <FeedbackRing covered={feedbackCovered} total={feedbackTotal} />
+        </div>
+        {coursePulse.length === 0 ? <p className="t-inbox-empty">当前没有在教课程。</p>
+          : <div className="t-pulse-list">
+            {coursePulse.map(item => <CoursePulseRow key={item.course.courseId} item={item}
+              onOpen={() => onCourse(item.course.courseId)} />)}
+          </div>}
       </div>
     </section>
 
@@ -296,16 +340,56 @@ function Overview({ courses, cohort, onCourse, onWorkbench }: {
         </article>
 
         <article className="t-overview-card t-module">
-          <header className="t-module-head"><h3>提交与反馈</h3><span className="t-module-note">近 3 周</span></header>
+          <header className="t-module-head"><h3>提交节奏</h3><span className="t-module-note">近 3 周</span></header>
           <WeekBars submissions={cohort.submissions} />
-          <dl className="t-feedback-stats">
-            <div><dt>已提交</dt><dd>{cohort.submissions.length}</dd></div>
-            <div><dt>已反馈</dt><dd>{cohort.submissions.filter(item => item.state !== 'pending').length}</dd></div>
-            <div><dt>待反馈</dt><dd>{pending.length}</dd></div>
-          </dl>
         </article>
       </div>
     <p className="t-data-note">课程与任务来自学校发布的真实目录；学生、提交、草稿为界面预览用的示例数据，接入审阅接口后替换。</p>
+  </div>
+}
+
+function CoursePulseRow({ item, onOpen }: { item: CoursePulseRowData; onOpen: () => void }) {
+  const percent = item.task ? percentOf(item.submitted, item.assigned) : null
+  const filled = item.task ? Math.min(25, Math.max(0, Math.round(item.rate * 25))) : 0
+  const release = item.release?.publishedAt ? releaseAgeText(item.release.publishedAt) : '—'
+  const justPublished = Boolean(item.task && item.submitted === 0 && item.release?.publishedAt && isFreshRelease(item.release.publishedAt))
+  const percentLabel = percent == null ? '' : `，约 ${percent}%`
+  const ariaLabel = `${item.course.name}：${item.task ? `最新任务${item.task.title}，已提交 ${item.submitted}/${item.assigned}${percentLabel}` : '尚未发布任务'}`
+  return <button type="button" className="t-pulse-row" aria-label={ariaLabel} onClick={onOpen}>
+    <span className="t-pulse-grid" aria-hidden="true">
+      {Array.from({ length: 25 }, (_, index) => <span key={index} className="t-pulse-cell" data-filled={index < filled ? 'true' : 'false'} />)}
+    </span>
+    <span className="t-pulse-copy">
+      <strong>{item.course.name}</strong>
+      <span title={item.task?.title}>{item.task ? `最新任务 · ${item.task.title}` : '尚未发布任务'}</span>
+    </span>
+    <span className="t-pulse-meta">
+      <small>{justPublished ? '尚无提交' : release}</small>
+      {item.task
+        ? justPublished ? <b>刚发布</b> : <b>{item.submitted}/{item.assigned}{percent != null && <i> · {percent}%</i>}</b>
+        : <b>—</b>}
+    </span>
+  </button>
+}
+
+function FeedbackRing({ covered, total }: { covered: number; total: number }) {
+  const percent = percentOf(covered, total)
+  const radius = 24
+  const circumference = 2 * Math.PI * radius
+  const offset = circumference * (1 - (percent ?? 0) / 100)
+  return <div className="t-pulse-feedback">
+    <div className="t-pulse-feedback-copy">
+      <strong>反馈覆盖</strong>
+      <span>{total ? `${covered}/${total} 份提交` : '暂无提交'}</span>
+    </div>
+    <div className="t-pulse-ring" role="img" aria-label={percent == null ? '反馈覆盖：暂无提交' : `反馈覆盖 ${percent}%，${covered}/${total} 份提交已反馈`}>
+      <svg viewBox="0 0 56 56" aria-hidden="true">
+        <circle className="t-pulse-ring-track" cx="28" cy="28" r={radius} />
+        {percent != null && <circle className="t-pulse-ring-value" cx="28" cy="28" r={radius}
+          style={{ strokeDasharray: circumference, strokeDashoffset: offset }} />}
+      </svg>
+      <b>{percent == null ? '—' : `${percent}%`}</b>
+    </div>
   </div>
 }
 

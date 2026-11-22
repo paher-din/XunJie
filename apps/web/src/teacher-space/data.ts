@@ -55,6 +55,31 @@ export interface TeacherCatalog {
   courses: TeacherCourse[]
 }
 
+export interface TeacherLatestTask {
+  task: TeacherTask
+  release: TeacherRelease
+}
+
+/** The newest published release is the task the course pulse should describe. */
+export function latestTaskOf(course: TeacherCourse): TeacherLatestTask | null {
+  let latest: TeacherLatestTask | null = null
+  const publishedTime = (release: TeacherRelease | null) => {
+    const time = release?.publishedAt ? new Date(release.publishedAt).getTime() : 0
+    return Number.isFinite(time) ? time : 0
+  }
+  for (const task of course.tasks) {
+    const release = task.releases.reduce<TeacherRelease | null>((newest, candidate) => {
+      if (!newest) return candidate
+      return publishedTime(candidate) > publishedTime(newest) ? candidate : newest
+    }, null)
+    if (!release) continue
+    if (!latest || publishedTime(release) > publishedTime(latest.release)) {
+      latest = { task, release }
+    }
+  }
+  return latest
+}
+
 const catalogCache = new Map<string, Promise<TeacherCatalog>>
 
 /** The school only returns the catalog to a member with course.manage; 403 means "not a teacher". */
@@ -139,9 +164,10 @@ export function teacherCohort(courses: TeacherCourse[]) {
   const submissions: TeacherSubmission[] = []
   const drafts: TeacherDraft[] = []
   for (const [courseIndex, course] of courses.entries()) {
-    const task = course.tasks[0]
-    if (!task) continue
-    const release = task.releases[0]
+    const latest = latestTaskOf(course)
+    if (!latest) continue
+    const task = latest.task
+    const release = latest.release
     const count = courseIndex === 0 ? 9 : courseIndex === 1 ? 5 : 2
     for (let index = 0; index < count; index += 1) {
       const seed = seedOf(course.courseId + index)
