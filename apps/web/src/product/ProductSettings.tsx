@@ -18,6 +18,8 @@ export interface ProductSettingsProps {
   schoolName?: string
   isLocal?: boolean
   readOnly?: boolean
+  /** The noun this surface uses for its current account space. */
+  spaceLabel?: string
   accountState?: ProductSettingsAccountState
   schoolControls: ReactNode
   accountFeedback?: ReactNode
@@ -38,7 +40,7 @@ const tabs: ReadonlyArray<{ id: ProductSettingsTab; label: string; icon: IconNam
   { id: 'about', label: '关于', icon: 'info-circle' },
 ]
 /** Business operations and identity changes remain owned by the caller. */
-export function ProductSettings({ accountName, schoolName, isLocal = false, readOnly = false, accountState = { status: 'ready' },
+export function ProductSettings({ accountName, schoolName, isLocal = false, readOnly = false, spaceLabel = '学习空间', accountState = { status: 'ready' },
   schoolControls, accountFeedback, modelSettings, initialTab = 'account', focusSchool = false, hiddenTabs, onTabChange }: ProductSettingsProps) {
   const visibleTabs = tabs.filter(tab => !hiddenTabs?.includes(tab.id))
   const visibleKey = hiddenTabs?.join('|') ?? ''
@@ -85,7 +87,7 @@ export function ProductSettings({ accountName, schoolName, isLocal = false, read
         </header>
         <section id={`${id}-account`} aria-labelledby={`${id}-account-nav`}
           hidden={active !== 'account'} inert={active !== 'account'} className="product-settings-pane">
-          {accountState.status === 'loading' ? <SettingsStatus tone="loading" title="正在读取当前学习空间" />
+          {accountState.status === 'loading' ? <SettingsStatus tone="loading" title={`正在读取当前${spaceLabel}`} />
             : accountState.status === 'error' ? <SettingsStatus tone="error" title="账号信息暂时无法读取"
               description={accountState.message}
               action={accountState.onRetry && <button type="button" className="outline" disabled={accountState.busy}
@@ -93,7 +95,7 @@ export function ProductSettings({ accountName, schoolName, isLocal = false, read
                 {accountState.busy ? '正在重新读取…' : '重新读取账号'}
               </button>} />
             : <>
-              <Section title="当前学习空间">
+              <Section title={`当前${spaceLabel}`}>
                 <div className="product-settings-identity">
                   <div className="product-settings-current">
                     <AccountAvatar name={accountName} />
@@ -103,7 +105,7 @@ export function ProductSettings({ accountName, schoolName, isLocal = false, read
                   </div>
                 </div>
               </Section>
-              {readOnly && <SettingsStatus tone="neutral" title="当前学习空间为只读" />}
+              {readOnly && <SettingsStatus tone="neutral" title={`当前${spaceLabel}为只读`} />}
               <div className="product-settings-school" ref={school} tabIndex={-1} role="region" aria-label="学校连接">
                 {accountFeedback}
                 <fieldset className="product-settings-school-controls" disabled={readOnly} inert={readOnly}>

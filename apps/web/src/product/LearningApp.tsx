@@ -434,8 +434,18 @@ function LearningView() {
   }
   useEffect(() => {
     let disposed = false
-    void api('context').then(result => {
-      if (!disposed) { const next = normalizeContext(result as Context); setContext(next);
+    void api('context').then(async result => {
+      const next = normalizeContext(result as Context)
+      // Resolve the teacher surface before the student shell mounts. Redirecting
+      // after rendering makes a direct visit visibly flash the student home first.
+      if (next.account?.key) {
+        try {
+          const catalog = await loadTeacherCatalog(next.clientNamespace, next.account.key)
+          if (disposed) return
+          if (catalog.available) { location.replace('/?teacher=overview'); return }
+        } catch { /* A failed probe keeps the student surface available. */ }
+      }
+      if (!disposed) { setContext(next);
         try { sessionStorage.setItem('xj.works-context.v1', JSON.stringify(next)) } catch { /* Optional hint. */ }
         const preferred = new URLSearchParams(location.search).get('space')
         setKey(preferredKey(next, preferred, agentOpen && !requestedActivity.current)) }

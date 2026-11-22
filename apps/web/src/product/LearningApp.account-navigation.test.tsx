@@ -94,6 +94,7 @@ beforeEach(() => {
     if (route === 'context') return response({ clientNamespace: 'account-navigation', profile: 'local',
       ...(!legacyContext ? { account: connected && !explicitUnbound ? { key: currentSchoolKey, accountName: 'Robert', schoolName: '示例大学' } : null } : {}),
       identities: [{ key: 'personal', identity: personal }, ...(connected ? [{ key: currentSchoolKey, identity: school }] : [])] })
+    if (route === 'manage/course-catalog') return response({ error: 'forbidden' }, 403)
     if (space === currentSchoolKey) {
       if (schoolOffline) return response({ error: 'unavailable' }, 503)
       await holdSchool

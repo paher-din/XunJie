@@ -6,7 +6,7 @@ import type { SpaceIdentity } from '@xunjie/contracts/spaces'
 import { ProductShell } from '../components/ProductShell'
 import { Icon } from '../icons'
 import { ProductSettings, type ProductSettingsTab } from '../product/ProductSettings'
-import { SchoolConnectionRow, SchoolSessionRow } from '../product/SchoolConnectionRows'
+import { SchoolConnectionRow } from '../product/SchoolConnectionRows'
 import { SettingsFailureBoundary } from '../product/SettingsFailureBoundary'
 import { useModelSelection } from '../product/ModelSelection'
 import { LearningReadCache } from '../product/learning-read-cache'
@@ -98,10 +98,10 @@ export function TeacherSpace() {
   useEffect(() => {
     let cancelled = false
     fetch('/api/learning/context', { credentials: 'same-origin' }).then(async response => {
-      if (!response.ok) throw new Error('学习空间暂时无法连接。')
+      if (!response.ok) throw new Error('教学空间暂时无法连接。')
       const value = await response.json() as TeacherContext
       if (!cancelled) setContext(value)
-    }).catch(reason => { if (!cancelled) setError(reason instanceof Error ? reason.message : '学习空间暂时无法连接。') })
+    }).catch(reason => { if (!cancelled) setError(reason instanceof Error ? reason.message : '教学空间暂时无法连接。') })
     return () => { cancelled = true }
   }, [attempt])
 
@@ -127,7 +127,7 @@ export function TeacherSpace() {
   const retry = () => { setError(''); setContext(null); setCatalog(null); setAttempt(value => value + 1) }
   const content = !context ? <div className="content teacher-page">
     {error ? <div role="alert" className="t-inline-error"><p>{error}</p><button type="button" className="outline" onClick={retry}>重试</button></div>
-      : <p role="status" className="t-loading">正在连接学校空间…</p>}
+      : <p role="status" className="t-loading">正在连接学校教学空间…</p>}
   </div> : !context.account ? <div className="content teacher-page">
     <p role="status" className="t-loading">正在返回学生端…</p>
   </div> : !catalog ? <div className="content teacher-page">
@@ -594,13 +594,17 @@ function TeacherSettingsPage({ context, account, tab, onTab, onClose }: {
   tab: ProductSettingsTab; onTab: (tab: ProductSettingsTab) => void; onClose: () => void
 }) {
   const schoolIdentity = context.identities?.find(item => item.identity.kind === 'school')
-  const identity = schoolIdentity?.identity
-  const selection = useModelSelection(identity, schoolIdentity?.key ?? 'school', context.clientNamespace)
-  const cache = useMemo(() => new LearningReadCache(), [context.clientNamespace, schoolIdentity?.key])
+  // The teacher workspace is a local surface. Its model configuration belongs to
+  // the device's personal space, not to the school's optional model service.
+  const personalIdentity = context.identities?.find(item => item.identity.kind === 'personal')
+  const settingsIdentity = personalIdentity?.identity ?? schoolIdentity?.identity
+  const settingsKey = personalIdentity?.key ?? schoolIdentity?.key ?? 'personal'
+  const selection = useModelSelection(settingsIdentity, settingsKey, context.clientNamespace)
+  const cache = useMemo(() => new LearningReadCache(), [context.clientNamespace, settingsKey])
   const [mode, setMode] = useState<'disconnect' | 'replace' | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const school = account.schoolName ?? account.accountName
+  const school = (account.schoolName ?? account.accountName).replace(/学习空间/g, '教学空间')
 
   const request = async (route: string, body: unknown) => {
     const response = await fetch('/api/learning/' + route, { method: 'POST', credentials: 'same-origin', redirect: 'error',
@@ -610,12 +614,6 @@ function TeacherSettingsPage({ context, account, tab, onTab, onClose }: {
       const value = await response.json().catch(() => ({})) as { error?: string }
       throw new Error(value.error === 'forbidden' ? '当前账号已失效，请重新登录学校。' : '操作尚未完成，请稍后重试。')
     }
-  }
-
-  const logout = async () => {
-    setBusy(true); setError('')
-    try { await request('logout', {}); location.replace('/') }
-    catch (reason) { setError(reason instanceof Error ? reason.message : '操作尚未完成，请稍后重试。'); setBusy(false) }
   }
 
   const revoke = async () => {
@@ -633,29 +631,27 @@ function TeacherSettingsPage({ context, account, tab, onTab, onClose }: {
 
   return <>
     <ProductSettings accountName={account.accountName} schoolName={school} readOnly={context.readOnly}
-      accountState={{ status: 'ready' }} hiddenTabs={['portrait']} initialTab={tab} onTabChange={onTab}
+      spaceLabel="教学空间" accountState={{ status: 'ready' }} hiddenTabs={['portrait']} initialTab={tab} onTabChange={onTab}
       schoolControls={<TeacherSchoolConnection school={school} busy={busy}
         onRebind={() => { setError(''); setMode('replace') }}
-        onDisconnect={() => { setError(''); setMode('disconnect') }}
-        onLogout={() => void logout()} />}
-      modelSettings={identity ? <SettingsFailureBoundary key={context.clientNamespace + (schoolIdentity?.key ?? 'school') + identity.principalId} onBack={onClose}><Suspense
-        fallback={<SettingsStatus tone="loading" title="正在读取个人设置" />}><PersonalModelSettings identity={identity}
-        spaceKey={schoolIdentity?.key ?? 'school'} namespace={context.clientNamespace} selection={selection} readOnly={context.readOnly} cache={cache} />
+        onDisconnect={() => { setError(''); setMode('disconnect') }} />}
+      modelSettings={settingsIdentity ? <SettingsFailureBoundary key={context.clientNamespace + settingsKey + settingsIdentity.principalId} onBack={onClose}><Suspense
+        fallback={<SettingsStatus tone="loading" title="正在读取个人设置" />}><PersonalModelSettings identity={settingsIdentity}
+        spaceKey={settingsKey} namespace={context.clientNamespace} selection={selection} readOnly={context.readOnly} cache={cache} />
       </Suspense></SettingsFailureBoundary> : null} />
     <ConfirmationDialog open={!!mode} title={mode === 'replace' ? '换绑学校？' : '断开学校连接？'}
-      description={<>{mode === 'replace' && '先解绑当前账号，再绑定新的学校账号。'}断开后，将无法在此访问<strong>「{school}」</strong>的学习内容。本机数据会保留，重新绑定原账号后可继续学习。</>}
+      description={<>{mode === 'replace' && '先解绑当前账号，再绑定新的学校账号。'}断开后，将无法在此访问<strong>「{school}」</strong>的教学内容。本机数据会保留，重新绑定原账号后可继续教学。</>}
       confirmLabel={mode === 'replace' ? '确认解绑并换绑' : '确认断开'} busy={busy} error={error}
       onClose={closeDialog} onConfirm={() => void revoke()} />
   </>
 }
 
-function TeacherSchoolConnection({ school, busy, onRebind, onDisconnect, onLogout }: {
-  school: string; busy: boolean; onRebind: () => void; onDisconnect: () => void; onLogout: () => void
+function TeacherSchoolConnection({ school, busy, onRebind, onDisconnect }: {
+  school: string; busy: boolean; onRebind: () => void; onDisconnect: () => void
 }) {
   return <section className="product-school" tabIndex={-1} aria-busy={busy || undefined}>
     <h2>学校连接</h2>
     <div className="product-school-list"><SchoolConnectionRow name={school} busy={busy}
       onRebind={() => onRebind()} onDisconnect={() => onDisconnect()} /></div>
-    <SchoolSessionRow busy={busy} onLogout={onLogout} />
   </section>
 }
