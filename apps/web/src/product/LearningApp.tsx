@@ -389,14 +389,14 @@ function LearningView() {
   const personalKey = context?.identities.find(item => item.identity.kind === 'personal')?.key
   const schoolKey = context?.account?.key
   useEffect(() => {
-    if (!context?.account?.key || authorize) return
+    if (!context?.account?.key || authorize || context.profile === 'school') return
     let alive = true
     // Teacher accounts own the teacher workspace; this also covers a completed login/binding.
     loadTeacherCatalog(context.clientNamespace, context.account.key)
       .then(value => { if (alive && value.available) location.replace('/?teacher=overview') })
       .catch(() => {})
     return () => { alive = false }
-  }, [context?.account?.key, context?.clientNamespace, authorize])
+  }, [context?.account?.key, context?.clientNamespace, context?.profile, authorize])
   useEffect(() => {
     if (!authorize) return
     let alive = true
@@ -476,7 +476,9 @@ function LearningView() {
       // after rendering makes a direct visit visibly flash the student home first.
       // A school authorization request must stay on this page so the approval
       // action is reachable even when the account is already signed in.
-      if (next.account?.key && !authorize) {
+      // The school runtime only ships LearningApp; redirecting it to ?teacher
+      // would reload forever because that entry never mounts TeacherSpace.
+      if (next.account?.key && !authorize && next.profile !== 'school') {
         try {
           const catalog = await loadTeacherCatalog(next.clientNamespace, next.account.key)
           if (disposed) return

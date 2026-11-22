@@ -250,6 +250,14 @@ it('keeps an authenticated teacher on the approval page for a school request', a
   expect(loadTeacherCatalog).not.toHaveBeenCalled()
 })
 
+it('keeps a school runtime on the student surface instead of loading the local teacher page', async () => {
+  profile = 'school'; connected = true
+  loadTeacherCatalog.mockResolvedValue({ available: true, courses: [] })
+  await act(async () => { root.render(<LearningApp />); await settle() })
+  expect(loadTeacherCatalog).not.toHaveBeenCalled()
+  expect(host.textContent).toContain('连接学校')
+})
+
 it('offers login instead of blocking when the request status cannot be checked', async () => {
   profile = 'school'; failAuthorizationStatus = true
   const requestId = '00000000-0000-4000-8000-000000000023'
