@@ -970,6 +970,35 @@ test('后台：显式 background 返回 accepted 回执，Step 不等任务终�
   } finally { await h.close(); }
 });
 
+test('accepted 和 outcome_unknown 的 Gateway settlement 与持久历史共享完整反馈投影', async () => {
+  const accepted = { definition: { name: 'accepted_task', description: '受理任务', inputSchema: { type: 'object' } }, supportsBackground: true,
+    async execute() { return { kind: 'accepted', taskId: 'real-task', summary: '任务已受理' }; } };
+  const unknown = { definition: { name: 'unknown_task', description: '未知结果', inputSchema: { type: 'object' } }, supportsBackground: false,
+    async execute() { return { kind: 'outcome_unknown', reason: '执行效果未知，请查询', taskId: 'owner-task', requestRef: 'owner-request' }; } };
+  const h = await harness([{ text: '执行两个任务', toolIntents: [
+    { callId: 'accepted', name: 'accepted_task', arguments: { executionMode: 'background' } },
+    { callId: 'unknown', name: 'unknown_task', arguments: {} },
+  ] }], [accepted, unknown]);
+  try {
+    await h.runtime.submit(h.identity, input(h.session.sessionId, '开始')); await h.settle();
+    const settled = new Map(h.gateway.settles[0].results.map(result => [result.callId, result]));
+    const { rows: [row] } = await h.storage.read('SELECT state FROM agent_runtime_sessions WHERE session_id=$1', [h.session.sessionId]);
+    const history = new Map(row.state.history.filter(entry => entry.kind === 'tool-result').map(entry => [entry.toolName, entry]));
+    const acceptedFeedback = JSON.parse(settled.get('accepted').text);
+    const unknownFeedback = JSON.parse(settled.get('unknown').text);
+    assert.equal(acceptedFeedback.taskId, 'real-task');
+    assert.equal(acceptedFeedback.state, 'accepted');
+    assert.equal(unknownFeedback.state, 'outcome-unknown');
+    assert.equal(unknownFeedback.taskId, 'owner-task');
+    assert.equal(unknownFeedback.requestRef, 'owner-request');
+    assert.equal(unknownFeedback.summary, '执行效果未知，请查询');
+    assert.equal(settled.get('unknown').outcome, 'error');
+    assert.equal(history.get('accepted_task').text, settled.get('accepted').text);
+    assert.equal(history.get('unknown_task').text, settled.get('unknown').text);
+    assert.equal(history.get('unknown_task').toolOutcome, 'error');
+  } finally { await h.close(); }
+});
+
 test('普通工具擅传 background：参数错误结果，不静默转后台', async () => {
   const h = await harness([
     { text: '误用后台', toolIntents: [{ callId: 'c1', name: 'echo', arguments: { value: 'x', executionMode: 'background' } }] },

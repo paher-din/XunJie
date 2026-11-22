@@ -1,7 +1,7 @@
 import { canonicalDigest, operationId } from '@xunjie/storage/identity';
 import { modelContextPressurePolicy } from '@xunjie/contracts/model-connections';
-import type { AgentTurn, AgentStep, AgentToolCall, AgentNotification, AgentToolResult } from '@xunjie/contracts/agent-runtime';
-import type { ModelToolResult, ModelImageRef } from '@xunjie/contracts/model-connections';
+import type { AgentTurn, AgentStep, AgentToolCall, AgentNotification } from '@xunjie/contracts/agent-runtime';
+import type { ModelToolResult } from '@xunjie/contracts/model-connections';
 import type { AgentStore, AgentSessionInput } from './store.js';
 import type { ModelGatewaySource } from './model.js';
 import type { AgentScenario, AgentTool, ContextMaterial, HistoryEntry, ModelPort, ToolContext, AskInput, AskOutcome,
@@ -9,7 +9,7 @@ import type { AgentScenario, AgentTool, ContextMaterial, HistoryEntry, ModelPort
 import { buildContext, toolMaterial, type TaskFactsPort } from './context.js';
 import { hasFixedReadback, stepReadbackScope } from './readback.js';
 import { createToolRegistry, executeTools } from './tools.js';
-import { appendHistory, conversationHistory, historyDigest } from './history.js';
+import { appendHistory, conversationHistory, historyDigest, toolFeedback } from './history.js';
 import { budgetExhausted } from './budgets.js';
 import { AgentError, ContextCapacityError, ContextPressureError } from './errors.js';
 import { createCitationTool } from './citations.js';
@@ -295,12 +295,12 @@ async function runStep(deps: LoopDependencies, turn: AgentTurn, step: AgentStep,
       contextFor: call => toolContext(deps, session.identity, turn, step, call, response.segmentId, plan.inputIds, originInputId, visibleAnswerInputIds) })
       .then(outcome => { if (outcome === 'stopped') throw new AgentError('cancelled'); });
     const results = await store.toolCallsOf(step.stepId);
-    const feedback: ModelToolResult[] = results.map(call => ({ callId: call.nativeCallId, ...feedbackOf(call.result) }));
+    const feedback: ModelToolResult[] = results.map(call => ({ callId: call.nativeCallId, ...toolFeedback(call.result, call.name) }));
     const settled = await model.settleTools(session.identity, response.segmentId, response.segmentSequence, feedback);
     const after = await store.sessionState(sessionId);
     const toolHistory = results.map(call => {
       const toolSources = materialsAsHistorySources(toolMaterial(call));
-      const feedback = feedbackOf(call.result);
+      const feedback = toolFeedback(call.result, call.name);
       return { id: call.toolCallId, version: 1, role: 'user' as const, turnId: turn.turnId, stepId: step.stepId,
         kind: 'tool-result' as const,
         attemptId: response.attemptId,
@@ -356,21 +356,6 @@ function materialsAsHistorySources(materials: readonly ContextMaterial[]) {
       ...(material.readState === 'included' && material.content !== null ? { inlineDigest: material.digest } : {}),
       ...(material.range ? { range: material.range } : {}) });
   return [...sources.values()];
-}
-function feedbackOf(result: AgentToolResult | null): { outcome: 'success' | 'error' | 'not-executed'; text: string; images: ModelImageRef[] } {
-  if (!result) return { outcome: 'not-executed', text: '工具未执行', images: [] };
-  switch (result.kind) {
-    case 'completed': return { outcome: result.outcome === 'success' ? 'success' : 'error', text: result.summary, images: result.images ?? [] };
-    case 'accepted': return { outcome: 'success', text: result.summary, images: [] };
-    case 'not_started': return { outcome: 'not-executed', text: result.reason, images: [] };
-    case 'interrupted': return { outcome: 'not-executed', text: result.reason, images: [] };
-    case 'outcome_unknown': return { outcome: 'error', text: JSON.stringify({ kind: result.kind, reason: result.reason, ...effectReferences(result) }), images: [] };
-  }
-}
-function effectReferences(result: AgentToolResult | null): { taskId?: string; requestRef?: string } {
-  if (result?.kind === 'accepted') return { taskId: result.taskId };
-  if (result?.kind !== 'outcome_unknown') return {};
-  return { ...(result.taskId ? { taskId: result.taskId } : {}), ...(result.requestRef ? { requestRef: result.requestRef } : {}) };
 }
 function toolContext(deps: LoopDependencies, identity: ScenarioInput['identity'], turn: AgentTurn, step: AgentStep, call: AgentToolCall,
   segmentId: string, inputIds: string[], originInputId: string | null, visibleAnswerInputIds: readonly string[]): ToolContext {

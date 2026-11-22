@@ -50,6 +50,61 @@ const descriptions: Record<ToolName, string> = {
 const inputSchemaOf = (name: ToolName) => z.toJSONSchema(schemas[name], { io: 'input',
   override({ jsonSchema }) { if (jsonSchema.format === 'uuid') delete jsonSchema.format; } });
 
+const unreadableLearningItem = '条目内容超过本次反馈上限，当前领域工具没有提供该条目的安全继续读取参数；模型未收到完整条目。';
+
+function utf8Prefix(text: string, maximumBytes: number) {
+  const bytes = Buffer.from(text, 'utf8');
+  let end = Math.min(bytes.length, Math.max(0, maximumBytes));
+  const decoder = new TextDecoder('utf-8', { fatal: true });
+  while (end > 0) {
+    try { return decoder.decode(bytes.subarray(0, end)); } catch { end--; }
+  }
+  return '';
+}
+
+function utf16Prefix(text: string, maximumUnits: number) {
+  let end = Math.min(text.length, Math.max(0, maximumUnits));
+  if (end < text.length && end > 0 && /[\uD800-\uDBFF]/.test(text[end - 1]!)) end--;
+  return text.slice(0, end);
+}
+
+type LearningSummaryItem = LearningPage['items'][number] & { excerptTruncated?: boolean; unreadable?: string };
+
+function minimalLearningItem(item: LearningPage['items'][number]): LearningSummaryItem {
+  return { reference: item.reference, title: utf8Prefix(item.title, 300), excerpt: '', dueAt: item.dueAt,
+    missing: [...item.missing], excerptTruncated: true, unreadable: unreadableLearningItem };
+}
+
+function boundedLearningPage(page: LearningPage, query: Record<string, unknown>) {
+  let items: LearningSummaryItem[] = page.items.map(item => ({ ...item }));
+  let nextOffset = page.nextOffset;
+  const projection = () => ({ ...page, query, items, nextOffset });
+  const fits = () => Buffer.byteLength(JSON.stringify(projection()), 'utf8') <= toolFeedbackBytes;
+  while (!fits()) {
+    if (items.length > 1) {
+      items = items.slice(0, -1);
+      nextOffset = page.offset + items.length;
+      continue;
+    }
+    if (items.length === 1) {
+      const item = items[0]!;
+      if (item.excerptTruncated && !item.excerpt.length) break;
+      if (item.excerptTruncated || !item.excerpt.length) items = [minimalLearningItem(item)];
+      else items = [{ ...item, excerpt: utf8Prefix(item.excerpt, Math.floor(Buffer.byteLength(item.excerpt, 'utf8') * 0.75)),
+        excerptTruncated: true, unreadable: unreadableLearningItem }];
+      continue;
+    }
+    break;
+  }
+  let summary = JSON.stringify(projection());
+  if (Buffer.byteLength(summary, 'utf8') > toolFeedbackBytes) {
+    summary = JSON.stringify({ query, offset: page.offset, limit: page.limit, nextOffset,
+      items: items.length ? [minimalLearningItem(items[0]!)] : [],
+      unreadable: '学习搜索结果的固定元数据超过反馈上限，模型未收到完整结果。' });
+  }
+  return { summary, items };
+}
+
 /** Concrete scenario tools; the kernel owns the serial loop and result pairing. */
 export function createLearningTools(host: LearningToolsHost): AgentTool[] {
   const identity = spaceIdentitySchema.parse(host.localPersonalIdentity), target = learningTargetSchema.parse(host.localLearningTarget);
@@ -88,7 +143,13 @@ export function createLearningTools(host: LearningToolsHost): AgentTool[] {
   function readLearningFeedback(detail: LearningDetail): AgentToolResult {
     const originalLength = detail.text.length;
     const reference = json(detail.reference) as Facts;
+    let visibleOffset = detail.range.offset;
     let text = detail.text;
+    if (visibleOffset > 0 && text.length && /[\uDC00-\uDFFF]/.test(text[0]!)) {
+      visibleOffset += 1;
+      text = text.slice(1);
+    }
+    if (text.length && /[\uD800-\uDBFF]/.test(text[text.length - 1]!)) text = text.slice(0, -1);
     const continuation = (nextOffset: number | null): Facts | undefined => nextOffset === null ? undefined : {
       tool: 'read_learning',
       reference,
@@ -97,8 +158,8 @@ export function createLearningTools(host: LearningToolsHost): AgentTool[] {
     };
     let projection: Facts;
     for (;;) {
-      const nextOffset = detail.range.offset + text.length < detail.range.total
-        ? detail.range.offset + text.length : null;
+      const nextOffset = visibleOffset + text.length < detail.range.total
+        ? visibleOffset + text.length : null;
       const pdf = detail.pdf ? (text.length === originalLength ? detail.pdf : {
         readingId: detail.pdf.readingId, documentId: detail.pdf.documentId, documentSha256: detail.pdf.documentSha256,
         page: detail.pdf.page, range: detail.pdf.range,
@@ -108,13 +169,13 @@ export function createLearningTools(host: LearningToolsHost): AgentTool[] {
         ...(detail.provenance ? { provenance: json(detail.provenance) } : {}),
         ...(pdf ? { pdf } : {}),
         text,
-        range: { offset: detail.range.offset, length: text.length, total: detail.range.total, nextOffset },
+        range: { offset: visibleOffset, length: text.length, total: detail.range.total, nextOffset },
         missing: detail.missing,
         role: 'source-data',
         ...(continuation(nextOffset) ? { readMore: continuation(nextOffset)! } : {}),
       };
       if (Buffer.byteLength(JSON.stringify(projection), 'utf8') <= toolFeedbackBytes || text.length <= 1) break;
-      text = text.slice(0, Math.max(1, Math.floor(text.length * 0.75)));
+      text = utf16Prefix(text, Math.max(1, Math.floor(text.length * 0.75)));
     }
     // The summary is bounded for the model; the complete fixed-version detail stays in data.
     return completed(JSON.stringify(projection), json(detail));
@@ -136,13 +197,13 @@ export function createLearningTools(host: LearningToolsHost): AgentTool[] {
     } else {
       const input = (name === 'list_learning_tasks' ? learningPageSchema : learningSearchSchema).parse(call.input);
       const args = { ...input, limit: Math.min(input.limit, 6) };
-      const page = name === 'list_learning_tasks' ? await host.query.listLearningTasks(args) : await host.query.searchLearning(args);
-      result = { ...page, items: page.items.map(item => item.provenance?.course?.helpPolicy.questions === 'disabled'
+      const pageResult = name === 'list_learning_tasks' ? await host.query.listLearningTasks(args) : await host.query.searchLearning(args);
+      result = { ...pageResult, items: pageResult.items.map(item => item.provenance?.course?.helpPolicy.questions === 'disabled'
         ? { ...item, excerpt: '', missing: [...new Set([...item.missing, 'course-agent-help-disabled'])] } : item) };
       const bounded = result as LearningPage;
-      while (JSON.stringify(bounded).length > 8192 && bounded.items.length > 1) {
-        bounded.items.pop(); bounded.nextOffset = bounded.offset + bounded.items.length;
-      }
+      const query = { ...input } as Record<string, unknown>;
+      const boundedPage = boundedLearningPage(bounded, query);
+      return completed(boundedPage.summary, json({ ...bounded, query }));
     }
     return projectResult(json(result), JSON.stringify(result));
   }

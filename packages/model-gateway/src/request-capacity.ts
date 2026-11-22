@@ -40,7 +40,7 @@ export function measureNativeCapacity(encoded: Uint8Array, contextWindow: number
   const reason = bytes > transportLimitBytes ? 'transport-bytes'
     : inputEstimateTokens > remainingInputTokens ? 'input-budget'
     : outputReserveTokens < 1 ? 'output-budget'
-    : contextWindow !== null && (inputEstimateTokens > contextWindow - outputReserveTokens || pressure.state === 'blocked')
+    : contextWindow !== null && inputEstimateTokens > contextWindow - outputReserveTokens
       ? 'context-window' : 'ok';
   return { dispatchable: reason === 'ok', reason, bytes, inputEstimateTokens, outputReserveTokens,
     safetyMarginTokens, pressure: pressure.pressure, pressureState: pressure.state, contextWindow, transportLimitBytes,

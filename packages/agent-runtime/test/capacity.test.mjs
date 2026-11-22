@@ -33,6 +33,21 @@ test('最终请求按协议 payload 区分传输字节、上下文窗口和 Turn
   assert.equal(turn.reason, 'input-budget');
 });
 
+test('压缩预留不足不伪造物理窗口超限，真实 C/R/Turn/传输边界仍然生效', () => {
+  for (const [contextWindow, maxOutputTokens] of [[1_000, 100], [4_000, 512], [8_000, 512], [64_000, 8_000]]) {
+    const physical = measureNativeCapacity(Buffer.from('中文🙂'.repeat(40), 'utf8'), contextWindow, maxOutputTokens, 1_000_000);
+    assert.equal(physical.dispatchable, true, `${contextWindow} physical request fits despite planning pressure`);
+    assert.ok(['ok', 'compact', 'blocked'].includes(physical.pressureState));
+  }
+  const outputExceedsWindow = measureNativeCapacity(Buffer.from('x'), 1_000, 1_001, 1_000_000);
+  assert.equal(outputExceedsWindow.dispatchable, false);
+  assert.equal(outputExceedsWindow.reason, 'context-window');
+  const turnExceeds = measureNativeCapacity(Buffer.from('中文'.repeat(100), 'utf8'), 64_000, 1_000, 10);
+  assert.equal(turnExceeds.reason, 'input-budget');
+  const transportExceeds = measureNativeCapacity(Buffer.alloc(1_000_001, 120), 64_000, 1_000, 1_000_000);
+  assert.equal(transportExceeds.reason, 'transport-bytes');
+});
+
 test('DeepSeek Harness 压力阈值：C/R/Hc 推导 pressureBudget、thresholdTokens 和 retainTokens', () => {
   const budget = modelCompactionBudget(64_000, 8_000, 3_200);
   assert.equal(budget.compactionHeadroomTokens, 4_096);

@@ -5,7 +5,7 @@ import { modelAllowsImages, modelLearningInputSchema, modelSegmentInputSchema, s
 import type { LearningModelPort } from '@xunjie/model-gateway/service';
 import type { AgentStore } from './store.js';
 import type { GenerateInput, GeneratedResponse, ModelPort, Json } from './ports.js';
-import { portableHistory } from './history.js';
+import { portableHistory, toolFeedback } from './history.js';
 import { AgentError, ContextCapacityError, ContextPressureError } from './errors.js';
 import { measureAttemptCapacity } from './capacity.js';
 import { resolveMessageImages } from './message-images.js';
@@ -50,9 +50,7 @@ export function createModelAdapter(source: ModelGatewaySource, store: AgentStore
     const feedback = pending.map(callId => {
       const result = results.get(callId) ?? null;
       if (!result) return { callId, outcome: 'error' as const, text: '宿主重启，副作用结果未知', images: [] };
-      if (result.kind === 'completed') return { callId, outcome: result.outcome === 'success' ? 'success' as const : 'error' as const, text: result.summary, images: result.images ?? [] };
-      if (result.kind === 'accepted') return { callId, outcome: 'success' as const, text: result.summary, images: [] };
-      return { callId, outcome: 'error' as const, text: result.reason, images: [] };
+      return { callId, ...toolFeedback(result) };
     });
     return await gateway.segments.settle(input.identity, actual.segmentId, settleModelToolsSchema.parse({
       requestId: operationId('agent-settle-recovered:' + actual.segmentId + ':' + actual.sequence),
