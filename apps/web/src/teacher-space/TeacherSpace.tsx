@@ -406,7 +406,7 @@ function FeedbackRing({ covered, total }: { covered: number; total: number }) {
   return <div className="t-pulse-feedback">
     <div className="t-pulse-feedback-copy">
       <strong>反馈覆盖</strong>
-      <span>{total ? `${covered}/${total} 份提交` : '暂无提交'}</span>
+      <span>{total ? <><b>{covered}</b>/{total}</> : '暂无提交'}</span>
     </div>
     <div className="t-pulse-ring" role="img" aria-label={percent == null ? '反馈覆盖：暂无提交' : `反馈覆盖 ${percent}%，${covered}/${total} 份提交已反馈`}>
       <svg viewBox="0 0 52 52" aria-hidden="true">
@@ -433,13 +433,15 @@ function WeekBars({ submissions }: { submissions: TeacherSubmission[] }) {
   const description = groups.map((group, index) => `${['11-02', '11-09', '11-16'][index]} 提交 ${group.total}、已反馈 ${group.covered}`).join('；')
   return <div className="t-week-bars" role="img" aria-label={`近三周提交与反馈覆盖：${description}`}>
     {groups.map((group, index) => {
-      const barHeight = group.total ? Math.max(14, Math.round(group.total / max * 100)) : 0
+      const barHeight = group.total ? Math.max(14, Math.round(group.total / max * 82)) : 0
       const coveredHeight = group.total ? Math.max(10, Math.round(group.covered / group.total * 100)) : 0
       return <div key={index} className="t-week">
-        <span className="t-week-bar" style={{ height: `${barHeight}%` }}>
-          {group.covered > 0 && <i style={{ height: `${coveredHeight}%` }} />}
-        </span>
-        <b>{group.total}</b>
+        <div className="t-week-plot">
+          <b style={{ bottom: `calc(${barHeight}% + 4px)` }}>{group.total}</b>
+          <span className="t-week-bar" style={{ height: `${barHeight}%` }}>
+            {group.covered > 0 && <i style={{ height: `${coveredHeight}%` }} />}
+          </span>
+        </div>
         <small>{['11-02', '11-09', '11-16'][index]}</small>
       </div>
     })}

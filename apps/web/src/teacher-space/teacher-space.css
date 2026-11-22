@@ -561,6 +561,12 @@ i.t-pulse-key-feedback {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+.t-pulse-feedback-copy span b {
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+}
 .t-pulse-ring {
   position: relative;
   width: 52px;
@@ -623,13 +629,22 @@ i.t-pulse-key-feedback {
 }
 .t-week {
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto auto;
+  grid-template-rows: minmax(0, 1fr) auto;
   align-items: end;
   justify-items: center;
   width: auto;
   min-width: 0;
   flex: 1 1 0;
   height: 100%;
+}
+.t-week-plot {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
 }
 .t-week-bar {
   position: relative;
@@ -649,16 +664,19 @@ i.t-pulse-key-feedback {
   background: var(--accent);
 }
 .t-week b {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
   font-size: 12px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   line-height: 1.4;
-  margin-top: 4px;
 }
 .t-week small {
   font-size: 11px;
   color: var(--muted);
   line-height: 1.4;
+  margin-top: 4px;
 }
 .t-data-note {
   margin: 16px 0 12px;
