@@ -209,8 +209,21 @@ it('shows an expired school request before asking for credentials', async () => 
   const returnTo = 'http://127.0.0.1:57417/?settings=account&schoolAuthorization=' + requestId
   history.replaceState(null, '', '/?authorize=' + requestId + '&returnTo=' + encodeURIComponent(returnTo))
   await act(async () => { root.render(<LearningApp />); await settle() })
-  expect(host.textContent).toContain('学校认证请求已过期或不属于此客户端')
+  expect(host.textContent).toContain('学校认证请求已过期')
+  expect(host.textContent).toContain('需要重新登录学校账号')
   expect(host.querySelector('input[type="password"]')).toBeNull()
+  expect(host.querySelector<HTMLAnchorElement>('.product-school-auth-link')?.href).toBe(returnTo)
+})
+
+it('tells an already signed-in school user that re-authorization needs no password', async () => {
+  profile = 'school'; connected = true; authorizationStatus = 'expired'
+  const requestId = '00000000-0000-4000-8000-000000000026'
+  const returnTo = 'http://127.0.0.1:57417/?settings=account&schoolAuthorization=' + requestId
+  history.replaceState(null, '', '/?authorize=' + requestId + '&returnTo=' + encodeURIComponent(returnTo))
+  await act(async () => { root.render(<LearningApp />); await settle() })
+  expect(host.textContent).toContain('学校认证请求已过期')
+  expect(host.textContent).toContain('当前学校登录仍然有效')
+  expect(host.textContent).not.toContain('认证并返回客户端')
   expect(host.querySelector<HTMLAnchorElement>('.product-school-auth-link')?.href).toBe(returnTo)
 })
 
@@ -303,6 +316,30 @@ it('restores the pending request on return to the client, then completes it only
   expect(host.querySelector('.product-school-list')?.textContent).toContain('示例学校')
   expect(localStorage.getItem('xj.school-authorization.test')).toBeNull()
   expect(toast.getToasts().filter(item => 'type' in item && item.type === 'success')).toHaveLength(1)
+})
+
+it('reuses the saved school address to re-authorize an expired request', async () => {
+  history.replaceState(null, '', '/?settings=account')
+  await act(async () => { root.render(<LearningApp />); await settle() })
+  await click('添加学校')
+  await fill('input[type="url"]', 'https://school.example.edu')
+  await click('连接')
+  const saved = JSON.parse(localStorage.getItem('xj.school-authorization.test')!) as { createdAt: number }
+  saved.createdAt = Date.now() - 16 * 60 * 1000
+  localStorage.setItem('xj.school-authorization.test', JSON.stringify(saved))
+  const oldRequestId = connectionRequest
+  await act(async () => { root.unmount(); await settle() })
+  root = createRoot(host)
+  history.replaceState(null, '', '/?settings=account&schoolAuthorization=' + connectionRequest)
+  await act(async () => { root.render(<LearningApp />); await settle() })
+  expect(host.textContent).toContain('学校认证请求已过期')
+  expect(host.textContent).toContain('学校链接已经保留')
+  expect(host.querySelector('input[type="url"]')).toBeNull()
+  await click('重新发起认证')
+  expect(starts).toHaveLength(2)
+  expect(starts[1]!.requestId).not.toBe(oldRequestId)
+  expect(starts[1]!.schoolEndpoint).toBe('https://school.example.edu')
+  expect(host.textContent).toContain('请在学校页面完成认证')
 })
 
 it('does not complete an unknown returned request', async () => {

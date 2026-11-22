@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 const pendingAuthorization = z.object({ requestId: z.uuid(), authorizationUrl: z.url() })
 const savedAuthorization = pendingAuthorization.extend({ connectionId: z.string().optional(), authenticated: z.boolean().optional(), createdAt: z.number() })
-export type PendingSchoolConnection = z.infer<typeof pendingAuthorization> & { connectionId?: string; authenticated?: boolean }
+export type PendingSchoolConnection = z.infer<typeof pendingAuthorization> & { connectionId?: string; authenticated?: boolean; expired?: boolean }
 const pendingKey = (namespace: string) => 'xj.school-authorization.' + namespace
 const authorizationLifetimeMs = 15 * 60 * 1000
 
@@ -21,11 +21,12 @@ export function restoreSchoolConnection(namespace: string, returnedRequestId: st
   try {
     const saved = savedAuthorization.parse(JSON.parse(localStorage.getItem(pendingKey(namespace)) ?? 'null'))
     if (returnedRequestId && saved.requestId !== returnedRequestId) return null
-    // School authorizations expire after fifteen minutes. A confirmed connection can
-    // still retry its context read after that window.
-    if (!saved.connectionId && Date.now() - saved.createdAt >= authorizationLifetimeMs) return null
+    // School authorizations expire after fifteen minutes. The client keeps the
+    // request so it can re-authorize the same school without asking for the URL again.
+    const expired = !saved.connectionId && Date.now() - saved.createdAt >= authorizationLifetimeMs
     const { createdAt: _, ...pending } = saved
-    return { ...pending, authenticated: pending.authenticated || returnedRequestId === saved.requestId }
+    return { ...pending, authenticated: pending.authenticated || returnedRequestId === saved.requestId,
+      ...(expired ? { expired: true } : {}) }
   } catch { return null }
 }
 

@@ -989,27 +989,41 @@ function LearningView() {
     setNotice('学校认证已完成，请返回原客户端完成连接。')
     return false
   }
+  async function retrySchoolAuthorization(pending: PendingSchoolConnection) {
+    const schoolEndpoint = new URL(pending.authorizationUrl).origin
+    const request = schoolStartRequest.current?.schoolEndpoint === schoolEndpoint
+      ? schoolStartRequest.current : { requestId: crypto.randomUUID(), schoolEndpoint }
+    schoolStartRequest.current = request
+    const next = await api('client/start', request) as PendingConnection
+    schoolStartRequest.current = null
+    rememberPendingConnection(next)
+  }
+  const pendingExpired = !!pendingConnection?.expired && !pendingConnection.connectionId
   const schoolConnectionForm = pendingConnection ? <div className="product-school-pending">
-    <p role="status">{pendingConnection.connectionId ? '学校认证已完成，请重新读取连接。' : pendingConnection.authenticated
-      ? '学校认证已完成，点击下方按钮完成连接。' : '请在学校页面完成认证，然后返回这里完成连接。'}</p>
+    <p role={pendingExpired ? 'alert' : 'status'}>{pendingConnection.connectionId ? '学校认证已完成，请重新读取连接。' : pendingExpired
+      ? '学校认证请求已过期。学校链接已经保留，重新发起后不需要再次填写。'
+      : pendingConnection.authenticated ? '学校认证已完成，点击下方按钮完成连接。' : '请在学校页面完成认证，然后返回这里完成连接。'}</p>
     <div className="product-school-actions">
-      <button type="button" className="primary" disabled={busy} aria-busy={busy || undefined} onClick={() => void action(async generation => {
-        let connectionId = pendingConnection.connectionId
-        if (!connectionId) {
-          let connection: { connectionId: string }
-          try { connection = await api('client/complete', { requestId: pendingConnection.requestId }) as { connectionId: string } }
-          catch (cause) { throw schoolAuthorizationError(cause) }
-          if (generation !== epoch.current) return
-          connectionId = connection.connectionId
-          rememberPendingConnection({ ...pendingConnection, connectionId })
-        }
-        if (await refreshContext('school:' + connectionId, generation)) {
-          rememberPendingConnection(null); setSchoolFormOpen(false); setSchoolEndpoint('')
-          toast.success('学校已连接。')
-        }
-      })}>{busy ? pendingConnection.connectionId ? '正在读取连接…' : '正在完成连接…'
-        : pendingConnection.connectionId ? '重新读取连接' : '已完成认证，连接学校'}</button>
-      {!pendingConnection.connectionId && <a className="outline product-school-auth-link" href={pendingConnection.authorizationUrl} target="_blank" rel="noreferrer">重新打开学校认证页面</a>}
+      {pendingExpired
+        ? <button type="button" className="primary" disabled={busy} aria-busy={busy || undefined}
+          onClick={() => void action(() => retrySchoolAuthorization(pendingConnection))}>重新发起认证</button>
+        : <button type="button" className="primary" disabled={busy} aria-busy={busy || undefined} onClick={() => void action(async generation => {
+          let connectionId = pendingConnection.connectionId
+          if (!connectionId) {
+            let connection: { connectionId: string }
+            try { connection = await api('client/complete', { requestId: pendingConnection.requestId }) as { connectionId: string } }
+            catch (cause) { throw schoolAuthorizationError(cause) }
+            if (generation !== epoch.current) return
+            connectionId = connection.connectionId
+            rememberPendingConnection({ ...pendingConnection, connectionId })
+          }
+          if (await refreshContext('school:' + connectionId, generation)) {
+            rememberPendingConnection(null); setSchoolFormOpen(false); setSchoolEndpoint('')
+            toast.success('学校已连接。')
+          }
+        })}>{busy ? pendingConnection.connectionId ? '正在读取连接…' : '正在完成连接…'
+          : pendingConnection.connectionId ? '重新读取连接' : '已完成认证，连接学校'}</button>}
+      {!pendingConnection.connectionId && !pendingExpired && <a className="outline product-school-auth-link" href={pendingConnection.authorizationUrl} target="_blank" rel="noreferrer">重新打开学校认证页面</a>}
     </div>
     {!pendingConnection.connectionId && <button type="button" className="product-school-text-action" disabled={busy} onClick={event => {
       rememberPendingConnection(null); openSchoolForm(event.currentTarget.closest<HTMLElement>('.product-school'))
@@ -1170,6 +1184,12 @@ function LearningView() {
     if (saved && remove && routeSessionId === id) openAgent()
     return saved
   }
+  const schoolSessionActive = context?.identities.some(item => item.key === 'school') ?? false
+  const authorizationExpiredTitle = authorizationState === 'missing'
+    ? '这个认证请求已失效或不属于此客户端。' : '学校认证请求已过期。'
+  const authorizationExpiredHelp = schoolSessionActive
+    ? '当前学校登录仍然有效。返回客户端重新发起认证后，可直接确认，不需要重新输入账号密码。'
+    : '返回客户端重新发起认证。学校链接会保留，但需要重新登录学校账号。'
   const authorizationGate = authorize && authorizationState !== 'pending'
     ? <div className="content home-page"><section className="product-connection" aria-labelledby="authorization-status-title">
       <h2 id="authorization-status-title">学校认证</h2>
@@ -1182,8 +1202,8 @@ function LearningView() {
           : authorizationState === 'approved'
             ? <><p role="status">学校认证已完成，请返回客户端完成连接。</p>
               {authorizationReturnUrl && <a className="outline product-school-auth-link" href={authorizationReturnUrl}>返回客户端</a>}</>
-            : <><p role="alert">学校认证请求已过期或不属于此客户端，请返回客户端重新发起认证。</p>
-              <p>不需要重新输入账号密码；客户端会重新发起认证。</p>
+            : <><p role="alert">{authorizationExpiredTitle}</p>
+              <p>{authorizationExpiredHelp}</p>
               {authorizationReturnUrl && <a className="outline product-school-auth-link" href={authorizationReturnUrl}>返回客户端</a>}</>}
     </section></div> : null
   if (schoolLoginRequired) return authorizationGate ?? <SessionLogin entryRole="student" loginName={loginName} password={password}
@@ -1305,9 +1325,24 @@ function LearningView() {
       {(context.readOnly || authorize || courseRecovery && !preview) && <div className="content product-home-alerts">
         {context.readOnly && <p role="status" className="product-workspace-notice">这是还原校验副本，作品与学习对话只读，不会启动 Agent 或实验；请由维护者完成接管后继续。</p>}
         {authorize && <section className="product-connection" aria-labelledby="approve-title"><h2 id="approve-title">学校认证</h2>
-          <p>使用当前学校账号认证，完成后返回客户端连接学校。</p>
-          <button type="button" className="primary" disabled={busy || !context.identities.some(item => item.key === 'school')}
-            onClick={() => void action(async () => { await authenticateSchoolClient() })}>认证并返回客户端</button>
+          {authorizationState === 'checking'
+            ? <p role="status">正在核对学校认证请求…</p>
+            : authorizationState === 'error'
+              ? <><p role="alert">暂时无法核对学校认证请求，请重试。</p>
+                <div className="product-school-actions">
+                  <button type="button" className="outline" onClick={() => setAuthorizationAttempt(value => value + 1)}>重新核对</button>
+                  <button type="button" className="outline" disabled={busy || !schoolSessionActive}
+                    onClick={() => void action(async () => { await authenticateSchoolClient() })}>仍然认证</button>
+                </div></>
+              : authorizationState === 'approved'
+                ? <><p role="status">学校认证已完成，请返回客户端完成连接。</p>
+                  {authorizationReturnUrl && <a className="outline product-school-auth-link" href={authorizationReturnUrl}>返回客户端</a>}</>
+                : authorizationState !== 'pending'
+                  ? <><p role="alert">{authorizationExpiredTitle}</p><p>{authorizationExpiredHelp}</p>
+                    {authorizationReturnUrl && <a className="outline product-school-auth-link" href={authorizationReturnUrl}>返回客户端</a>}</>
+                  : <><p>使用当前学校账号认证，完成后返回客户端连接学校。</p>
+                    <button type="button" className="primary" disabled={busy || !schoolSessionActive}
+                      onClick={() => void action(async () => { await authenticateSchoolClient() })}>认证并返回客户端</button></>}
         </section>}
         {courseRecovery && !preview && <div className="course-pending"><p>{busy ? '正在准备课程活动…' : '上次课程活动的请求结果尚未核对，将先查询原请求。'}</p>
           <button type="button" className="outline" disabled={busy} onClick={() => void action(() => startCourse(courseRecovery.releaseId))}>核对并继续原请求</button>
