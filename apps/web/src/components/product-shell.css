@@ -41,6 +41,10 @@
   container-type: inline-size;
   container-name: product-sidebar;
 }
+/* 账户菜单跟侧栏内容宽度一起收窄；否则窄侧栏会把固定 228px 的菜单裁在侧栏边缘。 */
+.product-shell .account-menu.am-pill {
+  width: min(228px, 100cqi);
+}
 .product-shell .brand-role {
   display: inline-flex;
   align-items: center;

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { AccountAvatar, RailHistoryPanel, ShellFrame, SidebarNavigation, SidebarRailNavigation, SidebarToggle, useShellNavigation } from '@xunjie/ui/foundation'
+import { AccountAvatar, AccountMenu, RailHistoryPanel, ShellFrame, SidebarNavigation, SidebarRailNavigation, SidebarToggle, useShellNavigation } from '@xunjie/ui/foundation'
 import { Icon, type IconName } from '../icons'
 import { THEME_OPTIONS, useTheme } from '../lib/theme'
 import { ThemeMenu } from './ThemeMenu'
@@ -11,21 +11,19 @@ export interface ShellNavItem {
   icon: IconName
   activeIcon?: IconName
 }
-export interface ShellAccountItem {
-  label: string
-  icon: IconName
-  onSelect: () => void
-}
 export interface ProductShellProps {
   children: ReactNode
   immersive: boolean
   accountName: string
+  /** Space description under the account name; the teacher surface names its own space. */
+  accountSubtitle?: string
   onHome: () => void
   onAgent: () => void
   onAgentIntent?: () => void
   onSettings: () => void
-  /** Omit on surfaces that have no personal profile, e.g. the teacher space. */
+  /** Omit when the surface has no personal profile entry. */
   onProfile?: () => void
+  onLogout?: () => void
   active?: 'home' | 'agent' | 'settings'
   avatar?: string | null
   agentHistory?: (close: () => void, visible: boolean) => ReactNode
@@ -38,7 +36,6 @@ export interface ProductShellProps {
   navItems?: ShellNavItem[]
   onNavItem?: (id: string) => void
   activeNavItem?: string
-  accountItems?: ShellAccountItem[]
 }
 
 function ProductThemeButton({ visible, rail = false }: { visible: boolean; rail?: boolean }) {
@@ -75,9 +72,9 @@ function ProductThemeButton({ visible, rail = false }: { visible: boolean; rail?
   </div>
 }
 
-function ProductAccount({ name, avatar, visible, rail, onProfile, onSettings, items = [] }: {
-  name: string; avatar?: string | null; visible: boolean; rail?: boolean
-  onProfile?: () => void; onSettings: () => void; items?: ShellAccountItem[]
+function ProductAccount({ name, subtitle, avatar, visible, rail, onProfile, onSettings, onLogout }: {
+  name: string; subtitle: string; avatar?: string | null; visible: boolean; rail?: boolean
+  onProfile?: () => void; onSettings: () => void; onLogout?: () => void
 }) {
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -121,27 +118,18 @@ function ProductAccount({ name, avatar, visible, rail, onProfile, onSettings, it
       onClick={() => setOpen(value => !value)}>
       {accountAvatar}{!rail && <><span className="account-name">{name}</span><Icon name="sort-vertical" size={14} className="account-chev" /></>}
     </button>
-    <div ref={menuRef} className={'account-menu am-' + (rail ? 'rail' : 'pill') + (open && visible ? ' on' : '')}
-      role="menu" aria-label="账户" aria-hidden={!open || !visible} inert={!open || !visible}>
-      <div className="am-head">{accountAvatar}<span className="am-who"><span className="am-name">{name}</span></span></div>
-      <div className="am-sep" />
-      {onProfile && <button type="button" className="account-menu-item" role="menuitem" onClick={() => choose(onProfile)}>
-        <Icon name="user-rounded" size={16} /><span className="am-label">个人资料</span><Icon name="alt-arrow-right" size={14} className="am-chev" />
-      </button>}
-      <button type="button" className="account-menu-item" role="menuitem" onClick={() => choose(onSettings)}>
-        <Icon name="settings" size={16} /><span className="am-label">设置</span>
-      </button>
-      {items.map(item => <button key={item.label} type="button" className="account-menu-item" role="menuitem" onClick={() => choose(item.onSelect)}>
-        <Icon name={item.icon} size={16} /><span className="am-label">{item.label}</span>
-      </button>)}
+    <div ref={menuRef} className="account-menu-slot" inert={!open || !visible}>
+      <AccountMenu open={open && visible} anchor={rail ? 'rail' : 'pill'} name={name} subtitle={subtitle} avatar={accountAvatar}
+        onProfile={onProfile && (() => choose(onProfile))} onSettings={() => choose(onSettings)}
+        onLogout={onLogout && (() => choose(onLogout))} />
     </div>
   </div>
 }
 
 /** Product presentation consumes real data and callbacks; it owns no business services or routing. */
-export function ProductShell({ children, immersive, accountName, avatar, onHome, onAgent, onSettings, onProfile, active,
+export function ProductShell({ children, immersive, accountName, accountSubtitle = '学习空间', avatar, onHome, onAgent, onSettings, onProfile, onLogout, active,
   agentHistory, archivedCount = 0, archiveOpen = false, onArchiveOpenChange, onAgentIntent, brandRole,
-  navItems, onNavItem, activeNavItem, accountItems }: ProductShellProps) {
+  navItems, onNavItem, activeNavItem }: ProductShellProps) {
   const { collapsed, toggle, setCollapsed } = useShellNavigation()
   const toggleRef = useRef<HTMLButtonElement>(null)
   const mainRef = useRef<HTMLElement>(null)
@@ -185,7 +173,7 @@ export function ProductShell({ children, immersive, accountName, avatar, onHome,
       </button>)}
     </nav> : <SidebarNavigation onHome={active === 'home'} onAgent={active === 'agent'} history={agentHistory?.(() => {}, !collapsed && !immersive && active === 'agent')} openHome={onHome} openAgent={onAgent} prepareAgent={onAgentIntent} />}
     bottom={<div className="side-bottom">
-      <ProductAccount name={accountName} avatar={avatar} visible={!collapsed && !immersive} onProfile={onProfile} onSettings={onSettings} items={accountItems} />
+      <ProductAccount name={accountName} subtitle={accountSubtitle} avatar={avatar} visible={!collapsed && !immersive} onProfile={onProfile} onSettings={onSettings} onLogout={onLogout} />
       <button type="button" className={'side-icon' + (active === 'settings' ? ' active' : '')} data-tip="设置与帮助" aria-label="设置与帮助" onClick={onSettings}><Icon name="settings" size={16} /></button>
       <ProductThemeButton visible={!collapsed && !immersive} />
     </div>}
@@ -221,7 +209,7 @@ export function ProductShell({ children, immersive, accountName, avatar, onHome,
       </nav>}
       <div className="product-rail-bottom">
         <ProductThemeButton visible={railVisible} rail />
-        <ProductAccount name={accountName} avatar={avatar} visible={railVisible} rail onProfile={onProfile} onSettings={onSettings} items={accountItems} />
+        <ProductAccount name={accountName} subtitle={accountSubtitle} avatar={avatar} visible={railVisible} rail onProfile={onProfile} onSettings={onSettings} onLogout={onLogout} />
       </div>
     </>}
     overlays={<RailHistoryPanel visible={railPanelVisible} panelRef={railPanelRef} onClose={closeRailPanel}>

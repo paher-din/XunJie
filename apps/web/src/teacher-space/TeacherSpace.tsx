@@ -1,5 +1,5 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
-import { CourseBreadcrumb, CourseTiles, HomeSectionHeading, HomeStatus } from '@xunjie/ui/home'
+import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { CourseTiles, HomeSectionHeading, HomeStatus } from '@xunjie/ui/home'
 import { ConfirmationDialog } from '@xunjie/ui/foundation'
 import { SettingsStatus } from '@xunjie/ui/settings'
 import { ProductShell } from '../components/ProductShell'
@@ -9,6 +9,7 @@ import { SchoolConnectionRow } from '../product/SchoolConnectionRows'
 import { SettingsFailureBoundary } from '../product/SettingsFailureBoundary'
 import { useModelSelection } from '../product/ModelSelection'
 import { LearningReadCache } from '../product/learning-read-cache'
+import { getSessionState, logoutSession } from '../workspace/session'
 import './teacher-space.css'
 import {
   latestTaskOf, loadTeacherCatalog, submissionLabel, teacherCohort,
@@ -22,18 +23,21 @@ type TeacherView = 'overview' | 'workbench'
 type InboxKind = 'pending' | 'revised' | 'draft' | 'stalled'
 type InboxAction = 'review' | 'design' | 'workbench'
 
-interface InboxPerson { name: string; time: string }
+interface InboxPerson { name: string; time: string; submittedAt?: string }
 interface InboxRow {
   key: string
   kind: InboxKind
   label: string
   title: string
-  course: string
+  course?: string
   people?: InboxPerson[]
   objectLabel?: string
   objectMeta?: string
+  statusSummary?: string
+  waitingSince?: string
   action: InboxAction
   courseId?: string
+  targetId?: string
   ariaLabel: string
 }
 
@@ -55,6 +59,16 @@ const dateText = (iso: string) => {
 const timeText = (iso: string) => {
   const date = new Date(iso)
   return `${date.getMonth() + 1}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+}
+
+const waitingText = (iso?: string) => {
+  if (!iso) return ''
+  const time = new Date(iso).getTime()
+  if (!Number.isFinite(time)) return ''
+  const hours = Math.max(0, Math.floor((Date.now() - time) / 3_600_000))
+  if (hours < 1) return '不足 1 小时'
+  if (hours < 24) return `最久等待 ${hours} 小时`
+  return `最久等待 ${Math.floor(hours / 24)} 天`
 }
 
 const releaseAgeText = (iso: string) => {
@@ -93,34 +107,42 @@ function pulseMeter(item: CoursePulseRowData) {
   return groups.flatMap((group, index) => Array.from({ length: cells[index] ?? 0 }, () => group.state))
 }
 
-/** One row is one decision unit: a task with its waiting submissions, or one draft. */
-function reviewInboxRows(courses: TeacherCourse[], submissions: TeacherSubmission[], kind: 'pending' | 'revised'): InboxRow[] {
-  const groups = new Map<string, { courseId: string; taskId: string; latest: string; people: Map<string, string> }>()
+/** One row is one task; pending and revised submissions stay in the same reviewing context. */
+function reviewInboxRows(courses: TeacherCourse[], submissions: TeacherSubmission[]): InboxRow[] {
+  const groups = new Map<string, { courseId: string; taskId: string; people: Map<string, string>; submissions: TeacherSubmission[] }>()
   for (const submission of submissions) {
-    if (submission.state !== kind) continue
+    if (submission.state !== 'pending' && submission.state !== 'revised') continue
     const key = `${submission.courseId}:${submission.taskId}`
     let group = groups.get(key)
     if (!group) {
-      group = { courseId: submission.courseId, taskId: submission.taskId, latest: submission.submittedAt, people: new Map() }
+      group = { courseId: submission.courseId, taskId: submission.taskId, people: new Map(), submissions: [] }
       groups.set(key, group)
     }
-    if (submission.submittedAt > group.latest) group.latest = submission.submittedAt
+    group.submissions.push(submission)
     const prior = group.people.get(submission.studentName)
     if (!prior || submission.submittedAt > prior) group.people.set(submission.studentName, submission.submittedAt)
   }
-  return [...groups.values()]
-    .sort((a, b) => b.latest.localeCompare(a.latest))
-    .map(group => ({
-      key: `${kind}:${group.courseId}:${group.taskId}`,
-      kind,
-      label: kind === 'pending' ? '待审阅' : '待复核',
+  return [...groups.values()].map<InboxRow>(group => {
+    const pendingCount = group.submissions.filter(item => item.state === 'pending').length
+    const revisedCount = group.submissions.length - pendingCount
+    const statusSummary = [revisedCount ? `待复核 ${revisedCount}` : '', pendingCount ? `待审阅 ${pendingCount}` : ''].filter(Boolean).join(' · ')
+    const waitingSince = group.submissions.map(item => item.submittedAt).sort()[0]
+    return {
+      key: `review:${group.courseId}:${group.taskId}`,
+      kind: revisedCount ? 'revised' : 'pending',
+      label: revisedCount ? '待复核' : '待审阅',
       title: taskTitleOf(courses, group.taskId),
       course: courseName(courses, group.courseId),
-      people: [...group.people.entries()].map(([name, submittedAt]) => ({ name, time: timeText(submittedAt) })),
+      people: [...group.people.entries()].map(([name, submittedAt]) => ({ name, time: timeText(submittedAt), submittedAt })),
+      objectLabel: `${group.submissions.length} 份提交`,
+      statusSummary,
+      waitingSince,
       action: 'review',
       courseId: group.courseId,
-      ariaLabel: `${kind === 'pending' ? '审阅' : '复核'}${taskTitleOf(courses, group.taskId)}（${courseName(courses, group.courseId)}）`,
-    }))
+      targetId: group.taskId,
+      ariaLabel: `${statusSummary}，${taskTitleOf(courses, group.taskId)}（${courseName(courses, group.courseId)}）`,
+    }
+  }).sort((a, b) => (a.waitingSince ?? '').localeCompare(b.waitingSince ?? ''))
 }
 
 export function TeacherSpace() {
@@ -201,10 +223,18 @@ export function TeacherSpace() {
 
   return <>
     {catalog?.available && context?.account ? <ProductShell immersive={false} brandRole="教师" accountName={context.account.accountName}
+      accountSubtitle="教师 · 教学空间"
       active={settingsOpen ? 'settings' : undefined}
       onHome={() => { setSettingsOpen(false); setView('overview'); setCourseId(null); setCourseTaskId(null) }}
       onAgent={() => {}}
       onSettings={() => setSettingsOpen(true)}
+      onProfile={() => { setSettingsTab('account'); setSettingsOpen(true) }}
+      onLogout={() => {
+        clearTeacherCache()
+        void logoutSession().then(() => {
+          if (getSessionState().status === 'login') location.replace('/')
+        })
+      }}
       navItems={[{ id: 'overview', label: '教学概览', icon: 'home-2', activeIcon: 'home-2' },
         { id: 'workbench', label: '工作台', icon: 'workbench', activeIcon: 'workbench' }]}
       onNavItem={id => { setSettingsOpen(false); setView(id as TeacherView); setCourseId(null); setCourseTaskId(null) }}
@@ -221,7 +251,8 @@ function TeacherWorkspace({ catalog, cohort, view, courseId, courseTab, courseTa
   onView: (view: TeacherView) => void; onCourse: (id: string, tab?: 'review' | 'design', taskId?: string | null) => void; onBackToCourses: () => void
 }) {
   const course = catalog.courses.find(item => item.courseId === courseId)
-  if (course) return <CourseWorkspace key={course.courseId + courseTab + (courseTaskId ?? '')} course={course} cohort={cohort} initialTab={courseTab} initialTaskId={courseTaskId} onBack={onBackToCourses} />
+  if (course) return <CourseWorkspace key={course.courseId + courseTab + (courseTaskId ?? '')} course={course} courses={catalog.courses} cohort={cohort}
+    initialTab={courseTab} initialTaskId={courseTaskId} onBack={onBackToCourses} onSwitch={(id, tab) => onCourse(id, tab, null)} />
   return view === 'overview'
     ? <Overview courses={catalog.courses} cohort={cohort} onCourse={onCourse} onWorkbench={() => onView('workbench')} />
     : <Workbench courses={catalog.courses} cohort={cohort} onCourse={onCourse} />
@@ -231,37 +262,45 @@ function Overview({ courses, cohort, onCourse, onWorkbench }: {
   courses: TeacherCourse[]; cohort: ReturnType<typeof teacherCohort>
   onCourse: (id: string, tab?: 'review' | 'design', taskId?: string | null) => void; onWorkbench: () => void
 }) {
-  const pending = cohort.submissions.filter(item => item.state === 'pending')
-  const revised = cohort.submissions.filter(item => item.state === 'revised')
+  const [inboxFilter, setInboxFilter] = useState<'all' | 'review' | 'draft' | 'stalled'>('all')
   const submittedStudents = new Set(cohort.submissions.map(item => item.studentId))
   const stalled = cohort.students.filter(student => !submittedStudents.has(student.studentId))
+  const reviewRows = reviewInboxRows(courses, cohort.submissions)
   const inboxRows: InboxRow[] = [
-    ...reviewInboxRows(courses, cohort.submissions, 'pending'),
-    ...reviewInboxRows(courses, cohort.submissions, 'revised'),
+    ...reviewRows,
+    ...stalled.map(student => ({
+      key: `stalled:${student.studentId}`,
+      kind: 'stalled' as const,
+      label: '待跟进',
+      title: student.name,
+      objectLabel: '暂无提交记录',
+      action: 'workbench' as const,
+      ariaLabel: `查看课程：${student.name}暂无提交记录`,
+    })),
     ...cohort.drafts.map(draft => ({
       key: `draft:${draft.draftId}`,
       kind: 'draft' as const,
       label: '待发布',
       title: draft.title,
       course: courseName(courses, draft.courseId),
-      objectLabel: '任务草稿',
-      objectMeta: `${timeText(draft.updatedAt)} 更新`,
+      objectLabel: '未发布',
+      objectMeta: `更新于 ${timeText(draft.updatedAt)}`,
       action: 'design' as const,
       courseId: draft.courseId,
+      targetId: draft.draftId,
       ariaLabel: `设计${draft.title}（${courseName(courses, draft.courseId)}）`,
     })),
-    ...(stalled.length ? [{
-      key: 'stalled',
-      kind: 'stalled' as const,
-      label: '待跟进',
-      title: '尚未提交任何作业',
-      course: `${courses.length} 门在教课程`,
-      people: stalled.map(student => ({ name: student.name, time: '' })),
-      action: 'workbench' as const,
-      ariaLabel: `查看工作台：${stalled.map(student => student.name).join('、')}均未提交`,
-    }] : []),
   ]
-  const inboxCount = pending.length + revised.length + cohort.drafts.length
+  const inboxGroups: { id: 'review' | 'stalled' | 'draft'; label: string; rows: InboxRow[] }[] = [
+    { id: 'review', label: '作业审阅', rows: reviewRows },
+    { id: 'stalled', label: '学生跟进', rows: inboxRows.filter(row => row.kind === 'stalled') },
+    { id: 'draft', label: '任务草稿', rows: inboxRows.filter(row => row.kind === 'draft') },
+  ]
+  const inboxFilters: { id: 'all' | 'review' | 'draft' | 'stalled'; label: string; count: number }[] = [
+    { id: 'all', label: '全部', count: inboxRows.length },
+    ...inboxGroups.map(group => ({ id: group.id, label: group.label, count: group.rows.length })),
+  ]
+  const visibleGroups = (inboxFilter === 'all' ? inboxGroups : inboxGroups.filter(group => group.id === inboxFilter)).filter(group => group.rows.length > 0)
   const feedbackTotal = cohort.submissions.length
   const feedbackCovered = cohort.submissions.filter(item => item.state !== 'pending').length
   const coursePulse: CoursePulseRowData[] = courses.map(course => {
@@ -283,7 +322,7 @@ function Overview({ courses, cohort, onCourse, onWorkbench }: {
   })
   const openInboxRow = (row: InboxRow) => {
     if (row.action === 'workbench') onWorkbench()
-    else if (row.courseId) onCourse(row.courseId, row.action)
+    else if (row.courseId) onCourse(row.courseId, row.action, row.targetId)
   }
 
   return <div className="content teacher-page teacher-page--overview">
@@ -291,7 +330,7 @@ function Overview({ courses, cohort, onCourse, onWorkbench }: {
       <div className="t-overview-card t-pulse-card">
         <div className="t-pulse-head">
           <div className="t-pulse-heading">
-            <HomeSectionHeading title={<span id="t-board-title">课程进展</span>} count={`${courses.length} 门`} />
+            <HomeSectionHeading title={<span id="t-board-title">课程进展</span>} />
           </div>
           <div className="t-pulse-key" aria-label="状态颜色">
             <span><i className="t-pulse-key-done" />已完成</span>
@@ -323,52 +362,55 @@ function Overview({ courses, cohort, onCourse, onWorkbench }: {
     </section>
 
     <section className="t-overview-card t-inbox-card" aria-labelledby="t-pending-title">
-      <HomeSectionHeading title={<span id="t-pending-title">待处理</span>} count={`${inboxCount} 项`} />
+      <div className="t-inbox-head">
+        <HomeSectionHeading title={<span id="t-pending-title">待处理</span>} count={`${inboxRows.length} 项`} />
+        {inboxRows.length > 0 && <div className="t-inbox-filters" role="group" aria-label="筛选待处理事项">
+          {inboxFilters.filter(filter => filter.id === 'all' || filter.count > 0).map(filter => <button key={filter.id} type="button"
+            className={`t-inbox-filter${inboxFilter === filter.id ? ' on' : ''}`} aria-pressed={inboxFilter === filter.id}
+            onClick={() => setInboxFilter(filter.id)}>{filter.label}<small>{filter.count}</small></button>)}
+        </div>}
+      </div>
       {inboxRows.length === 0 ? <p className="t-inbox-empty">当前没有待处理的提交、待发布草稿或需要跟进的学生。</p>
-        : <div className="t-inbox">
-          <table className="t-inbox-table">
-            <caption className="t-inbox-caption">待处理的提交、任务草稿与待跟进学生</caption>
-            <thead>
-              <tr>
-                <th scope="col">状态</th>
-                <th scope="col">事项</th>
-                <th scope="col">课程</th>
-                <th scope="col">待处理对象</th>
-                <th scope="col" aria-label="操作"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {inboxRows.map(row => <tr key={row.key} className="t-inbox-row" onClick={() => openInboxRow(row)}>
-                <td><span className={`t-state t-state-${row.kind}`}>{row.label}</span></td>
-                <td>
-                  <span className="t-inbox-task">
-                    <strong title={row.title}>{row.title}</strong>
-                  </span>
-                </td>
-                <td className="t-inbox-course">{row.course}</td>
-                <td>
-                  <span className="t-inbox-object">
-                    {row.people?.length
-                      ? row.people.map(person => <span className="t-inbox-person" key={person.name}>
-                        <strong>{person.name}</strong>{person.time && <small>{person.time}</small>}
-                      </span>)
-                      : <span className="t-inbox-object-label"><strong>{row.objectLabel}</strong>{row.objectMeta && <small>{row.objectMeta}</small>}</span>}
-                  </span>
-                </td>
-                <td className="t-inbox-action">
-                  <button type="button" className="t-inbox-open" aria-label={row.ariaLabel}
-                    onClick={event => { event.stopPropagation(); openInboxRow(row) }}>
-                    <Icon name="alt-arrow-right" size={15} />
+        : <div className="t-inbox-list">
+          {visibleGroups.map(group => <section className="t-inbox-group" aria-label={group.label} key={group.id}>
+            {inboxFilter === 'all' && <div className="t-inbox-group-head"><span>{group.label}</span></div>}
+            <ul className="t-inbox-group-list">
+              {group.rows.map(row => {
+                const people = row.people ?? []
+                const names = people.length > 3 ? `${people.slice(0, 2).map(person => person.name).join('、')} 等 ${people.length} 人` : people.map(person => person.name).join('、')
+                const actionLabel = row.kind === 'draft' ? '继续设计' : row.kind === 'stalled' ? '查看课程' : '去处理'
+                const timeLabel = row.kind === 'draft' ? row.objectMeta : row.kind === 'stalled' ? '—' : waitingText(row.waitingSince)
+                const timeTitle = row.kind === 'draft' ? row.objectMeta : row.kind === 'stalled' ? '无提交时间' : row.waitingSince ? `最早未处理提交 ${timeText(row.waitingSince)}` : undefined
+                const objectLabel = row.objectLabel ?? ''
+                return <li key={row.key}>
+                  <button type="button" className="t-inbox-item" data-kind={row.kind} aria-label={row.ariaLabel} onClick={() => openInboxRow(row)}>
+                    <span className="t-inbox-item-main">
+                      <strong className="t-inbox-item-name" title={row.title}>{row.title}</strong>
+                      {row.course && <span className="t-inbox-item-course">{row.course}</span>}
+                    </span>
+                    <span className="t-inbox-item-context">
+                      <span className="t-inbox-item-context-top"><strong>{objectLabel}</strong>{row.statusSummary && <small>{row.statusSummary}</small>}</span>
+                      {people.length > 0 && <small className="t-inbox-item-context-sub">{names}</small>}
+                    </span>
+                    <span className={`t-inbox-item-time t-inbox-item-time-${row.kind}`} title={timeTitle}>{timeLabel}</span>
+                    <span className={`t-inbox-item-action${row.kind === 'draft' ? ' quiet' : ''}`}>{actionLabel}<Icon name="alt-arrow-right" size={15} /></span>
                   </button>
-                </td>
-              </tr>)}
-            </tbody>
-          </table>
+                </li>
+              })}
+            </ul>
+          </section>)}
         </div>}
     </section>
 
     <p className="t-data-note">课程与任务来自学校发布的真实目录；学生、提交、草稿为界面预览用的示例数据，接入审阅接口后替换。</p>
   </div>
+}
+
+function Fraction({ numerator, denominator }: { numerator: number; denominator: number }) {
+  return <span className="t-fraction">
+    <span className="t-fraction-num">{numerator}</span>
+    <span className="t-fraction-den">/{denominator}</span>
+  </span>
 }
 
 function CoursePulseRow({ item, onOpen, onTask }: { item: CoursePulseRowData; onOpen: () => void; onTask: () => void }) {
@@ -397,7 +439,7 @@ function CoursePulseRow({ item, onOpen, onTask }: { item: CoursePulseRowData; on
       <span className="t-pulse-meta">
         <small>{justPublished ? '尚无提交' : release}</small>
         {item.task
-          ? justPublished ? <b>刚发布</b> : <b>{percent != null && <i>{percent}% · </i>}{item.submitted}/{item.assigned}</b>
+          ? justPublished ? <b>刚发布</b> : <b>{percent != null && <i>{percent}% · </i>}<Fraction numerator={item.submitted} denominator={item.assigned} /></b>
           : <b>—</b>}
       </span>
     </button>
@@ -421,7 +463,7 @@ function FeedbackRing({ covered, total }: { covered: number; total: number }) {
         <small>已反馈</small>
       </div>
     </div>
-    <p className="t-pulse-feedback-total" aria-hidden="true"><b>{covered}/{total}</b></p>
+    <p className="t-pulse-feedback-total" aria-hidden="true"><b><Fraction numerator={covered} denominator={total} /></b></p>
   </div>
 }
 
@@ -443,7 +485,7 @@ function WeekBars({ submissions }: { submissions: TeacherSubmission[] }) {
       const coveredHeight = group.total ? Math.max(10, Math.round(group.covered / group.total * 100)) : 0
       return <div key={index} className="t-week">
         <div className="t-week-plot">
-          <b style={{ bottom: `calc(${barHeight}% + 6px)` }}>{group.covered}<span>/{group.total}</span></b>
+          <b style={{ bottom: `calc(${barHeight}% + 6px)` }}><Fraction numerator={group.covered} denominator={group.total} /></b>
           <span className="t-week-bar" style={{ height: `${barHeight}%` }}>
             {group.covered > 0 && <i style={{ height: `${coveredHeight}%` }} />}
           </span>
@@ -462,34 +504,102 @@ function Workbench({ courses, cohort, onCourse }: { courses: TeacherCourse[]; co
       {courses.length === 0 ? <HomeStatus kind="empty" message="学校还没有可管理的课程。" />
         : <CourseTiles courses={courses.map(course => course.courseId)} toneOf={id => indexOf(id)}
           titleOf={id => courses[indexOf(id)]!.name}
-          summaryOf={id => `${courses[indexOf(id)]!.tasks.length} 个任务 · ${cohort.students.length} 名学生 · ${cohort.submissions.filter(item => item.courseId === id && item.state === 'pending').length} 份待审阅`}
+          summaryOf={id => `${cohort.submissions.filter(item => item.courseId === id && item.state === 'pending').length} 份待审阅 · ${courses[indexOf(id)]!.tasks.length} 个任务 · ${cohort.students.length} 名学生`}
           actionOf={() => '进入课程'} onOpen={id => onCourse(id)} />}
     </section>
   </div>
 }
 
-function CourseWorkspace({ course, cohort, initialTab, initialTaskId, onBack }: {
-  course: TeacherCourse; cohort: ReturnType<typeof teacherCohort>; initialTab: 'review' | 'design'
+function CourseWorkspace({ course, courses, cohort, initialTab, initialTaskId, onBack, onSwitch }: {
+  course: TeacherCourse; courses: TeacherCourse[]; cohort: ReturnType<typeof teacherCohort>; initialTab: 'review' | 'design'
   initialTaskId?: string | null
   onBack: () => void
+  onSwitch: (id: string, tab: 'review' | 'design') => void
 }) {
   const [tab, setTab] = useState<'review' | 'design'>(initialTab)
+  const [courseMenu, setCourseMenu] = useState(false)
+  const menuWrap = useRef<HTMLDivElement>(null)
+  const menuTrigger = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    if (!courseMenu) return
+    const outside = (event: PointerEvent) => { if (!menuWrap.current?.contains(event.target as Node)) setCourseMenu(false) }
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      setCourseMenu(false)
+      menuTrigger.current?.focus({ preventScroll: true })
+    }
+    document.addEventListener('pointerdown', outside)
+    document.addEventListener('keydown', escape)
+    return () => {
+      document.removeEventListener('pointerdown', outside)
+      document.removeEventListener('keydown', escape)
+    }
+  }, [courseMenu])
+  const pagesRef = useRef<HTMLDivElement>(null)
+  const [glider, setGlider] = useState<{ left: number; width: number } | null>(null)
+  useLayoutEffect(() => {
+    const pages = pagesRef.current
+    if (!pages) return
+    const measure = () => {
+      const active = pages.querySelector<HTMLButtonElement>('.t-btab.on')
+      if (active) setGlider({ left: active.offsetLeft, width: active.offsetWidth })
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(pages)
+    return () => observer.disconnect()
+  }, [tab])
   const [taskScope, setTaskScope] = useState<string | null>(initialTaskId ?? null)
   const [submissions, setSubmissions] = useState<TeacherSubmission[]>(() => cohort.submissions.filter(item => item.courseId === course.courseId))
   const [projects, setProjects] = useState<TeacherDraft[]>(() => cohort.drafts.filter(item => item.courseId === course.courseId))
   const scopedTask = taskScope ? course.tasks.find(item => item.taskId === taskScope) : undefined
   const scopedCount = scopedTask ? submissions.filter(item => item.taskId === scopedTask.taskId).length : 0
   return <div className="content teacher-page">
-    <CourseBreadcrumb title={course.name} onBack={() => onBack()} />
-    <p className="t-course-meta">{course.tasks.length} 个任务 · {cohort.students.length} 名学生 · {course.tasks.reduce((sum, task) => sum + task.releases.length, 0)} 个发布版本</p>
-    <div className="t-tabs" role="tablist" aria-label="课程工作区">
+    <header className="t-tabbar">
+      <button type="button" className="t-tabbar-back" aria-label="返回课程列表" onClick={onBack}>
+        <Icon name="alt-arrow-left" size={16} />
+      </button>
+      <div className="t-tabbar-rail">
+      <div className="t-tabbar-course" ref={menuWrap}>
+        <button type="button" ref={menuTrigger} className={'t-btab t-btab-course' + (courseMenu ? ' open' : '')}
+          aria-haspopup="menu" aria-expanded={courseMenu} aria-label={`切换课程，当前${course.name}`}
+          onClick={() => setCourseMenu(value => !value)}>
+          <span className="t-btab-course-name">{course.name}</span>
+          <Icon name="alt-arrow-down" size={13} />
+        </button>
+        <div className={'t-tab-menu' + (courseMenu ? ' on' : '')} role="menu" aria-label="切换课程" inert={!courseMenu}
+          onKeyDown={event => {
+            if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return
+            event.preventDefault()
+            const items = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('button')]
+            const index = items.indexOf(document.activeElement as HTMLButtonElement)
+            const step = event.key === 'ArrowDown' ? 1 : -1
+            const next = index < 0 ? (step > 0 ? items[0] : items[items.length - 1]) : items[(index + step + items.length) % items.length]
+            next?.focus()
+          }}>
+          {courses.map(item => <button key={item.courseId} type="button" role="menuitemradio" aria-checked={item.courseId === course.courseId}
+            className={'t-tab-menu-item' + (item.courseId === course.courseId ? ' on' : '')}
+            onClick={() => {
+              setCourseMenu(false)
+              if (item.courseId !== course.courseId) onSwitch(item.courseId, tab)
+              else menuTrigger.current?.focus({ preventScroll: true })
+            }}>
+            <span className="t-tab-menu-label">{item.name}</span>
+            {item.courseId === course.courseId && <Icon name="check" size={14} />}
+          </button>)}
+        </div>
+      </div>
+      <div className="t-tabbar-pages" role="tablist" aria-label="课程工作区" ref={pagesRef}>
+      {glider && <span className="t-btab-glider" aria-hidden="true" style={{ width: glider.width, transform: `translateX(${glider.left}px)` }} />}
       <button type="button" role="tab" id="t-tab-review" aria-selected={tab === 'review'} aria-controls="t-panel-review"
-        tabIndex={tab === 'review' ? 0 : -1} className={tab === 'review' ? 'on' : ''} onClick={() => setTab('review')}
+        tabIndex={tab === 'review' ? 0 : -1} className={'t-btab' + (tab === 'review' ? ' on' : '')} onClick={() => setTab('review')}
         onKeyDown={event => { if (event.key !== 'ArrowRight') return; event.preventDefault(); setTab('design'); requestAnimationFrame(() => document.getElementById('t-tab-design')?.focus()) }}>作业审阅</button>
       <button type="button" role="tab" id="t-tab-design" aria-selected={tab === 'design'} aria-controls="t-panel-design"
-        tabIndex={tab === 'design' ? 0 : -1} className={tab === 'design' ? 'on' : ''} onClick={() => setTab('design')}
+        tabIndex={tab === 'design' ? 0 : -1} className={'t-btab' + (tab === 'design' ? ' on' : '')} onClick={() => setTab('design')}
         onKeyDown={event => { if (event.key !== 'ArrowLeft') return; event.preventDefault(); setTab('review'); requestAnimationFrame(() => document.getElementById('t-tab-review')?.focus()) }}>任务设计</button>
-    </div>
+      </div>
+      </div>
+    </header>
     {scopedTask && tab === 'review' && <div className="t-task-focus">
       <div className="t-task-focus-main">
         <span>当前任务</span>
@@ -501,12 +611,12 @@ function CourseWorkspace({ course, cohort, initialTab, initialTaskId, onBack }: 
     {tab === 'review'
       ? <div id="t-panel-review" role="tabpanel" aria-labelledby="t-tab-review"><ReviewPane key={scopedTask?.taskId ?? 'all'} course={course} submissions={submissions} taskId={scopedTask?.taskId ?? null}
         onChange={next => setSubmissions(current => current.map(item => item.submissionId === next.submissionId ? next : item))} /></div>
-      : <div id="t-panel-design" role="tabpanel" aria-labelledby="t-tab-design"><DesignPane course={course} projects={projects} onProjects={setProjects} /></div>}
+      : <div id="t-panel-design" role="tabpanel" aria-labelledby="t-tab-design"><DesignPane course={course} projects={projects} initialDraftId={initialTaskId} onProjects={setProjects} /></div>}
   </div>
 }
 
-const filters: { id: 'all' | SubmissionState; label: string }[] = [
-  { id: 'all', label: '全部' }, { id: 'pending', label: '待审阅' }, { id: 'revised', label: '待复核' },
+const filters: { id: 'all' | 'inbox' | SubmissionState; label: string }[] = [
+  { id: 'inbox', label: '待处理' }, { id: 'all', label: '全部' }, { id: 'pending', label: '待审阅' }, { id: 'revised', label: '待复核' },
   { id: 'feedback', label: '已反馈' }, { id: 'done', label: '已完成' },
 ]
 
@@ -514,9 +624,20 @@ function ReviewPane({ course, submissions, taskId, onChange }: {
   course: TeacherCourse; submissions: TeacherSubmission[]; taskId?: string | null; onChange: (submission: TeacherSubmission) => void
 }) {
   const scoped = taskId ? submissions.filter(item => item.taskId === taskId) : submissions
-  const [filter, setFilter] = useState<'all' | SubmissionState>('pending')
-  const [selectedId, setSelectedId] = useState(() => scoped.find(item => item.state === 'pending')?.submissionId ?? scoped[0]?.submissionId)
-  const visible = filter === 'all' ? scoped : scoped.filter(item => item.state === filter)
+  const hasPending = scoped.some(item => item.state === 'pending')
+  const hasRevised = scoped.some(item => item.state === 'revised')
+  const initialFilter: 'all' | 'inbox' | SubmissionState = taskId
+    ? hasPending || hasRevised ? 'inbox' : 'all'
+    : 'pending'
+  const initialVisible = initialFilter === 'all' ? scoped : initialFilter === 'inbox'
+    ? scoped.filter(item => item.state === 'pending' || item.state === 'revised')
+    : scoped.filter(item => item.state === initialFilter)
+  const initialSelected = [...initialVisible].sort((a, b) => a.submittedAt.localeCompare(b.submittedAt))[0] ?? scoped[0]
+  const [filter, setFilter] = useState<'all' | 'inbox' | SubmissionState>(initialFilter)
+  const [selectedId, setSelectedId] = useState(() => initialSelected?.submissionId)
+  const visible = filter === 'all' ? scoped : filter === 'inbox'
+    ? scoped.filter(item => item.state === 'pending' || item.state === 'revised')
+    : scoped.filter(item => item.state === filter)
   const selected = scoped.find(item => item.submissionId === selectedId) ?? visible[0]
   const [feedback, setFeedback] = useState(selected?.feedback ?? '')
   const [saved, setSaved] = useState('')
@@ -537,8 +658,10 @@ function ReviewPane({ course, submissions, taskId, onChange }: {
   return <div className="t-review">
     <aside className="t-review-list" aria-label="提交清单">
       <div className="t-filter" role="group" aria-label="按状态筛选">
-        {filters.map(item => <button key={item.id} type="button" className={filter === item.id ? 'on' : ''} aria-pressed={filter === item.id}
-          onClick={() => setFilter(item.id)}>{item.label}<small>{item.id === 'all' ? scoped.length : scoped.filter(entry => entry.state === item.id).length}</small></button>)}
+        {filters.filter(item => taskId || item.id !== 'inbox').map(item => <button key={item.id} type="button" className={filter === item.id ? 'on' : ''} aria-pressed={filter === item.id}
+          onClick={() => { setFilter(item.id); setSaved('') }}>{item.label}<small>{item.id === 'all' ? scoped.length : item.id === 'inbox'
+            ? scoped.filter(entry => entry.state === 'pending' || entry.state === 'revised').length
+            : scoped.filter(entry => entry.state === item.id).length}</small></button>)}
       </div>
       <div className="t-submission-list">
         {visible.length === 0 ? <p className="t-list-empty">这个状态没有提交。</p> : visible.map(item => <button key={item.submissionId} type="button"
@@ -591,12 +714,12 @@ const initialMessages = [
   { role: 'agent' as const, text: '那评价证据应该包含一次比较：行波进位和超前进位的延迟差异。目标可以先写成三条，我把蓝图放在右边。' },
 ]
 
-function DesignPane({ course, projects, onProjects }: {
-  course: TeacherCourse; projects: TeacherDraft[]; onProjects: (projects: TeacherDraft[]) => void
+function DesignPane({ course, projects, initialDraftId, onProjects }: {
+  course: TeacherCourse; projects: TeacherDraft[]; initialDraftId?: string | null; onProjects: (projects: TeacherDraft[]) => void
 }) {
   const published = course.tasks.filter(task => task.releases.length > 0)
-  const [openId, setOpenId] = useState<string | null>(null)
-  const [draft, setDraft] = useState<TeacherDraft | null>(null)
+  const [openId, setOpenId] = useState<string | null>(initialDraftId ?? null)
+  const [draft, setDraft] = useState<TeacherDraft | null>(() => projects.find(project => project.draftId === initialDraftId) ?? null)
   const [messages, setMessages] = useState(initialMessages)
   const [input, setInput] = useState('')
   const [publishOpen, setPublishOpen] = useState(false)

@@ -28,7 +28,7 @@
   background: var(--sunken);
 }
 .t-inbox-card {
-  padding-bottom: 20px;
+  padding-bottom: 12px;
   overflow: hidden;
 }
 .t-overview-card .sectionhead,
@@ -43,7 +43,7 @@
   margin-bottom: 24px;
 }
 
-/* ---------- 待处理：紧凑表格 ---------- */
+/* ---------- 待处理：按工作项排列 ---------- */
 .teacher-page .sectionhead small {
   margin-left: 8px;
   padding: 4px 6px;
@@ -53,185 +53,260 @@
   font-size: 12px;
 }
 
-.t-inbox {
-  overflow: hidden;
-  background: transparent;
-}
-.t-inbox-table {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-  font: 400 13px/1.5 var(--font-sans);
-}
-.t-inbox-caption {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-  border: 0;
-}
-.t-inbox-table th,
-.t-inbox-table td {
-  padding: 0 16px;
-  text-align: left;
-  vertical-align: middle;
-}
-.t-inbox-table thead th {
-  height: 36px;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-  background: var(--sunken);
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-}
-.t-inbox-card .t-inbox-table thead th {
-  height: 34px;
-  border: 0;
-  border-bottom: 1px solid var(--line);
-  background: transparent;
-}
-.t-inbox-table th:first-child,
-.t-inbox-table td:first-child {
-  width: 68px;
-  padding-left: 0;
-}
-.t-inbox-table th:nth-child(2) {
-  width: auto;
-}
-.t-inbox-table th:nth-child(3) {
-  width: 19%;
-}
-.t-inbox-table th:nth-child(4),
-.t-inbox-table td:nth-child(4) {
-  width: 33%;
-}
-.t-inbox-table th:last-child,
-.t-inbox-table td:last-child {
-  width: 54px;
-  padding-right: 16px;
-  padding-left: 0;
-  text-align: right;
-}
-.t-inbox-row {
-  height: 44px;
-  cursor: pointer;
-  transition: background-color 150ms var(--ease-s);
-}
-.t-inbox-row:hover,
-.t-inbox-row:focus-within {
-  background: var(--hover-bg);
-}
-.t-inbox-table tbody tr + tr td {
-  border-top: 1px solid var(--line);
-}
-.t-inbox-table tbody tr:last-child td {
-  border-bottom: 1px solid var(--line);
-}
-.t-inbox-card .t-inbox-table tbody tr:last-child td {
-  border-bottom: 0;
-}
-.t-inbox-card .t-inbox-row:hover,
-.t-inbox-card .t-inbox-row:focus-within {
-  background: var(--paper);
-}
-.t-inbox-task {
-  display: block;
-  min-width: 0;
-}
-.t-inbox-task strong {
-  display: block;
-  overflow: hidden;
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 500;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.t-inbox-course {
-  overflow: hidden;
-  color: var(--muted);
-  font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.t-inbox-object {
+.t-inbox-head {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 2px 4px;
-  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
 }
-.t-inbox-person,
-.t-inbox-object-label {
+.t-inbox-head .sectionhead {
+  flex: none;
+  margin: 0;
+}
+.t-inbox-head .sectionhead small {
+  color: var(--ink-soft);
+}
+.t-inbox-filters {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 8px;
+  background: var(--chip-bg);
+}
+.t-inbox-filter {
   display: inline-flex;
-  align-items: baseline;
-  gap: 5px;
-  white-space: nowrap;
-}
-.t-inbox-person + .t-inbox-person {
-  position: relative;
-  padding-left: 10px;
-}
-.t-inbox-person + .t-inbox-person::before {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 0;
-  width: 2px;
-  height: 2px;
-  border-radius: 50%;
-  background: var(--faint);
-  transform: translateY(-50%);
-}
-.t-inbox-person strong,
-.t-inbox-object-label strong {
-  color: var(--ink);
-  font-weight: 500;
-}
-.t-inbox-person small,
-.t-inbox-object-label small {
-  color: var(--muted);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-}
-.t-inbox-open {
-  display: inline-grid;
-  place-items: center;
-  width: 28px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   height: 28px;
-  padding: 0;
+  padding: 0 10px;
   border: 0;
   border-radius: 6px;
   background: transparent;
-  color: var(--muted);
+  color: var(--ink-soft);
+  font: 500 12px/1.5 var(--font-sans);
+  white-space: nowrap;
   cursor: pointer;
-  transition: color 150ms var(--ease-s), background-color 150ms var(--ease-s);
+  transition: color 150ms var(--ease-s), background-color 150ms var(--ease-s), box-shadow 150ms var(--ease-s);
 }
-.t-inbox-open:hover {
-  background: var(--chip-bg);
+.t-inbox-filter:hover {
+  background: var(--hover-bg);
   color: var(--ink);
 }
-.t-inbox-row:hover .t-inbox-open {
+.t-inbox-filter.on {
+  background: var(--paper);
   color: var(--ink);
+  box-shadow: 0 1px 2px rgba(24, 34, 57, 0.05);
 }
-.t-inbox-open:focus-visible {
+.t-inbox-filter small {
+  color: inherit;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.t-inbox-filter:focus-visible {
   outline: 2px solid var(--focus-ring);
-  outline-offset: 1px;
+  outline-offset: 2px;
+}
+.t-inbox-list {
+  border-top: 1px solid var(--line);
+}
+.t-inbox-group + .t-inbox-group {
+  border-top: 1px solid var(--line);
+}
+.t-inbox-group-head {
+  padding: 12px 0 8px;
+}
+.t-inbox-group-head > span {
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-weight: 600;
+}
+.t-inbox-group-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.t-inbox-group-list li {
+  margin: 0;
+  padding: 0;
+}
+.t-inbox-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(250px, 0.9fr) 132px 88px;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+  min-height: 64px;
+  padding: 10px 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 150ms var(--ease-s);
+}
+.t-inbox-group-list li:last-child .t-inbox-item {
+  border-bottom: 0;
+}
+.t-inbox-item:hover,
+.t-inbox-item:focus-visible {
+  background: var(--paper);
+}
+.t-inbox-item:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+.t-inbox-item-main,
+.t-inbox-item-context {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+.t-inbox-item-name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.t-inbox-item-course {
+  overflow: hidden;
+  color: var(--ink-soft);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.t-inbox-item-context {
+  gap: 2px;
+}
+.t-inbox-item-context-top {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 8px;
+}
+.t-inbox-item-context-top strong {
+  flex: none;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.t-inbox-item-context-top small {
+  overflow: hidden;
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.t-inbox-item[data-kind='draft'] .t-inbox-item-context-top strong,
+.t-inbox-item[data-kind='stalled'] .t-inbox-item-context-top strong {
+  color: var(--ink-soft);
+  font-weight: 400;
+}
+.t-inbox-item-context-sub {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--ink-soft);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.t-inbox-item-time {
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.t-inbox-item-action {
+  display: inline-flex;
+  width: 100%;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  color: var(--accent-deep);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.t-inbox-item-action.quiet {
+  color: var(--ink-soft);
+}
+.t-inbox-item-action svg {
+  flex: none;
+  transition: transform 150ms var(--ease-s);
+}
+.t-inbox-item:hover .t-inbox-item-action svg,
+.t-inbox-item:focus-visible .t-inbox-item-action svg {
+  transform: translateX(2px);
 }
 .t-inbox-empty {
   margin: 0;
   padding: 28px 18px;
   border: 1px dashed var(--line-strong);
   border-radius: 12px;
-  color: var(--muted);
+  color: var(--ink-soft);
   font-size: 13px;
+}
+
+@media (max-width: 1120px) {
+  .t-inbox-item {
+    grid-template-columns: minmax(0, 1fr) minmax(210px, 0.75fr) 124px 80px;
+    gap: 16px;
+  }
+}
+@media (max-width: 900px) {
+  .t-inbox-head {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .t-inbox-filters {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+  .t-inbox-item {
+    grid-template-columns: minmax(0, 1fr) 120px 80px;
+    gap: 8px 12px;
+  }
+  .t-inbox-item-main {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .t-inbox-item-context {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .t-inbox-item-time {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+  .t-inbox-item-action {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+  }
+}
+@media (max-width: 620px) {
+  .t-inbox-item-name,
+  .t-inbox-item-context-sub {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+  }
+  .t-inbox-item-context-top {
+    flex-wrap: wrap;
+    row-gap: 2px;
+  }
 }
 
 .t-state {
@@ -268,55 +343,6 @@
   background: var(--tint-rose-bg);
   color: var(--tint-rose-fg);
   box-shadow: inset 0 0 0 1px var(--tint-rose-line);
-}
-
-@media (max-width: 1120px) {
-  .t-inbox-table th:nth-child(3) {
-    width: 21%;
-  }
-  .t-inbox-table th:nth-child(4),
-  .t-inbox-table td:nth-child(4) {
-    width: 31%;
-  }
-  .t-inbox-person {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1px;
-  }
-  .t-inbox-row {
-    height: 54px;
-  }
-}
-@media (max-width: 900px) {
-  .t-inbox-table th,
-  .t-inbox-table td {
-    padding: 0 12px;
-  }
-  .t-inbox-table th:first-child,
-  .t-inbox-table td:first-child {
-    width: 62px;
-    padding-left: 0;
-  }
-  .t-inbox-table th:last-child,
-  .t-inbox-table td:last-child {
-    width: 44px;
-    padding-right: 10px;
-  }
-  .t-inbox-table th:nth-child(3) {
-    width: 24%;
-  }
-  .t-inbox-table th:nth-child(4),
-  .t-inbox-table td:nth-child(4) {
-    width: 28%;
-  }
-}
-@media (max-width: 860px) {
-  .t-inbox {
-    overflow-x: auto;
-  }
-  .t-inbox-table {
-    min-width: 700px;
-  }
 }
 
 /* ---------- 教师概览：课程进展 ---------- */
@@ -508,6 +534,27 @@ i.t-pulse-key-feedback {
   font-size: 11px;
   font-style: normal;
   font-weight: 400;
+}
+.t-fraction {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 1px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
+}
+.t-fraction-num {
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.2px;
+}
+.t-fraction-den {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.2;
 }
 .t-rhythm-card {
   display: flex;
@@ -709,10 +756,6 @@ i.t-pulse-key-feedback {
   line-height: 1.4;
   white-space: nowrap;
 }
-.t-week b span {
-  color: var(--muted);
-  font-weight: 400;
-}
 .t-week small {
   font-size: 11px;
   color: var(--muted);
@@ -772,38 +815,203 @@ i.t-pulse-key-feedback {
 .teacher-page .course-tile-body {
   padding: 16px 16px 0;
 }
-.t-course-meta {
-  margin: -6px 0 18px;
-  font-size: 12.5px;
-  color: var(--muted);
+/* ---------- 课程工作区：标签栏 ---------- */
+.t-tabbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 20px;
 }
-.t-tabs {
+.t-tabbar-back {
   display: inline-flex;
-  gap: 2px;
-  padding: 3px;
-  margin-bottom: 24px;
-  border-radius: 10px;
-  background: var(--chip-bg);
-}
-.t-tabs button {
-  height: 30px;
-  padding: 0 16px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
   border-radius: 8px;
-  font-size: 13px;
   color: var(--muted);
+  transition:
+    background-color 0.15s cubic-bezier(0.3, 1, 0.35, 1),
+    color 0.15s cubic-bezier(0.3, 1, 0.35, 1);
 }
-.t-tabs button.on {
+.t-tabbar-back:hover {
+  background: var(--chip-bg);
+  color: var(--ink);
+  filter: none;
+}
+.t-tabbar-rail {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--chip-bg);
+  --tab-hover: var(--chip-active);
+  --tab-line: var(--line-strong);
+}
+:root[data-theme='dark'] .t-tabbar-rail {
+  --tab-hover: var(--raised);
+  --tab-line: var(--line);
+}
+.t-tabbar-course {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+}
+.t-tabbar-pages {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+/* 选中滑片：与悬停块同尺寸、同 12px 圆角，只靠亮面和描边分层 */
+.t-btab-glider {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 0;
+  height: 36px;
+  border: 1px solid var(--tab-line);
+  border-radius: 12px;
   background: var(--chip-on);
+  pointer-events: none;
+  transition:
+    transform 0.24s cubic-bezier(0.3, 1, 0.35, 1),
+    width 0.24s cubic-bezier(0.3, 1, 0.35, 1);
+}
+.t-btab {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 20px;
+  border-radius: 12px;
+  color: var(--muted);
+  font-size: 13px;
+  white-space: nowrap;
+  transition: color 0.15s cubic-bezier(0.3, 1, 0.35, 1);
+}
+.t-tabbar-pages .t-btab {
+  min-width: 120px;
+  justify-content: center;
+}
+.t-btab::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: 12px;
+  background: transparent;
+  transition: background-color 0.15s cubic-bezier(0.3, 1, 0.35, 1);
+}
+.t-btab:hover {
+  color: var(--ink);
+  filter: none;
+}
+.t-btab:hover::before {
+  background: var(--tab-hover, var(--chip-active));
+}
+.t-btab.on {
   color: var(--ink);
   font-weight: 600;
-  box-shadow: 0 0 0 1px var(--line), 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.t-btab.on:hover::before {
+  background: transparent;
+}
+.t-btab-course {
+  max-width: 280px;
+  color: var(--ink);
+  font-weight: 500;
+}
+.t-btab-course.open::before {
+  background: var(--tab-hover, var(--chip-active));
+}
+.t-btab-course-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.t-btab-course svg {
+  flex: none;
+  color: var(--muted);
+}
+.t-btab-course:hover svg,
+.t-btab-course.open svg {
+  color: var(--ink);
+}
+@media (prefers-reduced-motion: reduce) {
+  .t-btab-glider {
+    transition: none;
+  }
+}
+.t-tab-menu {
+  position: absolute;
+  top: calc(100% + 9px);
+  left: 0;
+  z-index: 30;
+  min-width: 248px;
+  max-width: 320px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--raised);
+  box-shadow: 0 12px 32px rgba(28, 36, 48, 0.14);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(-4px) scale(0.98);
+  transform-origin: left top;
+  transition:
+    opacity 0.15s cubic-bezier(0.3, 1, 0.35, 1),
+    transform 0.15s cubic-bezier(0.3, 1, 0.35, 1),
+    visibility 0s linear 0.14s;
+}
+.t-tab-menu.on {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: none;
+  transition:
+    opacity 0.15s cubic-bezier(0.3, 1, 0.35, 1) 0.02s,
+    transform 0.24s cubic-bezier(0.3, 1, 0.35, 1),
+    visibility 0s linear 0s;
+}
+.t-tab-menu-item {
+  display: flex;
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  align-items: center;
+  gap: 8px;
+  border-radius: 8px;
+  color: var(--ink);
+  font-size: 13px;
+}
+.t-tab-menu-item:hover {
+  background: var(--hover-bg);
+  filter: none;
+}
+.t-tab-menu-item .t-tab-menu-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.t-tab-menu-item.on {
+  background: var(--sunken);
+  font-weight: 600;
 }
 .t-task-focus {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin: -8px 0 16px;
+  margin: 0 0 16px;
   padding: 12px 14px;
   border-radius: 10px;
   background: var(--sunken);
@@ -855,7 +1063,6 @@ i.t-pulse-key-feedback {
 .t-review {
   display: grid;
   grid-template-columns: 296px minmax(0, 1fr);
-  border-top: 1px solid var(--line);
   min-height: 520px;
 }
 .t-review-list {
@@ -1529,3 +1736,4 @@ button.t-project-row:hover {
     font-size: 11.5px;
   }
 }
+.t-btab.dbg::before { background: var(--tab-hover); }
