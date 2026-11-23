@@ -13,6 +13,7 @@
   /* ── 面与线 ─────────────────────────────── */
   --shell-bg: #f9f9f8; /* 外壳底色，侧栏透明透出 */
   --paper: #ffffff; /* 主画布 / 面板 / 卡片 */
+  --teacher-canvas: #fbfaf7; /* 教师概览暖白画布：与侧栏同温，白卡上浮 */
   --raised: #ffffff; /* 浮层：菜单 / 弹窗 / 悬浮输入框 */
   --sunken: #f7f8fa; /* 内嵌面：代码块 / 表头 / 次级底 */
   --hover-bg: #f4f4f2; /* 悬停填充 */
@@ -181,6 +182,7 @@
 
   --shell-bg: #181818;
   --paper: #1f1f1f;
+  --teacher-canvas: var(--paper); /* 深色沿用主画布，概览模块保持内嵌面 */
   --raised: #2b2b2b;
   --sunken: #262626;
   --hover-bg: #303030;

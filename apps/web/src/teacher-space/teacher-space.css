@@ -22,10 +22,25 @@
 }
 
 /* ---------- 概览：豆腐块面板 ---------- */
+/* 教师概览专用暖白画布；学生端与其他教师页保持原主画布。
+   概览白卡按嵌套规则比主卡 12px 小 4px，避免同弧「洋葱角」。 */
+.product-shell:has(.teacher-page--overview) .main {
+  background: var(--teacher-canvas);
+}
+.product-shell .content.teacher-page--overview {
+  /* 与左右内边距同一函数，保证上方两个角的横纵间距对称。 */
+  padding-top: clamp(24px, 2.4vw, 32px);
+}
 .t-overview-card {
   padding: 20px;
-  border-radius: var(--panel-radius);
+  border-radius: calc(var(--panel-radius) - 4px);
+  background: var(--paper);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+:root[data-theme='dark'] .t-overview-card {
+  /* 深色不套用白卡方案，回到既有内嵌面层级。 */
   background: var(--sunken);
+  box-shadow: none;
 }
 .t-inbox-card {
   padding-bottom: 12px;
