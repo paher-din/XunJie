@@ -542,7 +542,7 @@ function CourseWorkspace({ course, courses, cohort, initialTab, initialTaskId, o
     if (!pages) return
     const measure = () => {
       const active = pages.querySelector<HTMLButtonElement>('.t-btab.on')
-      if (active) setGlider({ left: active.offsetLeft, width: active.offsetWidth })
+      if (active) setGlider({ left: Math.round(active.offsetLeft), width: Math.round(active.offsetWidth) })
     }
     measure()
     const observer = new ResizeObserver(measure)
@@ -559,7 +559,6 @@ function CourseWorkspace({ course, courses, cohort, initialTab, initialTaskId, o
       <button type="button" className="t-tabbar-back" aria-label="返回课程列表" onClick={onBack}>
         <Icon name="alt-arrow-left" size={16} />
       </button>
-      <div className="t-tabbar-rail">
       <div className="t-tabbar-course" ref={menuWrap}>
         <button type="button" ref={menuTrigger} className={'t-btab t-btab-course' + (courseMenu ? ' open' : '')}
           aria-haspopup="menu" aria-expanded={courseMenu} aria-label={`切换课程，当前${course.name}`}
@@ -597,7 +596,6 @@ function CourseWorkspace({ course, courses, cohort, initialTab, initialTaskId, o
       <button type="button" role="tab" id="t-tab-design" aria-selected={tab === 'design'} aria-controls="t-panel-design"
         tabIndex={tab === 'design' ? 0 : -1} className={'t-btab' + (tab === 'design' ? ' on' : '')} onClick={() => setTab('design')}
         onKeyDown={event => { if (event.key !== 'ArrowLeft') return; event.preventDefault(); setTab('review'); requestAnimationFrame(() => document.getElementById('t-tab-review')?.focus()) }}>任务设计</button>
-      </div>
       </div>
     </header>
     {scopedTask && tab === 'review' && <div className="t-task-focus">

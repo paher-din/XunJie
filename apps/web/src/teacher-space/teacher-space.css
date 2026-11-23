@@ -873,69 +873,111 @@ i.t-pulse-key-feedback {
 }
 /* ---------- 课程工作区：标签栏 ---------- */
 .t-tabbar {
+  --tab-band: var(--chip-bg);
+  --tab-hover: var(--chip-active);
+  --tab-face: var(--paper);
+  position: relative;
+  z-index: 2;
   display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 20px;
+  align-items: flex-end;
+  gap: 14px;
+  /* 顶部导航按参考标签条比例：tab 36 + 上方 8 + 下方 9（8 空隙 + 1px 分隔线）= 53 */
+  height: 53px;
+  margin: -28px calc(-1 * clamp(24px, 2.4vw, 32px)) 19px;
+  /* 顶部导航用工具栏内缩，而不是内容区的 clamp(24–32)；与 12px 卡片圆角同档 */
+  padding: 0 12px 9px;
+  background: var(--tab-band);
+}
+.t-tabbar::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 0;
+  height: 1px;
+  background: var(--line);
 }
 .t-tabbar-back {
   display: inline-flex;
   flex: none;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
+  /* 与课程块、页签同一套 chip 几何：36 高 / 12 圆角 / 14 间距，只有长度不同 */
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
   color: var(--muted);
   transition:
     background-color 0.15s cubic-bezier(0.3, 1, 0.35, 1),
     color 0.15s cubic-bezier(0.3, 1, 0.35, 1);
 }
 .t-tabbar-back:hover {
-  background: var(--chip-bg);
+  background: var(--tab-hover);
   color: var(--ink);
   filter: none;
-}
-.t-tabbar-rail {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  padding: 4px;
-  border-radius: 12px;
-  background: var(--chip-bg);
-  --tab-hover: var(--chip-active);
-  --tab-line: var(--line-strong);
-}
-:root[data-theme='dark'] .t-tabbar-rail {
-  --tab-hover: var(--raised);
-  --tab-line: var(--line);
 }
 .t-tabbar-course {
   position: relative;
   display: flex;
   flex: none;
   align-items: center;
+  height: 36px;
 }
 .t-tabbar-pages {
   position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 14px;
+  height: 36px;
 }
-/* 选中滑片：与悬停块同尺寸、同 12px 圆角，只靠亮面和描边分层 */
+/* 选中滑片：白面与内容同纸，底部两角用内凹弧线并入内容；比 chip 多伸 9 接上分隔线 */
 .t-btab-glider {
   position: absolute;
   left: 0;
   top: 0;
   z-index: 0;
-  height: 36px;
-  border: 1px solid var(--tab-line);
-  border-radius: 12px;
-  background: var(--chip-on);
+  height: 45px;
+  border-radius: 12px 12px 0 0;
+  background: var(--tab-face);
   pointer-events: none;
   transition:
     transform 0.24s cubic-bezier(0.3, 1, 0.35, 1),
     width 0.24s cubic-bezier(0.3, 1, 0.35, 1);
+}
+.t-btab-glider::before,
+.t-btab-glider::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  width: 12px;
+  height: 36px;
+  background-repeat: no-repeat;
+}
+.t-btab-glider::before {
+  left: -12px;
+  background-image:
+    radial-gradient(circle 12px at 0 0, transparent 11.5px, var(--tab-face) 12px),
+    linear-gradient(var(--tab-face), var(--tab-face));
+  background-position:
+    left calc(100% - 1px),
+    left bottom;
+  background-size:
+    12px 12px,
+    12px 1px;
+}
+.t-btab-glider::after {
+  right: -12px;
+  background-image:
+    radial-gradient(circle 12px at 100% 0, transparent 11.5px, var(--tab-face) 12px),
+    linear-gradient(var(--tab-face), var(--tab-face));
+  background-position:
+    right calc(100% - 1px),
+    right bottom;
+  background-size:
+    12px 12px,
+    12px 1px;
 }
 .t-btab {
   position: relative;
@@ -969,7 +1011,7 @@ i.t-pulse-key-feedback {
   filter: none;
 }
 .t-btab:hover::before {
-  background: var(--tab-hover, var(--chip-active));
+  background: var(--tab-hover);
 }
 .t-btab.on {
   color: var(--ink);
@@ -984,7 +1026,7 @@ i.t-pulse-key-feedback {
   font-weight: 500;
 }
 .t-btab-course.open::before {
-  background: var(--tab-hover, var(--chip-active));
+  background: var(--tab-hover);
 }
 .t-btab-course-name {
   overflow: hidden;
@@ -1792,4 +1834,3 @@ button.t-project-row:hover {
     font-size: 11.5px;
   }
 }
-.t-btab.dbg::before { background: var(--tab-hover); }
