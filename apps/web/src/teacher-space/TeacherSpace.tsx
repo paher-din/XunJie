@@ -333,10 +333,10 @@ function Overview({ courses, cohort, onCourse, onWorkbench }: {
             <HomeSectionHeading title={<span id="t-board-title">课程进展</span>} />
           </div>
           <div className="t-pulse-key" aria-label="状态颜色">
-            <span><i className="t-pulse-key-done" />已完成</span>
-            <span><i className="t-pulse-key-revised" />待复核</span>
-            <span><i className="t-pulse-key-pending" />待审阅</span>
-            <span><i className="t-pulse-key-feedback" />已反馈</span>
+            <span data-state="done"><i className="t-pulse-key-done" />已完成</span>
+            <span data-state="revised"><i className="t-pulse-key-revised" />待复核</span>
+            <span data-state="pending"><i className="t-pulse-key-pending" />待审阅</span>
+            <span data-state="feedback"><i className="t-pulse-key-feedback" />已反馈</span>
           </div>
         </div>
         {coursePulse.length === 0 ? <p className="t-inbox-empty">当前没有在教课程。</p>
@@ -371,13 +371,14 @@ function Overview({ courses, cohort, onCourse, onWorkbench }: {
         </div>}
       </div>
       {inboxRows.length === 0 ? <p className="t-inbox-empty">当前没有待处理的提交、待发布草稿或需要跟进的学生。</p>
-        : <div className="t-inbox-list">
+        : <div className="t-inbox-list" key={inboxFilter}>
           {visibleGroups.map(group => <section className="t-inbox-group" aria-label={group.label} key={group.id}>
             {inboxFilter === 'all' && <div className="t-inbox-group-head"><span>{group.label}</span></div>}
             <ul className="t-inbox-group-list">
               {group.rows.map(row => {
                 const people = row.people ?? []
-                const names = people.length > 3 ? `${people.slice(0, 2).map(person => person.name).join('、')} 等 ${people.length} 人` : people.map(person => person.name).join('、')
+                const fullNames = people.map(person => person.name).join('、')
+                const names = people.length > 3 ? `${people.slice(0, 2).map(person => person.name).join('、')} 等 ${people.length} 人` : fullNames
                 const actionLabel = row.kind === 'draft' ? '继续设计' : row.kind === 'stalled' ? '查看课程' : '去处理'
                 const timeLabel = row.kind === 'draft' ? row.objectMeta : row.kind === 'stalled' ? '—' : waitingText(row.waitingSince)
                 const timeTitle = row.kind === 'draft' ? row.objectMeta : row.kind === 'stalled' ? '无提交时间' : row.waitingSince ? `最早未处理提交 ${timeText(row.waitingSince)}` : undefined
@@ -390,7 +391,7 @@ function Overview({ courses, cohort, onCourse, onWorkbench }: {
                     </span>
                     <span className="t-inbox-item-context">
                       <span className="t-inbox-item-context-top"><strong>{objectLabel}</strong>{row.statusSummary && <small>{row.statusSummary}</small>}</span>
-                      {people.length > 0 && <small className="t-inbox-item-context-sub">{names}</small>}
+                      {people.length > 0 && <small className="t-inbox-item-context-sub" title={people.length > 3 ? fullNames : undefined}>{names}</small>}
                     </span>
                     <span className={`t-inbox-item-time t-inbox-item-time-${row.kind}`} title={timeTitle}>{timeLabel}</span>
                     <span className={`t-inbox-item-action${row.kind === 'draft' ? ' quiet' : ''}`}>{actionLabel}<Icon name="alt-arrow-right" size={15} /></span>
@@ -419,11 +420,15 @@ function CoursePulseRow({ item, onOpen, onTask }: { item: CoursePulseRowData; on
   const release = item.release?.publishedAt ? releaseAgeText(item.release.publishedAt) : '—'
   const justPublished = Boolean(item.task && item.submitted === 0 && item.release?.publishedAt && isFreshRelease(item.release.publishedAt))
   const percentLabel = percent == null ? '' : `，约 ${percent}%`
-  const statusSummary = [...PULSE_STATES.map(state => `${PULSE_STATE_LABELS[state]} ${item.statusCounts[state]}`), `未提交 ${item.missing}`].join('，')
+  const statusGroups = [
+    ...PULSE_STATES.map(state => ({ state, label: PULSE_STATE_LABELS[state], count: item.statusCounts[state] })),
+    { state: 'missing' as const, label: '未提交', count: item.missing },
+  ]
+  const statusSummary = statusGroups.map(group => `${group.label} ${group.count}`).join('，')
   const ariaLabel = `${item.course.name}：${item.task ? `任务${item.task.title}，已提交 ${item.submitted}/${item.assigned}${percentLabel}；${statusSummary}` : '尚未发布任务'}`
   return <div className="t-pulse-row">
     <span className="t-pulse-copy">
-      <button type="button" className="t-pulse-course" onClick={onOpen}>{item.course.name}</button>
+      <button type="button" className="t-pulse-course" title={item.course.name} onClick={onOpen}>{item.course.name}</button>
       {item.task
         ? <button type="button" className="t-pulse-task" title={item.task.title}
           aria-label={`打开任务：${item.task.title}（${item.course.name}）`} onClick={onTask}>
@@ -433,11 +438,16 @@ function CoursePulseRow({ item, onOpen, onTask }: { item: CoursePulseRowData; on
         : <span className="t-pulse-empty">尚未发布任务</span>}
     </span>
     <button type="button" className="t-pulse-energy" aria-label={`打开${ariaLabel}`} onClick={onOpen}>
-      <span className="t-pulse-meter" aria-hidden="true" title={statusSummary}>
+      <span className="t-pulse-meter" aria-hidden="true">
         {meter.map((state, index) => <span key={index} className="t-pulse-meter-cell" data-state={state} />)}
       </span>
       <span className="t-pulse-meta">
-        <small>{justPublished ? '尚无提交' : release}</small>
+        <span className="t-pulse-meta-left">
+          <small className="t-pulse-release">{justPublished ? '尚无提交' : release}</small>
+          {item.task && <small className="t-pulse-counts" aria-hidden="true">
+            {statusGroups.map(group => <span key={group.state} data-state={group.state}><i />{group.count}</span>)}
+          </small>}
+        </span>
         {item.task
           ? justPublished ? <b>刚发布</b> : <b>{percent != null && <i>{percent}% · </i>}<Fraction numerator={item.submitted} denominator={item.assigned} /></b>
           : <b>—</b>}
@@ -448,11 +458,14 @@ function CoursePulseRow({ item, onOpen, onTask }: { item: CoursePulseRowData; on
 
 function FeedbackRing({ covered, total }: { covered: number; total: number }) {
   const percent = percentOf(covered, total)
+  const pending = Math.max(0, total - covered)
   const radius = 44
   const circumference = 2 * Math.PI * radius
   const offset = circumference * (1 - (percent ?? 0) / 100)
+  const pendingLabel = pending > 0 ? `待反馈 ${pending}` : '全部反馈'
+  const ariaLabel = percent == null ? '反馈覆盖：暂无提交' : `反馈覆盖 ${percent}%，${covered}/${total} 份提交已反馈，${pending} 份待反馈`
   return <div className="t-pulse-feedback">
-    <div className="t-pulse-ring" role="img" aria-label={percent == null ? '反馈覆盖：暂无提交' : `反馈覆盖 ${percent}%，${covered}/${total} 份提交已反馈`}>
+    <div className="t-pulse-ring" role="img" aria-label={ariaLabel}>
       <svg viewBox="0 0 96 96" aria-hidden="true">
         <circle className="t-pulse-ring-track" cx="48" cy="48" r={radius} />
         {percent != null && <circle className="t-pulse-ring-value" cx="48" cy="48" r={radius}
@@ -460,7 +473,10 @@ function FeedbackRing({ covered, total }: { covered: number; total: number }) {
       </svg>
       <div className="t-pulse-ring-copy" aria-hidden="true">
         <b>{percent == null ? '—' : `${percent}%`}</b>
-        <small>已反馈</small>
+        <small className="t-pulse-ring-label">
+          <span className="t-pulse-ring-label-base">已反馈</span>
+          {percent != null && <span className="t-pulse-ring-label-peek">{pendingLabel}</span>}
+        </small>
       </div>
     </div>
     <p className="t-pulse-feedback-total" aria-hidden="true"><b><Fraction numerator={covered} denominator={total} /></b></p>

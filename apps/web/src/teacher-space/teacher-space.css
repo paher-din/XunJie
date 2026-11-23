@@ -36,11 +36,21 @@
   border-radius: calc(var(--panel-radius) - 4px);
   background: var(--paper);
   box-shadow: inset 0 0 0 1px var(--line);
+  transition: box-shadow 150ms var(--ease-s);
+}
+.t-overview-card:hover,
+.t-overview-card:focus-within {
+  /* 悬停只提亮模块边界，不抬升整卡：卡片本身不是点击目标。 */
+  box-shadow: inset 0 0 0 1px var(--line-strong);
 }
 :root[data-theme='dark'] .t-overview-card {
   /* 深色不套用白卡方案，回到既有内嵌面层级。 */
   background: var(--sunken);
   box-shadow: none;
+}
+:root[data-theme='dark'] .t-overview-card:hover,
+:root[data-theme='dark'] .t-overview-card:focus-within {
+  box-shadow: inset 0 0 0 1px var(--line);
 }
 .t-inbox-card {
   padding-bottom: 12px;
@@ -104,11 +114,18 @@
   font: 500 12px/1.5 var(--font-sans);
   white-space: nowrap;
   cursor: pointer;
-  transition: color 150ms var(--ease-s), background-color 150ms var(--ease-s), box-shadow 150ms var(--ease-s);
+  transition:
+    color 150ms var(--ease-s),
+    background-color 150ms var(--ease-s),
+    box-shadow 150ms var(--ease-s),
+    transform 150ms var(--ease-s);
 }
 .t-inbox-filter:hover {
   background: var(--hover-bg);
   color: var(--ink);
+}
+.t-inbox-filter:active {
+  transform: scale(0.95);
 }
 .t-inbox-filter.on {
   background: var(--paper);
@@ -183,7 +200,7 @@
 }
 .t-inbox-item:hover,
 .t-inbox-item:focus-visible {
-  background: var(--chip-bg);
+  background: var(--hover-bg);
   filter: none;
 }
 .t-inbox-item:hover::after,
@@ -314,6 +331,15 @@
   color: var(--ink-soft);
   font-size: 13px;
 }
+.t-inbox-list {
+  animation: t-inbox-list-in 160ms var(--ease-s) both;
+}
+@keyframes t-inbox-list-in {
+  from {
+    opacity: 0.82;
+    transform: translateY(2px);
+  }
+}
 
 @media (max-width: 1120px) {
   .t-inbox-item {
@@ -431,12 +457,15 @@
   align-items: center;
   gap: 4px;
   white-space: nowrap;
+  transition: color 150ms var(--ease-s);
 }
 .t-pulse-key i {
   width: 7px;
   height: 7px;
   border-radius: 50%;
   background: var(--t-missing);
+  transform-origin: center;
+  transition: transform 150ms var(--ease-s);
 }
 i.t-pulse-key-done {
   background: var(--t-done);
@@ -457,12 +486,68 @@ i.t-pulse-key-feedback {
   margin-top: 20px;
 }
 .t-pulse-row {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 24px;
   width: 100%;
   min-width: 0;
+  transition: opacity 150ms var(--ease-s);
+}
+.t-pulse-row::before {
+  position: absolute;
+  /* 与卡片 20px 内边距相减后四边均留 12px；≤820px 内边距 18px 时为 10px，仍等距。 */
+  inset: -8px;
+  border-radius: 8px;
+  background: transparent;
+  content: '';
+  pointer-events: none;
+  transition: background-color 150ms var(--ease-s);
+}
+.t-pulse-row:hover::before,
+.t-pulse-row:focus-within::before {
+  background: var(--hover-bg);
+}
+.t-pulse-row > * {
+  position: relative;
+  z-index: 1;
+}
+@media (hover: hover) {
+  .t-pulse-list:has(.t-pulse-row:hover) .t-pulse-row:not(:hover) {
+    opacity: 0.58;
+  }
+  .t-pulse-key span:hover {
+    color: var(--ink);
+  }
+  .t-pulse-key span:hover i {
+    transform: scale(1.2);
+  }
+  /* 图例是数据的一个观察镜：悬停某一状态，所有课程序列中对应格子保持全亮。 */
+  .t-pulse-card:has(.t-pulse-key span[data-state='done']:hover) .t-pulse-meter-cell {
+    opacity: 0.18;
+  }
+  .t-pulse-card:has(.t-pulse-key span[data-state='done']:hover) .t-pulse-meter-cell[data-state='done'] {
+    opacity: 1;
+  }
+  .t-pulse-card:has(.t-pulse-key span[data-state='revised']:hover) .t-pulse-meter-cell {
+    opacity: 0.18;
+  }
+  .t-pulse-card:has(.t-pulse-key span[data-state='revised']:hover) .t-pulse-meter-cell[data-state='revised'] {
+    opacity: 1;
+  }
+  .t-pulse-card:has(.t-pulse-key span[data-state='pending']:hover) .t-pulse-meter-cell {
+    opacity: 0.18;
+  }
+  .t-pulse-card:has(.t-pulse-key span[data-state='pending']:hover) .t-pulse-meter-cell[data-state='pending'] {
+    opacity: 1;
+  }
+  .t-pulse-card:has(.t-pulse-key span[data-state='feedback']:hover) .t-pulse-meter-cell {
+    opacity: 0.18;
+  }
+  .t-pulse-card:has(.t-pulse-key span[data-state='feedback']:hover) .t-pulse-meter-cell[data-state='feedback'] {
+    opacity: 1;
+  }
 }
 .t-pulse-copy {
   display: flex;
@@ -512,6 +597,14 @@ i.t-pulse-key-feedback {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.t-pulse-task svg {
+  flex: none;
+  transition: transform 150ms var(--ease-s);
+}
+.t-pulse-task:hover svg,
+.t-pulse-task:focus-visible svg {
+  transform: translateX(2px);
+}
 .t-pulse-task:hover {
   color: var(--ink-soft);
 }
@@ -549,6 +642,7 @@ i.t-pulse-key-feedback {
 .t-pulse-meter-cell {
   border-radius: 2px;
   background: var(--t-missing);
+  transition: opacity 150ms var(--ease-s);
 }
 .t-pulse-meter-cell[data-state='done'] {
   background: var(--t-done);
@@ -591,6 +685,70 @@ i.t-pulse-key-feedback {
   font-style: normal;
   font-weight: 400;
 }
+.t-pulse-meta-left {
+  position: relative;
+  display: block;
+  min-width: 0;
+}
+.t-pulse-release {
+  display: block;
+  transition:
+    opacity 150ms var(--ease-s),
+    transform 150ms var(--ease-s);
+}
+small.t-pulse-counts {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ink-soft);
+  font-size: 11px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(2px);
+  transition:
+    opacity 150ms var(--ease-s),
+    transform 150ms var(--ease-s);
+}
+.t-pulse-counts > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.t-pulse-counts i {
+  width: 5px;
+  height: 5px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--t-missing);
+}
+.t-pulse-counts [data-state='done'] i {
+  background: var(--t-done);
+}
+.t-pulse-counts [data-state='revised'] i {
+  background: var(--t-revised);
+}
+.t-pulse-counts [data-state='pending'] i {
+  background: var(--t-pending);
+}
+.t-pulse-counts [data-state='feedback'] i {
+  background: var(--t-feedback);
+}
+.t-pulse-row:hover .t-pulse-release,
+.t-pulse-row:focus-within .t-pulse-release {
+  opacity: 0;
+  transform: translateY(-2px);
+}
+.t-pulse-row:hover .t-pulse-counts,
+.t-pulse-row:focus-within .t-pulse-counts {
+  opacity: 1;
+  transform: translateY(0);
+}
 .t-fraction {
   display: inline-flex;
   align-items: baseline;
@@ -605,6 +763,7 @@ i.t-pulse-key-feedback {
   font-weight: 600;
   line-height: 1;
   letter-spacing: -0.2px;
+  transition: color 150ms var(--ease-s);
 }
 .t-fraction-den {
   color: var(--muted);
@@ -684,6 +843,8 @@ i.t-pulse-key-feedback {
   width: var(--t-rhythm-ring);
   height: var(--t-rhythm-ring);
   flex: none;
+  cursor: default;
+  transition: transform 150ms var(--ease-s);
 }
 .t-pulse-ring svg {
   display: block;
@@ -729,6 +890,38 @@ i.t-pulse-key-feedback {
   font-size: 11px;
   line-height: 1.2;
 }
+.t-pulse-ring-label {
+  display: grid;
+  min-width: 48px;
+  height: 13px;
+  place-items: center;
+}
+.t-pulse-ring-label > span {
+  grid-area: 1 / 1;
+  white-space: nowrap;
+  transition:
+    opacity 150ms var(--ease-s),
+    transform 150ms var(--ease-s);
+}
+.t-pulse-ring-label-peek {
+  color: var(--ink-soft);
+  font-weight: 500;
+  opacity: 0;
+  transform: translateY(3px);
+}
+@media (hover: hover) {
+  .t-pulse-ring:hover {
+    transform: scale(1.025);
+  }
+  .t-pulse-ring:hover .t-pulse-ring-label-base {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  .t-pulse-ring:hover .t-pulse-ring-label-peek {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 .t-pulse-feedback-total {
   margin: 0;
   color: var(--muted);
@@ -766,6 +959,7 @@ i.t-pulse-key-feedback {
   padding: 0 2px;
 }
 .t-week {
+  position: relative;
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
   align-items: end;
@@ -774,6 +968,25 @@ i.t-pulse-key-feedback {
   min-width: 0;
   flex: 1 1 0;
   height: 100%;
+  cursor: default;
+  transition: opacity 150ms var(--ease-s);
+}
+.t-week::before {
+  position: absolute;
+  /* 顶部让出柱顶分数的完整行高，悬停底不再从数字中间起弧。 */
+  inset: -12px -6px -4px;
+  border-radius: 8px;
+  background: transparent;
+  content: '';
+  pointer-events: none;
+  transition: background-color 150ms var(--ease-s);
+}
+.t-week:hover::before {
+  background: var(--hover-bg);
+}
+.t-week > * {
+  position: relative;
+  z-index: 1;
 }
 .t-week-plot {
   position: relative;
@@ -791,6 +1004,10 @@ i.t-pulse-key-feedback {
   background: var(--line-strong);
   overflow: hidden;
   align-self: end;
+  transform-origin: center bottom;
+  transition:
+    transform 150ms var(--ease-s),
+    filter 150ms var(--ease-s);
 }
 .t-week-bar i {
   position: absolute;
@@ -819,6 +1036,22 @@ i.t-pulse-key-feedback {
   line-height: 1.4;
   margin-top: 4px;
   white-space: nowrap;
+  transition: color 150ms var(--ease-s);
+}
+@media (hover: hover) {
+  .t-week:hover .t-week-bar {
+    transform: scaleX(1.06);
+    filter: saturate(1.06);
+  }
+  .t-week:hover .t-fraction-num {
+    color: var(--accent-deep);
+  }
+  .t-week:hover small {
+    color: var(--ink-soft);
+  }
+  .t-week-bars:has(.t-week:hover) .t-week:not(:hover) {
+    opacity: 0.55;
+  }
 }
 @container (min-width: 220px) {
   .t-rhythm-card .t-rhythm {
@@ -1754,6 +1987,14 @@ button.t-project-row:hover {
   .t-pulse-energy,
   .t-pulse-meter {
     width: 168px;
+  }
+  small.t-pulse-counts {
+    display: none;
+  }
+  .t-pulse-row:hover .t-pulse-release,
+  .t-pulse-row:focus-within .t-pulse-release {
+    opacity: 1;
+    transform: none;
   }
 }
 
