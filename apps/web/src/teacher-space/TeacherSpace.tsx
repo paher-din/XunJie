@@ -421,7 +421,7 @@ function FeedbackRing({ covered, total }: { covered: number; total: number }) {
         <small>已反馈</small>
       </div>
     </div>
-    <p className="t-pulse-feedback-total">总计 <b>{covered}/{total}</b> 份</p>
+    <p className="t-pulse-feedback-total" aria-hidden="true"><b>{covered}/{total}</b></p>
   </div>
 }
 
