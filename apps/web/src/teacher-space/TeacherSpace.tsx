@@ -308,10 +308,16 @@ function Overview({ courses, cohort, onCourse, onWorkbench }: {
           </div>}
       </div>
       <article className="t-overview-card t-module t-rhythm-card" aria-labelledby="t-rhythm-title">
-        <header className="t-module-head"><h3 id="t-rhythm-title">提交与反馈</h3></header>
+        <header className="t-module-head t-rhythm-head">
+          <h3 id="t-rhythm-title">提交与反馈</h3>
+          <div className="t-rhythm-key" aria-label="图例：蓝色为已反馈，灰色为待反馈">
+            <span><i className="t-rhythm-key-covered" aria-hidden="true" />已反馈</span>
+            <span><i className="t-rhythm-key-pending" aria-hidden="true" />待反馈</span>
+          </div>
+        </header>
         <div className="t-rhythm">
-          <WeekBars submissions={cohort.submissions} />
           <FeedbackRing covered={feedbackCovered} total={feedbackTotal} />
+          <WeekBars submissions={cohort.submissions} />
         </div>
       </article>
     </section>
@@ -400,22 +406,22 @@ function CoursePulseRow({ item, onOpen, onTask }: { item: CoursePulseRowData; on
 
 function FeedbackRing({ covered, total }: { covered: number; total: number }) {
   const percent = percentOf(covered, total)
-  const radius = 22
+  const radius = 44
   const circumference = 2 * Math.PI * radius
   const offset = circumference * (1 - (percent ?? 0) / 100)
   return <div className="t-pulse-feedback">
-    <div className="t-pulse-feedback-copy">
-      <strong>反馈覆盖</strong>
-      <span>{total ? <><b>{covered}</b>/{total}</> : '暂无提交'}</span>
-    </div>
     <div className="t-pulse-ring" role="img" aria-label={percent == null ? '反馈覆盖：暂无提交' : `反馈覆盖 ${percent}%，${covered}/${total} 份提交已反馈`}>
-      <svg viewBox="0 0 52 52" aria-hidden="true">
-        <circle className="t-pulse-ring-track" cx="26" cy="26" r={radius} />
-        {percent != null && <circle className="t-pulse-ring-value" cx="26" cy="26" r={radius}
+      <svg viewBox="0 0 96 96" aria-hidden="true">
+        <circle className="t-pulse-ring-track" cx="48" cy="48" r={radius} />
+        {percent != null && <circle className="t-pulse-ring-value" cx="48" cy="48" r={radius}
           style={{ strokeDasharray: circumference, strokeDashoffset: offset }} />}
       </svg>
-      <b>{percent == null ? '—' : `${percent}%`}</b>
+      <div className="t-pulse-ring-copy" aria-hidden="true">
+        <b>{percent == null ? '—' : `${percent}%`}</b>
+        <small>已反馈</small>
+      </div>
     </div>
+    <p className="t-pulse-feedback-total">总计 <b>{covered}/{total}</b> 份</p>
   </div>
 }
 
@@ -433,11 +439,11 @@ function WeekBars({ submissions }: { submissions: TeacherSubmission[] }) {
   const description = groups.map((group, index) => `${['11-02', '11-09', '11-16'][index]} 提交 ${group.total}、已反馈 ${group.covered}`).join('；')
   return <div className="t-week-bars" role="img" aria-label={`近三周提交与反馈覆盖：${description}`}>
     {groups.map((group, index) => {
-      const barHeight = group.total ? Math.max(14, Math.round(group.total / max * 82)) : 0
+      const barHeight = group.total ? Math.max(12, Math.round(group.total / max * 80)) : 0
       const coveredHeight = group.total ? Math.max(10, Math.round(group.covered / group.total * 100)) : 0
       return <div key={index} className="t-week">
         <div className="t-week-plot">
-          <b style={{ bottom: `calc(${barHeight}% + 4px)` }}>{group.total}</b>
+          <b style={{ bottom: `calc(${barHeight}% + 6px)` }}>{group.covered}<span>/{group.total}</span></b>
           <span className="t-week-bar" style={{ height: `${barHeight}%` }}>
             {group.covered > 0 && <i style={{ height: `${coveredHeight}%` }} />}
           </span>
