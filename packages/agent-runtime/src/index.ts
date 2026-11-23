@@ -4,7 +4,8 @@ export { agentRuntimeMigrations, createAgentStore, type AgentStore, type AgentSe
 export { createModelAdapter, resolveGateway, type ModelAdapterOptions, type ModelGatewaySource } from './model.js';
 export { runTurn, type LoopDependencies } from './loop.js';
 export { createToolRegistry, executeTools, toToolCall, type ExecuteToolsOptions } from './tools.js';
-export { buildContext, TASK_FACT_LIMITS, type TaskFactsPort, type TaskFact, type ContextPlan } from './context.js';
+export { buildContext, TASK_FACT_LIMITS, MATERIAL_INLINE_MAX_CHARS, MATERIAL_PRESSURE_MAX_CHARS,
+  type TaskFactsPort, type TaskFact, type ContextPlan } from './context.js';
 export { createCancellationRunner, type TaskCancellationPort, type CancellationRunner } from './interruption.js';
 export { conversationHistory, appendHistory, portableHistory, historyDigest } from './history.js';
 export { attemptUsage, budgetExhausted, type TurnUsage } from './budgets.js';
