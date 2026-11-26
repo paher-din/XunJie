@@ -1106,19 +1106,21 @@ small.t-pulse-counts {
 }
 /* ---------- 课程工作区：标签栏 ---------- */
 .t-tabbar {
-  --tab-band: var(--chip-bg);
+  /* 标签条与内容同纸，不再是一条独立色的横带；分界交给底部那条浅线，灰只留在标签块上 */
+  --tab-band: var(--paper);
   --tab-hover: var(--chip-active);
   --tab-face: var(--paper);
   position: relative;
   z-index: 2;
   display: flex;
   align-items: flex-end;
-  gap: 14px;
-  /* 顶部导航按参考标签条比例：tab 36 + 上方 8 + 下方 9（8 空隙 + 1px 分隔线）= 53 */
-  height: 53px;
-  margin: -28px calc(-1 * clamp(24px, 2.4vw, 32px)) 19px;
+  /* 横向与纵向用同一个 6：块与块之间、块与分隔线之间的缝隙同宽 */
+  gap: 6px;
+  /* 顶部导航按参考标签条比例：tab 36 + 上方 8 + 下方 7（6 空隙 + 1px 分隔线）= 51 */
+  height: 51px;
+  margin: -28px calc(-1 * clamp(24px, 2.4vw, 32px)) 21px;
   /* 顶部导航用工具栏内缩，而不是内容区的 clamp(24–32)；与 12px 卡片圆角同档 */
-  padding: 0 12px 9px;
+  padding: 0 12px 7px;
   background: var(--tab-band);
 }
 .t-tabbar::after {
@@ -1136,7 +1138,7 @@ small.t-pulse-counts {
   flex: none;
   align-items: center;
   justify-content: center;
-  /* 与课程块、页签同一套 chip 几何：36 高 / 12 圆角 / 14 间距，只有长度不同 */
+  /* 与课程块、页签同一套 chip 几何：36 高 / 12 圆角 / 6 间距，只有长度不同 */
   width: 36px;
   height: 36px;
   border-radius: 12px;
@@ -1162,16 +1164,16 @@ small.t-pulse-counts {
   z-index: 1;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 6px;
   height: 36px;
 }
-/* 选中滑片：白面与内容同纸，底部两角用内凹弧线并入内容；比 chip 多伸 9 接上分隔线 */
+/* 选中滑片：白面与内容同纸，底部两角用内凹弧线并入内容；比 chip 多伸 7 接上分隔线 */
 .t-btab-glider {
   position: absolute;
   left: 0;
   top: 0;
   z-index: 0;
-  height: 45px;
+  height: 43px;
   border-radius: 12px 12px 0 0;
   background: var(--tab-face);
   pointer-events: none;
@@ -1179,38 +1181,57 @@ small.t-pulse-counts {
     transform 0.24s cubic-bezier(0.3, 1, 0.35, 1),
     width 0.24s cubic-bezier(0.3, 1, 0.35, 1);
 }
+/* 选中块的轮廓线：1px 浅线贴着块外缘走，顶部圆角外半径 13 = 块 12 + 线 1，与块同心；
+   到弧脚起点（y 49）截断，余下交给弧线接上，整条轮廓不断口 */
+.t-btab-glider-edge {
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  right: -1px;
+  height: 31px;
+  border: 1px solid var(--line);
+  border-bottom: 0;
+  border-radius: 13px 13px 0 0;
+  pointer-events: none;
+}
+/* 弧脚与相邻 chip 的底角同心：圆心落在 chip 圆角圆心上，半径 = 底角 6 + 缝 6 = 12。
+   同心的两条弧之间处处等宽 6，弧本身也与选中块的 12 顶角同半径，四角形状统一 */
 .t-btab-glider::before,
 .t-btab-glider::after {
   content: '';
   position: absolute;
   bottom: 0;
   width: 12px;
-  height: 36px;
+  height: 13px;
   background-repeat: no-repeat;
 }
 .t-btab-glider::before {
   left: -12px;
   background-image:
-    radial-gradient(circle 12px at 0 0, transparent 11.5px, var(--tab-face) 12px),
+    radial-gradient(circle 12px at 0 0, transparent 10.6px, var(--line) 11px, var(--line) 12px, var(--tab-face) 12.4px),
     linear-gradient(var(--tab-face), var(--tab-face));
   background-position:
-    left calc(100% - 1px),
+    left top,
     left bottom;
   background-size:
-    12px 12px,
+    12px 13px,
     12px 1px;
 }
 .t-btab-glider::after {
   right: -12px;
   background-image:
-    radial-gradient(circle 12px at 100% 0, transparent 11.5px, var(--tab-face) 12px),
+    radial-gradient(circle 12px at 100% 0, transparent 10.6px, var(--line) 11px, var(--line) 12px, var(--tab-face) 12.4px),
     linear-gradient(var(--tab-face), var(--tab-face));
   background-position:
-    right calc(100% - 1px),
+    right top,
     right bottom;
   background-size:
-    12px 12px,
+    12px 13px,
     12px 1px;
+}
+/* 右侧没有下一个页签时，弧脚无处咬合，白块在右缘直接竖直收口 */
+.t-tabbar-pages:not(:has(.t-btab.on + .t-btab)) .t-btab-glider::after {
+  display: none;
 }
 .t-btab {
   position: relative;
@@ -1220,7 +1241,8 @@ small.t-pulse-counts {
   gap: 6px;
   height: 36px;
   padding: 0 20px;
-  border-radius: 12px;
+  /* 底角 6 与选中弧脚同心，顶角仍 12 */
+  border-radius: 12px 12px 6px 6px;
   color: var(--muted);
   font-size: 13px;
   white-space: nowrap;
@@ -1235,9 +1257,14 @@ small.t-pulse-counts {
   position: absolute;
   inset: 0;
   z-index: -1;
-  border-radius: 12px;
-  background: transparent;
+  /* 底角收到 6，与选中弧脚同心，弧与块之间才能处处留 6；顶角仍 12，块自身左右对称 */
+  border-radius: 12px 12px 6px 6px;
+  /* 未选中标签常驻淡灰，白滑片才衬得出来；条带本身已与内容同色 */
+  background: var(--chip-bg);
   transition: background-color 0.15s cubic-bezier(0.3, 1, 0.35, 1);
+}
+.t-btab.on::before {
+  background: transparent;
 }
 .t-btab:hover {
   color: var(--ink);

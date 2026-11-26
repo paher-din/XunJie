@@ -605,7 +605,11 @@ function CourseWorkspace({ course, courses, cohort, initialTab, initialTaskId, o
         </div>
       </div>
       <div className="t-tabbar-pages" role="tablist" aria-label="课程工作区" ref={pagesRef}>
-      {glider && <span className="t-btab-glider" aria-hidden="true" style={{ width: glider.width, transform: `translateX(${glider.left}px)` }} />}
+      {glider && (
+        <span className="t-btab-glider" aria-hidden="true" style={{ width: glider.width, transform: `translateX(${glider.left}px)` }}>
+          <span className="t-btab-glider-edge" />
+        </span>
+      )}
       <button type="button" role="tab" id="t-tab-review" aria-selected={tab === 'review'} aria-controls="t-panel-review"
         tabIndex={tab === 'review' ? 0 : -1} className={'t-btab' + (tab === 'review' ? ' on' : '')} onClick={() => setTab('review')}
         onKeyDown={event => { if (event.key !== 'ArrowRight') return; event.preventDefault(); setTab('design'); requestAnimationFrame(() => document.getElementById('t-tab-design')?.focus()) }}>作业审阅</button>
