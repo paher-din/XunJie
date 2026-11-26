@@ -24,15 +24,15 @@ function promptAttachmentKind(name: string): PromptAttachmentKind {
   return 'document'
 }
 
-export function ProductComposerDock({ children, atBottom = true, onBackToBottom = () => {} }: {
-  children: ReactNode; atBottom?: boolean; onBackToBottom?: () => void
+export function ProductComposerDock({ children, atBottom = true, onBackToBottom = () => {}, disclaimer = '对话自动保存在本机' }: {
+  children: ReactNode; atBottom?: boolean; onBackToBottom?: () => void; disclaimer?: string
 }) {
   const anchor = useRef<HTMLDivElement>(null)
   return <ChatComposerDock anchorRef={anchor} atBottom={atBottom}
     suggestions={{ items: [], show: false, onPick: () => {} }}
     followUps={{ items: [], show: false, onPick: () => {}, label: '' }}
     onBackToBottom={onBackToBottom} input={children}
-    disclaimer="对话自动保存在本机" />
+    disclaimer={disclaimer} />
 }
 
 const effortLabels = { auto: '默认', none: '关闭', enabled: '开启', minimal: '最低', low: '低', medium: '中', high: '高', xhigh: '更高', max: '最高' } as const satisfies Record<ModelReasoningEffort, string>

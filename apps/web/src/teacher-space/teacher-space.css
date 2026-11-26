@@ -1160,10 +1160,35 @@ small.t-pulse-counts {
 }
 .t-tabbar-course {
   position: relative;
+  z-index: 1;
   display: flex;
   flex: none;
   align-items: center;
   height: 36px;
+  border-radius: 12px;
+  color: var(--ink);
+  font-weight: 500;
+}
+/* 课程块一分为二：左边是教师 Agent 页签，右边只负责课程切换；
+   悬停灰面落在整块上，像一个块的两个落点 */
+.t-tabbar-course::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: 12px;
+  background: transparent;
+  transition: background-color 0.15s cubic-bezier(0.3, 1, 0.35, 1);
+}
+.t-tabbar-course:hover::before {
+  background: var(--tab-hover);
+}
+.t-tabbar-course:not([data-tab-active]):has(.t-tab-toggle.open)::before {
+  background: var(--tab-hover);
+}
+/* 选中的白面由滑片承担，悬停不再叠灰 */
+.t-tabbar-course[data-tab-active]::before {
+  background: transparent;
 }
 .t-tabbar-pages {
   position: relative;
@@ -1299,24 +1324,61 @@ small.t-pulse-counts {
   background: transparent;
 }
 .t-btab-course {
-  max-width: 280px;
-  color: var(--ink);
+  max-width: 250px;
+  min-width: 0;
+  padding: 0 4px 0 20px;
+  justify-content: flex-start;
+  color: var(--muted);
   font-weight: 500;
 }
-.t-btab-course.open::before {
-  background: var(--tab-hover);
+.t-tabbar-pages .t-btab-course {
+  min-width: 0;
+  justify-content: flex-start;
+}
+/* 悬停交给整块，页签本体只留文字 */
+.t-btab-course::before {
+  content: none;
+}
+.t-btab-course:hover {
+  color: var(--ink);
+}
+.t-btab-course.on {
+  color: var(--ink);
+  font-weight: 600;
 }
 .t-btab-course-name {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.t-btab-course svg {
+/* 下拉落点：与页签同一 36 高，左侧一道 1px 竖线把两个动作分开 */
+.t-tab-toggle {
+  position: relative;
+  display: inline-flex;
   flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 36px;
+  border-radius: 0 12px 12px 0;
   color: var(--muted);
+  transition: color 0.15s cubic-bezier(0.3, 1, 0.35, 1);
 }
-.t-btab-course:hover svg,
-.t-btab-course.open svg {
+.t-tab-toggle::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 1px;
+  background: var(--line);
+}
+.t-tab-toggle:hover,
+.t-tab-toggle.open {
   color: var(--ink);
+  filter: none;
+}
+.t-tab-toggle svg {
+  flex: none;
 }
 @media (prefers-reduced-motion: reduce) {
   .t-btab-glider {
@@ -1386,6 +1448,57 @@ small.t-pulse-counts {
   /* 与左侧导航选中同一层灰：悬停不再额外压深，靠勾选与字重区分 */
   background: var(--chip-bg);
   font-weight: 600;
+}
+
+/* ---------- 课程工作区：教师 Agent 对话 ---------- */
+/* 对话页占满标签条以下的整块高度：消息区滚动，输入框贴底；切页签不重排整页 */
+.teacher-page--agent {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding-bottom: 0;
+}
+.product-shell .main:has(.teacher-page--agent) {
+  padding-bottom: 0;
+  overflow: hidden;
+}
+.product-shell .content.teacher-page--agent {
+  padding-bottom: 0;
+}
+.teacher-page--agent .t-tabbar {
+  flex: none;
+  margin-bottom: 0;
+}
+.t-agent-panel,
+.t-agent-shell {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+.t-agent-shell .chat-composer {
+  flex: none;
+}
+/* 与正式版学生 Agent 页共用输入框外观：浮起的输入面、聚焦描边与光晕 */
+.t-agent-shell .prompt-input {
+  box-shadow: var(--panel-shadow);
+}
+.t-agent-shell .prompt-input:has(> .prompt-editor > textarea:focus) {
+  border-color: var(--accent);
+  box-shadow: var(--panel-shadow), var(--focus-glow);
+}
+.t-agent-shell .chat-disclaimer {
+  font-size: 12px;
+  color: var(--muted);
+}
+.t-agent-shell .product-agent-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+}
+.t-agent-shell .product-agent-body .chat-empty {
+  margin: 0;
 }
 .t-task-focus {
   display: flex;
@@ -1621,8 +1734,7 @@ small.t-pulse-counts {
 .t-feedback textarea,
 .t-field textarea,
 .t-field input,
-.t-objective-row input,
-.t-agent-compose textarea {
+.t-objective-row input {
   width: 100%;
   border: 1px solid var(--line-strong);
   border-radius: 9px;
@@ -1637,8 +1749,7 @@ small.t-pulse-counts {
 .t-feedback textarea:focus,
 .t-field textarea:focus,
 .t-field input:focus,
-.t-objective-row input:focus,
-.t-agent-compose textarea:focus {
+.t-objective-row input:focus {
   outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
   border-color: transparent;
@@ -1767,84 +1878,26 @@ button.t-project-row:hover {
   gap: 8px;
 }
 .t-designer-body {
-  display: grid;
-  grid-template-columns: minmax(320px, 0.9fr) minmax(400px, 1.1fr);
-  gap: 36px;
   padding-top: 22px;
 }
-.t-agent header,
+/* 任务设计只留蓝图；教师 Agent 在课程工作区的第一个页签里，不在这里再开一套对话 */
 .t-blueprint header {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-bottom: 14px;
 }
-.t-agent header h3,
 .t-blueprint header h3 {
   font-size: 15px;
   margin: 0;
 }
-.t-agent header small,
 .t-blueprint header span {
   font-size: 11px;
   color: var(--faint);
 }
-.t-agent-thread {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  min-height: 280px;
-  max-height: 420px;
-  overflow-y: auto;
-  padding-right: 4px;
-}
-.t-message {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-}
-.t-message p {
-  margin: 0;
-  padding: 9px 12px;
-  border-radius: 11px;
-  font-size: 13px;
-  line-height: 1.6;
-  max-width: 88%;
-}
-.t-message-agent p {
-  background: var(--sunken);
-  color: var(--ink-soft);
-}
-.t-message-teacher {
-  justify-content: flex-end;
-}
-.t-message-teacher p {
-  background: var(--accent-soft);
-  color: var(--ink);
-}
-.t-agent-mark {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 24px;
-  height: 24px;
-  border-radius: 7px;
-  background: var(--chip-bg);
-  color: var(--ink-soft);
-}
-.t-agent-compose {
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
-  margin-top: 14px;
-}
-.t-agent-compose textarea {
-  flex: 1;
-  resize: none;
-}
 .t-blueprint {
-  padding-left: 32px;
-  border-left: 1px solid var(--line);
+  width: min(720px, 100%);
+  margin: 0 auto;
 }
 .t-field {
   display: flex;
@@ -2045,18 +2098,6 @@ button.t-project-row:hover {
   .t-pulse-row:focus-within .t-pulse-release {
     opacity: 1;
     transform: none;
-  }
-}
-
-@media (max-width: 1100px) {
-  .t-designer-body {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .t-blueprint {
-    padding-left: 0;
-    border-left: 0;
-    border-top: 1px solid var(--line);
-    padding-top: 22px;
   }
 }
 

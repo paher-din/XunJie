@@ -1,13 +1,16 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { AgentEmptyState, AgentMessage, ChatViewport, UserMessage, useFollowBottom } from '@xunjie/ui/chat'
 import { CourseTiles, HomeSectionHeading, HomeStatus } from '@xunjie/ui/home'
 import { ConfirmationDialog } from '@xunjie/ui/foundation'
+import type { SpaceIdentity } from '@xunjie/contracts/spaces'
 import { SettingsStatus } from '@xunjie/ui/settings'
 import { ProductShell } from '../components/ProductShell'
 import { Icon } from '../icons'
 import { ProductSettings, type ProductSettingsTab } from '../product/ProductSettings'
 import { SchoolConnectionRow } from '../product/SchoolConnectionRows'
 import { SettingsFailureBoundary } from '../product/SettingsFailureBoundary'
-import { useModelSelection } from '../product/ModelSelection'
+import { ProductComposerDock, ProductPromptInput, type PromptFiles } from '../product/ProductPromptInput'
+import { useModelSelection, type ModelSelectionController } from '../product/ModelSelection'
 import { LearningReadCache } from '../product/learning-read-cache'
 import { getSessionState, logoutSession } from '../workspace/session'
 import './teacher-space.css'
@@ -20,6 +23,7 @@ import { clearTeacherCache, readTeacherCache, writeTeacherCache, type TeacherCon
 const PersonalModelSettings = lazy(() => import('../product/PersonalModelSettings').then(module => ({ default: module.PersonalModelSettings })))
 
 type TeacherView = 'overview' | 'workbench'
+type TeacherTab = 'agent' | 'review' | 'design'
 type InboxKind = 'pending' | 'revised' | 'draft' | 'stalled'
 type InboxAction = 'review' | 'design' | 'workbench'
 
@@ -152,7 +156,7 @@ export function TeacherSpace() {
   const [error, setError] = useState('')
   const [view, setView] = useState<TeacherView>(() => new URLSearchParams(location.search).get('teacher') === 'workbench' ? 'workbench' : 'overview')
   const [courseId, setCourseId] = useState<string | null>(null)
-  const [courseTab, setCourseTab] = useState<'review' | 'design'>('review')
+  const [courseTab, setCourseTab] = useState<TeacherTab>('agent')
   const [courseTaskId, setCourseTaskId] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [settingsTab, setSettingsTab] = useState<ProductSettingsTab>('account')
@@ -204,6 +208,12 @@ export function TeacherSpace() {
   }, [catalog])
 
   const cohort = useMemo(() => teacherCohort(catalog?.courses ?? []), [catalog])
+  const schoolIdentity = context?.identities?.find(item => item.identity.kind === 'school')
+  // The course Agent runs on the device's personal model selection, the same one the settings page edits.
+  const personalIdentity = context?.identities?.find(item => item.identity.kind === 'personal')
+  const settingsIdentity = personalIdentity?.identity ?? schoolIdentity?.identity
+  const settingsKey = personalIdentity?.key ?? schoolIdentity?.key ?? 'personal'
+  const selection = useModelSelection(settingsIdentity, settingsKey, context?.clientNamespace ?? '')
 
   const retry = () => { clearTeacherCache(); setError(''); setContext(null); setCatalog(null); setAttempt(value => value + 1) }
   const content = !context ? <div className="content teacher-page">
@@ -217,8 +227,9 @@ export function TeacherSpace() {
   </div> : !catalog.available ? <div className="content teacher-page">
     <p role="status" className="t-loading">正在返回学生端…</p>
   </div> : <TeacherWorkspace catalog={catalog} cohort={cohort} view={view} courseId={courseId} courseTab={courseTab} courseTaskId={courseTaskId}
+    selection={selection} onOpenModelSettings={() => { setSettingsTab('models'); setSettingsOpen(true) }}
     onView={next => { setView(next); if (next === 'overview') setCourseId(null); setCourseTaskId(null) }}
-    onCourse={(id, tab = 'review', taskId = null) => { setCourseId(id); setCourseTab(tab); setCourseTaskId(taskId); setView('workbench') }}
+    onCourse={(id, tab = 'agent', taskId = null) => { setCourseId(id); setCourseTab(tab); setCourseTaskId(taskId); setView('workbench') }}
     onBackToCourses={() => { setCourseId(null); setCourseTaskId(null) }} />
 
   return <>
@@ -240,19 +251,19 @@ export function TeacherSpace() {
       onNavItem={id => { setSettingsOpen(false); setView(id as TeacherView); setCourseId(null); setCourseTaskId(null) }}
       activeNavItem={settingsOpen ? undefined : view}>
       {settingsOpen ? <TeacherSettingsPage context={context} account={context.account} tab={settingsTab}
-        onTab={setSettingsTab} onClose={() => setSettingsOpen(false)} /> : content}
+        onTab={setSettingsTab} onClose={() => setSettingsOpen(false)} identity={settingsIdentity} spaceKey={settingsKey} selection={selection} /> : content}
     </ProductShell> : content}
   </>
 }
 
-function TeacherWorkspace({ catalog, cohort, view, courseId, courseTab, courseTaskId, onView, onCourse, onBackToCourses }: {
-  catalog: TeacherCatalog; cohort: ReturnType<typeof teacherCohort>
-  view: TeacherView; courseId: string | null; courseTab: 'review' | 'design'; courseTaskId: string | null
-  onView: (view: TeacherView) => void; onCourse: (id: string, tab?: 'review' | 'design', taskId?: string | null) => void; onBackToCourses: () => void
+function TeacherWorkspace({ catalog, cohort, view, courseId, courseTab, courseTaskId, selection, onOpenModelSettings, onView, onCourse, onBackToCourses }: {
+  catalog: TeacherCatalog; cohort: ReturnType<typeof teacherCohort>; selection: ModelSelectionController; onOpenModelSettings: () => void
+  view: TeacherView; courseId: string | null; courseTab: TeacherTab; courseTaskId: string | null
+  onView: (view: TeacherView) => void; onCourse: (id: string, tab?: TeacherTab, taskId?: string | null) => void; onBackToCourses: () => void
 }) {
   const course = catalog.courses.find(item => item.courseId === courseId)
-  if (course) return <CourseWorkspace key={course.courseId + courseTab + (courseTaskId ?? '')} course={course} courses={catalog.courses} cohort={cohort}
-    initialTab={courseTab} initialTaskId={courseTaskId} onBack={onBackToCourses} onSwitch={(id, tab) => onCourse(id, tab, null)} />
+  if (course) return <CourseWorkspace key={course.courseId + ':' + (courseTaskId ?? '')} course={course} courses={catalog.courses} cohort={cohort}
+    selection={selection} onOpenModelSettings={onOpenModelSettings} initialTab={courseTab} initialTaskId={courseTaskId} onBack={onBackToCourses} onSwitch={(id, tab) => onCourse(id, tab, null)} />
   return view === 'overview'
     ? <Overview courses={catalog.courses} cohort={cohort} onCourse={onCourse} onWorkbench={() => onView('workbench')} />
     : <Workbench courses={catalog.courses} cohort={cohort} onCourse={onCourse} />
@@ -526,13 +537,14 @@ function Workbench({ courses, cohort, onCourse }: { courses: TeacherCourse[]; co
   </div>
 }
 
-function CourseWorkspace({ course, courses, cohort, initialTab, initialTaskId, onBack, onSwitch }: {
-  course: TeacherCourse; courses: TeacherCourse[]; cohort: ReturnType<typeof teacherCohort>; initialTab: 'review' | 'design'
-  initialTaskId?: string | null
+function CourseWorkspace({ course, courses, cohort, selection, onOpenModelSettings, initialTab, initialTaskId, onBack, onSwitch }: {
+  course: TeacherCourse; courses: TeacherCourse[]; cohort: ReturnType<typeof teacherCohort>; selection: ModelSelectionController; onOpenModelSettings: () => void
+  initialTab: TeacherTab; initialTaskId?: string | null
   onBack: () => void
-  onSwitch: (id: string, tab: 'review' | 'design') => void
+  onSwitch: (id: string, tab: TeacherTab) => void
 }) {
-  const [tab, setTab] = useState<'review' | 'design'>(initialTab)
+  const [tab, setTab] = useState<TeacherTab>(initialTab)
+  const [agentSeed, setAgentSeed] = useState<{ text: string; nonce: number } | null>(null)
   const [courseMenu, setCourseMenu] = useState(false)
   const menuWrap = useRef<HTMLDivElement>(null)
   const menuTrigger = useRef<HTMLButtonElement>(null)
@@ -557,29 +569,60 @@ function CourseWorkspace({ course, courses, cohort, initialTab, initialTaskId, o
     const pages = pagesRef.current
     if (!pages) return
     const measure = () => {
-      const active = pages.querySelector<HTMLButtonElement>('.t-btab.on')
+      const active = pages.querySelector<HTMLElement>('[data-tab-active]')
       if (active) setGlider({ left: Math.round(active.offsetLeft), width: Math.round(active.offsetWidth) })
     }
     measure()
     const observer = new ResizeObserver(measure)
     observer.observe(pages)
     return () => observer.disconnect()
-  }, [tab])
+  }, [tab, course.courseId])
   const [taskScope, setTaskScope] = useState<string | null>(initialTaskId ?? null)
+  const [designOpenId, setDesignOpenId] = useState<string | null>(initialTab === 'design' ? initialTaskId ?? null : null)
   const [submissions, setSubmissions] = useState<TeacherSubmission[]>(() => cohort.submissions.filter(item => item.courseId === course.courseId))
   const [projects, setProjects] = useState<TeacherDraft[]>(() => cohort.drafts.filter(item => item.courseId === course.courseId))
   const scopedTask = taskScope ? course.tasks.find(item => item.taskId === taskScope) : undefined
   const scopedCount = scopedTask ? submissions.filter(item => item.taskId === scopedTask.taskId).length : 0
-  return <div className="content teacher-page">
+  const tabIds: Record<TeacherTab, string> = { agent: 't-tab-agent', review: 't-tab-review', design: 't-tab-design' }
+  const tabOrder: TeacherTab[] = ['agent', 'review', 'design']
+  const onTabKey = (current: TeacherTab) => (event: { key: string; preventDefault: () => void }) => {
+    if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return
+    event.preventDefault()
+    const next = tabOrder[(tabOrder.indexOf(current) + (event.key === 'ArrowRight' ? 1 : tabOrder.length - 1)) % tabOrder.length]
+    setTab(next)
+    requestAnimationFrame(() => document.getElementById(tabIds[next])?.focus())
+  }
+  return <div className={'content teacher-page' + (tab === 'agent' ? ' teacher-page--agent' : '')}>
     <header className="t-tabbar">
       <button type="button" className="t-tabbar-back" aria-label="返回课程列表" onClick={onBack}>
         <Icon name="alt-arrow-left" size={16} />
       </button>
-      <div className="t-tabbar-course" ref={menuWrap}>
-        <button type="button" ref={menuTrigger} className={'t-btab t-btab-course' + (courseMenu ? ' open' : '')}
+      <div className="t-tabbar-pages" role="tablist" aria-label="课程工作区" ref={pagesRef}>
+      {glider && (
+        <span className="t-btab-glider" aria-hidden="true" style={{ width: glider.width, transform: `translateX(${glider.left}px)` }}>
+          <span className="t-btab-glider-edge" />
+          <svg className="t-btab-glider-arc is-left" viewBox="0 0 13 14" width="13" height="14" aria-hidden="true">
+            <path className="arc-fill" d="M 0 13 A 12 12 0 0 0 12 1 L 13 1 L 13 13 L 0 13 Z" />
+            <path className="arc-fill" d="M 1 13 L 13 13 L 13 14 L 1 14 Z" />
+            <path className="arc-line" d="M 12 1 A 12 12 0 0 1 0 13" />
+          </svg>
+          <svg className="t-btab-glider-arc is-right" viewBox="0 0 13 14" width="13" height="14" aria-hidden="true">
+            <path className="arc-fill" d="M 13 13 A 12 12 0 0 1 1 1 L 0 1 L 0 13 L 13 13 Z" />
+            <path className="arc-fill" d="M 0 13 L 12 13 L 12 14 L 0 14 Z" />
+            <path className="arc-line" d="M 1 1 A 12 12 0 0 0 13 13" />
+          </svg>
+        </span>
+      )}
+      <div className="t-tabbar-course" ref={menuWrap} role="presentation" data-tab-active={tab === 'agent' ? '' : undefined}>
+        <button type="button" role="tab" id="t-tab-agent" aria-selected={tab === 'agent'} aria-controls="t-panel-agent"
+          aria-label={`${course.name} · 教师 Agent`}
+          tabIndex={tab === 'agent' ? 0 : -1} className={'t-btab t-btab-course' + (tab === 'agent' ? ' on' : '')}
+          onClick={() => { setCourseMenu(false); setTab('agent') }} onKeyDown={onTabKey('agent')}>
+          <span className="t-btab-course-name">{course.name}</span>
+        </button>
+        <button type="button" ref={menuTrigger} className={'t-tab-toggle' + (courseMenu ? ' open' : '')}
           aria-haspopup="menu" aria-expanded={courseMenu} aria-label={`切换课程，当前${course.name}`}
           onClick={() => setCourseMenu(value => !value)}>
-          <span className="t-btab-course-name">{course.name}</span>
           <Icon name="alt-arrow-down" size={13} />
         </button>
         <div className={'t-tab-menu' + (courseMenu ? ' on' : '')} role="menu" aria-label="切换课程" inert={!courseMenu}
@@ -604,28 +647,12 @@ function CourseWorkspace({ course, courses, cohort, initialTab, initialTaskId, o
           </button>)}
         </div>
       </div>
-      <div className="t-tabbar-pages" role="tablist" aria-label="课程工作区" ref={pagesRef}>
-      {glider && (
-        <span className="t-btab-glider" aria-hidden="true" style={{ width: glider.width, transform: `translateX(${glider.left}px)` }}>
-          <span className="t-btab-glider-edge" />
-          <svg className="t-btab-glider-arc is-left" viewBox="0 0 13 14" width="13" height="14" aria-hidden="true">
-            <path className="arc-fill" d="M 0 13 A 12 12 0 0 0 12 1 L 13 1 L 13 13 L 0 13 Z" />
-            <path className="arc-fill" d="M 1 13 L 13 13 L 13 14 L 1 14 Z" />
-            <path className="arc-line" d="M 12 1 A 12 12 0 0 1 0 13" />
-          </svg>
-          <svg className="t-btab-glider-arc is-right" viewBox="0 0 13 14" width="13" height="14" aria-hidden="true">
-            <path className="arc-fill" d="M 13 13 A 12 12 0 0 1 1 1 L 0 1 L 0 13 L 13 13 Z" />
-            <path className="arc-fill" d="M 0 13 L 12 13 L 12 14 L 0 14 Z" />
-            <path className="arc-line" d="M 1 1 A 12 12 0 0 0 13 13" />
-          </svg>
-        </span>
-      )}
       <button type="button" role="tab" id="t-tab-review" aria-selected={tab === 'review'} aria-controls="t-panel-review"
-        tabIndex={tab === 'review' ? 0 : -1} className={'t-btab' + (tab === 'review' ? ' on' : '')} onClick={() => setTab('review')}
-        onKeyDown={event => { if (event.key !== 'ArrowRight') return; event.preventDefault(); setTab('design'); requestAnimationFrame(() => document.getElementById('t-tab-design')?.focus()) }}>作业审阅</button>
+        tabIndex={tab === 'review' ? 0 : -1} className={'t-btab' + (tab === 'review' ? ' on' : '')}
+        data-tab-active={tab === 'review' ? '' : undefined} onClick={() => setTab('review')} onKeyDown={onTabKey('review')}>作业审阅</button>
       <button type="button" role="tab" id="t-tab-design" aria-selected={tab === 'design'} aria-controls="t-panel-design"
-        tabIndex={tab === 'design' ? 0 : -1} className={'t-btab' + (tab === 'design' ? ' on' : '')} onClick={() => setTab('design')}
-        onKeyDown={event => { if (event.key !== 'ArrowLeft') return; event.preventDefault(); setTab('review'); requestAnimationFrame(() => document.getElementById('t-tab-review')?.focus()) }}>任务设计</button>
+        tabIndex={tab === 'design' ? 0 : -1} className={'t-btab' + (tab === 'design' ? ' on' : '')}
+        data-tab-active={tab === 'design' ? '' : undefined} onClick={() => setTab('design')} onKeyDown={onTabKey('design')}>任务设计</button>
       </div>
     </header>
     {scopedTask && tab === 'review' && <div className="t-task-focus">
@@ -636,10 +663,142 @@ function CourseWorkspace({ course, courses, cohort, initialTab, initialTaskId, o
       </div>
       <button type="button" className="t-task-focus-clear" onClick={() => setTaskScope(null)}>查看全部任务</button>
     </div>}
-    {tab === 'review'
-      ? <div id="t-panel-review" role="tabpanel" aria-labelledby="t-tab-review"><ReviewPane key={scopedTask?.taskId ?? 'all'} course={course} submissions={submissions} taskId={scopedTask?.taskId ?? null}
-        onChange={next => setSubmissions(current => current.map(item => item.submissionId === next.submissionId ? next : item))} /></div>
-      : <div id="t-panel-design" role="tabpanel" aria-labelledby="t-tab-design"><DesignPane course={course} projects={projects} initialDraftId={initialTaskId} onProjects={setProjects} /></div>}
+    {tab === 'agent' && <div id="t-panel-agent" role="tabpanel" aria-labelledby="t-tab-agent" className="t-agent-panel">
+      <TeacherAgentPane course={course} selection={selection} onOpenModelSettings={onOpenModelSettings} seed={agentSeed} onSeedApplied={() => setAgentSeed(null)} />
+    </div>}
+    {tab === 'review' && <div id="t-panel-review" role="tabpanel" aria-labelledby="t-tab-review"><ReviewPane key={scopedTask?.taskId ?? 'all'} course={course} submissions={submissions} taskId={scopedTask?.taskId ?? null}
+      onChange={next => setSubmissions(current => current.map(item => item.submissionId === next.submissionId ? next : item))} /></div>}
+    {tab === 'design' && <div id="t-panel-design" role="tabpanel" aria-labelledby="t-tab-design"><DesignPane course={course} projects={projects} openId={designOpenId} onOpen={setDesignOpenId} onProjects={setProjects}
+      onDiscuss={title => { setAgentSeed({ text: `帮我看看任务「${title.trim() || '未命名任务'}」的目标和评价证据。`, nonce: Date.now() }); setTab('agent') }} /></div>}
+  </div>
+}
+
+interface TeacherAgentMessage { role: 'user' | 'agent'; text: string; at?: string }
+interface TeacherAgentFile { id: string; name: string; size: number }
+/** 预览期只在本次页面会话内保留课程对话、输入草稿与待发附件；接入教师 Agent 后由服务端会话替换。 */
+const teacherAgentThreads = new Map<string, TeacherAgentMessage[]>()
+const teacherAgentDrafts = new Map<string, string>()
+const teacherAgentFiles = new Map<string, TeacherAgentFile[]>()
+
+function TeacherAgentPane({ course, selection, onOpenModelSettings, seed, onSeedApplied }: {
+  course: TeacherCourse; selection: ModelSelectionController; onOpenModelSettings: () => void
+  seed: { text: string; nonce: number } | null; onSeedApplied: () => void
+}) {
+  const [messages, setMessages] = useState<TeacherAgentMessage[]>(() => teacherAgentThreads.get(course.courseId) ?? [])
+  const [input, setInputState] = useState(() => teacherAgentDrafts.get(course.courseId) ?? '')
+  const [files, setFileState] = useState<TeacherAgentFile[]>(() => teacherAgentFiles.get(course.courseId) ?? [])
+  const shellRef = useRef<HTMLDivElement>(null)
+  const updateInput = (value: string) => {
+    setInputState(value)
+    teacherAgentDrafts.set(course.courseId, value)
+  }
+  const updateFiles = (next: (current: TeacherAgentFile[]) => TeacherAgentFile[]) => {
+    setFileState(current => {
+      const value = next(current)
+      teacherAgentFiles.set(course.courseId, value)
+      return value
+    })
+  }
+  const fileController: PromptFiles = {
+    items: files, busy: false, error: '',
+    add: list => updateFiles(current => [...current, ...list.map((file, index) => ({
+      id: `${Date.now().toString(36)}-${index}-${file.name}`, name: file.name, size: file.size,
+    }))]),
+    remove: id => updateFiles(current => current.filter(item => item.id !== id)),
+  }
+  const scrollerRef = useRef<HTMLDivElement>(null)
+  const stickRef = useRef(true)
+  const oursRef = useRef(-1)
+  const arrivingRef = useRef(false)
+  const distanceRef = useRef(0)
+  const [atBottom, setAtBottom] = useState(true)
+  useFollowBottom({ scroller: scrollerRef, stick: stickRef, ours: oursRef })
+  // 切回页签时对话页重挂：有历史就落在最新一条，不从最早一条读起。
+  useLayoutEffect(() => {
+    const scroller = scrollerRef.current
+    if (scroller) scroller.scrollTop = scroller.scrollHeight
+  }, [])
+  const focusInput = () => requestAnimationFrame(() => shellRef.current?.querySelector<HTMLTextAreaElement>('.prompt-input textarea')?.focus({ preventScroll: true }))
+  const scrollToBottom = (behavior: ScrollBehavior = 'auto') => {
+    const scroller = scrollerRef.current
+    if (scroller) scroller.scrollTo({ top: scroller.scrollHeight, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : behavior })
+  }
+  const onChatScroll = () => {
+    const scroller = scrollerRef.current
+    if (!scroller) return
+    const distance = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight
+    const previous = distanceRef.current
+    distanceRef.current = distance
+    const ours = oursRef.current
+    if (ours >= 0 && scroller.scrollTop > ours - 1.5) return
+    // 平滑回底途中位置仍在收近，继续等；反向变大就是学生接手
+    if (arrivingRef.current) {
+      if (distance > 4 && distance <= previous + 2) return
+      arrivingRef.current = false
+    }
+    const stick = stickRef.current ? distance < 80 : distance < 40
+    stickRef.current = stick
+    setAtBottom(stick)
+  }
+  const backToBottom = () => {
+    stickRef.current = true
+    arrivingRef.current = true
+    oursRef.current = -1
+    setAtBottom(true)
+    scrollToBottom('smooth')
+  }
+  const jumpToMessage = (element: HTMLElement, last: boolean) => {
+    if (last) { backToBottom(); return }
+    const scroller = scrollerRef.current
+    if (!scroller) return
+    stickRef.current = false
+    arrivingRef.current = false
+    oursRef.current = -1
+    setAtBottom(false)
+    const wrapRect = scroller.getBoundingClientRect()
+    const rect = element.getBoundingClientRect()
+    scroller.scrollTo({ top: scroller.scrollTop + rect.top - wrapRect.top - (scroller.clientHeight - rect.height) / 2,
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+  }
+  useEffect(() => {
+    if (!seed) return
+    updateInput(seed.text)
+    stickRef.current = true
+    setAtBottom(true)
+    onSeedApplied()
+    focusInput()
+  }, [seed])
+  const send = (text: string) => {
+    const trimmed = text.trim()
+    if (!trimmed) return
+    const reply = '收到。我会把这一点放进这次任务的目标与评价证据里，并检查现在发布的任务说明有没有说清学生要做的动作。'
+    const at = new Date().toISOString()
+    const next: TeacherAgentMessage[] = [...messages,
+      { role: 'user', text: trimmed, at },
+      { role: 'agent', text: reply, at }]
+    setMessages(next)
+    teacherAgentThreads.set(course.courseId, next)
+    updateInput('')
+    updateFiles(() => [])
+    stickRef.current = true
+    setAtBottom(true)
+    requestAnimationFrame(() => scrollToBottom())
+  }
+  return <div className="t-agent-shell" ref={shellRef}>
+    {messages.length === 0
+      ? <div className="product-agent-body"><AgentEmptyState title="今天想探讨什么？" /></div>
+      : <ChatViewport scrollerRef={scrollerRef} onJump={jumpToMessage} onScroll={onChatScroll} padSuggestions={false} queued={false} busy={false}>
+        {messages.map((message, index) => message.role === 'user'
+          ? <UserMessage key={index} text={message.text} at={message.at} />
+          : <AgentMessage key={index} message={{ role: 'agent', text: message.text, at: message.at }} reveal={index === messages.length - 1} />)}
+      </ChatViewport>}
+    <ProductComposerDock atBottom={atBottom} onBackToBottom={backToBottom}
+      disclaimer="教师 Agent · 当前为界面预览，回复为合成示例">
+      <ProductPromptInput selection={selection} readOnly={false} onModelSettings={onOpenModelSettings}
+        value={input} onChange={updateInput} onSend={() => send(input)} canSend={!!input.trim()} autoFocus
+        submitting={false} busy={false} files={fileController}
+        textareaProps={{ 'aria-label': '向教师 Agent 提问' }} />
+    </ProductComposerDock>
   </div>
 }
 
@@ -736,71 +895,42 @@ function ReviewPane({ course, submissions, taskId, onChange }: {
   </div>
 }
 
-const initialMessages = [
-  { role: 'agent' as const, text: '我们从这门课已经发布的任务开始。你希望学生在这次任务里真正学会什么？' },
-  { role: 'teacher' as const, text: '想让他们能解释进位延迟，而不只是把电路连对。' },
-  { role: 'agent' as const, text: '那评价证据应该包含一次比较：行波进位和超前进位的延迟差异。目标可以先写成三条，我把蓝图放在右边。' },
-]
-
-function DesignPane({ course, projects, initialDraftId, onProjects }: {
-  course: TeacherCourse; projects: TeacherDraft[]; initialDraftId?: string | null; onProjects: (projects: TeacherDraft[]) => void
+function DesignPane({ course, projects, openId, onOpen, onProjects, onDiscuss }: {
+  course: TeacherCourse; projects: TeacherDraft[]; openId: string | null
+  onOpen: (id: string | null) => void; onProjects: (projects: TeacherDraft[]) => void
+  onDiscuss: (title: string) => void
 }) {
   const published = course.tasks.filter(task => task.releases.length > 0)
-  const [openId, setOpenId] = useState<string | null>(initialDraftId ?? null)
-  const [draft, setDraft] = useState<TeacherDraft | null>(() => projects.find(project => project.draftId === initialDraftId) ?? null)
-  const [messages, setMessages] = useState(initialMessages)
-  const [input, setInput] = useState('')
+  const draft = openId ? projects.find(project => project.draftId === openId) ?? null : null
   const [publishOpen, setPublishOpen] = useState(false)
   const [scope, setScope] = useState<'course' | 'selected'>('course')
   const [publishedNote, setPublishedNote] = useState('')
 
-  const openDraft = (project: TeacherDraft) => { setOpenId(project.draftId); setDraft(project); setPublishedNote('') }
+  const openDraft = (project: TeacherDraft) => { onOpen(project.draftId); setPublishedNote('') }
   const newDraft = () => {
     const project: TeacherDraft = { draftId: 'draft-' + Date.now(), courseId: course.courseId, title: '未命名任务', summary: '', updatedAt: new Date().toISOString(), objectives: [''] }
-    onProjects([project, ...projects]); setOpenId(project.draftId); setDraft(project); setPublishedNote('')
-  }
-  const send = () => {
-    const text = input.trim()
-    if (!text) return
-    setMessages(current => [...current, { role: 'teacher' as const, text },
-      { role: 'agent' as const, text: '我先把这条意见收进蓝图：它会影响任务说明和评价证据。需要我改成更具体的学生动作吗？' }])
-    setInput('')
+    onProjects([project, ...projects]); onOpen(project.draftId); setPublishedNote('')
   }
   const updateDraft = (patch: Partial<TeacherDraft>) => {
     if (!draft) return
     const next = { ...draft, ...patch }
-    setDraft(next)
     onProjects(projects.map(item => item.draftId === next.draftId ? next : item))
   }
 
   if (draft && openId) return <div className="t-designer">
     <header className="t-designer-head">
-      <button type="button" className="t-back-link" onClick={() => { setDraft(null); setOpenId(null) }}><Icon name="alt-arrow-left" size={15} />任务列表</button>
+      <button type="button" className="t-back-link" onClick={() => { onOpen(null); setPublishedNote('') }}><Icon name="alt-arrow-left" size={15} />任务列表</button>
       <div className="t-designer-title"><h2>{draft.title || '未命名任务'}</h2><span className="t-state t-state-draft">草稿</span></div>
       <div className="t-designer-actions">
+        <button type="button" className="outline" onClick={() => onDiscuss(draft.title)}><Icon name="chat-round-dots" size={15} />和 Agent 讨论</button>
         <button type="button" className="outline" onClick={() => setPublishedNote('草稿已保存在此预览')}>保存草稿</button>
         <button type="button" className="primary" onClick={() => setPublishOpen(true)}>发布</button>
       </div>
     </header>
     {publishedNote && <p role="status" className="t-saved">{publishedNote}</p>}
     <div className="t-designer-body">
-      <section className="t-agent" aria-label="教师 Agent 对话">
-        <header><Icon name="chat-round-dots" size={17} /><h3>教师 Agent</h3><small>示例回复</small></header>
-        <div className="t-agent-thread">
-          {messages.map((message, index) => <div key={index} className={`t-message t-message-${message.role}`}>
-            {message.role === 'agent' && <span className="t-agent-mark"><Icon name="structure" size={14} /></span>}
-            <p>{message.text}</p>
-          </div>)}
-        </div>
-        <div className="t-agent-compose">
-          <textarea rows={2} value={input} placeholder="说说你的设计意图，或让 Agent 改一条目标…" onChange={event => setInput(event.target.value)}
-            onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); send() } }} />
-          <button type="button" className="primary" onClick={send} disabled={!input.trim()}>发送</button>
-        </div>
-        <p className="t-preview-note">教师 Agent 由其他成员接入，这里的对话是合成示例。</p>
-      </section>
       <section className="t-blueprint" aria-label="任务蓝图">
-        <header><h3>任务蓝图</h3><span>随对话成稿</span></header>
+        <header><h3>任务蓝图</h3><span>草稿内容</span></header>
         <label className="t-field"><span>任务标题</span><input value={draft.title} onChange={event => updateDraft({ title: event.target.value })} /></label>
         <label className="t-field"><span>任务说明</span><textarea rows={4} value={draft.summary} placeholder="学生要解决什么问题、交付什么。"
           onChange={event => updateDraft({ summary: event.target.value })} /></label>
@@ -859,7 +989,7 @@ function DesignPane({ course, projects, initialDraftId, onProjects }: {
     </div>
     <div className="t-project-group">
       <h3>草稿<small>{projects.length}</small></h3>
-      {projects.length === 0 ? <p className="t-list-empty">还没有草稿。新建任务后，Agent 会和你一起把蓝图成稿。</p>
+      {projects.length === 0 ? <p className="t-list-empty">还没有草稿。新建任务后，在这里填写任务说明与学习目标。</p>
         : projects.map(project => <button key={project.draftId} type="button" className="t-project-row" onClick={() => openDraft(project)}>
           <span className="t-project-mark"><Icon name="pen-new-square" size={17} /></span>
           <span className="t-project-main"><strong>{project.title}</strong><small>{project.summary || '尚未填写任务说明'} · 更新于 {dateText(project.updatedAt)}</small></span>
@@ -880,17 +1010,13 @@ function taskTitleOf(courses: TeacherCourse[], id: string) {
   return '任务'
 }
 
-function TeacherSettingsPage({ context, account, tab, onTab, onClose }: {
+function TeacherSettingsPage({ context, account, tab, onTab, onClose, identity, spaceKey, selection }: {
   context: TeacherContext; account: { key: string; accountName: string; schoolName?: string }
   tab: ProductSettingsTab; onTab: (tab: ProductSettingsTab) => void; onClose: () => void
+  identity?: SpaceIdentity; spaceKey: string; selection: ReturnType<typeof useModelSelection>
 }) {
-  const schoolIdentity = context.identities?.find(item => item.identity.kind === 'school')
-  // The teacher workspace is a local surface. Its model configuration belongs to
-  // the device's personal space, not to the school's optional model service.
-  const personalIdentity = context.identities?.find(item => item.identity.kind === 'personal')
-  const settingsIdentity = personalIdentity?.identity ?? schoolIdentity?.identity
-  const settingsKey = personalIdentity?.key ?? schoolIdentity?.key ?? 'personal'
-  const selection = useModelSelection(settingsIdentity, settingsKey, context.clientNamespace)
+  const settingsIdentity = identity
+  const settingsKey = spaceKey
   const cache = useMemo(() => new LearningReadCache(), [context.clientNamespace, settingsKey])
   const [mode, setMode] = useState<'disconnect' | 'replace' | null>(null)
   const [busy, setBusy] = useState(false)
