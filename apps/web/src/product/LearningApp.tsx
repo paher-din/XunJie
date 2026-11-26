@@ -18,6 +18,7 @@ import type { ActivityWorkspaceHandle } from './ActivityWorkspace'
 import { ProductShell } from '../components/ProductShell'
 import { useModelSelection } from './ModelSelection'
 import { ProductHome } from './ProductHome'
+import { ProductHomeAssistant } from './ProductHomeAssistant'
 import { courseReleaseDate, courseTaskEntry, courseTaskProgress, type CourseTaskSelection } from './SchoolCourseTasks'
 import { HomeNavigationProvider } from '../lib/homeCourseNavigation'
 import { ProductConversationHistory } from './ProductConversationHistory'
@@ -31,6 +32,7 @@ import { LearningReadCache } from './learning-read-cache'
 import { skillCatalogCacheKey, skillCatalogSchema } from './skills'
 import { learningSubjectRequest } from './learningTransport'
 import { useAgentSessionHistory } from './useAgentSession'
+import { AgentSessionsClient, SessionOutbox } from './agent-sessions'
 import type { AgentSession } from '@xunjie/contracts/agent-sessions'
 import type { ExperimentReference } from './experiment-reference'
 import type { CourseCitationDocument, CourseCitationLocation } from './ProductAgent'
@@ -1034,8 +1036,19 @@ function LearningView() {
   const previewProgress = previewRelease && previewEntry?.status
     ? courseTaskProgress(previewRelease.objectives.length, previewEntry.activity?.completedObjectives) : undefined
   const openedObjectives = opened && (recordedProgress?.activity === opened ? recordedProgress.completed : opened.completedObjectives)
-  const changePage = (page: 'home' | 'agent', experiment?: ExperimentReference) => void action(async () => {
+  const changePage = (page: 'home' | 'agent', options?: { experiment?: ExperimentReference; question?: string }) => void action(async generation => {
+    const startedSearch = currentSearch.current
     await protectActivity()
+    if (generation !== epoch.current || startedSearch !== currentSearch.current) return
+    const { experiment, question } = options ?? {}
+    if (question) {
+      if (!context || !contextVerified || context.readOnly || !personalKey || !personalIdentity) return
+      const outbox = new SessionOutbox(new AgentSessionsClient({ identity: personalIdentity, spaceKey: personalKey, namespace: context.clientNamespace }))
+      try {
+        if (outbox.start()) { toast.warning('还有一条提问待确认，请先在 Agent 对话中继续原请求。'); return }
+        outbox.begin(question)
+      } catch { toast.error('暂时无法保存提问，请保留输入后重试。'); return }
+    }
     if (experiment && context) sessionStorage.setItem('xj.agent-experiment.' + context.clientNamespace, JSON.stringify(experiment))
     const params = new URLSearchParams(currentSearch.current)
     params.delete('activity'); params.delete('course'); params.delete('settings'); params.delete('artifact'); params.delete('session')
@@ -1064,7 +1077,7 @@ function LearningView() {
   const openAgent = () => { prepareAgent(); conversationHistory.revalidate(); changePage('agent') }
   const askHomeFromExperiment = (reference: ExperimentReference) => {
     prepareAgent()
-    changePage('agent', reference)
+    changePage('agent', { experiment: reference })
   }
   const openSettings = (tab: ProductSettingsTab | 'school' = 'account') => void action(async () => {
     void loadModelSettings().catch(() => {})
@@ -1259,6 +1272,10 @@ function LearningView() {
         onOpenTask={selection => void viewRelease(selection)} readTaskSubmission={readTaskSubmission}
         onStartConversation={openAgent} onConnectSchool={() => openSettings('school')}
         onRefresh={() => void action(async generation => { await refreshContext(undefined, generation) })} />
+      {homeVisible && !authorize && contextVerified && !context.readOnly && personalKey && <ProductHomeAssistant onSend={question => {
+        prepareAgent()
+        changePage('agent', { question })
+      }} />}
     </>}
     {preview && previewEntry && <WorkspaceTaskIntro status={previewEntry.status} name={preview.detail?.taskTitle ?? preview.task.title} course={preview.courseName}
       deadline={previewRelease?.deadlineAt ? `截止 ${formatDeadline(previewRelease.deadlineAt)}` : '无截止时间'}
