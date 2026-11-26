@@ -2,16 +2,111 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { createFileBackend, openStorage, provisionStorage } from '@xunjie/storage';
+import { createFileBackend, openStorage, provisionStorage, StorageError } from '@xunjie/storage';
 import { agentRuntimeMigrations } from '@xunjie/agent-runtime';
 import { createAgentSessions, agentSessionMigration } from '@xunjie/learning-space/learning-data/agent-sessions';
 import { createLearningData, learningMigrations } from '@xunjie/learning-space';
 import { nativeFixture } from '../../storage/test/native-fixture.mjs';
 import { createSessionRuntimeHost } from '../dist/session-runtime.js';
 import { createProductAgent } from '../dist/product-agent.js';
+import { routeAgentSessions } from '../dist/learning-http/sessions-http.js';
 
 const connection = { routeId: randomUUID(), version: 1, maxOutputTokens: 4096, contextWindow: 1_000_000,
   protocol: 'openai-chat', parameterMode: 'plain', capabilities: {}, hasCredential: true, adapterState: 'ready' };
+
+test('course-bound teacher text chat uses v3, a separate budget and current grants', { timeout: 60000 }, async t => {
+  const pg = await nativeFixture(), storages = [];
+  let host, releaseModel;
+  t.after(async () => { releaseModel?.(); await host?.close(); for (const storage of storages.reverse()) await storage.close(); await pg.close(); });
+  const environmentId = randomUUID();
+  async function open(id, migrations) {
+    const binding = await provisionStorage({ admin: pg.admin, owner: { environmentId, serviceId: randomUUID() },
+      password: randomUUID(), migrations });
+    const storage = await openStorage({ binding, migrations, backend: createFileBackend({ id, root: join(pg.root, id) }) });
+    storages.push(storage);
+    return storage;
+  }
+  const data = await open('teacher-data', [...learningMigrations.filter(migration => migration.version < 31), agentSessionMigration]);
+  const agent = await open('teacher-agent', agentRuntimeMigrations);
+  const teacher = { environmentId, spaceId: randomUUID(), principalId: randomUUID(), kind: 'school', name: '教师' };
+  const other = { ...teacher, principalId: randomUUID() };
+  const courseId = randomUUID(), sessionId = randomUUID();
+  const owner = { version: 1, connectionId: agent.owner.serviceId, installationId: randomUUID(), target: {
+    ...agent.owner, unit: 'teaching-agent', protocolVersion: 1, endpoint: 'http://127.0.0.1:3444', capabilities: ['agent.sessions.v3'] } };
+  let granted = true, generated = 0, restrictedBudget = false;
+  const directory = createAgentSessions(data, { authorize: async () => {},
+    openActivity: async () => { throw new Error('teacher chat must not open a workspace'); },
+    resolveOwner: async () => owner,
+    async authorizeTeacherCourse(identity, course) {
+      if (!granted || identity.principalId !== teacher.principalId || course !== courseId) throw new StorageError('forbidden');
+    },
+  });
+  let showProgress;
+  const progressed = new Promise(resolve => { showProgress = resolve; });
+  const model = mockGateway(async (identity, attemptId) => {
+    generated++;
+    if (generated !== 3) return;
+    await host.runtime.recordProgress(identity, sessionId, attemptId, { revision: 1, text: '正在生成' });
+    const held = new Promise(resolve => { releaseModel = resolve; });
+    showProgress();
+    await held;
+  });
+  model.checks.requestPayload = async () => ({ messages: [{ role: 'user', content: '教师对话的实际请求正文' }] });
+  host = createProductAgent({ storage: agent, directory, models: model, authorize: async () => {},
+    scene: async () => { throw new Error('teacher chat must not assemble student tools'); },
+    budgetForSession: async session => session.scenario === 'teacher-assistant'
+      ? { maxSteps: 4, ...(restrictedBudget ? { maxInputTokens: 1 } : {}) } : undefined,
+  });
+  const call = (path, method = 'GET', body, who = teacher, search = '') =>
+    routeAgentSessions(host, who, 'agent-sessions' + path, method, body, search, '3');
+  const create = { requestId: randomUUID(), sessionId, scenario: 'teacher-assistant', courseId };
+  await assert.rejects(call('', 'POST', create, other), { code: 'forbidden' });
+  assert.equal((await call('', 'POST', create)).courseId, courseId);
+  assert.deepEqual((await call('')).items, []);
+  assert.equal((await call('', 'GET', undefined, teacher, '?courseId=' + courseId)).items[0].sessionId, sessionId);
+  const first = { requestId: randomUUID(), sessionId, text: '怎么解释进位？', context: {} };
+  const receipt = await call('/' + sessionId + '/inputs', 'POST', first);
+  await host.drain();
+  await assert.rejects(call('/' + sessionId + '/inputs/' + receipt.inputId + '/control', 'POST', {
+    requestId: randomUUID(), expectedVersion: 1, operation: 'edit', text: '错误的 Skill 引用',
+    context: { teacherSkill: { version: 0 } },
+  }), { code: 'invalid' });
+  const duplicate = await call('/' + sessionId + '/inputs', 'POST', first);
+  assert.equal(duplicate.inputId, receipt.inputId);
+  assert.equal(duplicate.turnId, receipt.turnId);
+  assert.equal(duplicate.inputDigest, receipt.inputDigest);
+  const second = { ...first, requestId: randomUUID(), text: '举个例子。' };
+  await call('/' + sessionId + '/inputs', 'POST', second);
+  await host.drain();
+  const conversation = await call('/' + sessionId + '/conversation');
+  assert.deepEqual(conversation.messages.map(message => message.text), [first.text, '回答', second.text, '回答']);
+  assert.equal(generated, 2);
+  const { rows } = await agent.read('SELECT budget FROM agent_turns WHERE turn_id=$1', [receipt.turnId]);
+  assert.equal(rows[0].budget.maxSteps, 4);
+  assert.deepEqual(conversation.tools, []);
+  const third = { ...first, requestId: randomUUID(), text: '请补充。' };
+  const running = await call('/' + sessionId + '/inputs', 'POST', third);
+  await progressed;
+  const live = await call('/' + sessionId + '/conversation');
+  assert.ok(live.messages.some(message => message.text === '正在生成' && message.state === 'streaming'));
+  const stopped = await call('/' + sessionId + '/runs/' + running.turnId + '/stop', 'POST', { requestId: randomUUID() });
+  assert.equal(stopped.state, 'stopped');
+  releaseModel();
+  await host.drain();
+  const afterStop = await call('/' + sessionId + '/conversation');
+  assert.equal(afterStop.messages.filter(message => message.text === '回答').length, 2);
+  restrictedBudget = true;
+  const limited = await call('/' + sessionId + '/inputs', 'POST', { ...first, requestId: randomUUID() });
+  await host.drain();
+  const failed = await call('/' + sessionId + '/runs/' + limited.turnId);
+  assert.equal(failed.state, 'failed');
+  assert.equal(failed.reason, 'context-capacity-preflight');
+  assert.equal(generated, 3);
+  await assert.rejects(call('/' + sessionId + '/conversation', 'GET', undefined, other), { code: 'forbidden' });
+  granted = false;
+  await assert.rejects(call('/' + sessionId + '/conversation'), { code: 'forbidden' });
+  await assert.rejects(call('/' + sessionId + '/inputs', 'POST', { ...second, requestId: randomUUID() }), { code: 'forbidden' });
+});
 
 /** A scripted Gateway: dispatch returns a fixed response after the optional streaming hook. */
 function mockGateway(onDispatch) {

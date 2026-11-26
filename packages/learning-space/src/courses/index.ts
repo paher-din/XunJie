@@ -261,6 +261,13 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
     await spaces.authorize(identity); uuid.parse(courseId);
     return accessActive(identity, courseId);
   }
+  async function courseInSchool(identity: SpaceIdentity, courseId: string): Promise<boolean> {
+    await spaces.authorize(identity); uuid.parse(courseId);
+    if (identity.kind !== 'school') return false;
+    const { rows } = await storage.read('SELECT 1 FROM courses WHERE course_id=$1 AND space_id=$2',
+      [courseId, identity.spaceId]);
+    return rows.length > 0;
+  }
   /** Host-only fixed activity-to-course fact used for controlled inspection authorization. */
   async function courseForActivity(identity: SpaceIdentity, activityId: string): Promise<string | null> {
     await spaces.authorize(identity); uuid.parse(activityId);
@@ -295,11 +302,12 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
   async function ensureStudentResources(content: StoredContent) {
     await verifyMaterialBytes(studentMaterials(content).map(item => item.materialId));
   }
-  async function authorizedRelease(identity: SpaceIdentity, releaseId: string) {
+  async function authorizedRelease(identity: SpaceIdentity, releaseId: string, teacherCourseId?: string) {
     await spaces.authorize(identity);
     const row = await releaseRow(releaseId);
     if (!row || row.space_id !== identity.spaceId) return fail('missing');
-    if (!await accessActive(identity, row.course_id)) return fail('forbidden');
+    if (teacherCourseId ? identity.kind !== 'school' || row.course_id !== teacherCourseId
+      : !await accessActive(identity, row.course_id)) return fail('forbidden');
     const content = parseContent(row.content);
     if (content.releaseId !== releaseId || content.courseId !== row.course_id || content.taskId !== row.task_id
       || contentDigest(content) !== row.content_digest) fail('corrupt');
@@ -421,9 +429,9 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
       tasks: [...course.tasks.values()] })) };
   }
 
-  async function readRelease(identity: SpaceIdentity, releaseId: string): Promise<CourseRelease> {
+  async function readRelease(identity: SpaceIdentity, releaseId: string, teacherCourseId?: string): Promise<CourseRelease> {
     uuid.parse(releaseId);
-    const { row, content } = await authorizedRelease(identity, releaseId);
+    const { row, content } = await authorizedRelease(identity, releaseId, teacherCourseId);
     return courseReleaseSchema.parse({ formatVersion: 1, courseId: content.courseId, taskId: content.taskId,
       releaseId: content.releaseId, contentDigest: row.content_digest, objectives: content.objectives,
       requirements: content.requirements, materials: studentMaterials(content), starterWorks: content.starterWorks,
@@ -436,9 +444,9 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
       taskTitle: row.task_title });
   }
 
-  async function readMaterial(identity: SpaceIdentity, releaseId: string, materialId: string) {
+  async function readMaterial(identity: SpaceIdentity, releaseId: string, materialId: string, teacherCourseId?: string) {
     uuid.parse(releaseId); uuid.parse(materialId);
-    const { row } = await authorizedRelease(identity, releaseId);
+    const { row } = await authorizedRelease(identity, releaseId, teacherCourseId);
     const { rows: [material] } = await storage.read(`SELECT access,title,media_type,sha256,byte_length
       FROM course_release_materials WHERE release_id=$1 AND material_id=$2`, [releaseId, materialId]);
     // Private material identity is indistinguishable from a missing one.
@@ -723,8 +731,32 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
     const bundle = await readComponent(identity, input.releaseId, input.key);
     if (bundle.definition.digest !== input.definitionDigest) return fail('identity-conflict');
   }
+  function teacherPublished(identity: SpaceIdentity, courseId: string, authorize: () => Promise<void>) {
+    return {
+      async find(query: string) {
+        await authorize();
+        const { rows } = await storage.read(`SELECT t.task_id, t.title, r.release_id, r.published_at
+          FROM courses c JOIN course_tasks t ON t.course_id=c.course_id JOIN course_releases r ON r.task_id=t.task_id
+          WHERE c.space_id=$1 AND c.course_id=$2 AND strpos(lower(t.title), lower($3)) > 0
+          ORDER BY t.title, t.task_id, r.published_at DESC, r.release_id LIMIT 21`, [identity.spaceId, courseId, query]);
+        return rows.map(row => ({ taskId: String(row.task_id), releaseId: String(row.release_id),
+          title: String(row.title), publishedAt: (row.published_at as Date).toISOString() }));
+      },
+      async release(releaseId: string) {
+        await authorize();
+        return readRelease(identity, releaseId, courseId);
+      },
+      async material(releaseId: string, materialId: string) {
+        await authorize();
+        return readMaterial(identity, releaseId, materialId, courseId);
+      },
+    };
+  }
   return { verifyComponentReference, components, readComponent, readComponentAlgorithm, readComponentDependency,
     readComponentRuntimeResource, submitComponentReport, readComponentReports,
-    registerRelease, registrationResult, listCourses, readRelease, readMaterial, referenceText, verifyReference, setAccess, hasAccess, courseForActivity,
+    registerRelease, registrationResult, listCourses,
+    readRelease: (identity: SpaceIdentity, releaseId: string) => readRelease(identity, releaseId),
+    readMaterial: (identity: SpaceIdentity, releaseId: string, materialId: string) => readMaterial(identity, releaseId, materialId),
+    teacherPublished, referenceText, verifyReference, setAccess, hasAccess, courseInSchool, courseForActivity,
     prepare, confirm, confirmForMember, bindingResult, authorize, validate };
 }

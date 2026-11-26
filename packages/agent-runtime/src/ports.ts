@@ -114,6 +114,8 @@ export interface ScenarioInputEntry { inputId: string; requestId?: string; text:
 export interface ScenarioInput {
   identity: SpaceIdentity; sessionId: string; turnId: string; stepId: string;
   inputIds: readonly string[]; inputs?: readonly ScenarioInputEntry[]; sessionState: Facts;
+  /** Latest adopted user input in this Turn, including on a tool-follow-up Step. */
+  originInput?: ScenarioInputEntry;
 }
 export interface ScenarioContext { system: string; facts: Facts; sources: Facts[];
   materials?: readonly ContextMaterial[]; ruleVersions?: readonly RuleVersion[]; }

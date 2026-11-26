@@ -24,7 +24,8 @@ export class AgentSessionsClient {
   constructor(readonly subject: SessionSubject) { this.scope = JSON.stringify([subject.namespace, subject.spaceKey, subject.identity.kind, subject.identity.environmentId, subject.identity.spaceId, subject.identity.principalId]) }
   async request(route = '', body?: unknown): Promise<unknown> {
     const { identity, spaceKey, namespace } = this.subject
-    const response = await fetch('/api/learning/agent-sessions' + (route ? '/' + route : ''), {
+    const suffix = route && !route.startsWith('?') ? '/' + route : route
+    const response = await fetch('/api/learning/agent-sessions' + suffix, {
       method: body === undefined ? 'GET' : 'POST', credentials: 'same-origin', redirect: 'error', cache: 'no-store',
       headers: { 'content-type': 'application/json', 'x-xj-agent-contract': '3', 'x-xj-space': spaceKey, 'x-xj-namespace': namespace,
         'x-xj-expected-subject': [identity.environmentId, identity.spaceId, identity.principalId].join('.') },
@@ -45,9 +46,20 @@ export class AgentSessionsClient {
     return result
   }
   async list() { return z.object({ items: z.array(agentSessionSchema) }).strict().parse(await this.request()).items.map(item => this.session(item)) }
+  async listTeacherCourse(courseId: string) {
+    const course = z.uuid().parse(courseId)
+    const result = z.object({ items: z.array(agentSessionSchema) }).strict()
+      .parse(await this.request('?courseId=' + encodeURIComponent(course)))
+    return result.items.map(item => {
+      const session = this.session(item)
+      if (session.scenario !== 'teacher-assistant' || session.courseId !== course) throw fail('corrupt', '会话不属于当前任教课程。')
+      return session
+    })
+  }
   async read(sessionId: string) { const result = this.session(await this.request(sessionId)); if (result.sessionId !== sessionId) throw fail('corrupt', '会话身份不匹配。'); return result }
   async create(value: CreateAgentSession) { const input = createAgentSessionSchema.parse(value), result = this.session(await this.request('', input));
-    if (result.sessionId !== input.sessionId || result.requestId !== input.requestId) throw fail('corrupt', '会话创建回执不匹配。'); return result }
+    if (result.sessionId !== input.sessionId || result.requestId !== input.requestId
+      || result.scenario !== input.scenario || result.courseId !== input.courseId) throw fail('corrupt', '会话创建回执不匹配。'); return result }
   async workspace(activityId: string, target: LearningTarget) {
     const result = this.session(await this.request('workspace', { activityId: z.uuid().parse(activityId), target: learningTargetSchema.parse(target) }))
     if (result.scenario !== 'workspace-assistant' || result.workspace?.activityId !== activityId || canonical(result.workspace.target) !== canonical(target)) throw fail('corrupt', '工作区会话不属于原活动。')

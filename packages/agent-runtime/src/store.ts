@@ -210,7 +210,9 @@ function usageContribution(usage: AgentAttempt['usage'], reserved: { inputTokens
     outputTokens: exact ? usage.outputTokens ?? reserved.outputTokens : Math.max(reserved.outputTokens, usage.outputTokens ?? 0) };
 }
 
-export interface StoreOptions { budget?: { maxSteps?: number | undefined; maxToolCalls?: number | undefined; maxInputTokens?: number | undefined; maxOutputTokens?: number | undefined; maxCallMs?: number | undefined; hardDeadlineMs?: number | undefined } | undefined; now?: (() => number) | undefined; ownerInstanceId: string;
+export type TurnBudgetLimits = { [Key in keyof typeof defaultAgentTurnBudget]?: number | undefined };
+export interface StoreOptions { budget?: TurnBudgetLimits | undefined; now?: (() => number) | undefined; ownerInstanceId: string;
+  budgetForSession?: ((session: AgentRuntimeSession) => Promise<TurnBudgetLimits | undefined>) | undefined;
   /** The host's live lock fence; a closed/released host can never commit a late fact. */
   assertOwner?: (() => boolean) | undefined; }
 
@@ -241,15 +243,20 @@ export function createAgentStore(storage: OwnedStorage, options: StoreOptions) {
     await tx.query('INSERT INTO agent_events(session_id,seq,event_id,kind,body) VALUES($1,$2,$3,$4,$5)', [sessionId, seq, eventId, kind, JSON.stringify(body)]);
     return { seq, eventId };
   }
-  function freezeBudget(): AgentTurnBudget {
-    return agentTurnBudgetSchema.parse({ maxSteps: limits.maxSteps, maxToolCalls: limits.maxToolCalls,
-      maxInputTokens: limits.maxInputTokens, maxOutputTokens: limits.maxOutputTokens, maxCallMs: limits.maxCallMs,
-      deadline: new Date(now() + limits.hardDeadlineMs).toISOString() });
+  function freezeBudget(overrides?: TurnBudgetLimits): AgentTurnBudget {
+    const effective = { ...limits };
+    for (const [key, value] of Object.entries(overrides ?? {})) {
+      if (value !== undefined) (effective as Record<string, number>)[key] = value;
+    }
+    if (Object.values(effective).some(value => !Number.isSafeInteger(value) || value < 1)) throw new StorageError('invalid');
+    const { hardDeadlineMs, ...budget } = effective;
+    return agentTurnBudgetSchema.parse({ ...budget, deadline: new Date(now() + hardDeadlineMs).toISOString() });
   }
   async function insertTurn(tx: OwnedTransaction, sessionId: string, requestId: string, trigger: AgentTurn['trigger'], originNotificationId: string | null) {
     const turnId = operationId('agent-turn:' + requestId);
+    const budget = options.budgetForSession ? await options.budgetForSession(await session(sessionId, tx.query.bind(tx))) : undefined;
     await tx.query(`INSERT INTO agent_turns(turn_id,session_id,request_id,trigger,origin_notification_id,state,owner_instance_id,budget)
-      VALUES($1,$2,$3,$4,$5,'active',$6,$7)`, [turnId, sessionId, requestId, trigger, originNotificationId, ownerInstanceId, freezeBudget()]);
+      VALUES($1,$2,$3,$4,$5,'active',$6,$7)`, [turnId, sessionId, requestId, trigger, originNotificationId, ownerInstanceId, freezeBudget(budget)]);
     return turnId;
   }
   async function activeTurn(tx: OwnedTransaction, sessionId: string): Promise<AgentTurn | null> {
@@ -849,12 +856,11 @@ export function createAgentStore(storage: OwnedStorage, options: StoreOptions) {
     return rows.map(inputFromRow);
   }
   /** The stable real user request of this Turn: the latest non-answer input, never a system answer. */
-  async function turnOriginInput(turnId: string): Promise<string | null> {
-    const { rows } = await storage.read(`SELECT input_id, body FROM agent_inputs
-      WHERE turn_id=$1 AND state='adopted' ORDER BY seq`, [turnId]);
-    let origin: string | null = null;
-    for (const row of rows) if (!row.body || typeof row.body !== 'object' || !('questionId' in ((row.body as { context?: object }).context ?? {}))) origin = String(row.input_id);
-    return origin;
+  async function turnOriginInput(turnId: string): Promise<AgentSessionInput | null> {
+    const { rows: [row] } = await storage.read(`SELECT * FROM agent_inputs
+      WHERE turn_id=$1 AND state='adopted' AND NOT COALESCE(body->'context' ? 'questionId', false)
+      ORDER BY seq DESC LIMIT 1`, [turnId]);
+    return row ? inputFromRow(row) : null;
   }
   /** Every adopted input of this Session that carries a trusted workspace action, in original order. */
   async function workspaceInputs(sessionId: string): Promise<{ inputId: string; action: Facts }[]> {
