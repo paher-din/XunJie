@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { AgentEmptyState, ChatViewport, Markdown } from '@xunjie/ui/chat'
+import { AgentEmptyState, ChatViewport, Markdown, UserMessage } from '@xunjie/ui/chat'
 import { Button } from '@xunjie/ui/foundation'
 import { toast } from '@xunjie/ui/feedback'
 import type { AgentSession } from '@xunjie/contracts/agent-sessions'
@@ -37,6 +37,7 @@ export interface CourseCitationLocation {
 }
 
 export type CourseCitationDocument = { name: string; text: string } | { name: string; pdf: Blob; page: number }
+export type AcceptedFirstMessage = { scope: string; sessionId: string; inputId: string; text: string; title: string | null }
 
 function CoursePdfOriginal({ pdf, page }: { pdf: Blob; page: number }) {
   const [url, setUrl] = useState('')
@@ -60,10 +61,11 @@ function writeImageDraft(scope: string, sessionId: string, images: ModelMessageI
   else localStorage.removeItem(key)
 }
 
-export function ProductAgent({ identity, spaceKey, namespace, sessionId, session: directorySession, onSession, onWorkspace, onWorkspaceCreated,
+export function ProductAgent({ identity, spaceKey, namespace, sessionId, session: directorySession, acceptedFirstMessage, onSession, onWorkspace, onWorkspaceCreated,
   onSettings, selection, readOnly, viewActive = true, onOpenCourseMaterial }: {
   identity: SpaceIdentity; spaceKey: string; namespace: string; sessionId?: string; session?: AgentSession
-  onSession(session: AgentSession): void; onWorkspace(activityId: string, source?: Record<string, unknown>): void; onWorkspaceCreated(): void
+  acceptedFirstMessage?: AcceptedFirstMessage
+  onSession(session: AgentSession, firstMessage?: AcceptedFirstMessage): void; onWorkspace(activityId: string, source?: Record<string, unknown>): void; onWorkspaceCreated(): void
   onSettings(): void; selection: ModelSelectionController; readOnly: boolean; viewActive?: boolean
   onOpenCourseMaterial?: (source: CourseCitationLocation) => Promise<CourseCitationDocument>
 }) {
@@ -100,7 +102,8 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
   const [excluded, setExcluded] = useState<string[]>([]), [reading, setReading] = useState<{ name: string; text: string; images: string[]; record?: SessionMaterialUpload; page: number; pageCount: number } | null>(null)
   const [courseReading, setCourseReading] = useState<CourseCitationDocument | null>(null)
   const courseRead = useRef(0)
-  const [pending, setPending] = useState(() => outbox.start())
+  const [pending, setPending] = useState(() => sessionId ? null : outbox.start())
+  const [completedFirstMessage, setCompletedFirstMessage] = useState<AcceptedFirstMessage>()
   const viewKey = scope + ':' + sessionId
   const route = useRef(viewKey); route.current = viewKey
   const alive = useRef(true)
@@ -110,7 +113,8 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
   useEffect(() => {
     let live = true
     courseRead.current++
-    setReading(null); setCourseReading(null); setUploads([]); setExcluded([]); setMetadata(null); setBusy(false); setError(''); setPending(outbox.start())
+    setReading(null); setCourseReading(null); setUploads([]); setExcluded([]); setMetadata(null); setBusy(false); setError('')
+    setPending(sessionId ? null : outbox.start()); setCompletedFirstMessage(undefined)
     setImageDraft({ sessionId, images: readImageDraft(client.scope, sessionId) })
     if (sessionId) {
       void client.read(sessionId).then(value => { if (live) setMetadata(value) }).catch(cause => { if (live) setError(sessionError(cause)) })
@@ -166,22 +170,26 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
     setImageDraft({ sessionId, images: remaining })
   }, [client, sessionId, controller.conversation, images])
   const completeStart = useCallback(async () => {
-    setBusy(true)
+    setBusy(true); setError('')
     try {
       const original = outbox.start()
-      const value = await outbox.deliverStart(undefined, (session, input) => selectSkills(session.sessionId, input)); if (alive.current && route.current === viewKey) setPending(null)
+      if (!original) return
+      const value = await outbox.deliverStart(original, (session, input) => selectSkills(session.sessionId, input))
       if (experiment) { sessionStorage.removeItem(experimentKey); setExperiment(null) }
       if (alive.current && route.current === viewKey && !sessionId) {
-        if (Array.isArray(original?.input.context.skills) && original.input.context.skills.length) {
+        const message = { scope: client.scope, sessionId: value.session.sessionId, inputId: value.receipt.inputId, text: original.input.text, title: value.session.title }
+        setCompletedFirstMessage(message)
+        setPending(null)
+        if (Array.isArray(original.input.context.skills) && original.input.context.skills.length) {
           consumeSessionSkillSelection({ identity, spaceKey, namespace, nextSessionId: value.session.sessionId,
             clientScope: client.scope, turnId: value.receipt.turnId })
           skills.choose([])
         }
         const nextDraft = composer.latest()
-        const retained = nextDraft.text && nextDraft.text !== original?.input.text
+        const retained = nextDraft.text && nextDraft.text !== original.input.text
           ? protectSessionDraft(client.scope, value.session.sessionId, 'composer', nextDraft) : Promise.resolve()
-        const cleared = original ? composer.clearIfMatches(original.input.text) : Promise.resolve()
-        onSession(value.session)
+        const cleared = composer.clearIfMatches(original.input.text)
+        onSession(value.session, message)
         await Promise.all([retained, cleared])
       }
     } catch (cause) {
@@ -189,7 +197,7 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
       skills.restoreVisible?.()
     } finally { if (alive.current && route.current === viewKey) setBusy(false) }
   }, [outbox, draftKey, onSession, identity, spaceKey, namespace, client.scope, skills.choose, experiment, experimentKey])
-  useEffect(() => { if (pending && !sessionId && !readOnly && composer.ready) void completeStart() }, [client, composer.ready])
+  useEffect(() => { if (pending && !sessionId && !readOnly && composer.ready) void completeStart() }, [client, composer.ready, readOnly])
   async function ensureSession() {
     if (sessionId) return sessionId
     const key = 'xj.agent-material-session.' + scope
@@ -362,12 +370,23 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
     } else setExcluded(items => [...items, id])
   } }
   const hasDraft = !!text.trim() || files.items.length > 0
+  const starting = sessionId ? null : pending
+  const accepted = sessionId
+    ? acceptedFirstMessage?.sessionId === sessionId && acceptedFirstMessage.scope === client.scope ? acceptedFirstMessage : undefined
+    : completedFirstMessage
+  const projected = accepted && (controller.conversation?.messages.some(message => message.inputId === accepted.inputId && message.role === 'user')
+    || controller.conversation?.inputs.some(input => input.inputId === accepted.inputId && input.state === 'removed'))
+  const firstMessage = starting ? { id: starting.input.requestId, text: starting.input.text, title: starting.create.title }
+    : accepted && !projected ? { id: accepted.inputId, text: accepted.text, title: accepted.title } : null
   return <div className="agent-layout product-conversation product-agent">
-    {ownMetadata && <header className="product-conversation-head"><h1>{ownMetadata.title ?? '新对话'}</h1>{ownMetadata.archived && <span>已归档</span>}</header>}
-    {sessionId ? <ChatViewport scrollerRef={scroll} onScroll={onScroll} onJump={onJump} phase={controller.active ? 'streaming' : undefined}
+    {(ownMetadata || firstMessage) && <header className="product-conversation-head"><h1>{ownMetadata?.title ?? firstMessage?.title ?? '新对话'}</h1>{ownMetadata?.archived && <span>已归档</span>}</header>}
+    {sessionId || firstMessage ? <ChatViewport scrollerRef={scroll} onScroll={onScroll} onJump={onJump} phase={controller.active ? 'streaming' : undefined}
       busy={controller.active} padSuggestions={false} queued={false}>
-      <SessionConversation controller={controller} readOnly={!writable} onOpenWorkspace={onWorkspace}
-        onWorkspaceCreated={onWorkspaceCreated} onOpenCitation={openCitation} />
+      {firstMessage && <section className="product-conversation-inner session-conversation" aria-label="首条消息">
+        <div data-message-id={firstMessage.id}><UserMessage text={firstMessage.text} /></div>
+      </section>}
+      {sessionId && <SessionConversation controller={controller} readOnly={!writable} onOpenWorkspace={onWorkspace}
+        onWorkspaceCreated={onWorkspaceCreated} onOpenCitation={openCitation} />}
       {courseReading && <section className="product-conversation-inner session-material-reading" aria-label={courseReading.name}>
         <h2>{courseReading.name}</h2>
         <Button variant="outline" onClick={() => setCourseReading(null)}>返回对话</Button>
@@ -382,7 +401,8 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
         {reading.images.map((src, index) => <img key={index} src={src} alt={`${reading.name} 第 ${reading.page + index} 页`} />)}</section>}
     </ChatViewport> : <div className="product-agent-body"><AgentEmptyState title="今天想探讨什么？" /></div>}
     <div className="product-agent-notices">
-      {pending && <p role="status">原问题已保留。<Button variant="outline" disabled={busy} onClick={() => void completeStart()}>核对并继续原请求</Button></p>}
+      {starting && <p role="status">{readOnly ? '原问题已保留。' : error
+        ? <>原问题已保留。<Button variant="outline" disabled={busy} onClick={() => void completeStart()}>核对并继续原请求</Button></> : '正在发送…'}</p>}
       {experiment && <p role="status">已固定工作区实验「{experiment.label}」。<button type="button" disabled={busy}
         onClick={() => { sessionStorage.removeItem(experimentKey); setExperiment(null) }}>移除引用</button></p>}
       {composer.error && <p role="alert">{composer.error} <button type="button" onClick={() => void composer.protect().catch(() => {})}>重试保留输入</button></p>}

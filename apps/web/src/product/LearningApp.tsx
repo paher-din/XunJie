@@ -35,7 +35,7 @@ import { useAgentSessionHistory } from './useAgentSession'
 import { AgentSessionsClient, SessionOutbox } from './agent-sessions'
 import type { AgentSession } from '@xunjie/contracts/agent-sessions'
 import type { ExperimentReference } from './experiment-reference'
-import type { CourseCitationDocument, CourseCitationLocation } from './ProductAgent'
+import type { AcceptedFirstMessage, CourseCitationDocument, CourseCitationLocation } from './ProductAgent'
 import { isCoursePdf } from './CourseMaterials'
 import { cacheableMaterial } from '../component-preparation/materials'
 import { startSchoolAuthorization, rememberSchoolConnection, restoreSchoolConnection, schoolAuthorizationReturnUrl, returnToSchoolClient,
@@ -248,6 +248,7 @@ function LearningView() {
   const modelsOpen = settingsPage !== null
   const agentOpen = new URLSearchParams(route.search).get('view') === 'agent'
   const routeSessionId = new URLSearchParams(route.search).get('session') ?? undefined
+  const [acceptedFirstMessage, setAcceptedFirstMessage] = useState<AcceptedFirstMessage>()
   const routeActivityId = new URLSearchParams(route.search).get('activity')
   const requestedArtifactId = new URLSearchParams(route.search).get('artifact')
   const requestedExperimentId = new URLSearchParams(route.search).get('experiment')
@@ -1120,7 +1121,11 @@ function LearningView() {
     navigate({ pathname: route.pathname, search }); setOpened(null)
     if (personalKey && personalKey !== key) setKey(personalKey)
   })
-  const sessionCreated = (session: AgentSession) => { conversationHistory.upsert(session); openSession(session.sessionId) }
+  const sessionCreated = (session: AgentSession, firstMessage?: AcceptedFirstMessage) => {
+    setAcceptedFirstMessage(firstMessage)
+    conversationHistory.upsert(session)
+    openSession(session.sessionId)
+  }
   const refreshCreatedWorkspaces = () => {
     if (!personalKey) return
     void api('activities', undefined, personalKey).then(value => {
@@ -1241,7 +1246,8 @@ function LearningView() {
     </div> : routeActivityId ? <div className="content" role="status">{error ? '学习活动暂时无法打开。' : ''}{error && <Button variant="outline" onClick={goHome}>返回首页</Button>}</div>
     : agentOpen && (!personalKey || key !== personalKey) ? <div className="content home-page"><p>请在本机客户端开始个人学习；学校课程请从首页进入。</p><Button onClick={goHome}>返回首页</Button></div> : agentOpen ? <Suspense fallback={<div className="content" role="status" aria-label="正在准备对话" />}><ProductAgent
       key={context.clientNamespace + identity.principalId + (routeSessionId ?? 'new')} identity={identity} spaceKey={key} namespace={context.clientNamespace}
-      sessionId={routeSessionId} session={conversationHistory.items.find(item => item.sessionId === routeSessionId)} onSession={sessionCreated} onWorkspace={(id, source) => void action(async () => {
+      sessionId={routeSessionId} session={conversationHistory.items.find(item => item.sessionId === routeSessionId)}
+      acceptedFirstMessage={acceptedFirstMessage} onSession={sessionCreated} onWorkspace={(id, source) => void action(async () => {
         if (!source) return openActivity(id, false, personalKey)
         const original = context.identities.find(item => item.identity.environmentId === source.environmentId
           && item.identity.spaceId === source.spaceId && item.identity.principalId === source.principalId)
@@ -1272,7 +1278,7 @@ function LearningView() {
         onOpenTask={selection => void viewRelease(selection)} readTaskSubmission={readTaskSubmission}
         onStartConversation={openAgent} onConnectSchool={() => openSettings('school')}
         onRefresh={() => void action(async generation => { await refreshContext(undefined, generation) })} />
-      {homeVisible && !authorize && contextVerified && !context.readOnly && personalKey && <ProductHomeAssistant onSend={question => {
+      {homeVisible && !authorize && contextVerified && !context.readOnly && personalKey && <ProductHomeAssistant onOpen={prepareAgent} onSend={question => {
         prepareAgent()
         changePage('agent', { question })
       }} />}

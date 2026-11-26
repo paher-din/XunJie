@@ -12,6 +12,9 @@ test('formal sessions recover original inputs and open an independent real works
   const sessions = new Map<string, AgentSession>(), conversations = new Map<string, AgentConversation>(), requests = new Map<string, unknown>()
   const writes: { path: string; body: any }[] = [], errors: string[] = []
   let created = false, loseReply = true
+  let releaseFirstInput!: () => void, releaseConversation!: () => void
+  const firstInput = new Promise<void>(resolve => { releaseFirstInput = resolve })
+  const firstConversation = new Promise<void>(resolve => { releaseConversation = resolve })
   page.on('pageerror', error => errors.push(error.message))
   const create = (sessionId: string, requestId: string, title: string | null, workspace?: AgentSession['workspace']) => {
     const value: AgentSession = { sessionId, requestId, identity: actor, owner, scenario: workspace ? 'workspace-assistant' : 'student-assistant', ...(workspace ? { workspace } : {}), title,
@@ -45,9 +48,10 @@ test('formal sessions recover original inputs and open an independent real works
     const [, sessionId, suffix, requestId] = path.split('/')
     if (!suffix) return respond(sessions.get(sessionId!) ?? { error: 'missing' }, sessions.has(sessionId!) ? 200 : 404)
     if (suffix === 'pdf' || suffix === 'materials') return respond([])
-    if (suffix === 'conversation') return respond(conversations.get(sessionId!))
+    if (suffix === 'conversation') { await firstConversation; return respond(conversations.get(sessionId!)) }
     if (suffix === 'requests') return respond(requests.get(requestId!) ?? null)
     if (suffix === 'inputs') {
+      if (loseReply) await firstInput
       const turnId = id(), inputId = id(), conversation = conversations.get(sessionId!)!
       conversation.turns.push({ turnId, sessionId: sessionId!, requestId: body.requestId, trigger: 'user', originNotificationId: null, state: 'completed', reason: '', ownerInstanceId: 'test', createdAt: now, updatedAt: now, completedAt: now }); conversation.lastSeq++
       conversation.messages.push({ messageId: 'input:' + inputId, turnId, inputId, role: 'user', text: body.text, state: 'settled', createdAt: now }, { messageId: 'assistant:' + turnId, turnId, role: 'assistant', text: body.context.action ? '已结合你的作品继续讨论。' : '递归通过更小的同类问题求解。', state: 'settled', createdAt: now })
@@ -75,11 +79,25 @@ test('formal sessions recover original inputs and open an independent real works
   await mascot.click()
   await expect(question).toHaveValue('请创建递归练习项目')
   await question.press('Enter')
-  await expect(page).toHaveURL(/[?&]view=agent/)
-  await expect(mascot).toHaveCount(0)
+  const sentQuestion = page.locator('.chat-message.user .bubble').filter({ hasText: '请创建递归练习项目' })
+  try {
+    await expect(page).toHaveURL(/[?&]view=agent/)
+    await expect(mascot).toHaveCount(0)
+    await expect(sentQuestion).toBeVisible()
+    await expect(page.getByText('正在发送…')).toBeVisible()
+    await expect(page.getByText('今天想探讨什么？')).toHaveCount(0)
+  } finally { releaseFirstInput() }
   await expect(page.getByRole('button', { name: '核对并继续原请求' })).toBeVisible()
   await expect(page.locator('.product-agent-notices [role="alert"]')).toBeVisible()
-  await page.reload(); await expect(page.locator('[data-message-id]')).toHaveCount(2)
+  await expect(sentQuestion).toBeVisible()
+  try {
+    await page.reload()
+    await expect(page).toHaveURL(/[?&]session=/)
+    await expect(sentQuestion).toBeVisible()
+    await expect(page.getByText('递归通过更小的同类问题求解。')).toHaveCount(0)
+  } finally { releaseConversation() }
+  await expect(page.locator('[data-message-id]')).toHaveCount(2)
+  await expect(sentQuestion).toHaveCount(1)
   expect(writes.filter(write => /\/inputs$/.test(write.path))).toHaveLength(1)
   expect(writes.find(write => /\/inputs$/.test(write.path))?.body.text).toBe('请创建递归练习项目')
   await expect(page.locator('.msg-task-card')).toHaveCount(1)
@@ -92,6 +110,7 @@ test('formal sessions recover original inputs and open an independent real works
   await page.getByRole('button', { name: '首页', exact: true }).first().click()
   await expect(page.locator(`[data-activity-id="${activity.activityId}"]`).first()).toContainText('递归练习')
   await page.getByRole('button', { name: 'Agent 对话', exact: true }).first().click()
+  await expect(page.getByText('今天想探讨什么？')).toBeVisible()
   await page.getByRole('button', { name: '递归讨论', exact: true }).first().click()
   await page.locator('.msg-task-card').getByRole('button').click(); await expect(page.locator('#activity-title')).toHaveText('递归练习')
   await expect(page.getByRole('region', { name: '项目任务清单' })).toContainText('写出最小输入时的结果')

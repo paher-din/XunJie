@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { HomeAssistant } from '@xunjie/ui/foundation'
 
-export function ProductHomeAssistant({ onSend }: { onSend(text: string): void }) {
+export function ProductHomeAssistant({ onOpen, onSend }: { onOpen(): void; onSend(text: string): void }) {
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState('')
   const assistant = useRef<HTMLDivElement>(null)
@@ -10,7 +10,8 @@ export function ProductHomeAssistant({ onSend }: { onSend(text: string): void })
     setOpen(false)
     assistant.current?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true })
   }, [])
-  const toggle = useCallback(() => { if (open) close(); else setOpen(true) }, [open, close])
+  const expand = useCallback(() => { onOpen(); setOpen(true) }, [onOpen])
+  const toggle = useCallback(() => { if (open) close(); else expand() }, [open, close, expand])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -26,6 +27,6 @@ export function ProductHomeAssistant({ onSend }: { onSend(text: string): void })
 
   return <div ref={assistant}>
     <HomeAssistant open={open} value={draft} onChange={setDraft} onSend={onSend}
-      onToggle={toggle} onOpen={() => setOpen(true)} onClose={close} />
+      onToggle={toggle} onOpen={expand} onClose={close} />
   </div>
 }
