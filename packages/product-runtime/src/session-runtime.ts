@@ -4,6 +4,7 @@ import { createAgentRuntime, type AgentRuntimeOptions, type AgentScenario, type 
 import type { AgentSession } from '@xunjie/contracts/agent-sessions';
 import type { AgentSessionPort } from '@xunjie/contracts/agent-service';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
+import { teacherChatInputContextSchema } from '@xunjie/contracts/teacher-agent';
 import { createAgentSessionApplication, type AgentSessionApplicationHost, type AgentSessionDirectory } from './agent-sessions.js';
 import { createAgentConversationProjection } from './agent-conversation.js';
 
@@ -41,6 +42,10 @@ export function createSessionRuntimeHost(options: SessionRuntimeHostOptions) {
     ...(options.taskCancellation ? { taskCancellation: options.taskCancellation } : {}),
     ...(options.readOnly ? { readOnly: options.readOnly } : {}) });
   const projection = createAgentConversationProjection(runtime);
+  function validateInputContext(session: AgentSession, context: unknown) {
+    if (session.scenario === 'teacher-assistant' && !teacherChatInputContextSchema.safeParse(context).success)
+      throw new StorageError('invalid');
+  }
   const localPort: AgentSessionPort = { ...runtime, conversation: projection.conversation,
     async initialize(input) {
       const session = await saved(input.identity, input.sessionId, true);
@@ -50,7 +55,7 @@ export function createSessionRuntimeHost(options: SessionRuntimeHostOptions) {
     },
     async submit(identity, input) {
       const session = await saved(identity, input.sessionId, true);
-      if (session.scenario === 'teacher-assistant' && Object.keys(input.context).length) throw new StorageError('invalid');
+      validateInputContext(session, input.context);
       return runtime.submit(identity, input);
     },
     async answerQuestion(identity, sessionId, response) {
@@ -66,7 +71,9 @@ export function createSessionRuntimeHost(options: SessionRuntimeHostOptions) {
       await saved(identity, permit.sessionId, true); return runtime.assertDispatch(identity, permit);
     },
     async inputControl(identity, sessionId, inputId, control) {
-      await saved(identity, sessionId, true); return runtime.inputControl(identity, sessionId, inputId, control);
+      const session = await saved(identity, sessionId, true);
+      if (control.operation === 'edit' && control.context !== undefined) validateInputContext(session, control.context);
+      return runtime.inputControl(identity, sessionId, inputId, control);
     },
     async registerNotification(identity, sessionId, originTurnId, fact) {
       await saved(identity, sessionId, true); return runtime.registerNotification(identity, sessionId, originTurnId, fact);

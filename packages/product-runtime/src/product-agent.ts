@@ -107,6 +107,7 @@ export interface ProductAgentOptions {
   storage: OwnedStorage;
   directory: AgentSessionDirectory;
   models: ModelGatewaySource;
+  teacherScene?(session: AgentSession): AgentScenario;
   budgetForSession?: AgentRuntimeOptions['budgetForSession'];
   authorize(identity: SpaceIdentity): Promise<void>;
   /** The trusted host checks the actor and this exact target; the kernel never weakens it. */
@@ -130,7 +131,7 @@ export function createProductAgent(options: ProductAgentOptions) {
     let pending = scenes.get(session.sessionId);
     if (!pending) {
       pending = (async () => {
-          if (session.scenario === 'teacher-assistant') return createTeacherAssistant();
+          if (session.scenario === 'teacher-assistant') return options.teacherScene?.(session) ?? createTeacherAssistant();
           const parts = await options.scene(session);
         if (session.scenario === 'student-assistant') {
           if (!parts.student && !parts.tools) throw new Error('missing-student-scene');

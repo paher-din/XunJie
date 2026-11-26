@@ -69,6 +69,7 @@ import { createSkills } from '@xunjie/learning-space/learning-data/skills';
 import { createSkillTools, selectedSkillInstruction } from '@xunjie/agents/capabilities/skills/index';
 import { createAgentSessionApplication, type AgentSessionDirectory } from './agent-sessions.js';
 import { readTeacherChatConfig, teacherChatGateway } from './teacher-chat.js';
+import { createTeacherAssistant } from '@xunjie/agents/teacher-assistant/index';
 import { createAgentDependencyChannel, createAgentDependencyClient, type AgentSessionDependencies } from '@xunjie/agents/transport/session-dependencies';
 import { workFileSchema } from '@xunjie/contracts/learning-data';
 import type { AgentSession } from '@xunjie/contracts/agent-sessions';
@@ -465,20 +466,20 @@ export async function createProductLearningApplication(context: {
         return { version: 1, connectionId: agent.storage.owner.serviceId, installationId: environment.installationId,
           target: { ...descriptor, capabilities: [...new Set([...descriptor.capabilities, agentSessionsCapability])] } };
     }
+    async function authorizeTeacher(identity: SpaceIdentity) {
+      if (identity.kind !== 'school' || identity.environmentId !== environment.environmentId
+        || !agent || !models || !enabled.has('teaching-agent')
+        || !await spaces.hasMemberPermission(identity, 'course.manage')) throw new StorageError('forbidden');
+      return readTeacherChatConfig(root);
+    }
+    async function authorizeTeacherCourse(identity: SpaceIdentity, courseId: string) {
+      const config = await authorizeTeacher(identity);
+      if (!config?.grants.some(grant => grant.spaceId === identity.spaceId
+        && grant.principalId === identity.principalId && grant.courseId === courseId)
+        || !await courses.courseInSchool(identity, courseId)) throw new StorageError('forbidden');
+    }
     const localDirectory = data ? createAgentSessions(data.storage, { authorize: authorizeSessionIdentity,
-      openActivity: workspaceOpen, resolveOwner: resolveSessionOwner,
-      async authorizeTeacherCourse(identity, courseId) {
-        if (identity.kind !== 'school' || identity.environmentId !== environment.environmentId
-          || !agent || !models || !enabled.has('teaching-agent')
-          || !await spaces.hasMemberPermission(identity, 'course.manage')) throw new StorageError('forbidden');
-        const config = await readTeacherChatConfig(root);
-        if (!config?.grants.some(grant => grant.spaceId === identity.spaceId
-          && grant.principalId === identity.principalId && grant.courseId === courseId)
-          || !await courses.courseInSchool(identity, courseId)) {
-          throw new StorageError('forbidden');
-        }
-      },
-    }) : undefined;
+      openActivity: workspaceOpen, resolveOwner: resolveSessionOwner, authorizeTeacherCourse }) : undefined;
     async function directoryFor(identity: SpaceIdentity): Promise<AgentSessionDirectory> {
       if (identity.environmentId === environment.environmentId) {
         if (!localDirectory) throw new StorageError('unavailable');
@@ -863,10 +864,29 @@ export async function createProductLearningApplication(context: {
         if (identity.environmentId !== environment.environmentId) return (await connectedSchool().dependenciesForSession(identity, sessionId)).models;
         const session = await directory.read(identity, sessionId);
         if (session.scenario !== 'teacher-assistant') return models;
-        return teacherChatGateway(models, (await readTeacherChatConfig(root))?.connectionId);
+        const configured = (await readTeacherChatConfig(root))?.connectionId;
+        return teacherChatGateway(models, {
+          read: who => models.selection.readTeacher(who, configured),
+          pin: (who, pinId, version) => models.selection.pinTeacher(who, pinId, version, configured),
+        });
       };
       sessionAgent = createProductAgent({ storage: agent.storage, directory,
         models: gatewayForSession,
+        teacherScene(session) {
+          if (!session.courseId) throw new StorageError('corrupt');
+          const course = courses.teacherPublished(session.identity, session.courseId, async () => {
+            await directory.read(session.identity, session.sessionId);
+          });
+          return createTeacherAssistant({ course,
+            ...(sessionSkills ? { skills: { owner: { ...data!.storage.owner, version: 1 },
+              scope: selection => ({
+                resolveSession: (identity, sessionId, names) => sessionSkills.resolveSession(identity, sessionId, names, [selection]),
+                loadSession: (identity, sessionId, value, guard) =>
+                  sessionSkills.loadSession(identity, sessionId, value, { ...guard, references: [selection] }),
+              }),
+            } } : {}),
+          });
+        },
         async budgetForSession(session) {
           if (session.scenario === 'teacher-assistant') return (await readTeacherChatConfig(root))?.budget;
         },
@@ -1307,7 +1327,11 @@ export async function createProductLearningApplication(context: {
         ...(deviceSetup ? { deviceSetup } : {}),
         ...(independentExecution ? { executions: independentExecution.executions } : {}),
         courseExecutionDesign,
-        ...(models ? { models } : {}), client: schoolClient, readOnly, requiresNamespace,
+        ...(models ? { models, async teacherModelSelection(identity: SpaceIdentity, input?: unknown) {
+          const config = await authorizeTeacher(identity);
+          if (input === undefined) return models.selection.readTeacher(identity, config?.connectionId);
+          return models.selection.saveTeacher(identity, input);
+        } } : {}), client: schoolClient, readOnly, requiresNamespace,
         async bindAgent(value) {
           const input = teachingAgentBindingInputSchema.parse(value);
           if (input.delivery === 'client') {

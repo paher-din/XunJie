@@ -60,6 +60,8 @@ interface ResolvedSkillsScope extends Omit<TeachingSkillsScope, 'activity'> {
 export type TeachingSkillsGuard = { assertDispatch?: () => Promise<void>; toolNames?: string[]; references?: TeachingSkillReference[] | undefined };
 /** Compatibility methods stay typed separately from the independent library/session consumer ports. */
 export interface SkillsOwner extends SkillsPort {
+  resolveSession(identity: SpaceIdentity, sessionId: string, toolNames?: string[],
+    references?: TeachingSkillReference[]): ReturnType<SkillsPort['resolveSession']>;
   select(identity: SpaceIdentity, input: z.infer<typeof teachingSkillSelectSchema>): Promise<Awaited<ReturnType<SkillsPort['select']>>>;
   resolve(scope: TeachingSkillsScope, toolNames?: string[]): Promise<TeachingSkillState>;
   freeze(identity: SpaceIdentity, references: TeachingSkillReference[]): Promise<CourseSkillPackage[]>;
@@ -209,12 +211,14 @@ export function createSkills(storage: OwnedStorage, options: {
     const result = await build({ ...scope, activity: fresh }, toolNames);
     await scope.assertDispatch?.(); return result.state;
   }
-  async function sessionScope(identity: SpaceIdentity, sessionId: string): Promise<ResolvedSkillsScope> {
+  async function sessionScope(identity: SpaceIdentity, sessionId: string, references?: TeachingSkillReference[]): Promise<ResolvedSkillsScope> {
     await authorize(identity); z.uuid().parse(sessionId);
     if (!options.session) throw new StorageError('forbidden');
     const session = agentSessionSchema.parse(await options.session(identity, sessionId));
     if (session.sessionId !== sessionId || !same(session.identity, identity) || session.identity.kind !== identity.kind
       || session.deleted) throw new StorageError('forbidden');
+    if (session.scenario === 'teacher-assistant')
+      return { identity, selection: teachingSkillReferencesSchema.parse(references ?? []) };
     let current: LearningActivity | undefined;
     if (session.workspace) {
       current = await activity(identity, session.workspace.activityId);
@@ -231,19 +235,19 @@ export function createSkills(storage: OwnedStorage, options: {
     const selection = row ? teachingSkillSelectSchema.parse(row.body).skills : [];
     return { identity, ...(current ? { activity: current } : {}), selection };
   }
-  async function resolveSession(identity: SpaceIdentity, sessionId: string, toolNames?: string[]) {
-    return (await sessionSnapshot(identity, sessionId, toolNames)).state;
+  async function resolveSession(identity: SpaceIdentity, sessionId: string, toolNames?: string[], references?: TeachingSkillReference[]) {
+    return (await sessionSnapshot(identity, sessionId, toolNames, undefined, references)).state;
   }
-  async function sessionSnapshot(identity: SpaceIdentity, sessionId: string, toolNames?: string[], query?: Query) {
-    const scope = await sessionScope(identity, sessionId), result = await build(scope, toolNames, query);
+  async function sessionSnapshot(identity: SpaceIdentity, sessionId: string, toolNames?: string[], query?: Query, references?: TeachingSkillReference[]) {
+    const scope = await sessionScope(identity, sessionId, references), result = await build(scope, toolNames, query);
     const selectionDigest = canonicalDigest({ identity: { environmentId: identity.environmentId, spaceId: identity.spaceId,
       principalId: identity.principalId, kind: identity.kind }, sessionId, owner: storage.owner,
       course: scope.activity?.course ?? null, catalog: result.state.catalog });
     return { ...result, state: { ...result.state, selectionDigest } };
   }
   async function inspectSession(identity: SpaceIdentity, sessionId: string, input: z.output<typeof sessionSkillLoadSchema>,
-    toolNames?: string[], query?: Query) {
-    const snapshot = await sessionSnapshot(identity, sessionId, toolNames, query);
+    guard: Guard, query?: Query) {
+    const snapshot = await sessionSnapshot(identity, sessionId, guard.toolNames, query, guard.references);
     if (snapshot.state.selectionDigest !== input.selectionDigest) throw new StorageError('identity-conflict');
     const candidates = snapshot.candidates.filter(item => item.fixed.skillId === input.skillId && item.fixed.version === input.version
       && item.fixed.digest === input.packageDigest && item.entry.selected && !item.entry.unavailable);
@@ -342,11 +346,11 @@ export function createSkills(storage: OwnedStorage, options: {
     async loadSession(identity: SpaceIdentity, sessionId: string, value: SessionSkillLoad, guard: Guard = {}): Promise<TeachingSkillLoaded> {
       const input = sessionSkillLoadSchema.parse(value);
       await guard.assertDispatch?.();
-      await inspectSession(identity, sessionId, input, guard.toolNames);
+      await inspectSession(identity, sessionId, input, guard);
       const fingerprint = canonicalDigest({ identity: { environmentId: identity.environmentId, spaceId: identity.spaceId,
         principalId: identity.principalId, kind: identity.kind }, sessionId, input });
       const receipt = await write(identity, input.commandId, { operation: 'session-load', sessionId, input }, async tx => {
-        const { candidate, file } = await inspectSession(identity, sessionId, input, guard.toolNames, tx.query.bind(tx));
+        const { candidate, file } = await inspectSession(identity, sessionId, input, guard, tx.query.bind(tx));
         const loaded = chunk(candidate, file, input.offset, input.length);
         await tx.query(`INSERT INTO session_skill_loads(command_id,session_id,space_environment_id,space_id,principal_id,
           identity_kind,run_id,step_id,input_digest,body) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,

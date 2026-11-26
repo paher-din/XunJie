@@ -66,8 +66,11 @@ export function createModelSelections(storage: OwnedStorage, owner: {
     return { choice: withEffort<Personal>({ kind: 'personal', connection, policy: personalPolicy, origin: 'grant', grantId: authorization.grantId }, source.reasoningEffort),
       source: { kind: 'personal' as const, ownerScope, feeSource: ownerScope, grantId: authorization.grantId, grantVersion: authorization.version } };
   }
-  async function current(identity: SpaceIdentity) {
-    const { rows: [row] } = await storage.read('SELECT body FROM model_selections WHERE scope=$1', [modelScopeOf(identity)]);
+  const selectionTable = (teacher: boolean) => teacher ? 'teacher_model_selections' : 'model_selections';
+  const teacherReady = (connection?: ModelConnection) =>
+    !!connection?.enabled && connection.hasCredential && connection.adapterState === 'ready';
+  async function current(identity: SpaceIdentity, teacher = false) {
+    const { rows: [row] } = await storage.read(`SELECT body FROM ${selectionTable(teacher)} WHERE scope=$1`, [modelScopeOf(identity)]);
     if (!row) return undefined;
     const saved = savedSelectionSchema.parse(row.body);
     const reasoningEffort = saved.efforts?.[effortKey(saved.source)];
@@ -131,7 +134,7 @@ export function createModelSelections(storage: OwnedStorage, owner: {
       return null;
     });
   }
-  async function read(identity: SpaceIdentity, deviceOwner?: SpaceIdentity) {
+  async function read(identity: SpaceIdentity, deviceOwner?: SpaceIdentity): Promise<z.infer<typeof modelSelectionSchema>> {
     await owner.authorize(identity);
     deviceOwner ??= await owner.deviceOwner?.(identity) ?? undefined;
     const saved = await current(identity);
@@ -163,10 +166,13 @@ export function createModelSelections(storage: OwnedStorage, owner: {
       return { version: saved?.version ?? 0, selected: null, options, unavailableReason: saved?.source.kind === 'personal' && !saved.source.grantId ? 'connection-unavailable' : 'grant-revoked' };
     }
   }
-  async function save(identity: SpaceIdentity, value: unknown) {
+  async function save(identity: SpaceIdentity, value: unknown, teacher = false) {
     owner.assertWritable(); await owner.authorize(identity);
     const input = selectModelSchema.parse(value), scope = modelScopeOf(identity), hash = fingerprint({ scope, input });
-    const prior = await storage.receipt('model-selection:' + input.requestId, hash); if (prior) return prior.result;
+    if (teacher && input.source.kind === 'personal' && (input.source.owner !== 'self' || input.source.grantId))
+      throw new StorageError('forbidden');
+    const requestKey = (teacher ? 'teacher-model-selection:' : 'model-selection:') + input.requestId;
+    const prior = await storage.receipt(requestKey, hash); if (prior) return prior.result;
     const { reasoningEffort, ...source } = input.source;
     let device: z.infer<typeof modelDeviceBindingSchema> | undefined;
     if (source.kind === 'personal' && source.grantId) {
@@ -180,34 +186,69 @@ export function createModelSelections(storage: OwnedStorage, owner: {
       if (row) device = deviceRawChoiceSchema.parse(row.body).binding;
     }
     const resolved = device ? { choice: await deviceChoice(identity, input.source, device) } : await resolve(identity, input.source);
-    if (!resolved || !resolved.choice.connection.enabled) throw new StorageError('unavailable');
+    if (!resolved || (teacher ? !teacherReady(resolved.choice.connection) : !resolved.choice.connection.enabled))
+      throw new StorageError('unavailable');
     if (reasoningEffort && modelReasoningError({ ...resolved.choice.connection, reasoningEffort })) throw new StorageError('invalid');
-    const projection = await read(identity);
-    return (await storage.request({ requestId: 'model-selection:' + input.requestId, fingerprint: hash }, async tx => {
+    const projection = teacher ? await readTeacher(identity) : await read(identity);
+    return (await storage.request({ requestId: requestKey, fingerprint: hash }, async tx => {
       if ('source' in resolved) {
         await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', ['model-config:' + resolved.source.ownerScope]);
         if (resolved.source.kind === 'school') {
           // The installed client's school model may live entirely at the remote owner.
           const currentSchool = await owner.school(identity);
           if (!currentSchool || currentSchool.connection.connectionId !== input.source.connectionId
-            || !currentSchool.connection.enabled) throw new StorageError('unavailable');
+            || (teacher ? !teacherReady(currentSchool.connection) : !currentSchool.connection.enabled)) throw new StorageError('unavailable');
           resolved.choice = currentSchool;
         } else {
           const currentConnection = await owner.connection(resolved.source.ownerScope, resolved.choice.connection.connectionId);
-          if (!currentConnection.enabled) throw new StorageError('unavailable');
+          if (teacher ? !teacherReady(currentConnection) : !currentConnection.enabled) throw new StorageError('unavailable');
           resolved.choice = { ...resolved.choice, connection: currentConnection };
         }
       }
-      await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', ['model-selection:' + scope]);
-      const { rows: [row] } = await tx.query('SELECT body FROM model_selections WHERE scope=$1 FOR UPDATE', [scope]);
+      await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [(teacher ? 'teacher-model-selection:' : 'model-selection:') + scope]);
+      const { rows: [row] } = await tx.query(`SELECT body FROM ${selectionTable(teacher)} WHERE scope=$1 FOR UPDATE`, [scope]);
       const old = row ? savedSelectionSchema.parse(row.body) : undefined;
       if ((old?.version ?? 0) !== input.expectedVersion) throw new StorageError('conflict');
       const key = effortKey(source);
       const efforts = reasoningEffort ? { ...old?.efforts, [key]: reasoningEffort } : old?.efforts;
       const saved = { version: input.expectedVersion + 1, source, ...(device ? { device } : {}), ...(efforts ? { efforts } : {}) };
-      await tx.query('INSERT INTO model_selections VALUES($1,$2) ON CONFLICT(scope) DO UPDATE SET body=EXCLUDED.body', [scope, saved]);
-      return { ...projection, version: saved.version, selected: withEffort(resolved.choice, efforts?.[key]) };
+      await tx.query(`INSERT INTO ${selectionTable(teacher)} VALUES($1,$2) ON CONFLICT(scope) DO UPDATE SET body=EXCLUDED.body`, [scope, saved]);
+      const result = { ...projection, version: saved.version, selected: withEffort(resolved.choice, efforts?.[key]) };
+      if (teacher) delete result.unavailableReason;
+      return result;
     })).result;
+  }
+  async function teacherChoice(identity: SpaceIdentity, configured?: string) {
+    await owner.authorize(identity);
+    const saved = await current(identity, true);
+    const version = saved?.version ?? 0;
+    const configuredSource = configured ? { kind: 'school' as const, connectionId: configured } : undefined;
+    try {
+      let fixed = await resolve(identity, saved?.source ?? configuredSource);
+      if (!saved && configuredSource && !teacherReady(fixed?.choice.connection)) fixed = await resolve(identity);
+      if (!fixed || !teacherReady(fixed.choice.connection)) return { version, choice: null, source: null };
+      return { version, choice: fixed.choice, source: saved?.source ?? {
+        kind: 'school' as const, connectionId: fixed.choice.connection.connectionId,
+      } };
+    } catch (error) {
+      if (!(error instanceof StorageError) || !['forbidden', 'missing'].includes(error.code)) throw error;
+      return { version, choice: null, source: null };
+    }
+  }
+  async function readTeacher(identity: SpaceIdentity, configured?: string) {
+    const { version, choice } = await teacherChoice(identity, configured);
+    const school = await owner.school(identity);
+    const options = [...school ? [school] : [], ...(await owner.list(identity)).map(connection => ({
+      kind: 'personal' as const, connection, policy: personalPolicy, origin: 'self' as const,
+    }))];
+    return modelSelectionSchema.parse({ version, selected: choice, options,
+      ...(!choice ? { unavailableReason: version ? 'connection-unavailable' : 'model-not-selected' } : {}) });
+  }
+  async function pinTeacher(identity: SpaceIdentity, pinId: string, version: number, configured?: string) {
+    const selected = await teacherChoice(identity, configured);
+    if (selected.version !== version) throw new StorageError('conflict');
+    if (!selected.source) throw new StorageError('unavailable');
+    return pinSource(identity, pinId, version, selected.source);
   }
   async function createGrant(identity: SpaceIdentity, grantOwner: SpaceIdentity, value: unknown) {
     owner.assertWritable(); await owner.authorize(identity); await owner.authorize(grantOwner);
@@ -358,7 +399,7 @@ export function createModelSelections(storage: OwnedStorage, owner: {
       if (item.grantId !== row.id || modelScopeOf(item.owner) !== row.owner_scope || modelScopeOf(item.recipient) !== row.recipient_scope) throw new StorageError('corrupt');
       await owner.connection(modelScopeOf(item.owner), item.connectionId);
     }
-    const { rows: selections } = await storage.read('SELECT * FROM model_selections');
+    const { rows: selections } = await storage.read('SELECT * FROM model_selections UNION ALL SELECT * FROM teacher_model_selections');
     for (const row of selections) {
       const item = savedSelectionSchema.parse(row.body);
       if (item.device) {
@@ -419,7 +460,8 @@ export function createModelSelections(storage: OwnedStorage, owner: {
         || fingerprint(modelDeviceBindingSchema.parse(binding.body)) !== fingerprint(item.binding)) throw new StorageError('corrupt');
     }
   }
-  return { read, save, createGrant, revoke, readGrant, assertDeviceGrantActive,
+  return { read, save, readTeacher, pinTeacher, saveTeacher: (identity: SpaceIdentity, value: unknown) => save(identity, value, true),
+    createGrant, revoke, readGrant, assertDeviceGrantActive,
     createDeviceGrant(identity: SpaceIdentity, value: unknown) { if (!deviceGranter) throw new StorageError('unavailable'); return deviceGranter(identity, value); },
     onDeviceGrant(handler: NonNullable<typeof deviceGranter>) { deviceGranter = handler; },
     onDeviceRevoke(handler: NonNullable<typeof deviceRevoker>) { deviceRevoker = handler; }, snapshot, pin, pinSource, pinned, schoolSnapshot, resolveChoice, destination, importDeviceChoices, authorizeAttempt, validate };

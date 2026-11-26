@@ -6,7 +6,9 @@ import { createLearningEntry } from '../dist/learning-http/index.js';
 import { routeAgentSessions } from '../dist/learning-http/sessions-http.js';
 import { teacherChatGateway } from '../dist/teacher-chat.js';
 import { createTeacherAssistant } from '@xunjie/agents/teacher-assistant/index';
+import { createTeacherCourseTools } from '@xunjie/agents/teacher-assistant/course-tools';
 import { createAgentSessionSchema } from '@xunjie/contracts/agent-sessions';
+import { StorageError } from '@xunjie/storage';
 
 test('teacher chat requires a course and exposes no student or business tools', async () => {
   const input = { requestId: randomUUID(), sessionId: randomUUID(), scenario: 'teacher-assistant' };
@@ -18,22 +20,98 @@ test('teacher chat requires a course and exposes no student or business tools', 
   assert.match((await teacher.context({})).system, /任课教师助手/);
 });
 
-test('teacher model pins the configured school source without changing student selection', async () => {
+test('teacher course tools keep versions and ranges fixed, withhold private material and report ambiguity', async () => {
+  const target = { taskId: randomUUID(), releaseId: randomUUID() }, materialId = randomUUID(), courseId = randomUUID();
+  const material = { materialId, title: 'ALU 讲义', mediaType: 'text/plain', byteLength: 6, sha256: 'a'.repeat(64) };
+  const release = { ...target, courseId, taskTitle: 'ALU', contentDigest: 'b'.repeat(64),
+    objectives: ['理解进位'], requirements: '先预测再仿真。', helpPolicy: {}, materials: [material] };
+  let revoked = false, materialReads = 0;
+  const tools = createTeacherCourseTools({
+    find: async () => [target, { ...target, releaseId: randomUUID() }],
+    async release(id) {
+      if (revoked || id !== target.releaseId) throw new StorageError('forbidden');
+      return release;
+    },
+    async material() { materialReads++; return { ...material, contentBase64: Buffer.from('甲𠮷乙').toString('base64') }; },
+  }, target);
+  assert.doesNotMatch(JSON.stringify(tools.map(tool => tool.definition.inputSchema)), /"format":"uuid"/);
+  const call = (name, input) => tools.find(tool => tool.definition.name === name)
+    .execute({ input }, { assertActive: async () => {} });
+  assert.equal((await call('read_course_task', { query: 'ALU' })).data.status, 'ambiguous');
+  assert.equal((await call('read_course_task', {})).data.source.releaseId, target.releaseId);
+  assert.equal((await call('read_course_task', { ...target, taskId: randomUUID() })).data.reason, 'invalid');
+  assert.equal((await call('read_course_task', { ...target, releaseId: randomUUID() })).data.reason, 'forbidden');
+  assert.equal((await call('list_design_materials', {})).data.materials[0].materialId, materialId);
+  assert.equal((await call('read_design_material', { materialId, offset: 1, length: 1 })).data.text, '𠮷');
+  assert.equal((await call('read_design_material', { materialId: randomUUID() })).data.reason, 'missing');
+  assert.equal(materialReads, 1);
+  revoked = true;
+  assert.equal((await call('read_design_material', { materialId })).data.reason, 'forbidden');
+});
+
+test('long teacher task replies retain all three independent continuation paths', async () => {
+  const target = { taskId: randomUUID(), releaseId: randomUUID() };
+  const release = { ...target, courseId: randomUUID(), taskTitle: '任务'.repeat(150), contentDigest: 'c'.repeat(64),
+    objectives: ['目'.repeat(500), '第二个目标'], requirements: '字'.repeat(1600),
+    helpPolicy: { version: 1, questions: 'allowed', scope: 'course', note: '规'.repeat(2000) }, materials: [] };
+  const [tool] = createTeacherCourseTools({ release: async () => release }, target);
+  async function read(args) {
+    const result = await tool.execute({ input: args }, { assertActive: async () => {} });
+    return JSON.parse(result.summary);
+  }
+  const first = await read({});
+  assert.ok(first.requirements.nextOffset > 0);
+  assert.ok(first.helpNote.nextOffset > 0);
+  const next = await read({ offset: first.requirements.nextOffset, helpNoteOffset: first.helpNote.nextOffset, objectiveOffset: first.nextObjectiveOffset });
+  assert.equal(next.requirements.offset, first.requirements.length);
+  assert.equal(next.helpNote.offset, first.helpNote.length);
+  assert.deepEqual(next.objectives, ['第二个目标']);
+});
+
+test('messages steer Skill facts, tools and history without rewriting the Turn rules', async () => {
+  const teacherSkill = { skillId: randomUUID(), version: 1 }, firstId = randomUUID();
+  const scene = createTeacherAssistant({ course: {}, skills: {
+    owner: { environmentId: randomUUID(), serviceId: randomUUID(), version: 1 },
+    scope: () => ({ resolveSession: async () => ({ catalog: [{
+      ...teacherSkill, name: '项目式备课', description: '', selected: true,
+    }] }) }),
+  } });
+  const first = { turnId: randomUUID(), originInput: { inputId: firstId, context: { teacherSkill } } };
+  const next = { ...first, originInput: { inputId: randomUUID(), context: {} } };
+  const again = { ...next, originInput: { ...next.originInput, context: { teacherSkill } } };
+  assert.equal((await scene.context(first)).system, (await scene.context(next)).system);
+  assert.equal((await scene.context(first)).facts.teacherSkill.status, 'selected');
+  assert.equal((await scene.context(next)).facts.teacherSkill, undefined);
+  assert.equal((await scene.context(again)).facts.teacherSkill.status, 'selected');
+  assert.ok((await scene.tools(first)).some(tool => tool.definition.name === 'skill_load'));
+  assert.ok(!(await scene.tools(next)).some(tool => tool.definition.name === 'skill_load'));
+  const entry = { id: randomUUID(), turnId: first.turnId, toolName: 'skill_load', sources: [{ source:
+    { kind: 'tool-call', toolName: 'skill_load', source: { kind: 'teacher-skill', inputId: firstId, ...teacherSkill } },
+  }] };
+  assert.deepEqual(await scene.authorizeHistory(first, [entry]), [entry]);
+  assert.deepEqual(await scene.authorizeHistory(next, [entry]), []);
+  assert.deepEqual(await scene.authorizeHistory(again, [entry]), []);
+});
+
+test('teacher gateway reads and pins the independent selection without touching student selection', async () => {
   const identity = { kind: 'school' }, connectionId = randomUUID(), pinId = randomUUID();
-  const choice = { connection: { connectionId } }, source = { kind: 'school', connectionId };
+  const choice = { connection: { connectionId } };
   const base = { selection: {
     read: async () => { throw new Error('student selection must not be read'); },
     pin: async () => { throw new Error('student selection must not be pinned'); },
-    async resolveChoice(who, input) { assert.equal(who, identity); assert.deepEqual(input, source); return { choice }; },
-    async pinSource(who, id, version, input) {
-      assert.equal(who, identity); assert.equal(id, pinId); assert.equal(version, 0); assert.deepEqual(input, source);
+  } };
+  const selection = {
+    read: async () => ({ version: 1, selected: choice, options: [] }),
+    async pin(who, id, version) {
+      assert.equal(who, identity); assert.equal(id, pinId); assert.equal(version, 1);
       return { choice };
     },
-  } };
-  const gateway = teacherChatGateway(base, connectionId);
-  assert.deepEqual(await gateway.selection.read(identity), { version: 0, selected: choice, options: [] });
-  assert.deepEqual(await gateway.selection.pin(identity, pinId, 0), { choice });
-  await assert.rejects(teacherChatGateway(base).selection.read(identity), { code: 'teacher-model-unavailable' });
+  };
+  const gateway = teacherChatGateway(base, selection);
+  assert.deepEqual(await gateway.selection.read(identity), { version: 1, selected: choice, options: [] });
+  assert.deepEqual(await gateway.selection.pin(identity, pinId, 1), { choice });
+  const unavailable = teacherChatGateway(base, { ...selection, read: async () => ({ version: 1, selected: null, options: [] }) });
+  await assert.rejects(unavailable.selection.read(identity), { code: 'teacher-model-unavailable' });
 });
 
 test('the product HTTP boundary rejects old Agent contracts and authenticates a connected subject before session routing', async t => {

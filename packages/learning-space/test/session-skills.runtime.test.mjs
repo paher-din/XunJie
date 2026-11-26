@@ -9,6 +9,29 @@ import { collectLearningSources, validateLearningSources } from '../dist/learnin
 import { createAgentSessions } from '../dist/learning-data/agent-sessions.js';
 import { createSkills, validateSkills, collectSkillSources, validateSkillSources } from '../dist/learning-data/skills.js';
 
+test('teacher Skill reads are limited to the references supplied for the accepted input', { timeout: 60000 }, async t => {
+  const f = await skillFixture(t), identity = { ...f.identity, kind: 'school' }, courseId = randomUUID();
+  const session = { ...f.session, identity, scenario: 'teacher-assistant', courseId };
+  let allowed = true;
+  const skills = createSkills(f.storage, { ...f.host, authorize: async () => {},
+    async session() { if (!allowed) throw new Error('course revoked'); return session; } });
+  const first = await skills.import(identity, packageInput('project-lesson-design'));
+  const ref = { skillId: first.skillId, version: first.version };
+  const selected = await skills.resolveSession(identity, session.sessionId, undefined, [ref]);
+  assert.equal(selected.catalog.find(item => item.skillId === ref.skillId).selected, true);
+  const command = { ...ref, commandId: randomUUID(), runId: randomUUID(), stepId: randomUUID(),
+    moduleId: 'skills', moduleVersion: 1, packageDigest: first.digest, selectionDigest: selected.selectionDigest,
+    path: 'references/example.md', offset: 0, length: 100 };
+  assert.equal((await skills.loadSession(identity, session.sessionId, command, { references: [ref] })).content, 'An inert attachment.');
+  assert.equal((await skills.resolveSession(identity, session.sessionId)).catalog.some(item => item.selected), false);
+  await assert.rejects(skills.loadSession(identity, session.sessionId, { ...command, commandId: randomUUID() }));
+  await skills.remove(identity, { requestId: randomUUID(), skillId: ref.skillId });
+  const removed = await skills.resolveSession(identity, session.sessionId, undefined, [ref]);
+  assert.ok(removed.catalog.find(item => item.skillId === ref.skillId).unavailable);
+  allowed = false;
+  await assert.rejects(skills.loadSession(identity, session.sessionId, command, { references: [ref] }), /course revoked/);
+});
+
 test('ordinary sessions expose personal metadata without implicitly selecting it and choose fixed versions without manufacturing an activity', { timeout: 60000 }, async t => {
   const f = await skillFixture(t), input = packageInput('sorting'), imported = await f.skills.import(f.identity, input);
   const state = await f.skills.resolveSession(f.identity, f.session.sessionId);

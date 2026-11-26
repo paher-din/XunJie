@@ -65,7 +65,9 @@ export const modelMigrations: readonly Migration[] = [{ version: 1, name: 'perso
 ` }, { version: 24, name: 'paired-model-session-routes', sql: `
   CREATE TABLE model_paired_sessions(scope text NOT NULL,kind text NOT NULL,id uuid NOT NULL,session_id uuid,PRIMARY KEY(scope,kind,id));
   INSERT INTO model_paired_sessions(scope,kind,id,session_id) SELECT scope,kind,id,NULL FROM model_paired_routes;
-` }, learningTransportMigration];
+` }, learningTransportMigration, { version: 26, name: 'teacher-model-selections', sql: `
+  CREATE TABLE teacher_model_selections(scope text PRIMARY KEY,body jsonb NOT NULL);
+` }];
 type StoredConnection = { configuration: ModelConfiguration; version: number; routeId: string; credentialRef: string | null; policy?: ModelCheckPolicy; retired?: true };
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const scopeOf = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId].join('.');

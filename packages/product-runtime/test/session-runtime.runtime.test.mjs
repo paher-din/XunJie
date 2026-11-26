@@ -67,6 +67,10 @@ test('course-bound teacher text chat uses v3, a separate budget and current gran
   const first = { requestId: randomUUID(), sessionId, text: '怎么解释进位？', context: {} };
   const receipt = await call('/' + sessionId + '/inputs', 'POST', first);
   await host.drain();
+  await assert.rejects(call('/' + sessionId + '/inputs/' + receipt.inputId + '/control', 'POST', {
+    requestId: randomUUID(), expectedVersion: 1, operation: 'edit', text: '错误的 Skill 引用',
+    context: { teacherSkill: { version: 0 } },
+  }), { code: 'invalid' });
   const duplicate = await call('/' + sessionId + '/inputs', 'POST', first);
   assert.equal(duplicate.inputId, receipt.inputId);
   assert.equal(duplicate.turnId, receipt.turnId);

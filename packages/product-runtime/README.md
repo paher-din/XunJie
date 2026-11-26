@@ -35,7 +35,7 @@
   "connectionId": "10000000-0000-4000-8000-000000000004",
   "budget": {
     "maxSteps": 8,
-    "maxToolCalls": 1,
+    "maxToolCalls": 12,
     "maxInputTokens": 96000,
     "maxOutputTokens": 8000,
     "maxCallMs": 90000,
@@ -44,9 +44,9 @@
 }
 ```
 
-示例 ID 替换为联调环境的学校、教师、课程及已授权的学校模型连接 ID。缺少可用连接时，该场景的 Turn 返回 `teacher-model-unavailable`，已有历史可读。学生模型选择保持原路由。
+示例 ID 替换为联调环境的学校、教师、课程及已授权的学校模型连接 ID。教师可选择学校模型或本人在当前学校身份下保存的连接。教师每轮限额仍由 `budget` 决定。 [第二轮 UI 接口及工具清单](../../docs/teacher-agent-core-tools-handoff.md)
 
-使用已登录的学校身份和 v3 头创建 `agent-sessions`，提交 `requestId`、`sessionId`、`scenario: "teacher-assistant"` 和 `courseId`。教师列表使用 `GET /api/learning/agent-sessions?courseId=<课程 ID>`。向对应会话的 `inputs` 发送 `requestId`、`sessionId`、`text` 和空 `context`，从 `conversation?after=<游标>` 读增量，使用既有 `runs` 和 `requests` 获取状态和原请求回执。
+使用已登录的学校身份和 v3 头创建 `agent-sessions`，提交 `requestId`、`sessionId`、`scenario: "teacher-assistant"` 和 `courseId`。教师列表使用 `GET /api/learning/agent-sessions?courseId=<课程 ID>`。向对应会话的 `inputs` 发送 `requestId`、`sessionId`、`text` 和 `context`，从 `conversation?after=<游标>` 读增量。使用既有 `runs` 和 `requests` 获取状态和原请求回执。
 
 ## 默认学校客户端
 

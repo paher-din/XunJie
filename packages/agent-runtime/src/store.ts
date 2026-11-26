@@ -856,12 +856,11 @@ export function createAgentStore(storage: OwnedStorage, options: StoreOptions) {
     return rows.map(inputFromRow);
   }
   /** The stable real user request of this Turn: the latest non-answer input, never a system answer. */
-  async function turnOriginInput(turnId: string): Promise<string | null> {
-    const { rows } = await storage.read(`SELECT input_id, body FROM agent_inputs
-      WHERE turn_id=$1 AND state='adopted' ORDER BY seq`, [turnId]);
-    let origin: string | null = null;
-    for (const row of rows) if (!row.body || typeof row.body !== 'object' || !('questionId' in ((row.body as { context?: object }).context ?? {}))) origin = String(row.input_id);
-    return origin;
+  async function turnOriginInput(turnId: string): Promise<AgentSessionInput | null> {
+    const { rows: [row] } = await storage.read(`SELECT * FROM agent_inputs
+      WHERE turn_id=$1 AND state='adopted' AND NOT COALESCE(body->'context' ? 'questionId', false)
+      ORDER BY seq DESC LIMIT 1`, [turnId]);
+    return row ? inputFromRow(row) : null;
   }
   /** Every adopted input of this Session that carries a trusted workspace action, in original order. */
   async function workspaceInputs(sessionId: string): Promise<{ inputId: string; action: Facts }[]> {

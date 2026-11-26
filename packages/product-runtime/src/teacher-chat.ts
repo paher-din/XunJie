@@ -22,18 +22,16 @@ export async function readTeacherChatConfig(root: string) {
   }
 }
 
-export function teacherChatGateway(gateway: LearningModelPort, connectionId?: string): LearningModelPort {
-  const source = connectionId ? { kind: 'school' as const, connectionId } : null;
+export function teacherChatGateway(gateway: LearningModelPort,
+  teacherSelection: Pick<LearningModelPort['selection'], 'read' | 'pin'>): LearningModelPort {
   return { ...gateway, selection: { ...gateway.selection,
     async read(identity) {
-      if (!source) throw new AgentError('teacher-model-unavailable');
-      const fixed = await gateway.selection.resolveChoice(identity, source)
-        .catch(() => { throw new AgentError('teacher-model-unavailable'); });
-      return { version: 0, selected: fixed.choice, options: [] };
+      const selection = await teacherSelection.read(identity);
+      if (!selection.selected) throw new AgentError('teacher-model-unavailable');
+      return selection;
     },
     async pin(identity, pinId, expectedVersion) {
-      if (!source) throw new AgentError('teacher-model-unavailable');
-      return gateway.selection.pinSource(identity, pinId, expectedVersion, source)
+      return teacherSelection.pin(identity, pinId, expectedVersion)
         .catch(() => { throw new AgentError('teacher-model-unavailable'); });
     },
   } };

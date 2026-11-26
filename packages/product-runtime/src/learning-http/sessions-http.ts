@@ -115,7 +115,8 @@ export async function routeAgentSessions(host: SessionHttpPort, identity: SpaceI
   if (parts[2] === 'skills') {
     if (!host.skills) throw new StorageError('unavailable');
     const session = await host.sessions.read(identity, sessionId);
-    if (session.deleted || session.scenario === 'teacher-assistant') throw new StorageError('missing');
+    if (session.deleted || session.scenario === 'teacher-assistant' && (method !== 'GET' || parts.length !== 3))
+      throw new StorageError('missing');
     if (session.archived && method !== 'GET') throw new StorageError('conflict');
     const skills = await host.skills(identity, sessionId);
     if (parts.length === 4 && parts[3] === 'description' && method === 'POST' && host.skillDescription)

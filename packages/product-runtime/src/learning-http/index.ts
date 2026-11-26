@@ -76,6 +76,7 @@ export function createLearningEntry(options: {
   courses?: ReturnType<typeof createCourses>;
   nativeChannel?: ReturnType<typeof createNativeChannel>;
   models?: Awaited<ReturnType<typeof createModelGateway>>;
+  teacherModelSelection?(identity: SpaceIdentity, input?: unknown): Promise<unknown>;
   skills?(identity: SpaceIdentity): Promise<SkillsLibraryPort>;
   assertAgentCommand?(identity: SpaceIdentity, activityId: string, association: AgentExecutionAssociation): Promise<void>;
   projects?: Pick<PersonalProjectsPort, 'readForActivity'>;
@@ -511,7 +512,10 @@ export function createLearningEntry(options: {
         response.on('close', disconnect);
         if (request.aborted || response.destroyed) disconnect();
         try {
-          result = route === 'models/school-default' && method === 'GET' ? await options.models.school.read(identity)
+          result = route === 'models/teacher-selection'
+            ? await (options.teacherModelSelection ?? (() => { throw new StorageError('unavailable'); }))(identity,
+              method === 'POST' ? await readLearningBody(request, 65536) : undefined)
+            : route === 'models/school-default' && method === 'GET' ? await options.models.school.read(identity)
             : await routeModels(options.models, identity, route, method === 'POST'
             ? await readLearningBody(request, route === 'models/images' ? 360000 : 65536) : undefined,
             personalProfile ? await (readOnly ? spaces.readPersonal() : spaces.personal()) : undefined, modelRequest.signal);
