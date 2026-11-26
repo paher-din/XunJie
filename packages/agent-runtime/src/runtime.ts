@@ -3,7 +3,7 @@ import { StorageError, type OwnedStorage, type HostLock } from '@xunjie/storage'
 import { canonicalDigest, operationId } from '@xunjie/storage/identity';
 import { agentInputSchema, agentQuestionResponseSchema, agentDispatchPermitSchema, type AgentInput, type AgentInputReceipt, type AgentRuntimeSession,
   type AgentTurn, type AgentQuestionResponse, type AgentQuestionReceipt, type AgentEvent, type AgentDispatchPermit } from '@xunjie/contracts/agent-runtime';
-import { createAgentStore, type AgentStore, type AgentSessionSnapshot, type AgentSessionInput } from './store.js';
+import { createAgentStore, type AgentStore, type AgentSessionSnapshot, type AgentSessionInput, type StoreOptions } from './store.js';
 import { createModelAdapter, type ModelGatewaySource } from './model.js';
 import { runTurn, type LoopDependencies } from './loop.js';
 import { AgentError } from './errors.js';
@@ -18,6 +18,7 @@ export interface AgentRuntimeOptions {
   taskFacts?: TaskFactsPort;
   taskCancellation?: TaskCancellationPort;
   budget?: { maxSteps?: number; maxToolCalls?: number; maxInputTokens?: number; maxOutputTokens?: number; maxCallMs?: number; hardDeadlineMs?: number };
+  budgetForSession?: StoreOptions['budgetForSession'];
   now?: () => number;
   ownerInstanceId?: string;
   cancellationTimers?: AgentCancellationTimers;
@@ -28,7 +29,7 @@ const subject = ({ environmentId, spaceId, principalId, kind }: AgentRuntimeSess
 /** Session owner, merged wakes, host lock and the public entry. The only loop lives in loop.ts. */
 export function createAgentRuntime(storage: OwnedStorage, options: AgentRuntimeOptions) {
   const ownerInstanceId = options.ownerInstanceId ?? randomUUID();
-  const store = createAgentStore(storage, { budget: options.budget, now: options.now, ownerInstanceId,
+  const store = createAgentStore(storage, { budget: options.budget, budgetForSession: options.budgetForSession, now: options.now, ownerInstanceId,
     assertOwner: () => lock !== null && !lockLost });
   const model = createModelAdapter(options.gateway, store);
   const now = options.now ?? Date.now;

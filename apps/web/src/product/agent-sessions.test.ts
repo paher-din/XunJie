@@ -37,6 +37,17 @@ beforeEach(() => {
     throw new Error('Unexpected endpoint ' + path)
   }))
 })
+it('requests teacher sessions only for the selected course and rejects a mismatched result', async () => {
+  const identity = { ...actor, kind: 'school' as const }, courseId = id(), now = new Date().toISOString()
+  const saved: AgentSession = { identity, courseId, sessionId: id(), requestId: id(), owner, scenario: 'teacher-assistant',
+    title: null, pinned: false, archived: false, deleted: false, state: 'ready', createdAt: now, updatedAt: now, readyAt: now }
+  const fetchCourse = vi.fn(async () => new Response(JSON.stringify({ items: [saved] })))
+  vi.stubGlobal('fetch', fetchCourse)
+  const client = new AgentSessionsClient({ identity, spaceKey: 'school', namespace: 'browser' })
+  expect(await client.listTeacherCourse(courseId)).toEqual([saved])
+  expect(fetchCourse).toHaveBeenCalledWith('/api/learning/agent-sessions?courseId=' + courseId, expect.anything())
+  await expect(client.listTeacherCourse(id())).rejects.toThrow('会话不属于当前任教课程。')
+})
 it('ordinary first questions create only a session; a lost ACK survives reconstruction and queries the original input before any resend', async () => {
   const client = new AgentSessionsClient({ identity: actor, spaceKey: 'personal', namespace: 'browser' }), store = storage()
   const first = new SessionOutbox(client, store)

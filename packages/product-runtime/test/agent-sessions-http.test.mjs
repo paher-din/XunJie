@@ -4,6 +4,37 @@ import { createServer } from 'node:http';
 import { test } from 'node:test';
 import { createLearningEntry } from '../dist/learning-http/index.js';
 import { routeAgentSessions } from '../dist/learning-http/sessions-http.js';
+import { teacherChatGateway } from '../dist/teacher-chat.js';
+import { createTeacherAssistant } from '@xunjie/agents/teacher-assistant/index';
+import { createAgentSessionSchema } from '@xunjie/contracts/agent-sessions';
+
+test('teacher chat requires a course and exposes no student or business tools', async () => {
+  const input = { requestId: randomUUID(), sessionId: randomUUID(), scenario: 'teacher-assistant' };
+  assert.equal(createAgentSessionSchema.safeParse(input).success, false);
+  assert.equal(createAgentSessionSchema.safeParse({ ...input, courseId: randomUUID() }).success, true);
+  assert.equal(createAgentSessionSchema.safeParse({ ...input, scenario: 'student-assistant', courseId: randomUUID() }).success, false);
+  const teacher = createTeacherAssistant();
+  assert.deepEqual(await teacher.tools({}), []);
+  assert.match((await teacher.context({})).system, /任课教师助手/);
+});
+
+test('teacher model pins the configured school source without changing student selection', async () => {
+  const identity = { kind: 'school' }, connectionId = randomUUID(), pinId = randomUUID();
+  const choice = { connection: { connectionId } }, source = { kind: 'school', connectionId };
+  const base = { selection: {
+    read: async () => { throw new Error('student selection must not be read'); },
+    pin: async () => { throw new Error('student selection must not be pinned'); },
+    async resolveChoice(who, input) { assert.equal(who, identity); assert.deepEqual(input, source); return { choice }; },
+    async pinSource(who, id, version, input) {
+      assert.equal(who, identity); assert.equal(id, pinId); assert.equal(version, 0); assert.deepEqual(input, source);
+      return { choice };
+    },
+  } };
+  const gateway = teacherChatGateway(base, connectionId);
+  assert.deepEqual(await gateway.selection.read(identity), { version: 0, selected: choice, options: [] });
+  assert.deepEqual(await gateway.selection.pin(identity, pinId, 0), { choice });
+  await assert.rejects(teacherChatGateway(base).selection.read(identity), { code: 'teacher-model-unavailable' });
+});
 
 test('the product HTTP boundary rejects old Agent contracts and authenticates a connected subject before session routing', async t => {
   let entry, forwarded = 0, selected = 0;

@@ -261,6 +261,13 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
     await spaces.authorize(identity); uuid.parse(courseId);
     return accessActive(identity, courseId);
   }
+  async function courseInSchool(identity: SpaceIdentity, courseId: string): Promise<boolean> {
+    await spaces.authorize(identity); uuid.parse(courseId);
+    if (identity.kind !== 'school') return false;
+    const { rows } = await storage.read('SELECT 1 FROM courses WHERE course_id=$1 AND space_id=$2',
+      [courseId, identity.spaceId]);
+    return rows.length > 0;
+  }
   /** Host-only fixed activity-to-course fact used for controlled inspection authorization. */
   async function courseForActivity(identity: SpaceIdentity, activityId: string): Promise<string | null> {
     await spaces.authorize(identity); uuid.parse(activityId);
@@ -725,6 +732,6 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
   }
   return { verifyComponentReference, components, readComponent, readComponentAlgorithm, readComponentDependency,
     readComponentRuntimeResource, submitComponentReport, readComponentReports,
-    registerRelease, registrationResult, listCourses, readRelease, readMaterial, referenceText, verifyReference, setAccess, hasAccess, courseForActivity,
+    registerRelease, registrationResult, listCourses, readRelease, readMaterial, referenceText, verifyReference, setAccess, hasAccess, courseInSchool, courseForActivity,
     prepare, confirm, confirmForMember, bindingResult, authorize, validate };
 }

@@ -62,7 +62,8 @@ function browserTurn(turn: AgentTurn): AgentTurn {
 /** Keep only the status categories the student UI already renders. */
 function browserTurnReason(reason: string) {
   return ['budget-exhausted', 'budget_exhausted', 'input-budget-exhausted', 'output-budget-exhausted',
-    'context-capacity-exceeded', 'context-capacity-preflight', 'deadline-exceeded', 'cancelled'].includes(reason)
+    'context-capacity-exceeded', 'context-capacity-preflight', 'deadline-exceeded', 'cancelled',
+    'teacher-model-unavailable'].includes(reason)
     ? reason : '';
 }
 
@@ -93,7 +94,13 @@ export async function routeAgentSessions(host: SessionHttpPort, identity: SpaceI
   const parts = route.split('/');
   if (parts[0] !== 'agent-sessions') throw new StorageError('missing');
   if (parts.length === 1) {
-    if (method === 'GET') return { items: z.array(agentSessionSchema).parse(await host.sessions.list(identity)) };
+    if (method === 'GET') {
+      const requested = new URLSearchParams(search).get('courseId');
+      const courseId = requested === null ? null : z.uuid().parse(requested);
+      const sessions = await host.sessions.list(identity);
+      return { items: z.array(agentSessionSchema).parse(sessions.filter(session => courseId === null
+        ? session.scenario !== 'teacher-assistant' : session.scenario === 'teacher-assistant' && session.courseId === courseId)) };
+    }
     if (method === 'POST') return agentSessionSchema.parse(await host.sessions.create(identity, createAgentSessionSchema.parse(body)));
     throw new StorageError('missing');
   }
@@ -108,7 +115,7 @@ export async function routeAgentSessions(host: SessionHttpPort, identity: SpaceI
   if (parts[2] === 'skills') {
     if (!host.skills) throw new StorageError('unavailable');
     const session = await host.sessions.read(identity, sessionId);
-    if (session.deleted) throw new StorageError('missing');
+    if (session.deleted || session.scenario === 'teacher-assistant') throw new StorageError('missing');
     if (session.archived && method !== 'GET') throw new StorageError('conflict');
     const skills = await host.skills(identity, sessionId);
     if (parts.length === 4 && parts[3] === 'description' && method === 'POST' && host.skillDescription)

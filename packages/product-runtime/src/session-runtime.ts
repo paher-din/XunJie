@@ -1,6 +1,6 @@
 import { StorageError, type OwnedStorage } from '@xunjie/storage';
 import { canonicalDigest, operationId } from '@xunjie/storage/identity';
-import { createAgentRuntime, type AgentScenario, type ModelGatewaySource, type TaskFactsPort, type TaskCancellationPort } from '@xunjie/agent-runtime';
+import { createAgentRuntime, type AgentRuntimeOptions, type AgentScenario, type ModelGatewaySource, type TaskFactsPort, type TaskCancellationPort } from '@xunjie/agent-runtime';
 import type { AgentSession } from '@xunjie/contracts/agent-sessions';
 import type { AgentSessionPort } from '@xunjie/contracts/agent-service';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
@@ -14,6 +14,7 @@ export interface SessionRuntimeHostOptions {
   /** One scene dispatcher; it selects student/workspace per session and injects concrete tools. */
   scenario: AgentScenario;
   gateway: ModelGatewaySource;
+  budgetForSession?: AgentRuntimeOptions['budgetForSession'];
   taskFacts?: TaskFactsPort;
   taskCancellation?: TaskCancellationPort;
   remote?(session: AgentSession): Promise<AgentSessionPort>;
@@ -36,7 +37,7 @@ export function createSessionRuntimeHost(options: SessionRuntimeHostOptions) {
     return session;
   }
   const runtime = createAgentRuntime(options.storage, { authorize: options.authorize, scenario: options.scenario,
-    gateway: options.gateway, ...(options.taskFacts ? { taskFacts: options.taskFacts } : {}),
+    gateway: options.gateway, budgetForSession: options.budgetForSession, ...(options.taskFacts ? { taskFacts: options.taskFacts } : {}),
     ...(options.taskCancellation ? { taskCancellation: options.taskCancellation } : {}),
     ...(options.readOnly ? { readOnly: options.readOnly } : {}) });
   const projection = createAgentConversationProjection(runtime);
@@ -47,7 +48,11 @@ export function createSessionRuntimeHost(options: SessionRuntimeHostOptions) {
       if (canonicalDigest(input) !== canonicalDigest(expected)) throw new StorageError('identity-conflict');
       return runtime.initialize(input);
     },
-    async submit(identity, input) { await saved(identity, input.sessionId, true); return runtime.submit(identity, input); },
+    async submit(identity, input) {
+      const session = await saved(identity, input.sessionId, true);
+      if (session.scenario === 'teacher-assistant' && Object.keys(input.context).length) throw new StorageError('invalid');
+      return runtime.submit(identity, input);
+    },
     async answerQuestion(identity, sessionId, response) {
       await saved(identity, sessionId, true); return runtime.answerQuestion(identity, sessionId, response);
     },

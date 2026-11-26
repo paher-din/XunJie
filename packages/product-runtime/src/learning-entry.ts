@@ -68,6 +68,7 @@ import { createWorkspaceAgentAuthority } from './workspace-agent-authority.js';
 import { createSkills } from '@xunjie/learning-space/learning-data/skills';
 import { createSkillTools, selectedSkillInstruction } from '@xunjie/agents/capabilities/skills/index';
 import { createAgentSessionApplication, type AgentSessionDirectory } from './agent-sessions.js';
+import { readTeacherChatConfig, teacherChatGateway } from './teacher-chat.js';
 import { createAgentDependencyChannel, createAgentDependencyClient, type AgentSessionDependencies } from '@xunjie/agents/transport/session-dependencies';
 import { workFileSchema } from '@xunjie/contracts/learning-data';
 import type { AgentSession } from '@xunjie/contracts/agent-sessions';
@@ -449,9 +450,10 @@ export async function createProductLearningApplication(context: {
     }
     const workspaceOpen = (identity: SpaceIdentity, activityId: string) => identity.environmentId === environment.environmentId
       ? learning!.open(identity, activityId) : connectedSchool().openActivity(identity, activityId);
-    async function resolveSessionOwner(identity: SpaceIdentity): Promise<AgentSession['owner']> {
+    async function resolveSessionOwner(identity: SpaceIdentity, scenario?: AgentSession['scenario']): Promise<AgentSession['owner']> {
 
-        const selected = identity.environmentId === environment.environmentId ? await agentBindings.read(identity) : null;
+        const selected = scenario !== 'teacher-assistant' && identity.environmentId === environment.environmentId
+          ? await agentBindings.read(identity) : null;
         if (selected) {
           if (agent && selected.target.environmentId === agent.storage.owner.environmentId && selected.target.serviceId === agent.storage.owner.serviceId)
             return { ...selected, target: { ...selected.target, capabilities: [...new Set([...selected.target.capabilities, agentSessionsCapability])] } };
@@ -464,7 +466,19 @@ export async function createProductLearningApplication(context: {
           target: { ...descriptor, capabilities: [...new Set([...descriptor.capabilities, agentSessionsCapability])] } };
     }
     const localDirectory = data ? createAgentSessions(data.storage, { authorize: authorizeSessionIdentity,
-      openActivity: workspaceOpen, resolveOwner: resolveSessionOwner }) : undefined;
+      openActivity: workspaceOpen, resolveOwner: resolveSessionOwner,
+      async authorizeTeacherCourse(identity, courseId) {
+        if (identity.kind !== 'school' || identity.environmentId !== environment.environmentId
+          || !agent || !models || !enabled.has('teaching-agent')
+          || !await spaces.hasMemberPermission(identity, 'course.manage')) throw new StorageError('forbidden');
+        const config = await readTeacherChatConfig(root);
+        if (!config?.grants.some(grant => grant.spaceId === identity.spaceId
+          && grant.principalId === identity.principalId && grant.courseId === courseId)
+          || !await courses.courseInSchool(identity, courseId)) {
+          throw new StorageError('forbidden');
+        }
+      },
+    }) : undefined;
     async function directoryFor(identity: SpaceIdentity): Promise<AgentSessionDirectory> {
       if (identity.environmentId === environment.environmentId) {
         if (!localDirectory) throw new StorageError('unavailable');
@@ -845,11 +859,17 @@ export async function createProductLearningApplication(context: {
       if (enabled.has('teaching-agent')) sessionAgent = standaloneAgent.agent;
     }
     if (agent && models && directory && sessionMaterials && personalProjects && projectMaterials && enabled.has('teaching-agent')) {
-      const gatewayForSession = async (identity: SpaceIdentity, sessionId: string) =>
-        identity.environmentId === environment.environmentId ? models
-          : (await connectedSchool().dependenciesForSession(identity, sessionId)).models;
+      const gatewayForSession = async (identity: SpaceIdentity, sessionId: string) => {
+        if (identity.environmentId !== environment.environmentId) return (await connectedSchool().dependenciesForSession(identity, sessionId)).models;
+        const session = await directory.read(identity, sessionId);
+        if (session.scenario !== 'teacher-assistant') return models;
+        return teacherChatGateway(models, (await readTeacherChatConfig(root))?.connectionId);
+      };
       sessionAgent = createProductAgent({ storage: agent.storage, directory,
         models: gatewayForSession,
+        async budgetForSession(session) {
+          if (session.scenario === 'teacher-assistant') return (await readTeacherChatConfig(root))?.budget;
+        },
         authorize: authorizeSessionIdentity,
         inspectSession: sessionId => localDirectory!.readForInspection(sessionId),
         async authorizeInspection(identity, target) {

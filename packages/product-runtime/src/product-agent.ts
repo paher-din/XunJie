@@ -1,12 +1,13 @@
 import type { OwnedStorage } from '@xunjie/storage';
 import { StorageError } from '@xunjie/storage';
-import type { AgentScenario, AgentTool, Facts, HistoryEntry, ModelGatewaySource, ScenarioInput } from '@xunjie/agent-runtime';
+import type { AgentRuntimeOptions, AgentScenario, AgentTool, Facts, HistoryEntry, ModelGatewaySource, ScenarioInput } from '@xunjie/agent-runtime';
 import { resolveGateway } from '@xunjie/agent-runtime';
 import type { AgentSession } from '@xunjie/contracts/agent-sessions';
 import type { AgentSessionPort } from '@xunjie/contracts/agent-service';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import type { PersonalProject } from '@xunjie/contracts/student-learning';
 import { createStudentAssistant } from '@xunjie/agents/student-assistant/index';
+import { createTeacherAssistant } from '@xunjie/agents/teacher-assistant/index';
 import type { LearningToolsHost } from '@xunjie/agents/student-assistant/tools/learning-tools';
 import { createWorkspaceAssistant, type WorkspaceToolOptions } from '@xunjie/agents/workspace-assistant/index';
 import type { AgentSessionApplicationHost, AgentSessionDirectory } from './agent-sessions.js';
@@ -106,6 +107,7 @@ export interface ProductAgentOptions {
   storage: OwnedStorage;
   directory: AgentSessionDirectory;
   models: ModelGatewaySource;
+  budgetForSession?: AgentRuntimeOptions['budgetForSession'];
   authorize(identity: SpaceIdentity): Promise<void>;
   /** The trusted host checks the actor and this exact target; the kernel never weakens it. */
   authorizeInspection?(identity: SpaceIdentity, target: ProductAgentInspectionTarget): Promise<void>;
@@ -128,7 +130,8 @@ export function createProductAgent(options: ProductAgentOptions) {
     let pending = scenes.get(session.sessionId);
     if (!pending) {
       pending = (async () => {
-        const parts = await options.scene(session);
+          if (session.scenario === 'teacher-assistant') return createTeacherAssistant();
+          const parts = await options.scene(session);
         if (session.scenario === 'student-assistant') {
           if (!parts.student && !parts.tools) throw new Error('missing-student-scene');
           return createStudentAssistant({ ...(parts.student ? { learning: parts.student } : {}),
@@ -174,7 +177,7 @@ export function createProductAgent(options: ProductAgentOptions) {
   };
   let tasks: ReturnType<typeof createWorkspaceAgentTasks> | undefined;
   const host = createSessionRuntimeHost({ storage: options.storage, directory: options.directory,
-    authorize: options.authorize, scenario: dispatcher, gateway: options.models,
+    authorize: options.authorize, scenario: dispatcher, gateway: options.models, budgetForSession: options.budgetForSession,
     ...(options.readOnly ? { readOnly: options.readOnly } : {}),
     ...(options.remote ? { remote: options.remote } : {}), ...(options.deleted ? { deleted: options.deleted } : {}),
     ...(options.workspaceRequest ? { workspaceRequest: options.workspaceRequest } : {}),

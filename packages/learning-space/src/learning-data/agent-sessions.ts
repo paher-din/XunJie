@@ -21,6 +21,7 @@ export interface AgentSessionHost {
   authorize(identity: SpaceIdentity): Promise<unknown>;
   openActivity(identity: SpaceIdentity, activityId: string): Promise<unknown>;
   resolveOwner(identity: SpaceIdentity, scenario: AgentSessionScenario, workspace?: AgentSessionWorkspace): Promise<TeachingAgentBinding>;
+  authorizeTeacherCourse?(identity: SpaceIdentity, courseId: string): Promise<void>;
 }
 const scope = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId, identity.kind];
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -51,6 +52,11 @@ export function createAgentSessions(storage: OwnedStorage, host: AgentSessionHos
       || activity.target.version !== workspace.target.version || activity.target.environmentId !== storage.owner.environmentId
       || activity.target.serviceId !== storage.owner.serviceId) throw new StorageError('forbidden');
   }
+  async function checkTeacherCourse(identity: SpaceIdentity, courseId?: string) {
+    if (!courseId) return;
+    if (identity.kind !== 'school' || !host.authorizeTeacherCourse) throw new StorageError('forbidden');
+    await host.authorizeTeacherCourse(identity, courseId);
+  }
   function stored(row: Record<string, unknown>, identity: SpaceIdentity): AgentSession {
     const session = directorySession(row);
     if (!sameSubject(session.identity, identity)) throw new StorageError('forbidden');
@@ -62,6 +68,7 @@ export function createAgentSessions(storage: OwnedStorage, host: AgentSessionHos
     if (!row) throw new StorageError('missing');
     const session = stored(row, identity);
     await checkWorkspace(identity, session.workspace);
+    await checkTeacherCourse(identity, session.courseId);
     return session;
   }
   /**
@@ -84,7 +91,10 @@ export function createAgentSessions(storage: OwnedStorage, host: AgentSessionHos
     const visible: AgentSession[] = [];
     for (const row of rows) {
       const session = stored(row, identity);
-      try { await checkWorkspace(identity, session.workspace); }
+      try {
+        await checkWorkspace(identity, session.workspace);
+        await checkTeacherCourse(identity, session.courseId);
+      }
       catch (error) {
         if (error instanceof StorageError && ['forbidden', 'missing'].includes(error.code)) continue;
         throw error;
@@ -105,6 +115,7 @@ export function createAgentSessions(storage: OwnedStorage, host: AgentSessionHos
       return read(identity, input.sessionId);
     }
     await checkWorkspace(identity, input.workspace);
+    await checkTeacherCourse(identity, input.courseId);
     const owner = teachingAgentBindingSchema.parse(await host.resolveOwner(identity, input.scenario, input.workspace));
     const now = new Date().toISOString();
     const proposed = agentSessionSchema.parse({ ...input, identity, owner, title: input.title ?? null,
