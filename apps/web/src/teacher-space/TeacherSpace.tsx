@@ -608,6 +608,16 @@ function CourseWorkspace({ course, courses, cohort, initialTab, initialTaskId, o
       {glider && (
         <span className="t-btab-glider" aria-hidden="true" style={{ width: glider.width, transform: `translateX(${glider.left}px)` }}>
           <span className="t-btab-glider-edge" />
+          <svg className="t-btab-glider-arc is-left" viewBox="0 0 13 14" width="13" height="14" aria-hidden="true">
+            <path className="arc-fill" d="M 0 13 A 12 12 0 0 0 12 1 L 13 1 L 13 13 L 0 13 Z" />
+            <path className="arc-fill" d="M 1 13 L 13 13 L 13 14 L 1 14 Z" />
+            <path className="arc-line" d="M 12 1 A 12 12 0 0 1 0 13" />
+          </svg>
+          <svg className="t-btab-glider-arc is-right" viewBox="0 0 13 14" width="13" height="14" aria-hidden="true">
+            <path className="arc-fill" d="M 13 13 A 12 12 0 0 1 1 1 L 0 1 L 0 13 L 13 13 Z" />
+            <path className="arc-fill" d="M 0 13 L 12 13 L 12 14 L 0 14 Z" />
+            <path className="arc-line" d="M 1 1 A 12 12 0 0 0 13 13" />
+          </svg>
         </span>
       )}
       <button type="button" role="tab" id="t-tab-review" aria-selected={tab === 'review'} aria-controls="t-panel-review"
