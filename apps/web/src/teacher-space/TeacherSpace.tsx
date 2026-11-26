@@ -618,12 +618,13 @@ function CourseWorkspace({ course, courses, cohort, selection, onOpenModelSettin
           aria-label={`${course.name} · 教师 Agent`}
           tabIndex={tab === 'agent' ? 0 : -1} className={'t-btab t-btab-course' + (tab === 'agent' ? ' on' : '')}
           onClick={() => { setCourseMenu(false); setTab('agent') }} onKeyDown={onTabKey('agent')}>
+          <span className="t-tab-icon t-tab-icon-course" aria-hidden="true"><Icon name="course-agent" variant="linear" tone="neutral" size={16} /></span>
           <span className="t-btab-course-name">{course.name}</span>
         </button>
         <button type="button" ref={menuTrigger} className={'t-tab-toggle' + (courseMenu ? ' open' : '')}
           aria-haspopup="menu" aria-expanded={courseMenu} aria-label={`切换课程，当前${course.name}`}
           onClick={() => setCourseMenu(value => !value)}>
-          <Icon name="alt-arrow-down" size={13} />
+          <Icon name="alt-arrow-down" size={14} />
         </button>
         <div className={'t-tab-menu' + (courseMenu ? ' on' : '')} role="menu" aria-label="切换课程" inert={!courseMenu}
           onKeyDown={event => {
@@ -648,11 +649,17 @@ function CourseWorkspace({ course, courses, cohort, selection, onOpenModelSettin
         </div>
       </div>
       <button type="button" role="tab" id="t-tab-review" aria-selected={tab === 'review'} aria-controls="t-panel-review"
-        tabIndex={tab === 'review' ? 0 : -1} className={'t-btab' + (tab === 'review' ? ' on' : '')}
-        data-tab-active={tab === 'review' ? '' : undefined} onClick={() => setTab('review')} onKeyDown={onTabKey('review')}>作业审阅</button>
+        tabIndex={tab === 'review' ? 0 : -1} className={'t-btab t-btab-review' + (tab === 'review' ? ' on' : '')}
+        data-tab-active={tab === 'review' ? '' : undefined} onClick={() => setTab('review')} onKeyDown={onTabKey('review')}>
+        <span className="t-tab-icon t-tab-icon-review" aria-hidden="true"><Icon name="student-review" variant="linear" tone="neutral" size={16} /></span>
+        <span className="t-btab-label">作业审阅</span>
+      </button>
       <button type="button" role="tab" id="t-tab-design" aria-selected={tab === 'design'} aria-controls="t-panel-design"
-        tabIndex={tab === 'design' ? 0 : -1} className={'t-btab' + (tab === 'design' ? ' on' : '')}
-        data-tab-active={tab === 'design' ? '' : undefined} onClick={() => setTab('design')} onKeyDown={onTabKey('design')}>任务设计</button>
+        tabIndex={tab === 'design' ? 0 : -1} className={'t-btab t-btab-design' + (tab === 'design' ? ' on' : '')}
+        data-tab-active={tab === 'design' ? '' : undefined} onClick={() => setTab('design')} onKeyDown={onTabKey('design')}>
+        <span className="t-tab-icon t-tab-icon-design" aria-hidden="true"><Icon name="task-design" variant="linear" tone="neutral" size={16} /></span>
+        <span className="t-btab-label">任务设计</span>
+      </button>
       </div>
     </header>
     {scopedTask && tab === 'review' && <div className="t-task-focus">

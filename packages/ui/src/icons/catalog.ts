@@ -46,6 +46,28 @@ export const iconCatalog = {
     "sourceUrl": "https://github.com/480-Design/Solar-Icon-Set",
     "modified": false
   },
+  "course-agent": {
+    "label": "课程 Agent",
+    "tone": "green",
+    "variant": "linear",
+    "usages": [
+      {
+        "label": "课程 Agent 页签",
+        "group": "教师课程工作区",
+        "scope": "现有",
+        "reviewId": ""
+      }
+    ],
+    "files": {
+      "linear": "course-agent-linear.svg"
+    },
+    "source": "Kubai Icons",
+    "author": "Kubai087 与 Kubai Icons contributors",
+    "license": "MIT",
+    "sourceUrl": "https://github.com/kubai087/kubai-icons",
+    "modified": true,
+    "notes": "2026-11-27 教师课程工作区页签改用 Kubai line whiteboard：白板表示课程中的共同工作区；沿用 24px 画布与 1.5px 圆润线条，仅补动画 class 与 pathLength，路径未改。"
+  },
   "chat-round-dots": {
     "label": "Agent 对话",
     "tone": "neutral",
@@ -88,6 +110,28 @@ export const iconCatalog = {
     "license": "CC-BY-4.0",
     "sourceUrl": "https://github.com/480-Design/Solar-Icon-Set",
     "modified": false
+  },
+  "task-design": {
+    "label": "任务设计",
+    "tone": "blue",
+    "variant": "linear",
+    "usages": [
+      {
+        "label": "任务设计页签",
+        "group": "教师课程工作区",
+        "scope": "现有",
+        "reviewId": ""
+      }
+    ],
+    "files": {
+      "linear": "task-design-linear.svg"
+    },
+    "source": "Kubai Icons",
+    "author": "Kubai087 与 Kubai Icons contributors",
+    "license": "MIT",
+    "sourceUrl": "https://github.com/kubai087/kubai-icons",
+    "modified": true,
+    "notes": "2026-11-27 教师课程工作区页签改用 Kubai line layout-template：三块版式表示任务设计中的结构安排；沿用 24px 画布与 1.5px 圆润线条，仅补动画 class，路径未改。"
   },
   "minimalistic-magnifier": {
     "label": "搜索对话",
@@ -1677,7 +1721,30 @@ export const iconCatalog = {
     "author": "480 Design",
     "license": "CC-BY-4.0",
     "sourceUrl": "https://github.com/480-Design/Solar-Icon-Set",
-    "modified": false
+    "modified": false,
+    "notes": "自测卡使用 bold-duotone 绿色版本；教师课程工作区页签已改用 student-review。"
+  },
+  "student-review": {
+    "label": "学生审阅",
+    "tone": "amber",
+    "variant": "linear",
+    "usages": [
+      {
+        "label": "作业审阅页签",
+        "group": "教师课程工作区",
+        "scope": "现有",
+        "reviewId": ""
+      }
+    ],
+    "files": {
+      "linear": "student-review-linear.svg"
+    },
+    "source": "Kubai Icons",
+    "author": "Kubai087 与 Kubai Icons contributors",
+    "license": "MIT",
+    "sourceUrl": "https://github.com/kubai087/kubai-icons",
+    "modified": true,
+    "notes": "2026-11-27 作业审阅页签改用 Kubai line user-pen：人像 + 笔，表示给学生写反馈；仅补动画 class，路径未改；24px 画布、1.5px 圆润线条。"
   },
   "trash-bin-trash": {
     "label": "删除历史会话",

@@ -12,6 +12,15 @@
 - `file-presentation-linear.svg` 是衍生图形：保留 Solar `file-text-bold-duotone` 的文件轮廓，补绘内部演示框，继续按 CC BY 4.0 标注。
 - 其余 Solar 图形未修改路径；显示尺寸、颜色与实例化时的内部 ID 调整由组件控制。
 
+## Kubai Icons
+
+- 作者：Kubai087 与 Kubai Icons contributors。
+- 原项目：https://github.com/kubai087/kubai-icons
+- 许可：[MIT License](https://github.com/kubai087/kubai-icons/blob/main/LICENSE-ICONS)；`icons-line/` 目录同样以 MIT 分发。
+- `course-agent-linear.svg` 取自 Kubai line `whiteboard`；仅补动画 class 与 `pathLength`，图形路径未改。
+- `task-design-linear.svg` 取自 Kubai line `layout-template`；仅补动画 class，图形路径未改。
+- `student-review-linear.svg` 取自 Kubai line `user-pen`；仅补动画 class，图形路径未改。
+
 ## OpenMoji
 
 - 作者：HfG Schwäbisch Gmünd 与 OpenMoji contributors。

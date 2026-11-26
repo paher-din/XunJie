@@ -1117,7 +1117,8 @@ small.t-pulse-counts {
   display: flex;
   align-items: flex-end;
   /* 横向与纵向用同一个 6：块与块之间、块与分隔线之间的缝隙同宽 */
-  gap: 6px;
+  --tab-gap: 6px;
+  gap: var(--tab-gap);
   /* 顶部导航按参考标签条比例：tab 36 + 上方 8 + 下方 7（6 空隙 + 1px 分隔线）= 51 */
   height: 51px;
   margin: -28px calc(-1 * clamp(24px, 2.4vw, 32px)) 21px;
@@ -1164,6 +1165,12 @@ small.t-pulse-counts {
   display: flex;
   flex: none;
   align-items: center;
+  /* 课程名可随文字伸缩，给出最小身份宽度与上限；超过上限由名称自身省略 */
+  --tab-icon-accent: var(--icon-green);
+  --arrow-chip-hover: var(--tab-hover);
+  --arrow-ink: var(--muted);
+  min-width: 164px;
+  max-width: 320px;
   height: 36px;
   border-radius: 12px;
   color: var(--ink);
@@ -1183,6 +1190,17 @@ small.t-pulse-counts {
 .t-tabbar-course:hover::before {
   background: var(--tab-hover);
 }
+/* 非选中课程块整块铺灰时，只有指针真正落在箭头上，箭头才再叠一层独立 hover 面 */
+.t-tabbar-course:not([data-tab-active]):hover {
+  --arrow-ink: var(--ink);
+}
+.t-tabbar-course:not([data-tab-active]):has(.t-tab-toggle:hover) {
+  --arrow-chip-hover: var(--line);
+}
+.t-tabbar-course:not([data-tab-active]):has(.t-tab-toggle.open) {
+  --arrow-chip-hover: var(--line);
+  --arrow-ink: var(--ink);
+}
 .t-tabbar-course:not([data-tab-active]):has(.t-tab-toggle.open)::before {
   background: var(--tab-hover);
 }
@@ -1195,10 +1213,11 @@ small.t-pulse-counts {
   z-index: 1;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--tab-gap);
   height: 36px;
 }
-/* 选中滑片：白面与内容同纸，底部两角用内凹弧线并入内容；比 chip 多伸 7 接上分隔线 */
+/* 选中白面：白面与内容同纸，底部两角用内凹弧线并入内容；比 chip 多伸 7 接上分隔线。
+   只负责显示当前选中块，不跟随页签滑动。 */
 .t-btab-glider {
   position: absolute;
   left: 0;
@@ -1208,9 +1227,7 @@ small.t-pulse-counts {
   border-radius: 12px 12px 0 0;
   background: var(--tab-face);
   pointer-events: none;
-  transition:
-    transform 0.24s cubic-bezier(0.3, 1, 0.35, 1),
-    width 0.24s cubic-bezier(0.3, 1, 0.35, 1);
+  transition: none;
 }
 /* 选中块的轮廓：线画在块边界上（不再外扩 0.5），圆角与块同半径 12 ——
    线外缘和白面边缘重合，转角处不会露出第二层白边。
@@ -1281,19 +1298,22 @@ small.t-pulse-counts {
   z-index: 1;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   height: 36px;
-  padding: 0 20px;
+  padding: 0 10px;
   /* 四角同为 12，和选中块轮廓同一半径；悬停与选中的圆角不再有大有小 */
   border-radius: 12px;
   color: var(--muted);
   font-size: 13px;
+  font-weight: 500;
   white-space: nowrap;
   transition: color 0.15s cubic-bezier(0.3, 1, 0.35, 1);
 }
-.t-tabbar-pages .t-btab {
-  min-width: 120px;
-  justify-content: center;
+/* 文本左对齐：图标先起，标签从同一列开始；固定长度只管块宽，右端留白不挤文字 */
+.t-tabbar-pages > .t-btab {
+  width: 136px;
+  min-width: 136px;
+  justify-content: flex-start;
 }
 .t-btab::before {
   content: '';
@@ -1323,17 +1343,42 @@ small.t-pulse-counts {
 .t-btab.on:hover::before {
   background: transparent;
 }
-.t-btab-course {
-  max-width: 250px;
+/* 固定页签的文字单行省略：块宽不动，只收文字 */
+.t-btab-label {
+  flex: 1 1 auto;
   min-width: 0;
-  padding: 0 4px 0 20px;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+}
+/* 未选中页签之间的短竖线：落在两块缝隙的正中。
+   选中块左侧的缝由白面与弧脚占据，不画线；第一个块左端也不画。
+   用控件描边档而不是 hairline，1px 的竖线才立得住 */
+.t-tabbar-pages > .t-btab::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: calc(-1 * var(--tab-gap) / 2 - 0.5px);
+  width: 1px;
+  height: 16px;
+  background: var(--line-strong);
+  transform: translateY(-50%);
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 0.15s cubic-bezier(0.3, 1, 0.35, 1);
+}
+.t-tabbar-pages > .t-btab.on::after,
+.t-tabbar-pages > .t-btab.on + .t-btab::after,
+.t-tabbar-course[data-tab-active] + .t-btab::after {
+  opacity: 0;
+}
+.t-btab-course {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0 4px 0 10px;
   justify-content: flex-start;
   color: var(--muted);
   font-weight: 500;
-}
-.t-tabbar-pages .t-btab-course {
-  min-width: 0;
-  justify-content: flex-start;
 }
 /* 悬停交给整块，页签本体只留文字 */
 .t-btab-course::before {
@@ -1347,30 +1392,127 @@ small.t-pulse-counts {
   font-weight: 600;
 }
 .t-btab-course-name {
+  flex: 1 1 auto;
+  min-width: 0;
   overflow: hidden;
+  text-align: left;
   text-overflow: ellipsis;
 }
-/* 下拉落点：与页签同一 36 高，左侧一道 1px 竖线把两个动作分开 */
+/* ── 页签图标 ─────────────────────────────
+   三个页签共用 16px 图标位与 8px 图文间距；常态中性，选中才拿出各自的
+   语义色。入场动画都控制在 560ms 内：课程/任务外层轻落，审阅只让笔写动。 */
+.t-btab-review {
+  --tab-icon-accent: var(--icon-amber);
+}
+.t-btab-design {
+  --tab-icon-accent: var(--icon-blue);
+}
+.t-tab-icon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: var(--muted);
+  transition: color 0.15s cubic-bezier(0.3, 1, 0.35, 1);
+}
+.t-btab:hover .t-tab-icon {
+  color: var(--ink-soft);
+}
+.t-btab.on .t-tab-icon {
+  color: var(--tab-icon-accent);
+}
+/* 课程 Agent：白板，选中时两条板书线先后写出来，整枚图标轻轻落定。 */
+.t-btab-course.on .t-tab-icon-course {
+  animation: t-tab-course-icon 500ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.t-btab-course.on .tab-course-line {
+  animation: t-tab-course-line 420ms cubic-bezier(0.3, 1, 0.35, 1) both;
+}
+.t-btab-course.on .tab-course-line-2 {
+  animation-delay: 100ms;
+}
+/* 作业审阅：人像 + 笔。只让笔沿小圆写动一圈，整枚图标不位移。 */
+.tab-review-pen {
+  transform-box: fill-box;
+}
+.t-btab-review.on .tab-review-pen {
+  animation: t-tab-review-pen 520ms cubic-bezier(0.45, 0.05, 0.55, 0.95) 40ms both;
+}
+/* 任务设计：版式模板，选中时三块版式依次落位。 */
+.t-btab-design.on .t-tab-icon-design {
+  animation: t-tab-design-icon 500ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.tab-design-tile {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+}
+.t-btab-design.on .tab-design-tile {
+  animation: t-tab-design-tile 380ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.t-btab-design.on .tab-design-tile-left {
+  animation-delay: 70ms;
+}
+.t-btab-design.on .tab-design-tile-right {
+  animation-delay: 140ms;
+}
+@keyframes t-tab-course-icon {
+  0% { transform: scale(0.96); }
+  55% { transform: scale(1.025); }
+  100% { transform: scale(1); }
+}
+@keyframes t-tab-course-line {
+  0% { stroke-dasharray: 100; stroke-dashoffset: 100; opacity: 0.4; }
+  60% { stroke-dasharray: 100; stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dasharray: 100; stroke-dashoffset: 0; opacity: 1; }
+}
+@keyframes t-tab-review-pen {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(1px, -0.9px); }
+  50% { transform: translate(0, -1.8px); }
+  75% { transform: translate(-1px, -0.9px); }
+  100% { transform: translate(0, 0); }
+}
+@keyframes t-tab-design-icon {
+  0% { transform: rotate(-1.2deg) scale(0.97); }
+  55% { transform: rotate(0.4deg) scale(1.02); }
+  100% { transform: rotate(0deg) scale(1); }
+}
+@keyframes t-tab-design-tile {
+  0% { transform: scale(0.86); opacity: 0.45; }
+  60% { transform: scale(1.03); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+/* 下拉落点：与页签同一 36 高；左侧不再画隔离线，箭头自己承担最右端的动作。
+   箭头右侧留 10，与课程图标左侧的 10 对齐，首标签两端同宽 */
 .t-tab-toggle {
   position: relative;
   display: inline-flex;
   flex: none;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
   width: 30px;
   height: 36px;
+  padding-right: 10px;
   border-radius: 0 12px 12px 0;
-  color: var(--muted);
+  color: var(--arrow-ink, var(--muted));
   transition: color 0.15s cubic-bezier(0.3, 1, 0.35, 1);
 }
+/* 课程切换箭头单独一个和页签同色的 hover 面；选中课程时父块不铺灰，箭头仍可独立高亮 */
 .t-tab-toggle::before {
   content: '';
   position: absolute;
-  left: 0;
-  top: 8px;
-  bottom: 8px;
-  width: 1px;
-  background: var(--line);
+  inset: 4px 4px 4px 0;
+  z-index: 0;
+  border-radius: 10px;
+  background: transparent;
+  pointer-events: none;
+  transition: background-color 0.15s cubic-bezier(0.3, 1, 0.35, 1);
+}
+.t-tab-toggle:hover::before,
+.t-tab-toggle.open::before {
+  background: var(--arrow-chip-hover, var(--tab-hover));
 }
 .t-tab-toggle:hover,
 .t-tab-toggle.open {
@@ -1378,10 +1520,25 @@ small.t-pulse-counts {
   filter: none;
 }
 .t-tab-toggle svg {
+  position: relative;
+  z-index: 1;
   flex: none;
 }
 @media (prefers-reduced-motion: reduce) {
   .t-btab-glider {
+    transition: none;
+  }
+  .t-btab.on .t-tab-icon,
+  .t-btab-course.on .tab-course-line,
+  .t-btab-review.on .tab-review-pen,
+  .t-btab-design.on .tab-design-tile {
+    animation: none;
+  }
+  .t-btab-course.on .tab-course-line {
+    stroke-dasharray: none;
+    stroke-dashoffset: 0;
+  }
+  .t-tab-icon {
     transition: none;
   }
 }
