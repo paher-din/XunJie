@@ -129,7 +129,10 @@ test('installed school settings share the Root pointer and independent Agent dis
     assert.equal(rootPointer.selected.grantId, undefined);
     assert.equal(rootPointer.selected.origin, 'device');
     assert.deepEqual(await schoolApi('models/selection'), rootPointer);
-    assert.deepEqual(await deviceApi('models/selection', undefined, personal), personalPointer);
+    const personalAfter = await deviceApi('models/selection', undefined, personal);
+    assert.equal(personalAfter.version, personalPointer.version);
+    assert.deepEqual(personalAfter.selected, personalPointer.selected);
+    assert.ok(personalAfter.options.some(choice => choice.connection.connectionId === localSchoolModelId));
     const session = await schoolApi('agent-sessions/workspace', { activityId: activity.activityId, target: activity.target });
     const imageId = randomUUID(), dataBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=';
     const attachment = await deviceApi('models/images', { requestId: imageId, imageId, mediaType: 'image/png',

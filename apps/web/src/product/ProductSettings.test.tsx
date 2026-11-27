@@ -91,3 +91,11 @@ it('shows only the supplied profile identity and restores focus after Escape', a
   expect(document.activeElement).toBe(trigger)
   trigger.remove()
 })
+
+it('hides tabs that do not belong to the current surface and falls back to account', async () => {
+  await renderSettings({ initialTab: 'portrait', hiddenTabs: ['portrait'] })
+  expect(host.querySelector('nav[aria-label="设置导航"]')?.textContent).not.toContain('学生画像')
+  expect(host.querySelector('[aria-current="page"]')?.textContent).toBe('账户')
+  await click('关于')
+  expect(host.querySelector('[aria-current="page"]')?.textContent).toBe('关于')
+})

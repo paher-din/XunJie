@@ -1,9 +1,14 @@
+import type { teacherChatInputContextSchema } from '@xunjie/contracts/teacher-agent'
+import type { z } from 'zod'
 import { useContext, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { ReliableRecordStore } from '../reliable-workspace/record-store'
 import { sessionInputProtection } from '../reliable-workspace/input-protection'
 import { ActivitySessionContext } from './ActivitySession'
 
-export interface SessionDraftValue { text: string; editing: boolean; expectedVersion: number; optionId?: string }
+export type TeacherDraftTarget = NonNullable<z.input<typeof teacherChatInputContextSchema>['teacherTarget']> & { title: string }
+export interface SessionDraftValue {
+  text: string; editing: boolean; expectedVersion: number; optionId?: string; teacherTarget?: TeacherDraftTarget
+}
 interface SessionDraftRecord { key: string; scope: string; value: SessionDraftValue }
 export const sessionDraftStore = new ReliableRecordStore<SessionDraftRecord>('agentControls')
 export const sessionDraftKey = (scope: string, sessionId: string | undefined, target: string) => JSON.stringify([scope, sessionId ?? 'new', 'session-draft', target])
@@ -63,7 +68,9 @@ export function useSessionDraft(scope: string, sessionId: string | undefined, ta
     },
     clearIfMatches: async (text: string) => {
       const latest = current.current
-      if (latest.key === key && latest.value.text === text) await change({ ...latest.value, text: '', editing: false })
+      if (latest.key !== key || latest.value.text !== text) return
+      const { teacherTarget: _target, ...value } = latest.value
+      await change({ ...value, text: '', editing: false })
     },
   }
 }

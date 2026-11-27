@@ -22,6 +22,9 @@ const paths = { 'chat-completions': '/chat/completions', responses: '/responses'
 export function createModelProviders(storage: OwnedStorage, owner: {
   authorize(identity: SpaceIdentity): Promise<void>;
   assertWritable(): void;
+  scopePattern?(): string | null;
+  writableScope?(identity: SpaceIdentity, providerId: string): Promise<string>;
+  assertScope?(tx: OwnedTransaction, scope: string, providerId: string): Promise<void>;
   project(stored: Stored): ModelConnection;
   readCredential(identity: SpaceIdentity, connectionId: string, version: number): Promise<{ value: string }>;
   write(tx: OwnedTransaction, scope: string, input: SaveModelConnection, retired?: true): Promise<ModelConnection>;
@@ -38,12 +41,19 @@ export function createModelProviders(storage: OwnedStorage, owner: {
   async function list(identity: SpaceIdentity): Promise<ModelProvider[]> {
     await owner.authorize(identity);
     // A single statement observes heads and membership from one PostgreSQL snapshot.
-    const { rows } = await storage.read(`SELECT c.id,c.body,p.id AS provider_id,p.body AS provider,a.body AS anchor
-      FROM (SELECT * FROM model_connections WHERE scope=$1 AND NOT (body @> '{"retired":true}')) c
-      FULL JOIN (SELECT * FROM model_providers WHERE scope=$1 AND NOT (body @> '{"deleted":true}')) p
+    const { rows } = await storage.read(`SELECT c.id,c.body,p.id AS provider_id,p.body AS provider,a.body AS anchor,coalesce(p.scope,c.scope) AS scope
+      FROM (SELECT * FROM model_connections WHERE (scope=$1 OR scope ~ $2) AND NOT (body @> '{"retired":true}')) c
+      FULL JOIN (SELECT * FROM model_providers WHERE (scope=$1 OR scope ~ $2) AND NOT (body @> '{"deleted":true}')) p
         ON p.scope=c.scope AND p.id=coalesce((c.body->'configuration'->>'providerId')::uuid,c.id)
       LEFT JOIN model_connections a ON a.scope=p.scope AND a.id=(p.body->'credentialConnection'->>'connectionId')::uuid
-      ORDER BY coalesce(p.id,c.id),c.id`, [modelScopeOf(identity)]);
+      ORDER BY coalesce(p.id,c.id),c.id`, [modelScopeOf(identity), owner.scopePattern?.() ?? null]);
+    const providerScopes = new Map<string, string>();
+    for (const row of rows) {
+      const id = String(row.provider_id ?? (row.body as Stored).configuration.providerId ?? row.id);
+      const scope = String(row.scope);
+      if (providerScopes.has(id) && providerScopes.get(id) !== scope) throw new StorageError('conflict');
+      providerScopes.set(id, scope);
+    }
     const models = rows.filter(row => row.body).map(row => owner.project(row.body as Stored));
     const groups = new Map(rows.filter(row => row.provider).map(row =>
       [row.provider_id as string, { group: groupSchema.parse(row.provider), anchor: row.anchor as Stored | undefined }]));
@@ -84,7 +94,8 @@ export function createModelProviders(storage: OwnedStorage, owner: {
 
   async function save(identity: SpaceIdentity, value: unknown): Promise<ModelProvider> {
     owner.assertWritable(); await owner.authorize(identity);
-    const input = saveModelProviderSchema.parse(value), scope = modelScopeOf(identity);
+    const input = saveModelProviderSchema.parse(value);
+    const scope = await owner.writableScope?.(identity, input.providerId) ?? modelScopeOf(identity);
     const fingerprint = createHash('sha256').update(JSON.stringify([scope, input])).digest('hex');
     const prior = await storage.receipt(input.requestId, fingerprint);
     if (prior) return modelProviderSchema.parse(prior.result);
@@ -92,6 +103,7 @@ export function createModelProviders(storage: OwnedStorage, owner: {
     const receipt = await storage.request({ requestId: input.requestId, fingerprint }, async tx => {
       owner.assertWritable();
       await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', ['model-config:' + scope]);
+      await owner.assertScope?.(tx, scope, input.providerId);
       const { rows: [row] } = await tx.query('SELECT body FROM model_providers WHERE scope=$1 AND id=$2 FOR UPDATE', [scope, input.providerId]);
       const previous = row ? groupSchema.parse(row.body) : undefined;
       if (previous?.deleted || (previous?.version ?? 0) !== input.expectedVersion) throw new StorageError('conflict');
@@ -208,11 +220,13 @@ export function createModelProviders(storage: OwnedStorage, owner: {
   async function remove(identity: SpaceIdentity, providerId: string, value: unknown) {
     owner.assertWritable(); await owner.authorize(identity);
     z.uuid().parse(providerId);
-    const input = deleteModelProviderSchema.parse(value), scope = modelScopeOf(identity);
+    const input = deleteModelProviderSchema.parse(value);
+    const scope = await owner.writableScope?.(identity, providerId) ?? modelScopeOf(identity);
     const fingerprint = createHash('sha256').update(JSON.stringify(['delete-provider', scope, providerId, input])).digest('hex');
     const receipt = await storage.request({ requestId: input.requestId, fingerprint }, async tx => {
       owner.assertWritable();
       await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', ['model-config:' + scope]);
+      await owner.assertScope?.(tx, scope, providerId);
       const { rows: [row] } = await tx.query('SELECT body FROM model_providers WHERE scope=$1 AND id=$2 FOR UPDATE', [scope, providerId]);
       const previous = row ? groupSchema.parse(row.body) : undefined;
       if (previous?.deleted || (previous?.version ?? 0) !== input.expectedVersion) throw new StorageError('conflict');

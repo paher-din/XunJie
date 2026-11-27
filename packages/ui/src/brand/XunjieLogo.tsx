@@ -45,3 +45,39 @@ export function XunjieLogo({ format = 'mark', tone = 'color', label, className =
     </svg>
   )
 }
+
+/** 独立的「循阶」字标，复用母版转曲路径；用于需要在字标下加副标题的组合。 */
+export function XunjieWordmark({ label, className = '', ...props }: Omit<SVGProps<SVGSVGElement>, 'children'> & { label?: string }) {
+  const units = master.lettering.units
+  let cursor = 0
+  const placed = master.lettering.glyphs.map(glyph => {
+    const x = cursor
+    cursor += glyph.advance + units * .02
+    return { ...glyph, x }
+  })
+  const left = Math.min(...placed.map(g => g.x + g.bounds[0]))
+  const right = Math.max(...placed.map(g => g.x + g.bounds[2]))
+  const bottom = Math.min(...placed.map(g => g.bounds[1]))
+  const top = Math.max(...placed.map(g => g.bounds[3]))
+  // 字形路径是 y 向上的坐标，渲染时翻转并平移到 0…923；viewBox 必须按翻转后的墨迹裁。
+  const pad = 40
+  const width = right - left + pad * 2
+  const height = top - bottom + pad * 2
+  return (
+    <svg
+      {...props}
+      viewBox={`${left - pad} ${-pad} ${width} ${height}`}
+      width={width}
+      height={height}
+      className={`xunjie-wordmark ${className}`.trim()}
+      role={label ? 'img' : undefined}
+      aria-label={label}
+      aria-hidden={label ? undefined : true}
+      focusable="false"
+    >
+      <g fill="currentColor" transform={`translate(0 ${top}) scale(1 -1)`}>
+        {placed.map(g => <path key={g.char} d={g.path} transform={`translate(${g.x} 0)`} />)}
+      </g>
+    </svg>
+  )
+}

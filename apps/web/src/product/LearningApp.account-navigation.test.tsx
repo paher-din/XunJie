@@ -94,12 +94,18 @@ beforeEach(() => {
     if (route === 'context') return response({ clientNamespace: 'account-navigation', profile: 'local',
       ...(!legacyContext ? { account: connected && !explicitUnbound ? { key: currentSchoolKey, accountName: 'Robert', schoolName: '示例大学' } : null } : {}),
       identities: [{ key: 'personal', identity: personal }, ...(connected ? [{ key: currentSchoolKey, identity: school }] : [])] })
+    if (route === 'manage/course-catalog') return response({ error: 'forbidden' }, 403)
     if (space === currentSchoolKey) {
       if (schoolOffline) return response({ error: 'unavailable' }, 503)
       await holdSchool
     }
-    if (route === 'agent-sessions' && options.method === 'POST') {
-      creates.push(space!); const input = JSON.parse(String(options.body)); const value = { ...session(input.title), ...input }; sessionItems.push(value); return response(value)
+    if (route === 'agent-sessions/start' && options.method === 'POST') {
+      creates.push(space!)
+      const { create, input } = JSON.parse(String(options.body))
+      const value = { ...session(create.title), ...create }
+      sessionItems.push(value)
+      return response({ session: value, receipt: { sessionId: create.sessionId, requestId: input.requestId,
+        inputId: crypto.randomUUID(), turnId: crypto.randomUUID(), inputDigest: 'a'.repeat(64) } })
     }
     if (route === 'agent-sessions') return response({ items: sessionItems })
     if (route.startsWith('agent-sessions/')) {

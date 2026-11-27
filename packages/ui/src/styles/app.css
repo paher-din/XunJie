@@ -579,10 +579,16 @@ h3 {
   font-size: 13px;
   font-weight: 600;
   color: var(--ink);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 .am-sub {
   font-size: 12px;
   color: var(--faint);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 .am-sep {
   height: 1px;

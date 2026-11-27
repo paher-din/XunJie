@@ -64,6 +64,14 @@ it('keeps category headings concise and gives the portrait an empty state', asyn
   expect(host.textContent).toContain('还没有形成学生画像')
 })
 
+it('lets a non-student surface name its account space', async () => {
+  await render({ accountState: { status: 'ready' }, spaceLabel: '教学空间',
+    schoolName: '学校教学空间', schoolControls: <button type="button">学校连接</button> })
+  expect(host.textContent).toContain('当前教学空间')
+  expect(host.textContent).toContain('学校教学空间')
+  expect(host.textContent).not.toContain('当前学习空间')
+})
+
 it('keeps school controls visible but inert in a read-only space', async () => {
   await render({ accountState: { status: 'ready' }, readOnly: true, isLocal: true,
     schoolControls: <button type="button">连接学校</button> })

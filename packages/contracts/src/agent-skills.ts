@@ -132,6 +132,8 @@ export type LibrarySkillSelect = z.infer<typeof librarySkillSelectSchema>;
 export interface SessionSkillReadGuard {
   assertDispatch?(): Promise<void>;
   toolNames?: string[];
+  /** Trusted input-scoped references supplied by the local session owner. */
+  references?: TeachingSkillReference[];
 }
 /**
  * scope.kind=library: GET /api/learning/skills; POST /api/learning/skills/{import,select,disable,document,remove}.

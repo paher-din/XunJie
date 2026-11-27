@@ -12,7 +12,7 @@ import type { LearningReadCache } from './learning-read-cache'
 import './skills.css'
 
 type Props = { identity: SpaceIdentity; spaceKey: string; namespace: string; readOnly?: boolean; active?: boolean
-  activityId?: string; courseId?: string; cache?: LearningReadCache }
+  activityId?: string; courseId?: string; cache?: LearningReadCache; teacher?: boolean }
 type Operation = { route: string; input: unknown; label: string; importKind?: 'local' | 'github'; inputUrl?: string; update?: 'local' | 'github' }
 const fromGithub = (source: string) => /^https:\/\/github\.com\//i.test(source)
 const skillSourceLabel = (skill: SkillCatalogEntry) => skill.origin === 'course' ? '课程' : fromGithub(skill.source) ? 'GitHub' : '本地'
@@ -28,8 +28,8 @@ export function PersonalSkillsSettings(props: Props) {
     props.identity.principalId, props.activityId, props.courseId])
   return <SkillsSettingsBody key={key} {...props} />
 }
-function SkillsSettingsBody({ identity, spaceKey, namespace, readOnly = false, active = true, cache }: Props) {
-  const catalog = useSkillCatalog(identity, spaceKey, namespace, undefined, active, cache)
+function SkillsSettingsBody({ identity, spaceKey, namespace, readOnly = false, active = true, cache, teacher = false }: Props) {
+  const catalog = useSkillCatalog(identity, spaceKey, namespace, undefined, active, cache, teacher ? null : undefined)
   const [search, setSearch] = useState('')
   const [githubOpen, setGithubOpen] = useState(false), [githubUrl, setGithubUrl] = useState('')
   const [githubReading, setGithubReading] = useState(false)
@@ -210,7 +210,7 @@ function SkillsSettingsBody({ identity, spaceKey, namespace, readOnly = false, a
   const readGithubPackage = async (url: string, latest = false) => {
     let raw: unknown
     try { raw = await learningSubjectRequest(identity, spaceKey, namespace, 'skills/github-package',
-      { url, ...(latest ? { latest: true } : {}) }, teachingSkillLimits.githubReadTimeoutMs + 15000) }
+      { url, ...(latest ? { latest: true } : {}) }, teachingSkillLimits.githubReadTimeoutMs + 15000, undefined, teacher) }
     catch (cause) {
       const code = (cause as { code?: string }).code
       const reasons: Record<string, string> = {

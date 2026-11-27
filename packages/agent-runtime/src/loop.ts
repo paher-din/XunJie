@@ -108,13 +108,16 @@ async function runStep(deps: LoopDependencies, turn: AgentTurn, step: AgentStep,
   // Workspace actions are a durable Session basis: later Steps, answers, steering and notification Turns
   // reuse the last validated action while new action-bearing inputs update it.
   const workspaceInputs = await store.workspaceInputs(sessionId);
-  const originInputId = await store.turnOriginInput(turn.turnId);
+  const origin = await store.turnOriginInput(turn.turnId);
+  const originInputId = origin?.inputId ?? null;
   const visibleAnswerInputIds = (Array.isArray(persisted.answerInbox) ? persisted.answerInbox as Facts[] : [])
     .map(item => item.inputId).filter((id): id is string => typeof id === 'string');
   const scenarioInput: ScenarioInput = { identity: session.identity, sessionId, turnId: turn.turnId, stepId: step.stepId,
     inputIds: inputs.map(i => i.inputId),
     inputs: inputs.map(input => ({ inputId: input.inputId, requestId: input.input.requestId,
       text: input.input.text, context: input.input.context as Facts })),
+    ...(origin ? { originInput: { inputId: origin.inputId, requestId: origin.input.requestId,
+      text: origin.input.text, context: origin.input.context as Facts } } : {}),
     sessionState: { ...persisted, workspaceInputs: asJson(workspaceInputs) } };
   const { budget, usage, counts } = await store.budgetOf(turn.turnId);
   let plan = await buildContext({ store, gateway: deps.gateway, scenario, taskFacts: deps.taskFacts, budget, spent: usage, signal }, scenarioInput, { inputs, notifications });

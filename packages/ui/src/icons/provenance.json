@@ -1,6 +1,4 @@
 {
-  "frozenOn": "2026-10-10",
-  "source": "Approved color-polish-v2 review; Solar and OpenMoji SVG bodies from local Iconify snapshot; original custom SVGs from review; profile semantic additions: four unmodified Solar Linear bodies from iconify/icon-sets and one original analogy SVG; 2026-10-11 sun-linear.svg 项目自绘（本地快照无太阳图形，按 Solar Linear 同风格补绘）、model-linear.svg 项目自绘（模型语义）; 2026-11-10 provider-custom-linear.svg 项目自绘（自定义供应商接入）; brand-github-native.svg 来自 GitHub Octicons 原始图形（见 ATTRIBUTION.md）",
   "assets": {
     "add-linear.svg": "11b8cc61c3e1a94aa66880d91fdabcfff42071e30dcb7e28db35147de910f20e",
     "alt-arrow-down-linear.svg": "ee2188dc0f0ba9f91ad7e6e0c0fb0aa8e5c8cc778c008bed363d3dc6096d592c",
@@ -37,6 +35,7 @@
     "code-square-bold-duotone.svg": "51832bfe231108fc36513121c470a3aa598c497f09d6bb0db371dcd182da63b9",
     "code-square-linear.svg": "c2dead813556b4c9bb409c8e91f87597e8e3bc8a7bf81ec5bbba7f106176b0f5",
     "copy-linear.svg": "b9a58dfd402c501678ca055b59796755190cf0313c8c257f29b0990663405f25",
+    "course-agent-linear.svg": "4b94f776382d1691c77ce30359c44e42dd39545e4d066a2d9b3c33f6d565a76f",
     "cpu-linear.svg": "29fe2db82fb9eb9a929c7285ff62596c8d0dc279362879c84bcd6ca285c7a7e8",
     "danger-triangle-linear.svg": "e54576ad3a4c81dc5d5a9194d074c870596a81c12322ebece53df8fe0cc36207",
     "digital-waveform-linear.svg": "41c241dd38c4203dbde8719e1e46bb3f62b9fc07cc9302873f80a1d602822a1f",
@@ -102,7 +101,9 @@
     "stop-linear.svg": "4a0f3a9bb8370c5f3d114a1ad7a997c337982ba0ca48ebc72f1a34593dd270ce",
     "structure-bold-duotone.svg": "d1fdc2146781bc4bdbfb9cd97dc38f05a924f078da80b678c304205d5e5a86e8",
     "structure-linear.svg": "d605f27ba97fa8340c1a4aaf478523d6ad6dbc81643809e02bf4f012ce058b0a",
+    "student-review-linear.svg": "3e55f36249f73b921d8775f60addfb2c5d984a7a4c918e964b2de340866eed03",
     "sun-linear.svg": "0b5717416b64346146b03a6e200843a538574886201cfe41f332c16d7596d447",
+    "task-design-linear.svg": "6e2c6e73bb10301a9564c1dd6d42cb186ebb2c5535b166ab08470f13edc686ea",
     "text-square-linear.svg": "3bf95f071e76eff39c066957dcd39bf509eff02b271353eab706c867209d18ee",
     "traffic-linear.svg": "da9d9ed96b99a4a4f5d9892fd0d7e3a137ef6a4307a00cd66c0fde596f7c166b",
     "trash-bin-trash-linear.svg": "5d090508f1f6b3a9068acaa80e5e6d046f08e2ac4d360b82c9c15fb29ee081b8",
@@ -114,5 +115,9 @@
     "volume-loud-linear.svg": "bb7600509ec8cb107e6d825a383e83e75cbb73eae8a0b729fec11f0c0a611951",
     "wallet-linear.svg": "f8c66253d72736d65f50d14108afb8ba4d08d64b7efb9ab45db5e49425b0a2a6",
     "provider-custom-linear.svg": "7da5ed3ef6435824d0596e3fc77b778d31be96071fc9fd8c569d61ef4743e68c"
-  }
+  },
+  "frozenOn": "2026-10-10",
+  "source": "Approved color-polish-v2 review; Solar and OpenMoji SVG bodies from local Iconify snapshot; original custom SVGs from review; profile semantic additions: four unmodified Solar Linear bodies from iconify/icon-sets and one original analogy SVG; 2026-10-11 sun-linear.svg 项目自绘（本地快照无太阳图形，按 Solar Linear 同风格补绘）、model-linear.svg 项目自绘（模型语义）; 2026-11-10 provider-custom-linear.svg 项目自绘（自定义供应商接入）; brand-github-native.svg 来自 GitHub Octicons 原始图形（见 ATTRIBUTION.md）; 2026-11-27 course-agent-linear.svg 与 task-design-linear.svg 取自 Kubai line（whiteboard / layout-template，MIT；路径未改，仅补动画 class）；2026-11-27 student-review-linear.svg 取自 Kubai line user-pen（MIT；路径未改，仅补动画 class）",
+  "workbench-bold.svg": "1d8892df983821ea5b7608a2d574134a2c8c3fff152410d0f76f9dfe59b551b1",
+  "workbench-linear.svg": "2639ede0b6322c572a59984effb7b11a69d68bb1f541f5fcb7d516beafc18fbb"
 }

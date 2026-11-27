@@ -17,13 +17,14 @@ it('keeps returned requests tied to the same client namespace and original reque
   expect(restoreSchoolConnection('client-a', requestId)).toBeNull()
 })
 
-it('expires pending authentication while retaining a completed connection for a failed context read', () => {
+it('marks a pending authentication as expired while retaining the school request for retry', () => {
   vi.spyOn(Date, 'now').mockReturnValue(1000000)
   rememberSchoolConnection('client', pending)
-  vi.mocked(Date.now).mockReturnValue(1300001)
-  expect(restoreSchoolConnection('client', requestId)).toBeNull()
+  vi.mocked(Date.now).mockReturnValue(1900001)
+  expect(restoreSchoolConnection('client', requestId)).toMatchObject({ ...pending, expired: true })
   rememberSchoolConnection('client', { ...pending, connectionId: requestId })
   expect(restoreSchoolConnection('client', requestId)?.connectionId).toBe(requestId)
+  expect(restoreSchoolConnection('client', requestId)?.expired).toBeUndefined()
 })
 
 it('accepts the fixed client account return route', () => {

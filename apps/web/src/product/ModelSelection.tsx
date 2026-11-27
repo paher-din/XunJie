@@ -10,26 +10,28 @@ const errors: Record<string, string> = { forbidden: '当前空间或模型连接
 const failure = (error: unknown) => error instanceof Error ? error.message : '选用结果尚未确认，请重新读取。'
 const choiceKey = (choice: Choice) => choice.kind + ':' + choice.connection.connectionId
 
-export function useModelSelection(identity: SpaceIdentity | undefined, spaceKey: string, namespace: string) {
-  const scope = identity ? [namespace, spaceKey, identity.environmentId, identity.spaceId, identity.principalId].join('.') : ''
+export function useModelSelection(identity: SpaceIdentity | undefined, spaceKey: string, namespace: string, teacher = false) {
+  const route = teacher ? 'teacher-selection' : 'selection'
+  const scope = identity ? [namespace, spaceKey, route, identity.environmentId, identity.spaceId, identity.principalId].join('.') : ''
   const [state, setState] = useState<{ scope: string; selection: Selection | null; error: string; busy: boolean; stale: boolean }>({ scope: '', selection: null, error: '', busy: false, stale: false })
   const current = useRef(scope), epoch = useRef(0)
   const pending = useRef(new Map<string, z.infer<typeof selectModelSchema>>())
   current.current = scope
-  const request = useCallback(async (route: string, body?: unknown) => {
+  const request = useCallback(async (body?: unknown) => {
     const response = await fetch('/api/learning/models/' + route, { method: body === undefined ? 'GET' : 'POST', credentials: 'same-origin',
       redirect: 'error', cache: 'no-store', signal: AbortSignal.timeout(30000), headers: { 'content-type': 'application/json',
-        'x-xj-space': spaceKey, 'x-xj-namespace': namespace, 'x-xj-expected-subject': identity ? [identity.environmentId, identity.spaceId, identity.principalId].join('.') : '' },
+        'x-xj-space': spaceKey, 'x-xj-namespace': namespace, ...(teacher ? { 'x-xj-teacher-agent': '1' } : {}),
+        'x-xj-expected-subject': identity ? [identity.environmentId, identity.spaceId, identity.principalId].join('.') : '' },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }) })
     const result = await response.json()
     if (!response.ok) throw Object.assign(new Error(errors[result.error] ?? '选用结果尚未确认，请重新读取。'), { code: result.error })
     return result as unknown
-  }, [scope])
+  }, [scope, route])
   const reload = useCallback(async () => {
     if (!scope) return
     const generation = ++epoch.current
     try {
-      const selection = modelSelectionSchema.parse(await request('selection'))
+      const selection = modelSelectionSchema.parse(await request())
       if (current.current === scope && generation === epoch.current) setState(previous => ({ scope, selection, busy: previous.scope === scope && previous.busy, error: '', stale: false }))
     } catch (error) {
       if (current.current === scope && generation === epoch.current) setState(previous => ({ scope, selection: previous.scope === scope ? previous.selection : null,
@@ -57,7 +59,7 @@ export function useModelSelection(identity: SpaceIdentity | undefined, spaceKey:
     }
     pending.current.set(operationKey, operation)
     let saved: Selection
-    try { saved = modelSelectionSchema.parse(await request('selection', operation)) }
+    try { saved = modelSelectionSchema.parse(await request(operation)) }
     catch (error) {
       const code = error instanceof Error && 'code' in error ? error.code : undefined
       if (code === 'conflict' || code === 'identity-conflict') { pending.current.delete(operationKey); await reload() }

@@ -25,6 +25,9 @@ import { ProductConversationHistory } from './ProductConversationHistory'
 import { ProductSettings, type ProductSettingsTab } from './ProductSettings'
 import { SettingsFailureBoundary } from './SettingsFailureBoundary'
 import { ProductProfile } from './ProductProfile'
+import { SchoolConnectionRow, SchoolSessionRow } from './SchoolConnectionRows'
+import { loadTeacherCatalog } from '../teacher-space/data'
+import { clearTeacherCache } from '../teacher-space/teacher-cache'
 import { Toaster, toast, useToastFeedback } from '@xunjie/ui/feedback'
 import { SettingsStatus, TextInput } from '@xunjie/ui/settings'
 import { createBrowserRouter, RouterProvider, useBlocker, useLocation, useNavigate } from 'react-router-dom'
@@ -104,7 +107,7 @@ const messages: Record<string, string> = {
   missing: '无法找到或无权访问这项内容，请返回列表核对。',
   'identity-conflict': '这个请求已使用其他内容，请先核对原请求结果。',
   unavailable: '暂时无法连接原服务，请稍后重试。',
-  invalid: '请检查填写的内容。', maintenance: '学习服务正在维护，请稍后重试。',
+  invalid: '请检查填写的内容。', maintenance: '学习服务正在维护，请稍后重试。', expired: '这次请求已过期，请重新发起。',
   corrupt: '课程材料或发布版本已损坏，请联系课程管理员。', 'resource-busy': '材料正在准备中，请稍后重试。',
 }
 async function requestLearning(path: string, body?: unknown, key?: string, signal?: AbortSignal, namespace?: string): Promise<unknown> {
@@ -131,6 +134,13 @@ async function sendLearningRequest(path: string, body?: unknown, key?: string, s
   return result
 }
 const errorText = (error: unknown) => error instanceof Error ? error.message : '操作未完成，请重试。'
+const schoolAuthorizationError = (error: unknown) => {
+  const code = (error as { code?: string })?.code
+  if (code === 'expired') return new Error('学校认证请求已过期，请返回客户端重新发起认证。')
+  if (code === 'forbidden') return new Error('这次认证请求不属于当前学校账号，或已被其他设备处理。请核对账号后重新发起。')
+  if (code === 'missing') return new Error('学校认证请求已失效，请重新发起学校连接。')
+  return error
+}
 const definitive = new Set(['invalid', 'forbidden', 'missing', 'corrupt', 'identity-conflict'])
 const formatBytes = (value: number) => value < 1024 ? `${value} B` : value < 1024 * 1024 ? `${(value / 1024).toFixed(1)} KB` : `${(value / 1024 / 1024).toFixed(1)} MB`
 
@@ -370,10 +380,47 @@ function LearningView() {
   }
   const materialUrl = useRef('')
   const authorize = new URLSearchParams(location.search).get('authorize')
+  const [authorizationState, setAuthorizationState] = useState<'checking' | 'pending' | 'expired' | 'missing' | 'approved' | 'error'>(authorize ? 'checking' : 'pending')
+  const [authorizationAttempt, setAuthorizationAttempt] = useState(0)
+  let authorizationReturnUrl: string | null = null
+  if (authorize) {
+    try { authorizationReturnUrl = schoolAuthorizationReturnUrl(authorize, new URLSearchParams(location.search).get('returnTo')) }
+    catch { /* The client is still reachable from the tab that opened this page. */ }
+  }
   const identity = context?.identities.find(item => item.key === key)?.identity
   const accountName = context ? context.account?.accountName ?? '本地学习空间' : '本地学习空间'
   const personalKey = context?.identities.find(item => item.identity.kind === 'personal')?.key
   const schoolKey = context?.account?.key
+  useEffect(() => {
+    if (!context?.account?.key || authorize || context.profile === 'school') return
+    let alive = true
+    // Teacher accounts own the teacher workspace; this also covers a completed login/binding.
+    loadTeacherCatalog(context.clientNamespace, context.account.key)
+      .then(value => { if (alive && value.available) location.replace('/?teacher=overview') })
+      .catch(() => {})
+    return () => { alive = false }
+  }, [context?.account?.key, context?.clientNamespace, context?.profile, authorize])
+  useEffect(() => {
+    if (!authorize) return
+    let alive = true
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const controller = new AbortController()
+    const abort = setTimeout(() => controller.abort(), 10000)
+    setAuthorizationState('checking')
+    void api('connections/status?requestId=' + encodeURIComponent(authorize), undefined, undefined, controller.signal).then(value => {
+      if (!alive) return
+      const status = value as { state?: unknown; expiresAt?: unknown }
+      const state = status.state === 'pending' || status.state === 'approved' || status.state === 'expired' || status.state === 'missing'
+        ? status.state : 'error'
+      setAuthorizationState(state)
+      if (state === 'pending' && typeof status.expiresAt === 'string') {
+        const remaining = new Date(status.expiresAt).getTime() - Date.now()
+        if (remaining <= 0) setAuthorizationState('expired')
+        else timer = setTimeout(() => { if (alive) setAuthorizationState('expired') }, remaining)
+      }
+    }).catch(() => { if (alive) setAuthorizationState('error') })
+    return () => { alive = false; clearTimeout(abort); if (timer) clearTimeout(timer); controller.abort() }
+  }, [authorize, authorizationAttempt])
   const readTaskSubmission = useCallback(async (activity: LearningActivity, signal: AbortSignal) => {
     const binding = activity.course
     if (!schoolKey || !binding) throw new Error('无法核对任务提交状态。')
@@ -426,8 +473,21 @@ function LearningView() {
   }
   useEffect(() => {
     let disposed = false
-    void api('context').then(result => {
-      if (!disposed) { const next = normalizeContext(result as Context); setContext(next);
+    void api('context').then(async result => {
+      const next = normalizeContext(result as Context)
+      // Resolve the teacher surface before the student shell mounts. Redirecting
+      // after rendering makes a direct visit visibly flash the student home first.
+      // A school authorization request must stay on this page so the approval
+      // action is reachable even when the account is already signed in.
+      // The direct school entry keeps its default student landing.
+      if (next.account?.key && !authorize && next.profile !== 'school') {
+        try {
+          const catalog = await loadTeacherCatalog(next.clientNamespace, next.account.key)
+          if (disposed) return
+          if (catalog.available) { location.replace('/?teacher=overview'); return }
+        } catch { /* A failed probe keeps the student surface available. */ }
+      }
+      if (!disposed) { setContext(next);
         try { sessionStorage.setItem('xj.works-context.v1', JSON.stringify(next)) } catch { /* Optional hint. */ }
         const preferred = new URLSearchParams(location.search).get('space')
         setKey(preferredKey(next, preferred, agentOpen && !requestedActivity.current)) }
@@ -880,6 +940,7 @@ function LearningView() {
     const authentication = ++authEpoch.current
     await protectActivity()
     await api('connections/revoke', { connectionId: schoolKey.slice(7) }, schoolKey)
+    clearTeacherCache()
     if (authentication !== authEpoch.current) return
     if (currentView.current.key === schoolKey) await protectActivity()
     const current = currentView.current.context
@@ -931,7 +992,8 @@ function LearningView() {
   async function authenticateSchoolClient() {
     if (!authorize) return false
     const returnUrl = schoolAuthorizationReturnUrl(authorize, new URLSearchParams(location.search).get('returnTo'))
-    await api('connections/approve', { requestId: authorize })
+    try { await api('connections/approve', { requestId: authorize }) }
+    catch (cause) { throw schoolAuthorizationError(cause) }
     if (returnToSchoolClient(returnUrl)) return true
     const params = new URLSearchParams(location.search)
     params.delete('authorize'); params.delete('returnTo')
@@ -939,25 +1001,43 @@ function LearningView() {
     setNotice('学校认证已完成，请返回原客户端完成连接。')
     return false
   }
+  async function retrySchoolAuthorization(pending: PendingSchoolConnection) {
+    const schoolEndpoint = new URL(pending.authorizationUrl).origin
+    const request = schoolStartRequest.current?.schoolEndpoint === schoolEndpoint
+      ? schoolStartRequest.current : { requestId: crypto.randomUUID(), schoolEndpoint }
+    schoolStartRequest.current = request
+    const next = await api('client/start', request) as PendingConnection
+    schoolStartRequest.current = null
+    rememberPendingConnection(next)
+  }
+  const pendingExpired = !!pendingConnection?.expired && !pendingConnection.connectionId
   const schoolConnectionForm = pendingConnection ? <div className="product-school-pending">
-    <p role="status">{pendingConnection.connectionId ? '学校认证已完成，请重新读取连接。' : pendingConnection.authenticated
-      ? '学校认证已完成，点击下方按钮完成连接。' : '请在学校页面完成认证，然后返回这里完成连接。'}</p>
+    <p role={pendingExpired ? 'alert' : 'status'}>{pendingConnection.connectionId ? '学校认证已完成，请重新读取连接。' : pendingExpired
+      ? '学校认证请求已过期。学校链接已经保留，重新发起后不需要再次填写。'
+      : pendingConnection.authenticated ? '学校认证已完成，点击下方按钮完成连接。' : '请在学校页面完成认证，然后返回这里完成连接。'}</p>
     <div className="product-school-actions">
-      <button type="button" className="primary" disabled={busy} aria-busy={busy || undefined} onClick={() => void action(async generation => {
-        let connectionId = pendingConnection.connectionId
-        if (!connectionId) {
-          const connection = await api('client/complete', { requestId: pendingConnection.requestId }) as { connectionId: string }
-          if (generation !== epoch.current) return
-          connectionId = connection.connectionId
-          rememberPendingConnection({ ...pendingConnection, connectionId })
-        }
-        if (await refreshContext('school:' + connectionId, generation)) {
-          rememberPendingConnection(null); setSchoolFormOpen(false); setSchoolEndpoint('')
-          toast.success('学校已连接。')
-        }
-      })}>{busy ? pendingConnection.connectionId ? '正在读取连接…' : '正在完成连接…'
-        : pendingConnection.connectionId ? '重新读取连接' : '已完成认证，连接学校'}</button>
-      {!pendingConnection.connectionId && <a className="outline product-school-auth-link" href={pendingConnection.authorizationUrl} target="_blank" rel="noreferrer">重新打开学校认证页面</a>}
+      {pendingExpired
+        ? <button type="button" className="primary" disabled={busy} aria-busy={busy || undefined}
+          onClick={() => void action(() => retrySchoolAuthorization(pendingConnection))}>重新发起认证</button>
+        : <button type="button" className="primary" disabled={busy} aria-busy={busy || undefined} onClick={() => void action(async generation => {
+          let connectionId = pendingConnection.connectionId
+          if (!connectionId) {
+            let connection: { connectionId: string }
+            // A new connection must not inherit the previous account's offline context.
+            try { sessionStorage.removeItem('xj.works-context.v1') } catch { /* Optional hint. */ }
+            try { connection = await api('client/complete', { requestId: pendingConnection.requestId }) as { connectionId: string } }
+            catch (cause) { throw schoolAuthorizationError(cause) }
+            if (generation !== epoch.current) return
+            connectionId = connection.connectionId
+            rememberPendingConnection({ ...pendingConnection, connectionId })
+          }
+          if (await refreshContext('school:' + connectionId, generation)) {
+            rememberPendingConnection(null); setSchoolFormOpen(false); setSchoolEndpoint('')
+            toast.success('学校已连接。')
+          }
+        })}>{busy ? pendingConnection.connectionId ? '正在读取连接…' : '正在完成连接…'
+          : pendingConnection.connectionId ? '重新读取连接' : '已完成认证，连接学校'}</button>}
+      {!pendingConnection.connectionId && !pendingExpired && <a className="outline product-school-auth-link" href={pendingConnection.authorizationUrl} target="_blank" rel="noreferrer">重新打开学校认证页面</a>}
     </div>
     {!pendingConnection.connectionId && <button type="button" className="product-school-text-action" disabled={busy} onClick={event => {
       rememberPendingConnection(null); openSchoolForm(event.currentTarget.closest<HTMLElement>('.product-school'))
@@ -986,30 +1066,23 @@ function LearningView() {
     </Button>
   const schoolControls = context && <section className="product-school" tabIndex={-1} aria-busy={busy || undefined}><h2>学校连接</h2>
       {context.profile !== 'school' && (schoolIdentities.length > 0 ? <div className="product-school-list">
-        {schoolIdentities.map(item => <div className="product-school-row" key={item.key}>
-          <div className="product-school-name"><span className="product-school-icon"><Icon name="link" size={18} /></span>
-            <div><strong>{context.account?.schoolName ?? item.identity.name}</strong><span className="product-school-status">已绑定</span></div></div>
-          <div className="product-school-row-actions">
-          {!schoolFormOpen && !pendingConnection && <button type="button" className="product-school-rebind" disabled={busy}
-            onClick={event => {
-              disconnectTrigger.current = event.currentTarget
-              disconnectSection.current = event.currentTarget.closest<HTMLElement>('.product-school')
-              setDisconnectError(''); setDisconnectTarget({ key: item.key, name: context.account?.schoolName ?? item.identity.name, replace: true })
-            }}>换绑学校</button>}
-          {item.key.startsWith('school:') && <button type="button" className="product-school-disconnect" aria-label={`断开${item.identity.name}的连接`} disabled={busy}
-            onClick={event => {
-              disconnectTrigger.current = event.currentTarget
-              disconnectSection.current = event.currentTarget.closest<HTMLElement>('.product-school')
-              setDisconnectError(''); setDisconnectTarget({ key: item.key, name: item.identity.name })
-            }}>断开连接</button>}
-          </div>
-        </div>)}
+        {schoolIdentities.map(item => <SchoolConnectionRow key={item.key} name={context.account?.schoolName ?? item.identity.name} busy={busy}
+          onRebind={!schoolFormOpen && !pendingConnection ? event => {
+            disconnectTrigger.current = event.currentTarget
+            disconnectSection.current = event.currentTarget.closest<HTMLElement>('.product-school')
+            setDisconnectError(''); setDisconnectTarget({ key: item.key, name: context.account?.schoolName ?? item.identity.name, replace: true })
+          } : undefined}
+          onDisconnect={item.key.startsWith('school:') ? event => {
+            disconnectTrigger.current = event.currentTarget
+            disconnectSection.current = event.currentTarget.closest<HTMLElement>('.product-school')
+            setDisconnectError(''); setDisconnectTarget({ key: item.key, name: item.identity.name })
+          } : undefined} />)}
       </div> : schoolConnectionForm)}
       {context.profile !== 'school' && schoolIdentities.length > 0 && (schoolFormOpen || pendingConnection) && schoolConnectionForm}
-      {context.identities.some(item => item.key === 'school') ? <div className="product-school-session"><span className="product-school-status">已登录此学校</span><button type="button" className="outline" disabled={busy} onClick={() => void action(async () => {
+      {context.identities.some(item => item.key === 'school') ? <SchoolSessionRow busy={busy} onLogout={() => void action(async () => {
         const authentication = ++authEpoch.current
         await protectActivity()
-        await api('logout', {}); if (authentication !== authEpoch.current) return
+        await api('logout', {}); clearTeacherCache(); if (authentication !== authEpoch.current) return
         // Authentication outlives a view switch; a later login still supersedes this response.
         if (currentView.current.key === 'school') await protectActivity()
         if (authentication !== authEpoch.current || !currentView.current.context) return
@@ -1024,7 +1097,7 @@ function LearningView() {
           setKey(nextKey)
           setReload(value => value + 1)
         }
-      })}>{busy ? '正在退出…' : '退出学校登录'}</button></div> : null}
+      })} /> : null}
     </section>
   const preview = !modelsOpen && taskPreview && (taskPreview.activityId
     ? taskPreview.activityId === opened?.activityId : taskPreview.search === route.search) ? taskPreview : null
@@ -1140,13 +1213,39 @@ function LearningView() {
     if (saved && remove && routeSessionId === id) openAgent()
     return saved
   }
-  if (schoolLoginRequired) return <SessionLogin entryRole="student" loginName={loginName} password={password}
+  const schoolSessionActive = context ? context.identities.some(item => item.key === 'school') : undefined
+  const authorizationExpiredTitle = authorizationState === 'missing'
+    ? '这个认证请求已失效或不属于此客户端。' : '学校认证请求已过期。'
+  const authorizationExpiredHelp = schoolSessionActive === undefined
+    ? '返回客户端重新发起认证。学校链接会保留；当前学校登录状态仍在核对。'
+    : schoolSessionActive
+      ? '当前学校登录仍然有效。返回客户端重新发起认证后，可直接确认，不需要重新输入账号密码。'
+      : '返回客户端重新发起认证。学校链接会保留，但需要重新登录学校账号。'
+  const authorizationGate = authorize && authorizationState !== 'pending'
+    ? <div className="content home-page"><section className="product-connection" aria-labelledby="authorization-status-title">
+      <h2 id="authorization-status-title">学校认证</h2>
+      {authorizationState === 'checking'
+        ? <p role="status">正在核对学校认证请求…</p>
+        : authorizationState === 'error'
+          ? <><p role="alert">暂时无法核对学校认证请求，请重试。</p>
+            <button type="button" className="outline" onClick={() => setAuthorizationAttempt(value => value + 1)}>重新核对</button>
+            <button type="button" className="outline" onClick={() => setAuthorizationState('pending')}>继续登录</button></>
+          : authorizationState === 'approved'
+            ? <><p role="status">学校认证已完成，请返回客户端完成连接。</p>
+              {authorizationReturnUrl && <a className="outline product-school-auth-link" href={authorizationReturnUrl}>返回客户端</a>}</>
+            : <><p role="alert">{authorizationExpiredTitle}</p>
+              <p>{authorizationExpiredHelp}</p>
+              {authorizationReturnUrl && <a className="outline product-school-auth-link" href={authorizationReturnUrl}>返回客户端</a>}</>}
+    </section></div> : null
+  if (schoolLoginRequired) return authorizationGate ?? <SessionLogin entryRole="student" loginName={loginName} password={password}
     busy={busy} logoutFailed={false} accountRef={schoolAccount}
     description={authorize ? '使用学校账号登录并认证，完成后将返回客户端。' : '使用学校账号登录，继续你的学习。'}
     submitLabel={authorize ? '登录并认证' : undefined}
     onLoginNameChange={setLoginName} onPasswordChange={setPassword}
     onSubmit={() => void action(async generation => {
       ++authEpoch.current
+      // Login may switch accounts; never let an old cached space list seed the new view.
+      try { sessionStorage.removeItem('xj.works-context.v1') } catch { /* Optional hint. */ }
       await api('login', { loginName, password }); if (generation !== epoch.current) return
       setPassword('')
       if (authorize) {
@@ -1245,7 +1344,7 @@ function LearningView() {
       {schoolControls}
     </div> : routeActivityId ? <div className="content" role="status">{error ? '学习活动暂时无法打开。' : ''}{error && <Button variant="outline" onClick={goHome}>返回首页</Button>}</div>
     : agentOpen && (!personalKey || key !== personalKey) ? <div className="content home-page"><p>请在本机客户端开始个人学习；学校课程请从首页进入。</p><Button onClick={goHome}>返回首页</Button></div> : agentOpen ? <Suspense fallback={<div className="content" role="status" aria-label="正在准备对话" />}><ProductAgent
-      key={context.clientNamespace + identity.principalId + (routeSessionId ?? 'new')} identity={identity} spaceKey={key} namespace={context.clientNamespace}
+      key={context.clientNamespace + identity.principalId} identity={identity} spaceKey={key} namespace={context.clientNamespace}
       sessionId={routeSessionId} session={conversationHistory.items.find(item => item.sessionId === routeSessionId)}
       acceptedFirstMessage={acceptedFirstMessage} onSession={sessionCreated} onWorkspace={(id, source) => void action(async () => {
         if (!source) return openActivity(id, false, personalKey)
@@ -1260,9 +1359,24 @@ function LearningView() {
       {(context.readOnly || authorize || courseRecovery && !preview) && <div className="content product-home-alerts">
         {context.readOnly && <p role="status" className="product-workspace-notice">这是还原校验副本，作品与学习对话只读，不会启动 Agent 或实验；请由维护者完成接管后继续。</p>}
         {authorize && <section className="product-connection" aria-labelledby="approve-title"><h2 id="approve-title">学校认证</h2>
-          <p>使用当前学校账号认证，完成后返回客户端连接学校。</p>
-          <button type="button" className="primary" disabled={busy || !context.identities.some(item => item.key === 'school')}
-            onClick={() => void action(async () => { await authenticateSchoolClient() })}>认证并返回客户端</button>
+          {authorizationState === 'checking'
+            ? <p role="status">正在核对学校认证请求…</p>
+            : authorizationState === 'error'
+              ? <><p role="alert">暂时无法核对学校认证请求，请重试。</p>
+                <div className="product-school-actions">
+                  <button type="button" className="outline" onClick={() => setAuthorizationAttempt(value => value + 1)}>重新核对</button>
+                  <button type="button" className="outline" disabled={busy || !schoolSessionActive}
+                    onClick={() => void action(async () => { await authenticateSchoolClient() })}>仍然认证</button>
+                </div></>
+              : authorizationState === 'approved'
+                ? <><p role="status">学校认证已完成，请返回客户端完成连接。</p>
+                  {authorizationReturnUrl && <a className="outline product-school-auth-link" href={authorizationReturnUrl}>返回客户端</a>}</>
+                : authorizationState !== 'pending'
+                  ? <><p role="alert">{authorizationExpiredTitle}</p><p>{authorizationExpiredHelp}</p>
+                    {authorizationReturnUrl && <a className="outline product-school-auth-link" href={authorizationReturnUrl}>返回客户端</a>}</>
+                  : <><p>使用当前学校账号认证，完成后返回客户端连接学校。</p>
+                    <button type="button" className="primary" disabled={busy || !schoolSessionActive}
+                      onClick={() => void action(async () => { await authenticateSchoolClient() })}>认证并返回客户端</button></>}
         </section>}
         {courseRecovery && !preview && <div className="course-pending"><p>{busy ? '正在准备课程活动…' : '上次课程活动的请求结果尚未核对，将先查询原请求。'}</p>
           <button type="button" className="outline" disabled={busy} onClick={() => void action(() => startCourse(courseRecovery.releaseId))}>核对并继续原请求</button>

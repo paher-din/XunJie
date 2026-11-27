@@ -80,3 +80,21 @@ it('opens and closes collapsed conversation history with keyboard focus', async 
   expect([search, archive, create].every(button => button.getAttribute('aria-hidden') === 'true' && button.tabIndex === -1)).toBe(true)
   await act(async () => root.unmount())
 })
+
+it('hides the personal profile entry on surfaces that have no profile', async () => {
+  vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
+  vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener() {}, removeEventListener() {} }))
+  const host = document.createElement('div')
+  document.body.append(host)
+  const root = createRoot(host)
+  const settings = vi.fn()
+  await act(async () => root.render(<ProductShell immersive={false} accountName="wuboqun" active="home"
+    onHome={vi.fn()} onAgent={vi.fn()} onSettings={settings}><p>内容</p></ProductShell>))
+  await act(async () => host.querySelector<HTMLButtonElement>('.account-pill')!.click())
+  const menu = host.querySelector<HTMLElement>('.am-pill')!
+  expect(menu.textContent).not.toContain('个人资料')
+  expect(menu.textContent).toContain('设置')
+  await act(async () => menu.querySelector<HTMLButtonElement>('[role="menuitem"]')!.click())
+  expect(settings).toHaveBeenCalledOnce()
+  await act(async () => root.unmount())
+})

@@ -40,7 +40,7 @@ export const memberPermissionMigration: Migration = { version: 12, name: 'member
 const derive = promisify(scrypt);
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const id = z.uuid();
-const fail = (code: 'forbidden' | 'invalid' | 'missing'): never => { throw new StorageError(code); };
+const fail = (code: 'forbidden' | 'invalid' | 'missing' | 'expired'): never => { throw new StorageError(code); };
 async function passwordKey(password: string, salt: string) {
   return (await derive(password, salt, 32)) as Buffer;
 }
@@ -265,7 +265,7 @@ export function createSpaces(storage: OwnedStorage, options: { sessionLifetimeMs
   async function beginConnection(value: { requestId: string; clientId: string; challenge: string }) {
     const input = z.object({ requestId: z.uuid(), clientId: z.uuid(), challenge: z.string().regex(/^[A-Za-z0-9_-]{43}$/) }).strict().parse(value);
     await storage.request({ requestId: input.requestId, fingerprint: digest(input) }, async tx => {
-      await tx.query("INSERT INTO authorizations(id,client_id,challenge,expires_at) VALUES ($1,$2,$3,clock_timestamp()+interval '5 minutes')",
+      await tx.query("INSERT INTO authorizations(id,client_id,challenge,expires_at) VALUES ($1,$2,$3,clock_timestamp()+interval '15 minutes')",
         [input.requestId, input.clientId, input.challenge]);
       return null;
     });
@@ -276,19 +276,36 @@ export function createSpaces(storage: OwnedStorage, options: { sessionLifetimeMs
     await storage.request({ requestId: randomUUID(), fingerprint: digest({ requestId, member }) }, async tx => {
       const result = await tx.query(`UPDATE authorizations SET principal_id=$2 WHERE id=$1
         AND expires_at>clock_timestamp() AND (principal_id IS NULL OR principal_id=$2)`, [requestId, member.principalId]);
-      if (!result.rowCount) fail('forbidden');
+      if (!result.rowCount) {
+        const { rows: [authorization] } = await tx.query<{ expired: boolean }>(
+          'SELECT expires_at<=clock_timestamp() AS expired FROM authorizations WHERE id=$1', [requestId]);
+        if (!authorization) return fail('missing');
+        if (authorization.expired) return fail('expired');
+        return fail('forbidden');
+      }
       return null;
     });
   }
+  async function connectionStatus(requestId: string) {
+    id.parse(requestId);
+    const { rows: [row] } = await storage.read(`SELECT CASE WHEN expires_at<=clock_timestamp() THEN 'expired'
+      WHEN principal_id IS NULL THEN 'pending' ELSE 'approved' END AS state, expires_at
+      FROM authorizations WHERE id=$1`, [requestId]);
+    if (!row) return { state: 'missing' as const };
+    return { state: row.state as 'expired' | 'pending' | 'approved', expiresAt: new Date(row.expires_at as string | Date).toISOString() };
+  }
   async function exchangeConnection(requestId: string, verifier: string) {
     id.parse(requestId); z.string().regex(/^[A-Za-z0-9_-]{43,128}$/).parse(verifier);
-    const { rows: [row] } = await storage.read(`SELECT principal_id FROM authorizations
-      WHERE id=$1 AND challenge=$2 AND principal_id IS NOT NULL AND expires_at>clock_timestamp()`, [requestId, proof(verifier)]);
-    if (!row) return fail('forbidden');
+    const { rows: [authorization] } = await storage.read<{ principal_id: string | null; challenge: string; expired: boolean }>(
+      `SELECT principal_id, challenge, expires_at<=clock_timestamp() AS expired FROM authorizations WHERE id=$1`, [requestId]);
+    if (!authorization) return fail('missing');
+    if (authorization.challenge !== proof(verifier)) return fail('forbidden');
+    if (authorization.expired) return fail('expired');
+    if (!authorization.principal_id) return fail('forbidden');
     const token = proof(`connection:${requestId}:${verifier}`);
     await storage.request({ requestId: operationId(`exchange:${requestId}`), fingerprint: digest({ requestId, token: digest(token) }) }, async tx => {
       await tx.query(`INSERT INTO sessions(token_hash,principal_id,expires_at,kind,connection_id)
-        VALUES ($1,$2,clock_timestamp()+interval '30 days','connection',$3)`, [sessionDigest(token), row.principal_id, requestId]);
+        VALUES ($1,$2,clock_timestamp()+interval '30 days','connection',$3)`, [sessionDigest(token), authorization.principal_id, requestId]);
       return null;
     });
     return { token, identity: await authenticate(token, 'connection'), connectionId: requestId,
@@ -317,5 +334,5 @@ export function createSpaces(storage: OwnedStorage, options: { sessionLifetimeMs
     await storage.read('SELECT a.principal_id FROM accounts a JOIN memberships m ON m.principal_id=a.principal_id');
   }
   return { personal, readPersonal, verifyPassword, schoolSpace, createMember, setMembership, setMemberPermission, hasMemberPermission, login, authenticate, authorize, account, lookup, schoolSession, activeSchoolSessions, bindMember, resolveBinding,
-    logout, authenticateConnection, readConnection, authorizeConnection, beginConnection, approveConnection, exchangeConnection, revokeConnection, adminRevokeConnection, validate };
+    logout, authenticateConnection, readConnection, authorizeConnection, beginConnection, approveConnection, connectionStatus, exchangeConnection, revokeConnection, adminRevokeConnection, validate };
 }

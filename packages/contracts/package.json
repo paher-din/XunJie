@@ -8,6 +8,10 @@
     "dist"
   ],
   "exports": {
+    "./teacher-agent": {
+      "types": "./dist/teacher-agent.d.ts",
+      "import": "./dist/teacher-agent.js"
+    },
     "./study-copies": {
       "types": "./dist/study-copies.d.ts",
       "import": "./dist/study-copies.js"

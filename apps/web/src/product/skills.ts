@@ -23,8 +23,8 @@ export function draftSkillOption(skill: SkillCatalogEntry) {
     ...(unavailable ? { unavailable } : {}) }
 }
 
-export function useSkillCatalog(identity: SpaceIdentity, spaceKey: string, namespace: string, sessionId?: string, enabled = true, cache?: LearningReadCache) {
-  const scope = JSON.stringify([namespace, spaceKey, identity.environmentId, identity.spaceId, identity.principalId, sessionId])
+export function useSkillCatalog(identity: SpaceIdentity, spaceKey: string, namespace: string, sessionId?: string, enabled = true, cache?: LearningReadCache, teacherCourseId?: string | null) {
+  const scope = JSON.stringify([namespace, spaceKey, identity.environmentId, identity.spaceId, identity.principalId, sessionId, teacherCourseId])
   const cacheKey = skillCatalogCacheKey(namespace, identity, sessionId)
   const current = useRef(scope), live = useRef(false), reads = useRef(0)
   const client = useRef({})
@@ -40,10 +40,10 @@ export function useSkillCatalog(identity: SpaceIdentity, spaceKey: string, names
     let result: unknown
     if (sessionId) {
       if (route !== 'skills' && route !== 'skills/select') throw new Error('会话技能目录只支持读取和选择；请在设置中管理个人技能库。')
-      const client = new AgentSessionsClient({ identity, spaceKey, namespace })
+      const client = new AgentSessionsClient({ identity, spaceKey, namespace, teacherCourseId: teacherCourseId ?? undefined })
       result = await client.request(`${sessionId}/${route}`, body === undefined ? undefined : sessionSkillSelectSchema.parse(body))
     } else result = await learningSubjectRequest(identity, spaceKey, namespace, route, body,
-      route === 'skills/import' ? teachingSkillLimits.importTimeoutMs : undefined)
+      route === 'skills/import' ? teachingSkillLimits.importTimeoutMs : undefined, undefined, teacherCourseId !== undefined)
     if (body !== undefined && ['skills/import', 'skills/select', 'skills/disable', 'skills/remove'].includes(route))
       for (const changed of catalogChanges) changed(namespace, client.current)
     return result

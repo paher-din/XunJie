@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { createFileBackend, openStorage, provisionStorage } from '@xunjie/storage';
+import { createFileBackend, openStorage, provisionStorage, StorageError } from '@xunjie/storage';
 import { createSpaces, createCourses, createLearningData, learningMigrations, spaceCourseMigrations } from '@xunjie/learning-space';
 import { aluPackage, aluCoursePackage } from '../../../components/alu-experiment/package.mjs';
 import { nativeFixture } from '../../storage/test/native-fixture.mjs';
@@ -47,4 +47,19 @@ test('ALU 发布 306 可在已有 v4 的环境导入，旧活动仍绑定原发�
   assert.equal(newActivity.course.helpPolicy.predictionGate.hideResultsBeforePrediction, true);
   for (const activity of [reopened, newActivity])
     assert.equal((await courses.readComponent(student, activity.course.releaseId, 'alu')).definition.digest, definition.digest);
+
+  const teacher = await spaces.createMember({ requestId: randomUUID(), loginName: 'alu-publication-teacher', password: randomUUID() });
+  let allowed = true;
+  const authorize = async () => { if (!allowed) throw new StorageError('forbidden'); };
+  const published = courses.teacherPublished(teacher, publication.course.courseId, authorize);
+  assert.equal((await published.find(publication.task.title)).length, 2);
+  await assert.rejects(courses.readRelease(teacher, publication.release.releaseId), { code: 'forbidden' });
+  const teacherRelease = await published.release(publication.release.releaseId);
+  assert.equal(teacherRelease.releaseId, publication.release.releaseId);
+  const entry = teacherRelease.materials[0];
+  assert.equal((await published.material(teacherRelease.releaseId, entry.materialId)).sha256, entry.sha256);
+  const wrongCourse = courses.teacherPublished(teacher, randomUUID(), authorize);
+  await assert.rejects(wrongCourse.release(teacherRelease.releaseId), { code: 'forbidden' });
+  allowed = false;
+  await assert.rejects(published.material(teacherRelease.releaseId, entry.materialId), { code: 'forbidden' });
 });

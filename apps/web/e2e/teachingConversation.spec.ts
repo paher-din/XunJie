@@ -7,6 +7,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createServer } from 'node:http'
 import { openProductRuntime, createProductRuntimeHost, createProductLearningApplication, resolveCredential } from '@xunjie/product-runtime'
+import { fixedPdf } from '../../server/tests/fixtures/pdf-material.mjs'
 
 const postgresBin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN
 test.skip(!postgresBin, 'Requires native PostgreSQL 18.6')
@@ -20,7 +21,6 @@ let richReply = ''
 let thinkingReply = false
 let toolEachReply = false
 let skillTool: { skillId: string; version: number } | undefined
-let skillToolStep = 0
 let holdFirstFinal = false
 let finishFirstFinal: (() => void) | undefined
 let translationCalls = 0
@@ -35,7 +35,6 @@ test.beforeEach(async () => {
   thinkingReply = false
   toolEachReply = false
   skillTool = undefined
-  skillToolStep = 0
   holdFirstFinal = false
   finishFirstFinal = undefined
   translationCalls = 0
@@ -77,7 +76,9 @@ test.beforeEach(async () => {
       const last = payload.messages?.at(-1) as { role?: string; content?: unknown } | undefined
       const lastText = typeof last?.content === 'string' ? last.content : Array.isArray(last?.content)
         ? last.content.map((part: { text?: string }) => part.text ?? '').join('') : JSON.stringify(last?.content ?? '')
-      if (last?.role === 'tool' || (last?.role === 'user'
+      const materializedToolResult = last?.role === 'user' && lastText.trimStart().startsWith('本步材料')
+        && payload.messages?.some((message: { role: string }) => message.role === 'tool')
+      if (last?.role === 'tool' || materializedToolResult || (last?.role === 'user'
         && lastText.trimStart().startsWith('此前工具与等待的原始事实') && lastText.includes('list_learning_tasks'))) {
         if (holdFirstFinal && questionNumber === 1) {
           await new Promise<void>(resolve => { finishFirstFinal = resolve })
@@ -100,37 +101,12 @@ test.beforeEach(async () => {
       return
     }
     if (skillTool) {
-      const step = skillToolStep++
-      const last = payload.messages?.at(-1) as { content?: unknown } | undefined
-      const feedback = typeof last?.content === 'string' ? last.content : Array.isArray(last?.content)
-        ? last.content.map((part: { text?: string }) => part.text ?? '').join('') : ''
-      const normalized = feedback.replace(/\\"/g, '"')
-      const entries = [...normalized.matchAll(/bindingId[^a-f0-9]{1,8}([a-f0-9]{64})[\s\S]{0,500}?"name":"([^"]+)"/g)]
-        .map(match => ({ bindingId: match[1]!, name: match[2]! }))
-      const bindingIds = entries.filter(entry => entry.name === 'skill_load').map(entry => entry.bindingId).slice(0, 1)
       response.writeHead(200, { 'content-type': 'text/event-stream' })
       const send = (value: unknown) => response.write('data: ' + JSON.stringify(value) + '\n\n')
-      if (step === 0) {
-        send({ id: 'skill-discover', choices: [{ index: 0, delta: { role: 'assistant', tool_calls: [{ index: 0,
-          id: 'skill-discover-call', type: 'function', function: { name: 'discover_tools', arguments: JSON.stringify({
-            purpose: 'Skill', pageSize: 8 }) } }] }, finish_reason: null }] })
-        send({ id: 'skill-discover', choices: [{ index: 0, delta: {}, finish_reason: 'tool_calls' }] })
-      } else if (step === 1) {
-        send({ id: 'skill-load-tools', choices: [{ index: 0, delta: { role: 'assistant', tool_calls: [{ index: 0,
-          id: 'skill-load-tools-call', type: 'function', function: { name: 'load_tools', arguments: JSON.stringify({ bindingIds }) } }] }, finish_reason: null }] })
-        send({ id: 'skill-load-tools', choices: [{ index: 0, delta: {}, finish_reason: 'tool_calls' }] })
-      } else if (step === 2) {
-        send({ id: 'skill-load', choices: [{ index: 0, delta: { role: 'assistant', tool_calls: [{ index: 0,
-          id: 'skill-load-call', type: 'function', function: { name: 'skill_load', arguments: JSON.stringify({
-            skillId: skillTool.skillId, version: skillTool.version, path: 'SKILL.md' }) } }] }, finish_reason: null }] })
-        send({ id: 'skill-load', choices: [{ index: 0, delta: {}, finish_reason: 'tool_calls' }] })
-      } else {
-        const text = richReply || '界面回答' + (replies.length + 1)
-        replies.push(text)
-        send({ id: 'skill-answer', choices: [{ index: 0, delta: { role: 'assistant', content: text }, finish_reason: null }] })
-        send({ id: 'skill-answer', choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] })
-        send({ choices: [], usage: { prompt_tokens: 20, completion_tokens: 10, total_tokens: 30 } })
-      }
+      send({ id: 'skill-load', choices: [{ index: 0, delta: { role: 'assistant', tool_calls: [{ index: 0,
+        id: 'skill-load-call', type: 'function', function: { name: 'skill_load', arguments: JSON.stringify({ ...skillTool, path: 'SKILL.md' }) } }] }, finish_reason: null }] })
+      send({ id: 'skill-load', choices: [{ index: 0, delta: {}, finish_reason: 'tool_calls' }] })
+      skillTool = undefined
       response.end('data: [DONE]\n\n')
       return
     }
@@ -208,16 +184,12 @@ async function configureModel(request: import('@playwright/test').APIRequestCont
 
 async function conversationOf(request: import('@playwright/test').APIRequestContext, sessionId: string) {
   const context = await (await request.get(endpoint + '/api/learning/context')).json()
-  return (await request.get(`${endpoint}/api/learning/agent-sessions/${sessionId}/conversation?after=0`, {
-    headers: { 'x-xj-space': 'personal', 'x-xj-namespace': context.clientNamespace, 'x-xj-agent-contract': '2' },
-  })).json()
-}
-
-async function snapshotOf(request: import('@playwright/test').APIRequestContext, sessionId: string, runId: string) {
-  const context = await (await request.get(endpoint + '/api/learning/context')).json()
-  return (await request.get(`${endpoint}/api/learning/agent-sessions/${sessionId}/snapshots/${runId}`, {
-    headers: { 'x-xj-space': 'personal', 'x-xj-namespace': context.clientNamespace, 'x-xj-agent-contract': '2' },
-  })).json()
+  const response = await request.get(`${endpoint}/api/learning/agent-sessions/${sessionId}/conversation?after=0`, {
+    headers: { 'x-xj-space': 'personal', 'x-xj-namespace': context.clientNamespace, 'x-xj-agent-contract': '3' },
+  })
+  const value = await response.json()
+  if (!response.ok() || !Array.isArray(value.turns)) throw new Error(`conversation ${sessionId} returned ${response.status()} ${JSON.stringify(value)}`)
+  return value
 }
 
 async function prepareFirstQuestion(page: import('@playwright/test').Page, goal: string, question: string) {
@@ -307,21 +279,32 @@ test('the formal home and activity conversation persist a first question, a foll
   await expect(effort).toHaveText('最高')
   await followUp.fill('')
   expect(await page.locator('.main').evaluate(element => element.scrollHeight - element.clientHeight)).toBe(0)
-  const sessionId = new URL(page.url()).searchParams.get('session')!
   if (output) await page.screenshot({ path: join(output, `teaching-conversation-${process.platform}.png`), fullPage: false })
 
   await page.reload()
   await expect(page.getByText('界面回答1', { exact: true })).toBeVisible({ timeout: 20000 })
   await expect(page.getByText(/^来源：(?:个人模型|学校模型|原模型)/)).toHaveCount(0)
 
-  await page.getByLabel('向 Agent 提问', { exact: true }).fill('这是界面中的第二个问题。')
-  await page.getByRole('button', { name: '发送消息', exact: true }).click()
-  await expect.poll(async () => {
-    const value = await conversationOf(request, sessionId)
-    return value.runs.length >= 2 && value.runs.at(-1)?.state === 'completed'
-  }, { timeout: 45_000 }).toBe(true)
-  expect(dispatched[1]).toEqual({ model: 'fixture-ui-switched', reasoning_effort: 'max' })
+  let releaseInput!: () => void
+  const pendingResponse = new Promise<void>(resolve => { releaseInput = resolve })
+  await page.route(/\/agent-sessions\/[^/]+\/inputs$/, async route => {
+    await pendingResponse
+    await route.continue()
+  }, { times: 1 })
+  try {
+    const secondQuestion = '这是界面中的第二个问题。'
+    const nextRequest = page.waitForRequest(/\/agent-sessions\/[^/]+\/inputs$/)
+    await page.getByLabel('向 Agent 提问', { exact: true }).fill(secondQuestion)
+    await page.getByRole('button', { name: '发送消息', exact: true }).click()
+    expect((await nextRequest).postDataJSON().text).toBe(secondQuestion)
+    await expect(page.locator('.chat-message.user .bubble').last()).toHaveText(secondQuestion)
+    await expect(followUp).toHaveValue('')
+    await expect(page.getByText(/正在发送…|正在准备附件…/)).toHaveCount(0)
+  } finally { releaseInput() }
   await expect(page.getByText('界面回答2', { exact: true })).toBeVisible({ timeout: 20000 })
+  await expect(page.locator('.chat-message.user .bubble')).toHaveCount(2)
+  await expect(page.getByRole('button', { name: '停止生成', exact: true })).toHaveCount(0)
+  expect(dispatched[1]).toEqual({ model: 'fixture-ui-switched', reasoning_effort: 'max' })
   await expect(page.getByText(/^来源：(?:个人模型|学校模型|原模型)/)).toHaveCount(0)
 
   await page.getByLabel('向 Agent 提问', { exact: true }).fill('请生成一个可以被停止的回答。')
@@ -329,7 +312,6 @@ test('the formal home and activity conversation persist a first question, a foll
   await expect(page.getByText('正在生成回复')).toBeVisible({ timeout: 20000 })
   await page.getByLabel('向 Agent 提问', { exact: true }).fill('生成期间继续输入的新草稿。')
   await expect(page.getByRole('button', { name: '发送消息', exact: true })).toBeEnabled()
-  await expect(page.getByRole('combobox', { name: '发送方式', exact: true })).toBeVisible()
   // The migrated composer keeps one primary action: a draft turns it into a steer
   // send, so clear the draft before using the stop control in the same slot.
   await page.getByLabel('向 Agent 提问', { exact: true }).fill('')
@@ -368,7 +350,7 @@ test('editing a generating message stops the task before opening its editor', as
     releaseStop()
   } finally { releaseStop() }
   await expect(page.getByText('回答已停止，已发生的内容仍保留。', { exact: true })).toHaveCount(0)
-  await expect.poll(async () => (await conversationOf(request, sessionId)).runs.at(-1)?.state).toBe('stopped')
+  await expect.poll(async () => (await conversationOf(request, sessionId)).turns.at(-1)?.state).toBe('stopped')
   await expect(student.getByLabel('修改这条消息', { exact: true })).toHaveValue(firstQuestion)
   await expect(student.getByRole('button', { name: '取消', exact: true })).toBeVisible()
   await expect(student.getByLabel('修改这条消息', { exact: true })).toHaveAttribute('rows', '1')
@@ -377,7 +359,7 @@ test('editing a generating message stops the task before opening its editor', as
   await student.getByRole('button', { name: '发送', exact: true }).click()
   await expect(student.locator('.bubble')).toHaveText(revised, { timeout: 20000 })
   await expect(student.getByRole('button', { name: '编辑这条消息', exact: true })).toBeVisible()
-  await expect.poll(async () => (await conversationOf(request, sessionId)).runs.length).toBe(2)
+  await expect.poll(async () => (await conversationOf(request, sessionId)).turns.length).toBe(2)
   await expect(page.locator('.prompt-input').getByRole('button', { name: '停止生成', exact: true })).toBeVisible()
   await expect(page.getByText('选择要继续处理的输入', { exact: true })).toHaveCount(0)
 })
@@ -404,7 +386,7 @@ test('editing a completed turn replaces its answer in place and survives reload'
   await expect(student.locator('.bubble')).toHaveText('完成后修订的问题', { timeout: 20000 })
   await expect.poll(async () => {
     const value = await conversationOf(request, sessionId)
-    return value.runs.length >= 2 && value.runs.at(-1)?.state === 'completed'
+    return value.turns.length >= 2 && value.turns.at(-1)?.state === 'completed'
   }, { timeout: 45_000 }).toBe(true)
   await expect(page.locator('.product-conversation .chat-message.user')).toHaveCount(1)
   await expect(page.locator('.product-conversation .chat-message.agent')).toHaveCount(1)
@@ -503,16 +485,30 @@ test('standalone chat pins the chosen skill and fixed text/PDF attachments on th
   await page.reload()
   await expect(page.getByRole('button', { name: '移除附件 example.c' })).toBeVisible()
   await expect(page.locator('.prompt-editor [data-astryx-token]').first()).toContainText('inspect-evidence')
-  await first.fill('请读这个代码文件。')
-  skillTool = skill
-  await first.press('Enter')
+  const sendFixedMessage = async (text: string) => {
+    await first.fill(text)
+    await expect(page.getByRole('button', { name: '发送消息', exact: true })).toBeEnabled()
+    skillTool = skill
+    const sent = page.waitForResponse(response => response.request().method() === 'POST' && /\/agent-sessions\/[^/]+\/inputs$/.test(response.url()))
+    await first.press('Enter')
+    const received = await sent
+    expect(received.status(), await received.text()).toBe(200)
+    const { sessionId, requestId } = await received.json()
+    const original = await request.get(`${endpoint}/api/learning/agent-sessions/${sessionId}/requests/${requestId}`, {
+      headers: { ...headers, 'x-xj-agent-contract': '3' },
+    })
+    expect(original.status()).toBe(200)
+    return (await original.json()).input.context
+  }
+  const inputContext = await sendFixedMessage('请读这个代码文件。')
+  expect(inputContext.skills).toMatchObject([skill])
+  expect(inputContext.materials).toHaveLength(1)
+  expect(inputContext.materials[0]).toMatchObject({ kind: 'personal-material' })
   await expect(page.getByText('界面回答1', { exact: true })).toBeVisible({ timeout: 25000 })
   await expect(page.getByText('发送记录', { exact: true })).toHaveCount(0)
   await expect(page.getByText(/已纳入下一步|发送时的依据与版本/)).toHaveCount(0)
   await page.waitForTimeout(400)
   if (output) await page.screenshot({ path: join(output, `agent-first-message-${process.platform}.png`), fullPage: false })
-  const sessionId = new URL(page.url()).searchParams.get('session')!
-  const readConversation = async () => conversationOf(request, sessionId)
   const skillRead = page.locator('.agent-trace-item').filter({ hasText: '读取技能 · inspect-evidence' }).first()
   const executionGroup = page.locator('.agent-trace-group-trigger').first()
   if (await executionGroup.getAttribute('aria-expanded') !== 'true') await executionGroup.click()
@@ -520,27 +516,14 @@ test('standalone chat pins the chosen skill and fixed text/PDF attachments on th
   await expect(skillRead.locator('.agent-trace-description')).toHaveCount(0)
   await expect(skillRead.getByLabel('固定 Skill 原文')).toHaveCount(0)
   await skillRead.locator(':scope > .agent-trace-trigger').click()
-  await expect(skillRead).toContainText('阅读已选定的依据。', { timeout: 30000 })
-  await expect(skillRead.locator('.agent-skill-summary')).toHaveText('阅读已选定的依据。')
-  await expect(skillRead).not.toContainText('Read the fixed evidence')
-  await skillRead.locator(':scope > .agent-trace-trigger').click()
-  await skillRead.locator(':scope > .agent-trace-trigger').click()
-  await expect(skillRead).toContainText('阅读已选定的依据。')
-  expect(translationCalls).toBe(1)
+  await expect(skillRead.locator('.agent-skill-summary')).toHaveText('Read the fixed evidence')
   await page.reload()
-  await page.locator('.agent-trace-group-trigger').first().click()
+  if (await executionGroup.getAttribute('aria-expanded') !== 'true') await executionGroup.click()
   await skillRead.locator(':scope > .agent-trace-trigger').click()
-  await expect(skillRead).toContainText('阅读已选定的依据。')
-  expect(translationCalls).toBe(1)
+  await expect(skillRead.locator('.agent-skill-summary')).toHaveText('Read the fixed evidence')
+  expect(translationCalls).toBe(0)
   await expect(skillRead).not.toContainText('Check the evidence first.')
   await expect(skillRead.getByRole('button', { name: '复制技能原文', exact: true })).toHaveCount(0)
-  const conversationValue = await readConversation()
-  const snapshot = await snapshotOf(request, sessionId, conversationValue.runs[0].runId)
-  const inputContext = snapshot.inputs.find((item: { input: { context: { skills?: unknown[] } } }) =>
-    item.input.context.skills?.length)!.input.context
-  expect(inputContext.skills).toMatchObject([skill])
-  expect(inputContext.materials).toHaveLength(1)
-  expect(inputContext.materials[0]).toMatchObject({ kind: 'personal-material' })
 
   await page.getByRole('button', { name: '添加', exact: true }).click()
   await page.getByRole('menuitem', { name: /技能/ }).click()
@@ -554,25 +537,15 @@ test('standalone chat pins the chosen skill and fixed text/PDF attachments on th
   }
   await followUpSkill.click()
   await expect(page.locator('.prompt-editor [data-astryx-token]').first()).toContainText('inspect-evidence')
-  await pickFile(fileURLToPath(new URL('../../../course_matrial/data_logic/lab/实验03题目-ALU.pdf', import.meta.url)))
-  await expect(page.getByRole('button', { name: '移除附件 实验03题目-ALU.pdf' })).toBeVisible()
+  await pickFile({ name: 'experiment.pdf', mimeType: 'application/pdf', buffer: fixedPdf() })
+  await expect(page.getByRole('button', { name: '移除附件 experiment.pdf' })).toBeVisible()
   await expect.poll(() => page.locator('.prompt-attachments').evaluate(element => element.clientHeight)).toBeGreaterThan(50)
   await page.waitForTimeout(300)
   if (output) await page.screenshot({ path: join(output, `agent-pdf-attachment-${process.platform}.png`), fullPage: false })
-  const followUp = page.getByLabel('向 Agent 提问', { exact: true })
-  await followUp.fill('再看一下这份 PDF。')
-  await followUp.press('Enter')
-  const followUpContext = async () => {
-    const value = await readConversation()
-    const latest = await snapshotOf(request, sessionId, value.runs.at(-1)!.runId)
-    return latest.inputs.find((input: { input: { text: string } }) =>
-      input.input.text === '再看一下这份 PDF。')?.input.context
-  }
-  await expect.poll(async () => (await followUpContext())?.materials.some((item: { kind: string }) => item.kind === 'pdf'),
-    { timeout: 45000 }).toBe(true)
-  const finalContext = await followUpContext()
+  const finalContext = await sendFixedMessage('再看一下这份 PDF。')
   expect(finalContext).toMatchObject({ skills: [skill] })
   expect(finalContext?.materials.filter((item: { kind: string }) => item.kind === 'pdf')).toHaveLength(1)
+  await expect(page.getByText('界面回答2', { exact: true })).toBeVisible({ timeout: 25000 })
   await expect(page.getByRole('button', { name: '移除技能 inspect-evidence' })).toHaveCount(0)
 })
 
@@ -682,7 +655,7 @@ test('rich answers keep the standalone composer fixed while messages scroll and 
   await page.setViewportSize({ width: 1000, height: 760 })
   await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' })
   await surface.getByRole('button', { name: '切换模型', exact: true }).click()
-  const models = surface.getByRole('menu', { name: '模型', exact: true })
+  const models = page.getByRole('menu', { name: '模型', exact: true })
   await expect(models).toBeVisible()
   await expect.poll(async () => {
     const outer = (await surface.boundingBox())!, inner = (await models.boundingBox())!
@@ -796,29 +769,29 @@ test('each turn keeps its own thinking and execution group after that turn stude
 
   const activityId = new URL(page.url()).searchParams.get('session')!
   const conversation = await conversationOf(request, activityId)
-  expect(conversation.runs).toHaveLength(2)
-  const [firstRun, secondRun] = conversation.runs
-  const firstGroup = page.locator(`.session-conversation > div[data-run-id="${firstRun.runId}"]`)
-  const secondGroup = page.locator(`.session-conversation > div[data-run-id="${secondRun.runId}"]`)
+  expect(conversation.turns).toHaveLength(2)
+  const [firstTurn, secondTurn] = conversation.turns
+  const firstGroup = page.locator(`.session-conversation > div[data-turn-id="${firstTurn.turnId}"]`)
+  const secondGroup = page.locator(`.session-conversation > div[data-turn-id="${secondTurn.turnId}"]`)
   await expect(firstGroup.locator('.agent-trace-group-trigger')).toBeVisible()
-  await expect(firstGroup.locator(`.teaching-tool-record[data-run-id="${firstRun.runId}"]`)).toBeVisible()
-  await expect(secondGroup.locator(`.teaching-tool-record[data-run-id="${secondRun.runId}"]`)).toBeVisible()
+  await expect(firstGroup.locator(`.teaching-tool-record[data-run-id="${firstTurn.turnId}"]`)).toBeVisible()
+  await expect(secondGroup.locator(`.teaching-tool-record[data-run-id="${secondTurn.turnId}"]`)).toBeVisible()
 
-  const positions = await page.locator('.session-conversation').evaluate((root, runs) => {
-    const children = [...root.children].filter(child => child.getAttribute('data-run-id'))
-    const indexOfMessage = (runId: string, role: string) => children.findIndex(child =>
-      child.getAttribute('data-run-id') === runId && !!child.querySelector('.chat-message.' + role))
-    const traceCount = (runId: string) => children.filter(child => child.getAttribute('data-run-id') === runId)
+  const positions = await page.locator('.session-conversation').evaluate((root, turns) => {
+    const children = [...root.children].filter(child => child.getAttribute('data-turn-id'))
+    const indexOfMessage = (turnId: string, role: string) => children.findIndex(child =>
+      child.getAttribute('data-turn-id') === turnId && !!child.querySelector('.chat-message.' + role))
+    const traceCount = (turnId: string) => children.filter(child => child.getAttribute('data-turn-id') === turnId)
       .reduce((count, child) => count + child.querySelectorAll('.agent-trace-group-trigger').length, 0)
     return {
-      firstStudent: indexOfMessage(runs[0], 'user'),
-      firstAssistant: indexOfMessage(runs[0], 'agent'),
-      firstTrace: traceCount(runs[0]),
-      secondStudent: indexOfMessage(runs[1], 'user'),
-      secondAssistant: indexOfMessage(runs[1], 'agent'),
-      secondTrace: traceCount(runs[1]),
+      firstStudent: indexOfMessage(turns[0], 'user'),
+      firstAssistant: indexOfMessage(turns[0], 'agent'),
+      firstTrace: traceCount(turns[0]),
+      secondStudent: indexOfMessage(turns[1], 'user'),
+      secondAssistant: indexOfMessage(turns[1], 'agent'),
+      secondTrace: traceCount(turns[1]),
     }
-  }, [firstRun.runId, secondRun.runId])
+  }, [firstTurn.turnId, secondTurn.turnId])
   expect(positions.firstStudent).toBeGreaterThanOrEqual(0)
   expect(positions.firstTrace).toBe(1)
   expect(positions.firstAssistant).toBeGreaterThan(positions.firstStudent)
@@ -850,13 +823,13 @@ test('a second steer while running moves the shared trace after its newest stude
     const sessionId = new URL(page.url()).searchParams.get('session')!
     await expect.poll(async () => (await conversationOf(request, sessionId)).messages.filter((message: { role: string }) => message.role === 'user').length).toBe(2)
     const conversation = await conversationOf(request, sessionId)
-    expect(conversation.runs).toHaveLength(1)
-    const runId = conversation.runs[0].runId
-    await expect(page.locator(`.session-conversation > div[data-run-id="${runId}"] .chat-message.user`)).toHaveCount(2, { timeout: 20000 })
+    expect(conversation.turns).toHaveLength(1)
+    const turnId = conversation.turns[0].turnId
+    await expect(page.locator(`.session-conversation > div[data-turn-id="${turnId}"] .chat-message.user`)).toHaveCount(2, { timeout: 20000 })
     const latestTrace = page.getByLabel('思考与执行记录', { exact: true }).last()
     await expect(latestTrace.locator('.agent-trace-group-trigger')).toHaveAttribute('aria-expanded', 'true')
     const positions = await page.locator('.session-conversation').evaluate((root, id) => {
-      const children = [...root.children].filter(child => child.getAttribute('data-run-id') === id)
+      const children = [...root.children].filter(child => child.getAttribute('data-turn-id') === id)
       const students = children.flatMap((child, index) => child.querySelector('.chat-message.user') ? [index] : [])
       const traces = children.flatMap((child, index) => child.querySelector('[aria-label="思考与执行记录"]') ? [index] : [])
       const latestStudent = students.at(-1)
@@ -865,10 +838,10 @@ test('a second steer while running moves the shared trace after its newest stude
       const latestTraceAfterStudent = !!(latestStudentElement?.querySelector('.chat-message.user') && latestTrace
         && (latestStudentElement.querySelector('.chat-message.user')!.compareDocumentPosition(latestTrace) & Node.DOCUMENT_POSITION_FOLLOWING))
       return { firstStudent: students[0], latestStudent, latestTraceOwner: traces.at(-1), studentCount: students.length, traceCount: traces.length, latestTraceAfterStudent }
-    }, runId)
+    }, turnId)
     expect(positions.firstStudent).toBeGreaterThanOrEqual(0)
     expect(positions.latestStudent).toBeGreaterThan(positions.firstStudent!)
-    expect(positions.traceCount).toBe(positions.studentCount)
+    expect(positions.traceCount).toBe(1)
     expect(positions.latestTraceOwner).toBe(positions.latestStudent)
     expect(positions.latestTraceAfterStudent).toBe(true)
     if (output) await page.screenshot({ path: join(output, `teaching-steer-trace-${process.platform}.png`), fullPage: false })
@@ -902,16 +875,12 @@ test('Skill commands select Astryx inline tokens with keyboard navigation and pr
   await expect(input).toHaveValue('')
   await expect(choices).toHaveCount(0)
   const token = page.locator('.prompt-editor [data-astryx-token]')
-  // Main enables imported personal skills by default, so the first one is already pinned;
-  // keyboard selection adds the highlighted one without dropping that default.
-  await expect(token).toHaveCount(2)
+  await expect(token).toHaveCount(1)
   await expect(token.filter({ hasText: picked })).toHaveCount(1)
   expect(new URL(page.url()).searchParams.has('session')).toBe(false)
   await expect(input).toBeFocused()
   const tokenBox = (await token.last().boundingBox())!, inputBox = (await input.boundingBox())!
   expect(Math.abs(tokenBox.y - inputBox.y)).toBeLessThan(6)
-  await input.press('Backspace')
-  await expect(token).toHaveCount(1)
   await input.press('Backspace')
   await expect(token).toHaveCount(0)
   await input.fill('中文草稿')

@@ -21,6 +21,39 @@
 
 旧 `/agent/:activityId/*` 与旧教学协议明确拒绝 incompatible，不将旧请求改派成新会话。模块和服务标识沿用 `teaching-agent`、`model-connection`；源码包拆分不改变部署拓扑。旧开发数据须按[显式重置](../../docs/deployment.md#旧开发-agent-数据的显式重置)处理。当前源码接线、工程回归与真实 UI/供应商/跨机验收分别记录；本 README 不给出本轮已验收声明。
 
+## 教师普通对话
+
+在本机预览绑定学校后，从工作台打开课程进入教师 Agent。教师在「设置 → 模型」配置本机连接，在课程输入框选择模型。本机供应商和模型在未登录、教师及学生账号间共用。选用项按身份与教师／学生用途分别保存。技能和教师对话保存在本机。学校保留课程权限及固定发布和公开材料。默认学校启用 `space-course` 和 `learning-data`，负责验证 `course.manage`，并通过 `manage/teacher-course-read` 提供固定发布和公开材料的授权读取。较旧的学校可沿用已授予的课程读取权限。
+
+需要单独验收学校运行时直接承载教师对话时，开启 `teaching-agent` 和 `model-connection` 并使用下列独立配置。
+
+在学校运行根目录配置 `teacher-chat.json`。其中 `grants` 列出允许对话的 `spaceId`、`principalId` 和 `courseId`，教师仍须持有该学校的 `course.manage`。课程须属于该学校。移除特定授权后，原会话停止接受该教师的读取和继续请求。文件不包含凭据，模型密钥仍通过模型连接配置。
+
+```json
+{
+  "grants": [{
+    "spaceId": "10000000-0000-4000-8000-000000000001",
+    "principalId": "10000000-0000-4000-8000-000000000002",
+    "courseId": "10000000-0000-4000-8000-000000000003"
+  }],
+  "connectionId": "10000000-0000-4000-8000-000000000004",
+  "budget": {
+    "maxSteps": 8,
+    "maxToolCalls": 12,
+    "maxInputTokens": 96000,
+    "maxOutputTokens": 8000,
+    "maxCallMs": 90000,
+    "hardDeadlineMs": 120000
+  }
+}
+```
+
+示例 ID 替换为联调环境的学校、教师、课程及已授权的学校模型连接 ID。教师可选择学校模型或本人在当前学校身份下保存的连接。教师每轮限额仍由 `budget` 决定。
+
+在课程任务设计的已发布列表可打开该任务的对话草稿，发送时固定任务与发布版本。输入 `/` 可按消息选择一个技能，技能由教师身份的设置页导入。
+
+使用已登录的学校身份和 v3 头创建 `agent-sessions`，提交 `requestId`、`sessionId`、`scenario: "teacher-assistant"` 和 `courseId`。教师列表使用 `GET /api/learning/agent-sessions?courseId=<课程 ID>`。向对应会话的 `inputs` 发送 `requestId`、`sessionId`、`text` 和 `context`，从 `conversation?after=<游标>` 读增量。使用既有 `runs` 和 `requests` 获取状态和原请求回执。
+
 ## 默认学校客户端
 
 默认本机启用 `space-course`、`learning-data`、`teaching-agent`、`model-connection`、`tool-execution`，学校只启用前两个模块，保存账号／课程、活动登记、领取回执、明确提交及学校收件回执。其余学习过程在本机。`school-client` 有本机 `studyCopies`、学校授权元数据允许本机学习，且连接无显式 `localBinding`／`modelBinding` 时采用 `localStudy`；原 Web API 路径不变，默认 Agent、模型、执行及作品／草稿等过程访问转入本机。学校按实际启用模块及成员／活动固定 owner 判定模式，旧显式混合绑定、学校过程数据及独立 Agent／模型部署继续由原接口和授权装配，不能作为默认接入步骤。

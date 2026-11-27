@@ -20,7 +20,7 @@ export type ResourceReference = z.infer<typeof resourceReferenceSchema>;
 export const storageErrorCodes = [
   'invalid', 'incompatible', 'migration-busy', 'conflict', 'identity-conflict',
   'commit-unknown', 'unavailable', 'forbidden', 'missing', 'corrupt',
-  'upload-unknown', 'maintenance', 'stale-generation', 'resource-busy', 'resource-gone',
+  'upload-unknown', 'maintenance', 'stale-generation', 'resource-busy', 'resource-gone', 'expired',
 ] as const;
 export type StorageErrorCode = typeof storageErrorCodes[number];
 export interface StorageFailure { code: StorageErrorCode; requestId?: string; }

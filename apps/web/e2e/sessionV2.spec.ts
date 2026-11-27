@@ -25,6 +25,20 @@ test('formal sessions recover original inputs and open an independent real works
       pinned: false, archived: false, deleted: false, state: 'ready', createdAt: now, updatedAt: now, readyAt: now }
     sessions.set(sessionId, value); conversations.set(sessionId, { sessionId, lastSeq: 0, messages: [], turns: [], inputs: [], questions: [], tools: [], workspaces: [] }); return value
   }
+  const submitInput = (sessionId: string, body: any, inWorkspace = false) => {
+    const turnId = id(), inputId = id(), conversation = conversations.get(sessionId)!
+    conversation.turns.push({ turnId, sessionId, requestId: body.requestId, trigger: 'user', originNotificationId: null,
+      state: inWorkspace ? 'active' : 'completed', reason: '', ownerInstanceId: 'test', createdAt: now, updatedAt: now,
+      completedAt: inWorkspace ? null : now }); conversation.lastSeq++
+    conversation.messages.push({ messageId: 'input:' + inputId, turnId, inputId, role: 'user', text: body.text, state: 'settled', createdAt: now })
+    if (!inWorkspace) conversation.messages.push({ messageId: 'assistant:' + turnId, turnId, inputId, role: 'assistant',
+      text: '递归通过更小的同类问题求解。', state: 'settled', createdAt: now })
+    conversation.inputs.push({ inputId, turnId, version: 1, state: 'adopted', text: body.text, createdAt: now })
+    if (!body.context.action) { created = true; conversation.workspaces.push({ toolCallId: id(), turnId, workspace: { ...activity, title: '递归练习' } }) }
+    const receipt = { sessionId, inputId, turnId, requestId: body.requestId, inputDigest: 'a'.repeat(64) }
+    requests.set(body.requestId, { input: body, receipt })
+    return receipt
+  }
   await page.route('**/api/learning/**', async route => {
     const request = route.request(), path = new URL(request.url()).pathname.replace('/api/learning/', ''), body = request.postDataJSON()
     const respond = (value: unknown, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(value) })
@@ -54,6 +68,13 @@ test('formal sessions recover original inputs and open an independent real works
     expect(request.headers()['x-xj-expected-subject']).toBe([actor.environmentId, actor.spaceId, actor.principalId].join('.'))
     if (path === 'agent-sessions') return respond(body ? create(body.sessionId, body.requestId, body.title) : { items: [...sessions.values()] })
     if (path === 'agent-sessions/update') { const { requestId: _request, ...patch } = body, value = { ...sessions.get(body.sessionId)!, ...patch }; sessions.set(value.sessionId, value); return respond(value) }
+    if (path === 'agent-sessions/start') {
+      if (loseReply) await firstInput
+      const session = create(body.create.sessionId, body.create.requestId, body.create.title)
+      const receipt = submitInput(session.sessionId, body.input)
+      if (loseReply) { loseReply = false; return route.abort('failed') }
+      return respond({ session, receipt })
+    }
     if (path === 'agent-sessions/workspace') return respond([...sessions.values()].find(value => value.workspace?.activityId === body.activityId) ?? create(id(), id(), '递归练习', body))
     const [, sessionId, suffix, requestId] = path.split('/')
     if (!suffix) return respond(sessions.get(sessionId!) ?? { error: 'missing' }, sessions.has(sessionId!) ? 200 : 404)
@@ -74,14 +95,7 @@ test('formal sessions recover original inputs and open an independent real works
       if (loseReply) await firstInput
       const inWorkspace = !!body.context.action
       if (inWorkspace) await workspaceInput
-      const turnId = id(), inputId = id(), conversation = conversations.get(sessionId!)!
-      conversation.turns.push({ turnId, sessionId: sessionId!, requestId: body.requestId, trigger: 'user', originNotificationId: null, state: inWorkspace ? 'active' : 'completed', reason: '', ownerInstanceId: 'test', createdAt: now, updatedAt: now, completedAt: inWorkspace ? null : now }); conversation.lastSeq++
-      conversation.messages.push({ messageId: 'input:' + inputId, turnId, inputId, role: 'user', text: body.text, state: 'settled', createdAt: now })
-      if (!inWorkspace) conversation.messages.push({ messageId: 'assistant:' + turnId, turnId, inputId, role: 'assistant', text: '递归通过更小的同类问题求解。', state: 'settled', createdAt: now })
-      conversation.inputs.push({ inputId, turnId, version: 1, state: 'adopted', text: body.text, createdAt: now })
-      if (!body.context.action) { created = true; conversation.workspaces.push({ toolCallId: id(), turnId, workspace: { ...activity, title: '递归练习' } }) }
-      const receipt = { sessionId: sessionId!, inputId, turnId, requestId: body.requestId, inputDigest: 'a'.repeat(64) }
-      requests.set(body.requestId, { input: body, receipt })
+      const receipt = submitInput(sessionId!, body, inWorkspace)
       if (loseReply) { loseReply = false; return route.abort('failed') }
       return respond(receipt)
     }
@@ -107,7 +121,7 @@ test('formal sessions recover original inputs and open an independent real works
     await expect(page).toHaveURL(/[?&]view=agent/)
     await expect(mascot).toHaveCount(0)
     await expect(sentQuestion).toBeVisible()
-    await expect(page.getByText('正在发送…')).toBeVisible()
+    await expect(page.getByText(/正在发送…|正在准备附件…/)).toHaveCount(0)
     await expect(page.getByText('今天想探讨什么？')).toHaveCount(0)
   } finally { releaseFirstInput() }
   await expect(page.getByRole('button', { name: '核对并继续原请求' })).toBeVisible()
@@ -121,8 +135,8 @@ test('formal sessions recover original inputs and open an independent real works
   } finally { releaseConversation() }
   await expect(page.locator('[data-message-id]')).toHaveCount(2)
   await expect(sentQuestion).toHaveCount(1)
-  expect(writes.filter(write => /\/inputs$/.test(write.path))).toHaveLength(1)
-  expect(writes.find(write => /\/inputs$/.test(write.path))?.body.text).toBe('请创建递归练习项目')
+  expect(writes.filter(write => write.path === 'agent-sessions/start' || /\/inputs$/.test(write.path))).toHaveLength(1)
+  expect(writes.find(write => write.path === 'agent-sessions/start')?.body.input.text).toBe('请创建递归练习项目')
   await expect(page.locator('.msg-task-card')).toHaveCount(1)
   await page.getByRole('button', { name: '置顶', exact: true }).first().click()
   await expect(page.getByRole('button', { name: '取消置顶', exact: true }).first()).toBeVisible()
@@ -224,7 +238,10 @@ test('formal sessions recover original inputs and open an independent real works
   await expect(composer.locator('.turn-caret')).toHaveCount(0)
   await expect(input).toHaveValue(followUp)
   expect(writes.find(write => write.body?.context?.action)?.body.context.action).toMatchObject({ scope: { activityId: activity.activityId }, receiver: { receiverId: 'teaching-agent:' + owner.target.serviceId, kind: 'question', location: 'local' }, draft: { question: '结合当前作品解释递归' }, works: [] })
-  expect(new Set(writes.filter(write => /\/inputs$/.test(write.path)).map(write => write.body.sessionId)).size).toBe(2)
+  const conversationSessionIds = writes.flatMap(write => write.path === 'agent-sessions/start'
+    ? [write.body.input.sessionId]
+    : /\/inputs$/.test(write.path) ? [write.body.sessionId] : [])
+  expect(new Set(conversationSessionIds).size).toBe(2)
   expect(writes.some(write => write.path === 'activities' || write.path.startsWith('intents/'))).toBe(false)
   expect(errors).toEqual([])
 })

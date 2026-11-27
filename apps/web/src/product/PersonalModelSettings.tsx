@@ -22,7 +22,7 @@ type PendingToggle = { input: SaveModelProvider; label: string }
 type PersonalModelSettingsProps = {
   identity: SpaceIdentity; spaceKey: string; namespace: string; selection: ModelSelectionController; readOnly?: boolean
   activityId?: string; courseId?: string
-  cache?: LearningReadCache
+  cache?: LearningReadCache; teacher?: boolean
 }
 type ModelSettingsSnapshot = { providers: ModelProvider[]; attempts: ModelAttempt[] }
 export function PersonalModelSettings(props: PersonalModelSettingsProps) {
@@ -30,7 +30,7 @@ export function PersonalModelSettings(props: PersonalModelSettingsProps) {
   // A subject change must discard old drafts, errors and late async responses together.
   return <PersonalModelSettingsBody key={JSON.stringify([namespace, spaceKey, identity.environmentId, identity.spaceId, identity.principalId])} {...props} />
 }
-function PersonalModelSettingsBody({ identity, spaceKey, namespace, selection, activityId, courseId, readOnly = false, cache }: PersonalModelSettingsProps) {
+function PersonalModelSettingsBody({ identity, spaceKey, namespace, selection, activityId, courseId, readOnly = false, cache, teacher = false }: PersonalModelSettingsProps) {
   const displayVisit = useRef(0)
   const cacheKey = JSON.stringify(['model-settings', namespace, identity.environmentId, identity.spaceId, identity.principalId])
   const initial = useRef(cache?.peek<ModelSettingsSnapshot>(spaceKey, cacheKey))
@@ -78,13 +78,14 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, selection, a
     observer.observe(pane, { attributes: true, attributeFilter: ['hidden', 'data-settings-section'] })
     return () => observer.disconnect()
   }, [])
-  const interaction = useAgentInteraction(identity, spaceKey, namespace, !readOnly, agentVisible)
+  const interaction = useAgentInteraction(identity, spaceKey, namespace, !readOnly, agentVisible && !teacher)
   useEffect(() => { live.current = true; return () => { live.current = false } }, [])
   const request = useCallback(async (route: string, body?: unknown, signal?: AbortSignal) => {
     const path = route.startsWith('../') ? '/api/learning/' + route.slice(3) : '/api/learning/models/' + route
     const response = await fetch(path, { method: body === undefined ? 'GET' : 'POST',
       credentials: 'same-origin', redirect: 'error', cache: 'no-store', signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(35000)]) : AbortSignal.timeout(35000),
       headers: { 'content-type': 'application/json', 'x-xj-space': spaceKey, 'x-xj-namespace': namespace,
+        ...(teacher ? { 'x-xj-teacher-agent': '1' } : {}),
         'x-xj-expected-subject': [identity.environmentId, identity.spaceId, identity.principalId].join('.') },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }) })
     const result = await response.json()
@@ -94,7 +95,7 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, selection, a
         { code: result.error, ...(diagnostic.success ? { diagnostic: diagnostic.data } : {}) })
     }
     return result as unknown
-  }, [identity.environmentId, identity.spaceId, identity.principalId, spaceKey, namespace])
+  }, [identity.environmentId, identity.spaceId, identity.principalId, spaceKey, namespace, teacher])
   const readDirectory = useCallback<ReadModelDirectory>(async (input, signal) => modelDirectorySchema.parse(await request('directory', input, signal)), [request])
   const testConnection = useCallback<NonNullable<React.ComponentProps<typeof ModelProviderDialog>['onConnectionTest']>>(
     async (input, signal) => modelConnectionTestResultSchema.parse(await request('providers/test-connection', input, signal)), [request])
@@ -302,8 +303,8 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, selection, a
     return saved.value
   }, [request])
   return <div ref={rootElement} className="content product-model-settings">
-    <div className="st-body-in"><div className="product-personal-agent"><AgentInteractionSettings controller={interaction} />
-      <PersonalSkillsSettings identity={identity} spaceKey={spaceKey} namespace={namespace} activityId={activityId} courseId={courseId} readOnly={readOnly} active={agentVisible} cache={cache} /></div>
+    <div className="st-body-in"><div className="product-personal-agent">{!teacher && <AgentInteractionSettings controller={interaction} />}
+      <PersonalSkillsSettings identity={identity} spaceKey={spaceKey} namespace={namespace} activityId={activityId} courseId={courseId} readOnly={readOnly} active={agentVisible} cache={cache} teacher={teacher} /></div>
       <div className="product-personal-model">
       <div role="region" aria-label="个人连接配置"><ModelTab providers={providers} order={view.order} attempts={attempts} loading={loading} error={modelsVisible ? actionError?.message ?? '' : ''}
       readOnly={readOnly} tests={savedTests.runs} onStopTest={savedTests.stop}

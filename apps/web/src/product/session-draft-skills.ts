@@ -4,8 +4,8 @@ import type { DraftSkillsController } from '../components/workspace/references/W
 import type { SpaceIdentity } from '@xunjie/contracts/spaces'
 import { useSkillCatalog, draftSkillOption } from './skills'
 
-export const sessionDraftSkillsKey = (identity: SpaceIdentity, spaceKey: string, namespace: string, sessionId?: string) =>
-  'xj.session-draft-skills.' + JSON.stringify([namespace, spaceKey, identity.environmentId, identity.spaceId, identity.principalId, sessionId ?? 'new'])
+export const sessionDraftSkillsKey = (identity: SpaceIdentity, spaceKey: string, namespace: string, sessionId?: string, teacherCourseId?: string) =>
+  'xj.session-draft-skills.' + JSON.stringify([namespace, spaceKey, identity.environmentId, identity.spaceId, identity.principalId, sessionId ?? 'new', ...(teacherCourseId ? [teacherCourseId] : [])])
 
 export const sessionSkillResetKey = (clientScope: string, sessionId: string) =>
   'xj.session-skill-reset.' + clientScope + ':' + sessionId
@@ -22,9 +22,9 @@ export function consumeSessionSkillSelection(input: {
     JSON.stringify({ requestId: crypto.randomUUID(), turnId: input.turnId }))
 }
 
-export function useSessionDraftSkills(identity: SpaceIdentity, spaceKey: string, namespace: string, sessionId?: string): DraftSkillsController {
-  const catalog = useSkillCatalog(identity, spaceKey, namespace, sessionId)
-  const key = sessionDraftSkillsKey(identity, spaceKey, namespace, sessionId)
+export function useSessionDraftSkills(identity: SpaceIdentity, spaceKey: string, namespace: string, sessionId?: string, teacherCourseId?: string): DraftSkillsController {
+  const catalog = useSkillCatalog(identity, spaceKey, namespace, sessionId, true, undefined, teacherCourseId)
+  const key = sessionDraftSkillsKey(identity, spaceKey, namespace, sessionId, teacherCourseId)
   const [saved, setSaved] = useState<{ key: string; skills: DraftSkillsController['selected'] } | null>(null)
   const [hiddenFor, setHiddenFor] = useState<string | null>(null)
   const [error, setError] = useState('')
