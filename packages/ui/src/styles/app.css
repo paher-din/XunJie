@@ -5944,7 +5944,7 @@ h3 {
 .turn-status {
   margin: 2px 0 14px;
 }
-/* 等待首 token：呼吸点，4 秒起出文案，12 秒起追加走动秒数 */
+/* 等待首个模型输出：呼吸点 */
 /* 等待/思考态的 IP 小图（2026-10-10 定稿 a2）：只在进行中出现，落定即消失。
    竖版形象（1000×1200）在水平状态行里微降 1px 补偿视觉重心 */
 .turn-ip {
@@ -5980,11 +5980,6 @@ h3 {
     transform: translateY(-2px);
   }
 }
-.turn-wait-text {
-  font-size: 13px;
-  color: var(--muted);
-}
-
 /* 思考折叠行：进行中「正在思考」+ 秒数；落定后「已思考 N 秒」，可展开教学化摘要 */
 .turn-thinkwrap {
   margin: 2px 0 14px;

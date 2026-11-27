@@ -576,7 +576,7 @@ test('standalone chat pins the chosen skill and fixed text/PDF attachments on th
   await expect(page.getByRole('button', { name: '移除技能 inspect-evidence' })).toHaveCount(0)
 })
 
-test('a course activity asks through the fixed help policy in the formal conversation UI', async ({ page }) => {
+test('a course activity streams through the fixed help policy in the formal workspace conversation', async ({ page }) => {
   const control = await resolveCredential(root, 'control')
   const courseId = randomUUID(), taskId = randomUUID(), releaseId = randomUUID()
   const manage = async (path: string, body: unknown) => {
@@ -603,23 +603,34 @@ test('a course activity asks through the fixed help policy in the formal convers
   expect(created.status()).toBe(200)
   const activityId = (await created.json()).activityId as string
   await configureModel(page.request, { 'content-type': 'application/json' })
-  const expected = '界面回答' + (replies.length + 1)
-  await page.goto(endpoint + '/?space=school')
+  progressiveReply = true
+  richReply = Array.from({ length: 24 }, (_, index) => `课程说明 ${index + 1}：先写出预期，再和试验观察比较。`).join('\n\n')
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.goto(endpoint + '/?space=school&activity=' + activityId)
   const browserContext = await page.evaluate(async () => (await fetch('/api/learning/context')).json())
   expect(browserContext.identities?.map((item: { key: string }) => item.key), JSON.stringify(browserContext)).toContain('school')
-  await page.getByRole('button', { name: '学校', exact: true }).click()
-  const activityCard = page.locator(`[data-activity-id="${activityId}"]`)
-  await expect(activityCard).toBeVisible({ timeout: 30_000 })
-  await activityCard.click()
   await expect(page.locator('#activity-title')).toHaveText('课程问答任务')
   const open = page.getByRole('button', { name: '打开对话', exact: true })
   await expect(open).toBeVisible()
   await open.click()
-  await expect(page.getByRole('complementary', { name: '问题与引用' })).toBeVisible()
+  const panel = page.getByRole('complementary', { name: '问题与引用' })
+  await expect(panel).toBeVisible()
   await page.getByRole('textbox', { name: '你的问题', exact: true }).fill('课程允许问答时，请解释本任务的核心概念。')
   await page.getByRole('button', { name: '发送消息', exact: true }).click()
-  await expect(page.getByText(expected, { exact: true })).toBeVisible({ timeout: 20000 })
-  await expect(page.locator('.chat-message.user').filter({ hasText: '课程允许问答时' })).toBeVisible()
+  const reply = panel.locator('.chat-message.agent .turn-body')
+  try {
+    await expect(reply).toContainText('课程说明 1：', { timeout: 20000 })
+    expect(providerEnded).toBe(false)
+    await expect(reply).toContainText('课程说明 12：')
+    expect(providerEnded).toBe(false)
+  } finally { finishStream() }
+  await expect(reply).toContainText('课程说明 24：')
+  await expect(panel.locator('.turn-caret')).toHaveCount(0)
+  await expect(panel.locator('.chat-message.user').filter({ hasText: '课程允许问答时' })).toHaveCount(1)
+  await page.reload()
+  await page.getByRole('button', { name: '打开对话', exact: true }).click()
+  await expect(reply).toContainText('课程说明 24：')
+  await expect(panel.locator('.turn-caret')).toHaveCount(0)
   if (output) await page.screenshot({ path: join(output, `teaching-course-${process.platform}.png`), fullPage: false })
 })
 

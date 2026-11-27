@@ -1,4 +1,4 @@
-import { ChatViewport, BackToBottom } from '@xunjie/ui/chat'
+import { ChatViewport } from '@xunjie/ui/chat'
 import * as Dialog from '@radix-ui/react-dialog'
 import { useConversationScroll } from './conversation-scroll'
 import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode, type Ref, type RefObject } from 'react'
@@ -26,6 +26,8 @@ import { ExecutionPanel } from './ExecutionPanel'
 import { NativeSessionPanel } from './NativeSessionPanel'
 import { learningRequest, workspaceScope } from './learningTransport'
 import { ActivityPromptComposer } from './ActivityPromptComposer'
+import { ProductComposerDock } from './ProductPromptInput'
+import { SessionQuestionBox } from './SessionQuestion'
 import type { ModelSelectionController } from './ModelSelection'
 import { waitForComposerComposition } from '../components/workspace/references/composer-view'
 import { PdfMaterials, PendingCoursePdfs, PersonalPdfLibrary, usePdfMaterials, type PdfOrigin } from './PdfMaterials'
@@ -157,12 +159,12 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
     }).catch(() => { /* The activity still has its basic details if the release is unavailable. */ })
     return () => { current = false }
   }, [dockPanel, authorized, activity, course, deadline, spaceKey, namespace])
-  const [conversationActive, setConversationActive] = useState(false)
   const [tabsSlot, setTabsSlot] = useState<HTMLDivElement | null>(null)
   const references = useWorkspaceReferences()
   const conversationScroll = useConversationScroll()
   const ask = useRef<HTMLButtonElement>(null)
   const { workspace, draft, actions, execution, sessions, agent, agentSessionError, retryAgentSession } = useActivitySession()
+  const conversationActive = !!agent?.active
   const executionState = useSyncExternalStore(execution.subscribe, execution.snapshot)
   const latestExperiment = executionState.records.find(record => record.action.protocolVersion === 3
     && record.query.statusKnowledge === 'confirmed' && record.query.state === 'succeeded' && !!record.query.output)
@@ -245,7 +247,12 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
   const pendingQuestion = agent?.conversation?.questions.find(question => question.state === 'pending')
   const waitText = typeof pendingQuestion?.presentation.question === 'string' ? pendingQuestion.presentation.question : 'Agent 有一个问题想与你确认。'
   const [focusQuestionId, setFocusQuestionId] = useState<string | null>(null)
-  const questionFocused = useCallback(() => setFocusQuestionId(null), [])
+  const questionBox = useRef<HTMLElement>(null)
+  useLayoutEffect(() => {
+    if (!references.open || !focusQuestionId) return
+    if (focusQuestionId === pendingQuestion?.questionId) questionBox.current?.focus({ preventScroll: true })
+    setFocusQuestionId(null)
+  }, [references.open, focusQuestionId, pendingQuestion?.questionId])
   useImperativeHandle(workspaceRef, () => ({ leave: async () => {
     await waitForComposerComposition(scope)
     await workspace.leave(); await draft.leave(); await actions.leave()
@@ -615,18 +622,21 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
         <ActivityActions activity={activity} />
         <ChatViewport scrollerRef={conversationScroll.scroller} onScroll={conversationScroll.onScroll} onJump={conversationScroll.onJump}
           busy={conversationActive} phase={conversationActive ? 'streaming' : undefined} padSuggestions={false} queued={false}>
-          <ActivityConversation activity={activity} spaceKey={spaceKey} namespace={namespace} onModels={onModels}
-            onActiveChange={setConversationActive} onLocateTool={locateTool} onOpenCitation={openCitation}
-            focusQuestionId={focusQuestionId} onQuestionFocused={questionFocused} artifacts={artifacts} onOpenArtifact={openArtifact} />
+          <ActivityConversation activity={activity} onLocateTool={locateTool} onOpenCitation={openCitation}
+            artifacts={artifacts} onOpenArtifact={openArtifact} />
           {agentSessionError && <p role="alert" className="learning-error product-discussion-error">
             {agentSessionError}<Button type="button" variant="outline" onClick={retryAgentSession}>重新打开对话</Button>
           </p>}
         </ChatViewport>
         <div className="product-discussion-input">
-          {!conversationScroll.atBottom && <BackToBottom onClick={conversationScroll.backToBottom} />}
-          <ActivityPromptComposer activity={activity} spaceKey={spaceKey} namespace={namespace} authorized={authorized}
-            selection={selection} onModels={onModels} active={conversationActive} generating={conversationActive}
-            sending={sending} closeFocusRef={ask} />
+          <ProductComposerDock atBottom={conversationScroll.atBottom} onBackToBottom={conversationScroll.backToBottom}>
+            {agent && pendingQuestion && references.open
+              ? <SessionQuestionBox key={pendingQuestion.questionId + ':' + pendingQuestion.version} focusRef={questionBox}
+                question={pendingQuestion} controller={agent} readOnly={readOnly || !authorized || activity.status !== 'open'} />
+              : <ActivityPromptComposer activity={activity} spaceKey={spaceKey} namespace={namespace} authorized={authorized}
+                selection={selection} onModels={onModels} active={conversationActive}
+                sending={sending} closeFocusRef={ask} onSend={conversationScroll.backToBottom} />}
+          </ProductComposerDock>
         </div>
       </aside>
       {course && <SideDock taskButtonRef={taskInfoEntryRef} openPanel={dockPanel} onOpenPanelChange={setDockPanel}

@@ -13,9 +13,9 @@ import { useAgentModelPicker } from './AgentModelPicker'
 import { isAgentImage } from '../reliable-workspace/agent-images'
 
 /** Shared durable input for the full conversation and the workspace sidebar. */
-export function ActivityPromptComposer({ activity, spaceKey, namespace, authorized, selection, onModels, active, contextUsage, sending, closeFocusRef }: {
+export function ActivityPromptComposer({ activity, spaceKey, namespace, authorized, selection, onModels, active, contextUsage, sending, closeFocusRef, onSend }: {
   activity: LearningActivity; spaceKey: string; namespace: string; authorized: boolean
-  selection: ModelSelectionController; onModels?: () => void; active: boolean; generating: boolean
+  selection: ModelSelectionController; onModels?: () => void; active: boolean; onSend?: () => void
   contextUsage?: AgentConversation['contextUsage']; sending: RefObject<Promise<void> | null>; closeFocusRef?: RefObject<HTMLElement | null>
 }) {
   const { workspace, draft, inputInteraction, agent } = useActivitySession()
@@ -74,7 +74,7 @@ export function ActivityPromptComposer({ activity, spaceKey, namespace, authoriz
           busy={controls.active && !hasDraft} onStop={controls.stop}
           onResume={controls.canResume && !hasDraft ? controls.resume : undefined}
           actionDisabled={controls.disabled} resumeLabel="继续生成"
-          onSend={() => sendWithAttachments(props.onSend)} canSend={props.canSend && !preparing}
+          onSend={() => sendWithAttachments(() => { onSend?.(); return props.onSend() })} canSend={props.canSend && !preparing}
           selection={selection} modelLocked={active} contextUsage={contextUsage ?? agent?.conversation?.contextUsage}
           readOnly={workspace.isReadOnly() || !authorized} onModelSettings={onModels} />} />
   </div>

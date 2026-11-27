@@ -61,7 +61,7 @@ function toolOutcome(tool: Tool): TeachingToolRecordView['outcome'] {
 }
 
 /** Read only authenticated v3 projections and events; never invent legacy snapshot, call or binding identities. */
-export function workspaceConversation(conversation: AgentConversation | null, events: AgentEvent[]) {
+export function workspaceConversation(conversation: Pick<AgentConversation, 'sessionId' | 'turns' | 'tools'> | null, events: AgentEvent[]) {
   const prepared: (z.infer<typeof preparedEvent> & { seq: number })[] = []
   const progress = new Map<string, { key: string; turnId: string; callId: string; seq: number; html: string }>()
   const turns = new Map(conversation?.turns.map(turn => [turn.turnId, turn]) ?? [])

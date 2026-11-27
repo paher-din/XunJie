@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { AgentConversation } from '@xunjie/contracts/agent-service'
-import { AgentMessage, UserMessage, MessageTaskCard, AgentTrace, AgentThinking, AgentSkillRead } from '@xunjie/ui/chat'
+import { AgentMessage, UserMessage, MessageTaskCard, AgentTrace, AgentThinking, AgentSkillRead, WaitTail } from '@xunjie/ui/chat'
 import { Button } from '@xunjie/ui/foundation'
 import { workspaceCard } from './agent-sessions'
 import type { AgentSessionController } from './useAgentSession'
@@ -117,14 +117,18 @@ function SessionTrace({ controller, runId, inputId, renderTool }: { controller: 
   const ordered = orderedAgentTrace(thinking, tools)
   const lastInput = conversation.inputs.filter(input => input.turnId === runId && input.state !== 'removed').at(-1)
   const active = (!inputId || lastInput?.inputId === inputId) && !!run && run.state === 'active'
+  const waitingForReply = active && !thinking.length && !tools.length
+    && !conversation.questions.some(question => question.turnId === runId && question.state === 'pending')
+    && !conversation.messages.some(message => message.turnId === runId && message.role === 'assistant'
+      && (!inputId || !message.inputId || message.inputId === inputId))
   const failure = run?.state === 'failed' ? ['budget_exhausted', 'budget-exhausted', 'input-budget-exhausted', 'output-budget-exhausted'].includes(run.reason)
     ? '本次回答已达到预算上限，原问题和内容已保留。'
     : ['context-capacity-exceeded', 'context-capacity-preflight'].includes(run.reason)
       ? '当前模型容纳不了这次回答所需的上下文。可以缩小引用范围，或换用上下文更大的模型。'
       : '这次回答未能完成，原问题和内容已保留，可以稍后继续。' : ''
-  if (!thinking.length && !tools.length && !active) return failure ? <p role="status" className="learning-error">{failure}</p> : null
+  if (waitingForReply) return <div className="turn-status workspace-waiting"><WaitTail /></div>
+  if (!thinking.length && !tools.length) return failure ? <p role="status" className="learning-error">{failure}</p> : null
   return <><AgentTrace grouped active={active} label="思考与执行" aria-label="思考与执行记录" data-turn-id={runId}>
-    {!thinking.length && active && !conversation.questions.some(question => question.turnId === runId && question.state === 'pending') && <AgentThinking text="正在理解当前问题并整理可用信息。" active />}
     {ordered.map(entry => {
       if (entry.kind === 'thinking') return <AgentThinking key={entry.item.messageId} text={entry.item.text} active={entry.item.active} />
       const question = questionsByTool.get(entry.item.toolCallId)

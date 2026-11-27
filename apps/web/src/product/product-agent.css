@@ -41,9 +41,6 @@
 
 .product-agent { min-height: 0; height: calc(100dvh - 22px); }
 .product-agent .product-conversation-scroll { width: 100%; }
-.session-conversation > [data-message-id] { margin: 20px 0; }
-.session-conversation .chat-message { content-visibility: auto; contain-intrinsic-size: auto 120px; }
-.session-conversation [data-state='streaming'] { content-visibility: visible; }
 .session-input-actions { display: flex; justify-content: flex-end; gap: 12px; color: var(--muted); font-size: 12px; }
 .session-input-state { margin: 4px 0 0; color: var(--muted); font-size: 12px; text-align: right; }
 .session-input-actions button:hover { color: var(--ink); }
@@ -52,4 +49,3 @@
 .session-material-reading img { max-width: 100%; height: auto; }
 .product-agent-notices > select { max-width: 240px; }
 .product-agent-notices details { margin: 8px 0; }
-.product-discussion .session-conversation .chat-message { margin: 16px 0; }
