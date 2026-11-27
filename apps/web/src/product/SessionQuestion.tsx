@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type Ref } from 'react'
 import type { AgentQuestion } from '@xunjie/contracts/agent-runtime'
 import { teachingStudentAnswerSchema, teachingStudentAskInputSchema } from '@xunjie/contracts/student-questions'
 import { AgentQuestion as AgentQuestionControl, AgentTraceItem } from '@xunjie/ui/chat'
@@ -16,20 +16,20 @@ function DraftProtectionFeedback({ error, retry }: { error: string; retry: () =>
   return error ? <p role="alert" className="learning-error">{error} <button type="button" onClick={() => void retry().catch(() => {})}>重试保留输入</button></p> : null
 }
 
-export function SessionQuestionBox({ question, controller, readOnly }: {
-  question: AgentQuestion; controller: AgentSessionController; readOnly: boolean
+export function SessionQuestionBox({ question, controller, readOnly, focusRef }: {
+  question: AgentQuestion; controller: AgentSessionController; readOnly: boolean; focusRef?: Ref<HTMLElement>
 }) {
   const parsed = presentationOf(question)
   const draft = useSessionDraft(controller.client.scope, controller.sessionId, 'question:' + question.questionId + ':' + question.version,
     { text: '', editing: true, expectedVersion: question.version })
-  if (!parsed.success) return <section className="session-question-box" aria-label="Agent 的问题">
+  if (!parsed.success) return <section ref={focusRef} tabIndex={focusRef ? -1 : undefined} className="session-question-box" aria-label="Agent 的问题">
     <p role="status" className="session-question-status">正在等待原问题结果，请稍候。</p>
   </section>
   const prompt = parsed.data
   const choice = prompt.options.find(option => option.id === draft.value.optionId)?.id ?? ''
   const answer = (value: Record<string, string>) => void draft.protect()
     .then(() => controller.respond(question.questionId, question.version, value)).catch(() => {})
-  return <section className="session-question-box" data-question-id={question.questionId} aria-label="Agent 的问题">
+  return <section ref={focusRef} tabIndex={focusRef ? -1 : undefined} className="session-question-box" data-question-id={question.questionId} aria-label="Agent 的问题">
     <header className="session-question-heading">
       <span className="session-question-icon" aria-hidden="true"><Icon name="chat-round-dots" tone="neutral" /></span>
       <span>Agent 向你提问</span>

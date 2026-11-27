@@ -16,9 +16,6 @@ import {
   FAILURE_COPY,
   STOP_EMPTY,
   STOP_WITH_CONTENT,
-  WAIT_SECONDS_AT_MS,
-  WAIT_TEXT,
-  WAIT_TEXT_AT_MS,
 } from './copy'
 
 /** 生成交互卡的逐消息动作槽（由页面按消息定位注入适配层调用）。 */
@@ -39,7 +36,7 @@ export interface GenCardSlots {
 
 /**
  * 一条 agent 消息（共用组件层：AgentPage 与工作区引导面板共用）。
- * 按 phase 渲染：waiting 呼吸点三档递进 / thinking 折叠行 / streaming 逐字 markdown + 光标 /
+ * 按 phase 渲染：waiting 呼吸点 / thinking 折叠行 / streaming 逐字 markdown + 光标 /
  * stopped 停止行 / failed 失败卡（含错误码）/ settled 操作条。
  * 文案口径见 docs/agent-page-design.md「已确认」。
  * children 用于消息内卡片槽（如任务卡），由父级按数据渲染。
@@ -154,32 +151,16 @@ export function AgentMessage({
   )
 }
 
-/** 等待首 token 的尾段：呼吸点；4 秒起「等待模型响应」，12 秒起追加走动秒数。 */
-/** 此状态部件无输入属性。 */
+/** 等待首个模型输出时的呼吸点。 */
 export type WaitTailProps = Record<string, never>
 
 export function WaitTail() {
-  const startRef = useRef(Date.now())
-  const [elapsed, setElapsed] = useState(0)
-  useEffect(() => {
-    const t = window.setInterval(() => setElapsed(Date.now() - startRef.current), 200)
-    return () => window.clearInterval(t)
-  }, [])
-  const text =
-    elapsed < WAIT_TEXT_AT_MS
-      ? ''
-      : elapsed < WAIT_SECONDS_AT_MS
-        ? WAIT_TEXT
-        : `${WAIT_TEXT} · ${Math.floor(elapsed / 1000)} 秒`
   return (
-    <>
-      <span className="turn-dots">
-        <i />
-        <i />
-        <i />
-      </span>
-      {text && <span className="turn-wait-text">{text}</span>}
-    </>
+    <span className="turn-dots" aria-hidden="true">
+      <i />
+      <i />
+      <i />
+    </span>
   )
 }
 

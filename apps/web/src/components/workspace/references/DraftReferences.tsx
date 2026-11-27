@@ -154,7 +154,9 @@ function DraftReferencesSession({ workspaceKey, draft, actions, children, delive
     if (creating.current || uploading.current || !draft.snapshot().question.trim()) return
     creating.current = true; setBusy(true)
     try {
-      const token = draft.capture().token + ':' + JSON.stringify(receiver)
+      const draftToken = draft.capture().token
+      const token = draftToken + ':' + JSON.stringify(receiver)
+      const handsOffToSession = receiver.location === 'local' && receiver.receiverId.startsWith('teaching-agent:')
       const items = actions.snapshot().items
       // Only question actions are ever resumed from a draft token; an execution record has no draft.
       const pending = items.find(item => !isExecutionAction(item.input)
@@ -166,6 +168,9 @@ function DraftReferencesSession({ workspaceKey, draft, actions, children, delive
       const requestId = remembered && !previous ? remembered : crypto.randomUUID()
       actionIds.current.set(token, requestId)
       await actions.create({ requestId, receiver, ...(delivery && receiver.receiverId.startsWith('teaching-agent:') ? { delivery } : {}) })
+      // The action now owns a durable copy. A delayed receipt must not keep its text
+      // in the composer or clear anything the student has added since sending.
+      if (handsOffToSession && draft.acknowledge(draftToken)) void draft.protect().catch(() => {})
       onCreated?.()
       setNotice('已保留这次问题，可继续编辑；接收情况见下方记录。')
     } catch { setNotice('这次问题尚未可靠保留，未继续派发。请保留此页，原文仍可复制。') }

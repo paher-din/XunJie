@@ -18,6 +18,7 @@ import type { ActivityWorkspaceHandle } from './ActivityWorkspace'
 import { ProductShell } from '../components/ProductShell'
 import { useModelSelection } from './ModelSelection'
 import { ProductHome } from './ProductHome'
+import { ProductHomeAssistant } from './ProductHomeAssistant'
 import { courseReleaseDate, courseTaskEntry, courseTaskProgress, type CourseTaskSelection } from './SchoolCourseTasks'
 import { HomeNavigationProvider } from '../lib/homeCourseNavigation'
 import { ProductConversationHistory } from './ProductConversationHistory'
@@ -34,9 +35,10 @@ import { LearningReadCache } from './learning-read-cache'
 import { skillCatalogCacheKey, skillCatalogSchema } from './skills'
 import { learningSubjectRequest } from './learningTransport'
 import { useAgentSessionHistory } from './useAgentSession'
+import { AgentSessionsClient, SessionOutbox } from './agent-sessions'
 import type { AgentSession } from '@xunjie/contracts/agent-sessions'
 import type { ExperimentReference } from './experiment-reference'
-import type { CourseCitationDocument, CourseCitationLocation } from './ProductAgent'
+import type { AcceptedFirstMessage, CourseCitationDocument, CourseCitationLocation } from './ProductAgent'
 import { isCoursePdf } from './CourseMaterials'
 import { cacheableMaterial } from '../component-preparation/materials'
 import { startSchoolAuthorization, rememberSchoolConnection, restoreSchoolConnection, schoolAuthorizationReturnUrl, returnToSchoolClient,
@@ -256,6 +258,7 @@ function LearningView() {
   const modelsOpen = settingsPage !== null
   const agentOpen = new URLSearchParams(route.search).get('view') === 'agent'
   const routeSessionId = new URLSearchParams(route.search).get('session') ?? undefined
+  const [acceptedFirstMessage, setAcceptedFirstMessage] = useState<AcceptedFirstMessage>()
   const routeActivityId = new URLSearchParams(route.search).get('activity')
   const requestedArtifactId = new URLSearchParams(route.search).get('artifact')
   const requestedExperimentId = new URLSearchParams(route.search).get('experiment')
@@ -1107,8 +1110,19 @@ function LearningView() {
   const previewProgress = previewRelease && previewEntry?.status
     ? courseTaskProgress(previewRelease.objectives.length, previewEntry.activity?.completedObjectives) : undefined
   const openedObjectives = opened && (recordedProgress?.activity === opened ? recordedProgress.completed : opened.completedObjectives)
-  const changePage = (page: 'home' | 'agent', experiment?: ExperimentReference) => void action(async () => {
+  const changePage = (page: 'home' | 'agent', options?: { experiment?: ExperimentReference; question?: string }) => void action(async generation => {
+    const startedSearch = currentSearch.current
     await protectActivity()
+    if (generation !== epoch.current || startedSearch !== currentSearch.current) return
+    const { experiment, question } = options ?? {}
+    if (question) {
+      if (!context || !contextVerified || context.readOnly || !personalKey || !personalIdentity) return
+      const outbox = new SessionOutbox(new AgentSessionsClient({ identity: personalIdentity, spaceKey: personalKey, namespace: context.clientNamespace }))
+      try {
+        if (outbox.start()) { toast.warning('还有一条提问待确认，请先在 Agent 对话中继续原请求。'); return }
+        outbox.begin(question)
+      } catch { toast.error('暂时无法保存提问，请保留输入后重试。'); return }
+    }
     if (experiment && context) sessionStorage.setItem('xj.agent-experiment.' + context.clientNamespace, JSON.stringify(experiment))
     const params = new URLSearchParams(currentSearch.current)
     params.delete('activity'); params.delete('course'); params.delete('settings'); params.delete('artifact'); params.delete('session')
@@ -1137,7 +1151,7 @@ function LearningView() {
   const openAgent = () => { prepareAgent(); conversationHistory.revalidate(); changePage('agent') }
   const askHomeFromExperiment = (reference: ExperimentReference) => {
     prepareAgent()
-    changePage('agent', reference)
+    changePage('agent', { experiment: reference })
   }
   const openSettings = (tab: ProductSettingsTab | 'school' = 'account') => void action(async () => {
     void loadModelSettings().catch(() => {})
@@ -1180,7 +1194,11 @@ function LearningView() {
     navigate({ pathname: route.pathname, search }); setOpened(null)
     if (personalKey && personalKey !== key) setKey(personalKey)
   })
-  const sessionCreated = (session: AgentSession) => { conversationHistory.upsert(session); openSession(session.sessionId) }
+  const sessionCreated = (session: AgentSession, firstMessage?: AcceptedFirstMessage) => {
+    setAcceptedFirstMessage(firstMessage)
+    conversationHistory.upsert(session)
+    openSession(session.sessionId)
+  }
   const refreshCreatedWorkspaces = () => {
     if (!personalKey) return
     void api('activities', undefined, personalKey).then(value => {
@@ -1327,7 +1345,8 @@ function LearningView() {
     </div> : routeActivityId ? <div className="content" role="status">{error ? '学习活动暂时无法打开。' : ''}{error && <Button variant="outline" onClick={goHome}>返回首页</Button>}</div>
     : agentOpen && (!personalKey || key !== personalKey) ? <div className="content home-page"><p>请在本机客户端开始个人学习；学校课程请从首页进入。</p><Button onClick={goHome}>返回首页</Button></div> : agentOpen ? <Suspense fallback={<div className="content" role="status" aria-label="正在准备对话" />}><ProductAgent
       key={context.clientNamespace + identity.principalId} identity={identity} spaceKey={key} namespace={context.clientNamespace}
-      sessionId={routeSessionId} session={conversationHistory.items.find(item => item.sessionId === routeSessionId)} onSession={sessionCreated} onWorkspace={(id, source) => void action(async () => {
+      sessionId={routeSessionId} session={conversationHistory.items.find(item => item.sessionId === routeSessionId)}
+      acceptedFirstMessage={acceptedFirstMessage} onSession={sessionCreated} onWorkspace={(id, source) => void action(async () => {
         if (!source) return openActivity(id, false, personalKey)
         const original = context.identities.find(item => item.identity.environmentId === source.environmentId
           && item.identity.spaceId === source.spaceId && item.identity.principalId === source.principalId)
@@ -1373,6 +1392,10 @@ function LearningView() {
         onOpenTask={selection => void viewRelease(selection)} readTaskSubmission={readTaskSubmission}
         onStartConversation={openAgent} onConnectSchool={() => openSettings('school')}
         onRefresh={() => void action(async generation => { await refreshContext(undefined, generation) })} />
+      {homeVisible && !authorize && contextVerified && !context.readOnly && personalKey && <ProductHomeAssistant onOpen={prepareAgent} onSend={question => {
+        prepareAgent()
+        changePage('agent', { question })
+      }} />}
     </>}
     {preview && previewEntry && <WorkspaceTaskIntro status={previewEntry.status} name={preview.detail?.taskTitle ?? preview.task.title} course={preview.courseName}
       deadline={previewRelease?.deadlineAt ? `截止 ${formatDeadline(previewRelease.deadlineAt)}` : '无截止时间'}

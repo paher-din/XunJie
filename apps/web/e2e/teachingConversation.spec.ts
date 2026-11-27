@@ -76,7 +76,9 @@ test.beforeEach(async () => {
       const last = payload.messages?.at(-1) as { role?: string; content?: unknown } | undefined
       const lastText = typeof last?.content === 'string' ? last.content : Array.isArray(last?.content)
         ? last.content.map((part: { text?: string }) => part.text ?? '').join('') : JSON.stringify(last?.content ?? '')
-      if (last?.role === 'tool' || (last?.role === 'user'
+      const materializedToolResult = last?.role === 'user' && lastText.trimStart().startsWith('本步材料')
+        && payload.messages?.some((message: { role: string }) => message.role === 'tool')
+      if (last?.role === 'tool' || materializedToolResult || (last?.role === 'user'
         && lastText.trimStart().startsWith('此前工具与等待的原始事实') && lastText.includes('list_learning_tasks'))) {
         if (holdFirstFinal && questionNumber === 1) {
           await new Promise<void>(resolve => { finishFirstFinal = resolve })
@@ -182,9 +184,12 @@ async function configureModel(request: import('@playwright/test').APIRequestCont
 
 async function conversationOf(request: import('@playwright/test').APIRequestContext, sessionId: string) {
   const context = await (await request.get(endpoint + '/api/learning/context')).json()
-  return (await request.get(`${endpoint}/api/learning/agent-sessions/${sessionId}/conversation?after=0`, {
-    headers: { 'x-xj-space': 'personal', 'x-xj-namespace': context.clientNamespace, 'x-xj-agent-contract': '2' },
-  })).json()
+  const response = await request.get(`${endpoint}/api/learning/agent-sessions/${sessionId}/conversation?after=0`, {
+    headers: { 'x-xj-space': 'personal', 'x-xj-namespace': context.clientNamespace, 'x-xj-agent-contract': '3' },
+  })
+  const value = await response.json()
+  if (!response.ok() || !Array.isArray(value.turns)) throw new Error(`conversation ${sessionId} returned ${response.status()} ${JSON.stringify(value)}`)
+  return value
 }
 
 async function prepareFirstQuestion(page: import('@playwright/test').Page, goal: string, question: string) {
@@ -345,7 +350,7 @@ test('editing a generating message stops the task before opening its editor', as
     releaseStop()
   } finally { releaseStop() }
   await expect(page.getByText('回答已停止，已发生的内容仍保留。', { exact: true })).toHaveCount(0)
-  await expect.poll(async () => (await conversationOf(request, sessionId)).runs.at(-1)?.state).toBe('stopped')
+  await expect.poll(async () => (await conversationOf(request, sessionId)).turns.at(-1)?.state).toBe('stopped')
   await expect(student.getByLabel('修改这条消息', { exact: true })).toHaveValue(firstQuestion)
   await expect(student.getByRole('button', { name: '取消', exact: true })).toBeVisible()
   await expect(student.getByLabel('修改这条消息', { exact: true })).toHaveAttribute('rows', '1')
@@ -354,7 +359,7 @@ test('editing a generating message stops the task before opening its editor', as
   await student.getByRole('button', { name: '发送', exact: true }).click()
   await expect(student.locator('.bubble')).toHaveText(revised, { timeout: 20000 })
   await expect(student.getByRole('button', { name: '编辑这条消息', exact: true })).toBeVisible()
-  await expect.poll(async () => (await conversationOf(request, sessionId)).runs.length).toBe(2)
+  await expect.poll(async () => (await conversationOf(request, sessionId)).turns.length).toBe(2)
   await expect(page.locator('.prompt-input').getByRole('button', { name: '停止生成', exact: true })).toBeVisible()
   await expect(page.getByText('选择要继续处理的输入', { exact: true })).toHaveCount(0)
 })
@@ -381,7 +386,7 @@ test('editing a completed turn replaces its answer in place and survives reload'
   await expect(student.locator('.bubble')).toHaveText('完成后修订的问题', { timeout: 20000 })
   await expect.poll(async () => {
     const value = await conversationOf(request, sessionId)
-    return value.runs.length >= 2 && value.runs.at(-1)?.state === 'completed'
+    return value.turns.length >= 2 && value.turns.at(-1)?.state === 'completed'
   }, { timeout: 45_000 }).toBe(true)
   await expect(page.locator('.product-conversation .chat-message.user')).toHaveCount(1)
   await expect(page.locator('.product-conversation .chat-message.agent')).toHaveCount(1)
@@ -544,7 +549,7 @@ test('standalone chat pins the chosen skill and fixed text/PDF attachments on th
   await expect(page.getByRole('button', { name: '移除技能 inspect-evidence' })).toHaveCount(0)
 })
 
-test('a course activity asks through the fixed help policy in the formal conversation UI', async ({ page }) => {
+test('a course activity streams through the fixed help policy in the formal workspace conversation', async ({ page }) => {
   const control = await resolveCredential(root, 'control')
   const courseId = randomUUID(), taskId = randomUUID(), releaseId = randomUUID()
   const manage = async (path: string, body: unknown) => {
@@ -571,23 +576,34 @@ test('a course activity asks through the fixed help policy in the formal convers
   expect(created.status()).toBe(200)
   const activityId = (await created.json()).activityId as string
   await configureModel(page.request, { 'content-type': 'application/json' })
-  const expected = '界面回答' + (replies.length + 1)
-  await page.goto(endpoint + '/?space=school')
+  progressiveReply = true
+  richReply = Array.from({ length: 24 }, (_, index) => `课程说明 ${index + 1}：先写出预期，再和试验观察比较。`).join('\n\n')
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.goto(endpoint + '/?space=school&activity=' + activityId)
   const browserContext = await page.evaluate(async () => (await fetch('/api/learning/context')).json())
   expect(browserContext.identities?.map((item: { key: string }) => item.key), JSON.stringify(browserContext)).toContain('school')
-  await page.getByRole('button', { name: '学校', exact: true }).click()
-  const activityCard = page.locator(`[data-activity-id="${activityId}"]`)
-  await expect(activityCard).toBeVisible({ timeout: 30_000 })
-  await activityCard.click()
   await expect(page.locator('#activity-title')).toHaveText('课程问答任务')
   const open = page.getByRole('button', { name: '打开对话', exact: true })
   await expect(open).toBeVisible()
   await open.click()
-  await expect(page.getByRole('complementary', { name: '问题与引用' })).toBeVisible()
+  const panel = page.getByRole('complementary', { name: '问题与引用' })
+  await expect(panel).toBeVisible()
   await page.getByRole('textbox', { name: '你的问题', exact: true }).fill('课程允许问答时，请解释本任务的核心概念。')
   await page.getByRole('button', { name: '发送消息', exact: true }).click()
-  await expect(page.getByText(expected, { exact: true })).toBeVisible({ timeout: 20000 })
-  await expect(page.locator('.chat-message.user').filter({ hasText: '课程允许问答时' })).toBeVisible()
+  const reply = panel.locator('.chat-message.agent .turn-body')
+  try {
+    await expect(reply).toContainText('课程说明 1：', { timeout: 20000 })
+    expect(providerEnded).toBe(false)
+    await expect(reply).toContainText('课程说明 12：')
+    expect(providerEnded).toBe(false)
+  } finally { finishStream() }
+  await expect(reply).toContainText('课程说明 24：')
+  await expect(panel.locator('.turn-caret')).toHaveCount(0)
+  await expect(panel.locator('.chat-message.user').filter({ hasText: '课程允许问答时' })).toHaveCount(1)
+  await page.reload()
+  await page.getByRole('button', { name: '打开对话', exact: true }).click()
+  await expect(reply).toContainText('课程说明 24：')
+  await expect(panel.locator('.turn-caret')).toHaveCount(0)
   if (output) await page.screenshot({ path: join(output, `teaching-course-${process.platform}.png`), fullPage: false })
 })
 
@@ -753,29 +769,29 @@ test('each turn keeps its own thinking and execution group after that turn stude
 
   const activityId = new URL(page.url()).searchParams.get('session')!
   const conversation = await conversationOf(request, activityId)
-  expect(conversation.runs).toHaveLength(2)
-  const [firstRun, secondRun] = conversation.runs
-  const firstGroup = page.locator(`.session-conversation > div[data-run-id="${firstRun.runId}"]`)
-  const secondGroup = page.locator(`.session-conversation > div[data-run-id="${secondRun.runId}"]`)
+  expect(conversation.turns).toHaveLength(2)
+  const [firstTurn, secondTurn] = conversation.turns
+  const firstGroup = page.locator(`.session-conversation > div[data-turn-id="${firstTurn.turnId}"]`)
+  const secondGroup = page.locator(`.session-conversation > div[data-turn-id="${secondTurn.turnId}"]`)
   await expect(firstGroup.locator('.agent-trace-group-trigger')).toBeVisible()
-  await expect(firstGroup.locator(`.teaching-tool-record[data-run-id="${firstRun.runId}"]`)).toBeVisible()
-  await expect(secondGroup.locator(`.teaching-tool-record[data-run-id="${secondRun.runId}"]`)).toBeVisible()
+  await expect(firstGroup.locator(`.teaching-tool-record[data-run-id="${firstTurn.turnId}"]`)).toBeVisible()
+  await expect(secondGroup.locator(`.teaching-tool-record[data-run-id="${secondTurn.turnId}"]`)).toBeVisible()
 
-  const positions = await page.locator('.session-conversation').evaluate((root, runs) => {
-    const children = [...root.children].filter(child => child.getAttribute('data-run-id'))
-    const indexOfMessage = (runId: string, role: string) => children.findIndex(child =>
-      child.getAttribute('data-run-id') === runId && !!child.querySelector('.chat-message.' + role))
-    const traceCount = (runId: string) => children.filter(child => child.getAttribute('data-run-id') === runId)
+  const positions = await page.locator('.session-conversation').evaluate((root, turns) => {
+    const children = [...root.children].filter(child => child.getAttribute('data-turn-id'))
+    const indexOfMessage = (turnId: string, role: string) => children.findIndex(child =>
+      child.getAttribute('data-turn-id') === turnId && !!child.querySelector('.chat-message.' + role))
+    const traceCount = (turnId: string) => children.filter(child => child.getAttribute('data-turn-id') === turnId)
       .reduce((count, child) => count + child.querySelectorAll('.agent-trace-group-trigger').length, 0)
     return {
-      firstStudent: indexOfMessage(runs[0], 'user'),
-      firstAssistant: indexOfMessage(runs[0], 'agent'),
-      firstTrace: traceCount(runs[0]),
-      secondStudent: indexOfMessage(runs[1], 'user'),
-      secondAssistant: indexOfMessage(runs[1], 'agent'),
-      secondTrace: traceCount(runs[1]),
+      firstStudent: indexOfMessage(turns[0], 'user'),
+      firstAssistant: indexOfMessage(turns[0], 'agent'),
+      firstTrace: traceCount(turns[0]),
+      secondStudent: indexOfMessage(turns[1], 'user'),
+      secondAssistant: indexOfMessage(turns[1], 'agent'),
+      secondTrace: traceCount(turns[1]),
     }
-  }, [firstRun.runId, secondRun.runId])
+  }, [firstTurn.turnId, secondTurn.turnId])
   expect(positions.firstStudent).toBeGreaterThanOrEqual(0)
   expect(positions.firstTrace).toBe(1)
   expect(positions.firstAssistant).toBeGreaterThan(positions.firstStudent)
@@ -807,13 +823,13 @@ test('a second steer while running moves the shared trace after its newest stude
     const sessionId = new URL(page.url()).searchParams.get('session')!
     await expect.poll(async () => (await conversationOf(request, sessionId)).messages.filter((message: { role: string }) => message.role === 'user').length).toBe(2)
     const conversation = await conversationOf(request, sessionId)
-    expect(conversation.runs).toHaveLength(1)
-    const runId = conversation.runs[0].runId
-    await expect(page.locator(`.session-conversation > div[data-run-id="${runId}"] .chat-message.user`)).toHaveCount(2, { timeout: 20000 })
+    expect(conversation.turns).toHaveLength(1)
+    const turnId = conversation.turns[0].turnId
+    await expect(page.locator(`.session-conversation > div[data-turn-id="${turnId}"] .chat-message.user`)).toHaveCount(2, { timeout: 20000 })
     const latestTrace = page.getByLabel('思考与执行记录', { exact: true }).last()
     await expect(latestTrace.locator('.agent-trace-group-trigger')).toHaveAttribute('aria-expanded', 'true')
     const positions = await page.locator('.session-conversation').evaluate((root, id) => {
-      const children = [...root.children].filter(child => child.getAttribute('data-run-id') === id)
+      const children = [...root.children].filter(child => child.getAttribute('data-turn-id') === id)
       const students = children.flatMap((child, index) => child.querySelector('.chat-message.user') ? [index] : [])
       const traces = children.flatMap((child, index) => child.querySelector('[aria-label="思考与执行记录"]') ? [index] : [])
       const latestStudent = students.at(-1)
@@ -822,10 +838,10 @@ test('a second steer while running moves the shared trace after its newest stude
       const latestTraceAfterStudent = !!(latestStudentElement?.querySelector('.chat-message.user') && latestTrace
         && (latestStudentElement.querySelector('.chat-message.user')!.compareDocumentPosition(latestTrace) & Node.DOCUMENT_POSITION_FOLLOWING))
       return { firstStudent: students[0], latestStudent, latestTraceOwner: traces.at(-1), studentCount: students.length, traceCount: traces.length, latestTraceAfterStudent }
-    }, runId)
+    }, turnId)
     expect(positions.firstStudent).toBeGreaterThanOrEqual(0)
     expect(positions.latestStudent).toBeGreaterThan(positions.firstStudent!)
-    expect(positions.traceCount).toBe(positions.studentCount)
+    expect(positions.traceCount).toBe(1)
     expect(positions.latestTraceOwner).toBe(positions.latestStudent)
     expect(positions.latestTraceAfterStudent).toBe(true)
     if (output) await page.screenshot({ path: join(output, `teaching-steer-trace-${process.platform}.png`), fullPage: false })
@@ -859,16 +875,12 @@ test('Skill commands select Astryx inline tokens with keyboard navigation and pr
   await expect(input).toHaveValue('')
   await expect(choices).toHaveCount(0)
   const token = page.locator('.prompt-editor [data-astryx-token]')
-  // Main enables imported personal skills by default, so the first one is already pinned;
-  // keyboard selection adds the highlighted one without dropping that default.
-  await expect(token).toHaveCount(2)
+  await expect(token).toHaveCount(1)
   await expect(token.filter({ hasText: picked })).toHaveCount(1)
   expect(new URL(page.url()).searchParams.has('session')).toBe(false)
   await expect(input).toBeFocused()
   const tokenBox = (await token.last().boundingBox())!, inputBox = (await input.boundingBox())!
   expect(Math.abs(tokenBox.y - inputBox.y)).toBeLessThan(6)
-  await input.press('Backspace')
-  await expect(token).toHaveCount(1)
   await input.press('Backspace')
   await expect(token).toHaveCount(0)
   await input.fill('中文草稿')

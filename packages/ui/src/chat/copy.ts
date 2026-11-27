@@ -32,11 +32,6 @@ export const FAILURE_ACTION_LABEL: Record<FailureAction, string> = {
   dismiss: '知道了',
 }
 
-/** 等待期三档递进（已确认 2026-10-09）：0–4 秒只有呼吸点；4 秒起文案；12 秒起追加走动秒数。 */
-export const WAIT_TEXT_AT_MS = 4000
-export const WAIT_SECONDS_AT_MS = 12000
-export const WAIT_TEXT = '等待模型响应'
-
 export const QUEUE_TIP = '已加入队列，当前回答完成后发送'
 export const STOP_WITH_CONTENT = '已停止生成'
 export const STOP_EMPTY = '已停止生成'

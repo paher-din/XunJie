@@ -9,7 +9,10 @@ export function useConversationScroll() {
   const backToBottom = () => {
     stick.current = true; setAtBottom(true)
     const element = scroller.current
-    if (element) element.scrollTop = element.scrollHeight
+    if (element) {
+      element.scrollTop = element.scrollHeight
+      ours.current = element.scrollTop
+    }
   }
   const onScroll = (event: UIEvent<HTMLDivElement>) => {
     const element = event.currentTarget

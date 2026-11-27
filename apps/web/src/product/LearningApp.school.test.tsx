@@ -79,6 +79,8 @@ beforeEach(() => {
   const abort = transferableAbortController()
   vi.stubGlobal('AbortController', abort.constructor)
   vi.stubGlobal('AbortSignal', abort.signal.constructor)
+  vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+  vi.stubGlobal('IntersectionObserver', class { observe() {} disconnect() {} })
   vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener() {}, removeEventListener() {} }))
   vi.spyOn(window, 'open').mockReturnValue(null)
   vi.mocked(returnToSchoolClient).mockReset().mockReturnValue(false)

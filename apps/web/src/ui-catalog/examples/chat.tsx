@@ -171,7 +171,7 @@ function PickerDemo({ empty = false }: { empty?: boolean }) {
 }
 function ThinkingDemo() { return <Frame><ThinkingSettled thinking={{ summary: '示例摘要：先比较输入与预期，再选择边界测试。', seconds: 4 }} /></Frame> }
 function ThinkDemo({ known = false }: { known?: boolean }) { return <Frame><div className="turn-status"><ThinkTail thinking={known ? { summary: '示例摘要', seconds: 6 } : undefined} /></div></Frame> }
-function WaitDemo() { return <Frame><div className="turn-status"><WaitTail /></div><output>本地计时：4 秒显示等待文字，12 秒显示经过秒数。</output></Frame> }
+function WaitDemo() { return <Frame><div className="turn-status"><WaitTail /></div></Frame> }
 function AriaDemo() {
   const [phase, setPhase] = useState<TurnPhase>('waiting')
   return <Frame><TurnAriaStatus phase={phase} /><div className="demo-row">{(['waiting', 'streaming', 'settled', 'stopped', 'failed'] as const).map(value => <Button type="button" key={value} variant="outline" onClick={() => setPhase(value)}>{value}</Button>)}</div>
@@ -399,7 +399,7 @@ export const chatEntries: CatalogEntry[] = [
   { id: 'user-message', name: 'UserMessage', description: '消息复制、原位编辑、取消与忙碌禁用。', importPath, source: 'packages/ui/src/chat/UserMessage.tsx', exampleSource, props: ['text/at/onEdit/busy/images'], dependencies: ['浏览器剪贴板'], states: [
     { id: 'text', name: '编辑／复制／禁用', component: () => <UserDemo /> }, { id: 'images', name: '内联示例图片', component: () => <UserDemo images /> },
   ] },
-  { id: 'wait-tail', name: 'WaitTail', description: '真实等待计时，保留 4 秒／12 秒文案节奏。', importPath, source: agentSource, exampleSource, props: ['无 props'], dependencies: ['本地计时器'], states: [{ id: 'timer', name: '等待计时', component: WaitDemo }] },
+  { id: 'wait-tail', name: 'WaitTail', description: '等待首个模型输出时显示三点动效。', importPath, source: agentSource, exampleSource, props: ['无 props'], dependencies: [], states: [{ id: 'timer', name: '等待中', component: WaitDemo }] },
   { id: 'waveform', name: 'Waveform', description: '带信号、区间、标记与文字的真实 SVG 波形。', importPath, source: 'packages/ui/src/chat/ConceptCard.tsx', exampleSource, props: ['spec.rows/highlight/markers/labels'], dependencies: ['WaveSpec 示例'], states: [
     { id: 'annotated', name: '高亮与标记', component: () => <Frame><div className="concept-body"><Waveform spec={wave} /></div></Frame> },
     { id: 'signals', name: '仅信号行', component: () => <Frame><Waveform spec={{ rows: wave.rows }} /></Frame> },

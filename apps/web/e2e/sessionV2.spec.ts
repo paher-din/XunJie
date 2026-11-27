@@ -3,6 +3,7 @@ import { randomUUID as id } from 'node:crypto'
 import { REAL_URL } from './env'
 import type { AgentSession } from '@xunjie/contracts/agent-sessions'
 import type { AgentConversation } from '@xunjie/contracts/agent-service'
+import type { QuestionDraftView } from '@xunjie/contracts/question-drafts'
 
 // Exercise the production entry and components; substitute only the HTTP boundary.
 test('formal sessions recover original inputs and open an independent real workspace conversation', async ({ page }) => {
@@ -10,13 +11,33 @@ test('formal sessions recover original inputs and open an independent real works
   const owner: AgentSession['owner'] = { version: 1, connectionId: id(), installationId: id(), target: { environmentId: actor.environmentId, serviceId: id(), unit: 'teaching-agent', endpoint: 'https://agent.example.test', protocolVersion: 1, capabilities: ['agent.sessions.v2'] } }
   const activity = { activityId: id(), identity: actor, target: { environmentId: actor.environmentId, serviceId: id(), version: 1 }, question: '递归练习', goal: '掌握函数调用与递归终止条件', references: [], status: 'open', createdAt: now }
   const sessions = new Map<string, AgentSession>(), conversations = new Map<string, AgentConversation>(), requests = new Map<string, unknown>()
+  const draftReceipts = new Map<string, QuestionDraftView>()
+  let workspaceDraft: QuestionDraftView = { draftId: id(), revision: 0, revisionId: null, question: '', references: [] }
   const writes: { path: string; body: any }[] = [], errors: string[] = []
   let created = false, loseReply = true
+  let releaseFirstInput!: () => void, releaseConversation!: () => void, releaseWorkspaceInput!: () => void
+  const firstInput = new Promise<void>(resolve => { releaseFirstInput = resolve })
+  const firstConversation = new Promise<void>(resolve => { releaseConversation = resolve })
+  const workspaceInput = new Promise<void>(resolve => { releaseWorkspaceInput = resolve })
   page.on('pageerror', error => errors.push(error.message))
   const create = (sessionId: string, requestId: string, title: string | null, workspace?: AgentSession['workspace']) => {
     const value: AgentSession = { sessionId, requestId, identity: actor, owner, scenario: workspace ? 'workspace-assistant' : 'student-assistant', ...(workspace ? { workspace } : {}), title,
       pinned: false, archived: false, deleted: false, state: 'ready', createdAt: now, updatedAt: now, readyAt: now }
     sessions.set(sessionId, value); conversations.set(sessionId, { sessionId, lastSeq: 0, messages: [], turns: [], inputs: [], questions: [], tools: [], workspaces: [] }); return value
+  }
+  const submitInput = (sessionId: string, body: any, inWorkspace = false) => {
+    const turnId = id(), inputId = id(), conversation = conversations.get(sessionId)!
+    conversation.turns.push({ turnId, sessionId, requestId: body.requestId, trigger: 'user', originNotificationId: null,
+      state: inWorkspace ? 'active' : 'completed', reason: '', ownerInstanceId: 'test', createdAt: now, updatedAt: now,
+      completedAt: inWorkspace ? null : now }); conversation.lastSeq++
+    conversation.messages.push({ messageId: 'input:' + inputId, turnId, inputId, role: 'user', text: body.text, state: 'settled', createdAt: now })
+    if (!inWorkspace) conversation.messages.push({ messageId: 'assistant:' + turnId, turnId, inputId, role: 'assistant',
+      text: '递归通过更小的同类问题求解。', state: 'settled', createdAt: now })
+    conversation.inputs.push({ inputId, turnId, version: 1, state: 'adopted', text: body.text, createdAt: now })
+    if (!body.context.action) { created = true; conversation.workspaces.push({ toolCallId: id(), turnId, workspace: { ...activity, title: '递归练习' } }) }
+    const receipt = { sessionId, inputId, turnId, requestId: body.requestId, inputDigest: 'a'.repeat(64) }
+    requests.set(body.requestId, { input: body, receipt })
+    return receipt
   }
   await page.route('**/api/learning/**', async route => {
     const request = route.request(), path = new URL(request.url()).pathname.replace('/api/learning/', ''), body = request.postDataJSON()
@@ -32,8 +53,14 @@ test('formal sessions recover original inputs and open an independent real works
     if (path.endsWith('/skills/select')) return respond({ catalog: [], loaded: [], selectionDigest: 'a'.repeat(64) })
     if (path.endsWith('/skills')) return respond({ catalog: [], loaded: [], selectionDigest: 'a'.repeat(64) })
     if (path.startsWith('workspaces/')) return respond({ revision: 0, files: [] })
-    if (path.startsWith('drafts/')) return respond(body ? { draftId: body.draftId, revision: body.baseRevision + 1, revisionId: id(), question: body.question, references: body.references }
-      : path.includes('/receipts/') ? null : { draftId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd', revision: 0, revisionId: null, question: '', references: [] })
+    if (path.startsWith('drafts/')) {
+      if (path.includes('/receipts/')) return respond(draftReceipts.get(path.split('/').at(-1)!) ?? null)
+      if (body) {
+        workspaceDraft = { draftId: body.draftId, revision: body.baseRevision + 1, revisionId: id(), question: body.question, references: body.references }
+        draftReceipts.set(body.requestId, workspaceDraft)
+      }
+      return respond(workspaceDraft)
+    }
     if (/^(pdf|materials|artifacts)\//.test(path)) return respond([])
     if (path.startsWith('executions/')) return respond(path.endsWith('/history') ? { entries: [], nextCursor: null } : [])
     if (!path.startsWith('agent-sessions')) return respond({ error: 'missing' }, 404)
@@ -41,32 +68,75 @@ test('formal sessions recover original inputs and open an independent real works
     expect(request.headers()['x-xj-expected-subject']).toBe([actor.environmentId, actor.spaceId, actor.principalId].join('.'))
     if (path === 'agent-sessions') return respond(body ? create(body.sessionId, body.requestId, body.title) : { items: [...sessions.values()] })
     if (path === 'agent-sessions/update') { const { requestId: _request, ...patch } = body, value = { ...sessions.get(body.sessionId)!, ...patch }; sessions.set(value.sessionId, value); return respond(value) }
+    if (path === 'agent-sessions/start') {
+      if (loseReply) await firstInput
+      const session = create(body.create.sessionId, body.create.requestId, body.create.title)
+      const receipt = submitInput(session.sessionId, body.input)
+      if (loseReply) { loseReply = false; return route.abort('failed') }
+      return respond({ session, receipt })
+    }
     if (path === 'agent-sessions/workspace') return respond([...sessions.values()].find(value => value.workspace?.activityId === body.activityId) ?? create(id(), id(), '递归练习', body))
     const [, sessionId, suffix, requestId] = path.split('/')
     if (!suffix) return respond(sessions.get(sessionId!) ?? { error: 'missing' }, sessions.has(sessionId!) ? 200 : 404)
     if (suffix === 'pdf' || suffix === 'materials') return respond([])
-    if (suffix === 'conversation') return respond(conversations.get(sessionId!))
+    if (suffix === 'events') return respond([])
+    if (suffix === 'conversation') { await firstConversation; return respond(conversations.get(sessionId!)) }
     if (suffix === 'requests') return respond(requests.get(requestId!) ?? null)
+    if (suffix === 'waits' && path.endsWith('/responses')) {
+      const conversation = conversations.get(sessionId!)!, question = conversation.questions[0]!
+      Object.assign(question, { version: question.version + 1, state: 'answered', answer: body.answer, answerRequestId: body.requestId })
+      conversation.turns[0]!.state = 'completed'
+      conversation.messages[1]!.state = 'settled'
+      conversation.lastSeq++
+      return respond({ requestId: body.requestId, questionId: question.questionId, questionVersion: question.version,
+        turnId: question.turnId, status: 'accepted', reason: '' })
+    }
     if (suffix === 'inputs') {
-      const turnId = id(), inputId = id(), conversation = conversations.get(sessionId!)!
-      conversation.turns.push({ turnId, sessionId: sessionId!, requestId: body.requestId, trigger: 'user', originNotificationId: null, state: 'completed', reason: '', ownerInstanceId: 'test', createdAt: now, updatedAt: now, completedAt: now }); conversation.lastSeq++
-      conversation.messages.push({ messageId: 'input:' + inputId, turnId, inputId, role: 'user', text: body.text, state: 'settled', createdAt: now }, { messageId: 'assistant:' + turnId, turnId, role: 'assistant', text: body.context.action ? '已结合你的作品继续讨论。' : '递归通过更小的同类问题求解。', state: 'settled', createdAt: now })
-      conversation.inputs.push({ inputId, turnId, version: 1, state: 'adopted', text: body.text, createdAt: now })
-      if (!body.context.action) { created = true; conversation.workspaces.push({ toolCallId: id(), turnId, workspace: { ...activity, title: '递归练习' } }) }
-      const receipt = { sessionId: sessionId!, inputId, turnId, requestId: body.requestId, inputDigest: 'a'.repeat(64) }
-      requests.set(body.requestId, { input: body, receipt })
+      if (loseReply) await firstInput
+      const inWorkspace = !!body.context.action
+      if (inWorkspace) await workspaceInput
+      const receipt = submitInput(sessionId!, body, inWorkspace)
       if (loseReply) { loseReply = false; return route.abort('failed') }
       return respond(receipt)
     }
     return respond({ error: 'missing' }, 404)
   })
-  await page.goto(REAL_URL + '/?view=agent&space=personal')
-  await page.getByLabel('向 Agent 提问', { exact: true }).fill('请创建递归练习项目')
-  await page.getByRole('button', { name: '发送消息', exact: true }).click()
+  await page.goto(REAL_URL)
+  const launcher = page.getByRole('button', { name: /有问题，问我/ })
+  const mascot = page.getByRole('button', { name: '唤起 Agent 输入框' })
+  const question = page.locator('.ask').getByRole('textbox', { name: '向 Agent 提问' })
+  await launcher.click()
+  await expect(question).toBeFocused()
+  await question.fill('请创建递归练习项目')
+  await question.press('Escape')
+  await expect(mascot).toBeFocused()
+  await page.keyboard.press('ControlOrMeta+j')
+  await expect(question).toHaveValue('请创建递归练习项目')
+  await page.getByRole('button', { name: '收起输入框' }).click()
+  await mascot.click()
+  await expect(question).toHaveValue('请创建递归练习项目')
+  await question.press('Enter')
+  const sentQuestion = page.locator('.chat-message.user .bubble').filter({ hasText: '请创建递归练习项目' })
+  try {
+    await expect(page).toHaveURL(/[?&]view=agent/)
+    await expect(mascot).toHaveCount(0)
+    await expect(sentQuestion).toBeVisible()
+    await expect(page.getByText(/正在发送…|正在准备附件…/)).toHaveCount(0)
+    await expect(page.getByText('今天想探讨什么？')).toHaveCount(0)
+  } finally { releaseFirstInput() }
   await expect(page.getByRole('button', { name: '核对并继续原请求' })).toBeVisible()
   await expect(page.locator('.product-agent-notices [role="alert"]')).toBeVisible()
-  await page.reload(); await expect(page.locator('[data-message-id]')).toHaveCount(2)
-  expect(writes.filter(write => /\/inputs$/.test(write.path))).toHaveLength(1)
+  await expect(sentQuestion).toBeVisible()
+  try {
+    await page.reload()
+    await expect(page).toHaveURL(/[?&]session=/)
+    await expect(sentQuestion).toBeVisible()
+    await expect(page.getByText('递归通过更小的同类问题求解。')).toHaveCount(0)
+  } finally { releaseConversation() }
+  await expect(page.locator('[data-message-id]')).toHaveCount(2)
+  await expect(sentQuestion).toHaveCount(1)
+  expect(writes.filter(write => write.path === 'agent-sessions/start' || /\/inputs$/.test(write.path))).toHaveLength(1)
+  expect(writes.find(write => write.path === 'agent-sessions/start')?.body.input.text).toBe('请创建递归练习项目')
   await expect(page.locator('.msg-task-card')).toHaveCount(1)
   await page.getByRole('button', { name: '置顶', exact: true }).first().click()
   await expect(page.getByRole('button', { name: '取消置顶', exact: true }).first()).toBeVisible()
@@ -77,16 +147,101 @@ test('formal sessions recover original inputs and open an independent real works
   await page.getByRole('button', { name: '首页', exact: true }).first().click()
   await expect(page.locator(`[data-activity-id="${activity.activityId}"]`).first()).toContainText('递归练习')
   await page.getByRole('button', { name: 'Agent 对话', exact: true }).first().click()
+  await expect(page.getByText('今天想探讨什么？')).toBeVisible()
   await page.getByRole('button', { name: '递归讨论', exact: true }).first().click()
   await page.locator('.msg-task-card').getByRole('button').click(); await expect(page.locator('#activity-title')).toHaveText('递归练习')
   await expect(page.getByRole('region', { name: '项目任务清单' })).toContainText('写出最小输入时的结果')
   if (process.env.XUNJIE_E2E_SCREENSHOT) await page.screenshot({ path: process.env.XUNJIE_E2E_SCREENSHOT + '.workspace.png', fullPage: true })
   await page.getByRole('button', { name: '打开对话', exact: true }).click()
   const composer = page.getByRole('complementary', { name: '问题与引用' })
-  await composer.locator('textarea').fill('结合当前作品解释递归'); await composer.getByRole('button', { name: '发送消息', exact: true }).click()
+  const input = composer.getByRole('textbox', { name: '你的问题', exact: true })
+  const prompt = '结合当前作品解释递归'
+  const followUp = '还想比较尾递归写法'
+  const bubble = composer.locator('.chat-message.user .bubble').filter({ hasText: prompt })
+  await expect(composer.getByText('围绕当前作业提问')).toBeVisible()
+  await input.fill(prompt)
+  await composer.getByRole('button', { name: '发送消息', exact: true }).click()
+  try {
+    await expect(bubble).toBeVisible()
+    await expect(composer.getByText('围绕当前作业提问')).toHaveCount(0)
+    await expect(composer.locator('.chat-message.agent')).toHaveCount(0)
+    await expect(input).toHaveValue('', { timeout: 2000 })
+    await input.fill(followUp)
+  } finally { releaseWorkspaceInput() }
+  await expect(composer.getByRole('region', { name: '待接收的问题' })).toHaveCount(0)
+  await expect(input).toHaveValue(followUp)
+  await expect(composer.getByText('正在理解当前问题并整理可用信息。')).toHaveCount(0)
+
+  const workspaceSession = [...sessions.values()].find(value => value.workspace)!
+  const workspaceConversation = conversations.get(workspaceSession.sessionId)!
+  const turnId = workspaceConversation.turns[0]!.turnId, inputId = workspaceConversation.inputs[0]!.inputId
+  workspaceConversation.thinking = [{ messageId: 'thinking:' + turnId, turnId, inputId, text: '先检查递归退出条件。', createdAt: now, active: true }]
+  workspaceConversation.lastSeq++
+  await expect(composer.getByText('先检查递归退出条件。')).toBeVisible()
+  await expect(composer.getByText('正在理解当前问题并整理可用信息。')).toHaveCount(0)
+  const answer: AgentConversation['messages'][number] = { messageId: 'assistant:' + turnId, turnId, inputId, role: 'assistant',
+    text: '已结合你的作品继续讨论。', state: 'streaming', createdAt: now }
+  workspaceConversation.messages.push(answer)
+  workspaceConversation.lastSeq++
   await expect(page.getByText('已结合你的作品继续讨论。', { exact: true })).toBeVisible()
+  await expect(bubble).toHaveCount(1)
+  await expect(composer.getByRole('region', { name: '待接收的问题' })).toHaveCount(0)
+  await expect(composer.getByText('正在理解当前问题并整理可用信息。')).toHaveCount(0)
+  await input.fill('')
+  await expect(composer.getByRole('button', { name: '停止生成' })).toBeVisible()
+  await expect(input).toHaveValue('')
+
+  answer.text += '\n\n' + Array.from({ length: 24 }, (_, index) => `第 ${index + 1} 步，核对递归终止条件和输入范围。`).join('\n\n')
+    + '\n\n```python\nprint("base case")\n```\n\n| 输入 | 预期 |\n| --- | --- |\n| 0 | 命中基例 |'
+  workspaceConversation.lastSeq++
+  await expect(composer.getByRole('table')).toBeVisible()
+  const scroll = composer.locator('.chat-wrap')
+  await expect.poll(() => scroll.evaluate(node => node.scrollHeight - node.clientHeight - node.scrollTop)).toBeLessThan(4)
+  const dock = composer.locator('.prompt-input')
+  const dockPosition = await dock.boundingBox()
+  await scroll.evaluate(node => { node.scrollTop = 0 })
+  const back = composer.getByRole('button', { name: '回到底部' })
+  await expect(back).toBeVisible()
+  answer.text += '\n\n最后验证：递归调用结束后逐层返回。'
+  workspaceConversation.lastSeq++
+  await expect(composer.getByText('最后验证：递归调用结束后逐层返回。')).toBeAttached()
+  expect(await scroll.evaluate(node => node.scrollTop)).toBe(0)
+  expect((await dock.boundingBox())?.y).toBe(dockPosition?.y)
+  await back.click()
+  await expect.poll(() => scroll.evaluate(node => node.scrollHeight - node.clientHeight - node.scrollTop)).toBeLessThan(4)
+
+  await input.fill(followUp)
+  await composer.getByRole('button', { name: '收起对话' }).click()
+  const questionId = id(), toolCallId = id(), stepId = id()
+  workspaceConversation.questions.push({ questionId, toolCallId, stepId, turnId, sessionId: workspaceSession.sessionId,
+    version: 1, state: 'pending', presentation: { question: '下面哪一项是基例？', source: '递归练习',
+      options: [{ id: 'zero', label: '输入为零' }], allowText: true, skippable: false },
+    answer: null, answerRequestId: null, deadline: null, createdAt: now, updatedAt: now })
+  workspaceConversation.tools.push({ toolCallId, stepId, turnId, inputId: answer.inputId, name: 'ask_student', state: 'closed', result: null })
+  workspaceConversation.lastSeq++
+  await page.setViewportSize({ width: 1000, height: 720 })
+  await page.getByRole('button', { name: '回应 Agent' }).click()
+  const questionBox = composer.getByRole('region', { name: 'Agent 的问题' })
+  await expect(questionBox).toBeFocused()
+  await expect(input).toHaveCount(0)
+  await questionBox.getByRole('radio', { name: '输入为零' }).check()
+  await questionBox.getByRole('button', { name: '提交回应' }).click()
+  await expect(questionBox).toHaveCount(0)
+  await expect(input).toHaveValue(followUp)
+  await composer.getByRole('button', { name: /思考与执行/ }).click()
+  await expect(composer.getByText('输入为零', { exact: true })).toBeVisible()
+  await expect(composer.locator('.chat-message.user')).toHaveCount(1)
+  await expect.poll(() => workspaceDraft.question).toBe(followUp)
+  await page.reload()
+  await page.getByRole('button', { name: '打开对话', exact: true }).click()
+  await expect(composer.getByText('最后验证：递归调用结束后逐层返回。')).toBeAttached()
+  await expect(composer.locator('.turn-caret')).toHaveCount(0)
+  await expect(input).toHaveValue(followUp)
   expect(writes.find(write => write.body?.context?.action)?.body.context.action).toMatchObject({ scope: { activityId: activity.activityId }, receiver: { receiverId: 'teaching-agent:' + owner.target.serviceId, kind: 'question', location: 'local' }, draft: { question: '结合当前作品解释递归' }, works: [] })
-  expect(new Set(writes.filter(write => /\/inputs$/.test(write.path)).map(write => write.body.sessionId)).size).toBe(2)
+  const conversationSessionIds = writes.flatMap(write => write.path === 'agent-sessions/start'
+    ? [write.body.input.sessionId]
+    : /\/inputs$/.test(write.path) ? [write.body.sessionId] : [])
+  expect(new Set(conversationSessionIds).size).toBe(2)
   expect(writes.some(write => write.path === 'activities' || write.path.startsWith('intents/'))).toBe(false)
   expect(errors).toEqual([])
 })
