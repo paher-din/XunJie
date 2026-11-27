@@ -748,12 +748,33 @@ function LibraryPane({ course, namespace, spaceKey }: { course: TeacherCourse; n
   const [error, setError] = useState('')
   const [attempt, setAttempt] = useState(0)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [taskFilter, setTaskFilter] = useState<string | null>(null)
+  const [recentTasks, setRecentTasks] = useState<string[]>(() => readRecentTasks(course))
   useEffect(() => {
     let cancelled = false
-    setEntries(null); setError('')
-    loadCourseMaterials(namespace, spaceKey, course).then(value => { if (!cancelled) setEntries(value) })
-      .catch(reason => { if (!cancelled) setError(reason instanceof Error ? reason.message : '课程资料暂时无法读取。') })
-    return () => { cancelled = true }
+    let inFlight = false
+    const pull = async (initial: boolean) => {
+      if (inFlight) return
+      inFlight = true
+      if (initial) { setEntries(null); setError('') }
+      try {
+        const value = await loadCourseMaterials(namespace, spaceKey, course)
+        if (!cancelled) { setEntries(value); setError('') }
+      } catch (reason) {
+        if (!cancelled && initial) setError(reason instanceof Error ? reason.message : '课程资料暂时无法读取。')
+      } finally { inFlight = false }
+    }
+    void pull(true)
+    // 资料随发布版本变化，页面不在时不必轮询；回到前台或窗口重新聚焦时立即对齐。
+    const timer = window.setInterval(() => { if (document.visibilityState === 'visible') void pull(false) }, 60_000)
+    const onForeground = () => { if (document.visibilityState === 'visible') void pull(false) }
+    window.addEventListener('focus', onForeground)
+    document.addEventListener('visibilitychange', onForeground)
+    return () => {
+      cancelled = true; window.clearInterval(timer)
+      window.removeEventListener('focus', onForeground)
+      document.removeEventListener('visibilitychange', onForeground)
+    }
   }, [course, namespace, spaceKey, attempt])
   const groups = useMemo(() => {
     const grouped = new Map<string, { taskId: string; taskTitle: string; publishedAt: string; items: CourseMaterialEntry[] }>()
@@ -764,6 +785,16 @@ function LibraryPane({ course, namespace, spaceKey }: { course: TeacherCourse; n
     }
     return [...grouped.values()].sort((a, b) => (b.publishedAt ?? '').localeCompare(a.publishedAt ?? ''))
   }, [entries])
+  const visibleGroups = taskFilter ? groups.filter(group => group.taskId === taskFilter) : groups
+  const visibleEntries = visibleGroups.flatMap(group => group.items)
+  const showTaskContext = !taskFilter && visibleGroups.length > 1
+  const chooseTask = (id: string | null) => {
+    setTaskFilter(id)
+    if (!id || recentTasks.includes(id)) return
+    const next = [id, ...recentTasks].slice(0, 3)
+    setRecentTasks(next)
+    rememberTask(course.courseId, next)
+  }
   const loading = entries === null && !error
   const download = async (entry: CourseMaterialEntry) => {
     if (busyId) return
@@ -785,19 +816,7 @@ function LibraryPane({ course, namespace, spaceKey }: { course: TeacherCourse; n
     } finally { setBusyId(null) }
   }
   return <div className="t-library" aria-busy={loading || undefined}>
-    <header className="t-library-head">
-      <div className="t-library-heading">
-        <h2>资料库</h2>
-        <p>课程已发布版本中的资料，按任务归拢；这里是学生拿到的同一份文件。</p>
-      </div>
-      <div className="t-library-tools">
-        <span className="t-library-count">{entries ? `共 ${entries.length} 份` : ''}</span>
-        <Button type="button" variant="outline" disabled={loading || !!busyId}
-          onClick={() => setAttempt(value => value + 1)}>
-          <Icon name="refresh" size={14} />刷新
-        </Button>
-      </div>
-    </header>
+    <TaskScopeBar tasks={course.tasks} recents={recentTasks} value={taskFilter} onSelect={chooseTask} />
     {loading && <p role="status" className="t-library-notice">正在读取课程资料…</p>}
     {error && <div role="alert" className="t-library-error">
       <p>{error}</p>
@@ -807,25 +826,27 @@ function LibraryPane({ course, namespace, spaceKey }: { course: TeacherCourse; n
       <strong>这门课程还没有已发布的资料</strong>
       <p>任务发布后，随版本固定的资料会出现在这里。</p>
     </div>}
-    {groups.map(group => <section key={group.taskId} className="t-library-group" aria-labelledby={`t-library-${group.taskId}`}>
-      <div className="t-library-group-head">
-        <h3 id={`t-library-${group.taskId}`}>{group.taskTitle}</h3>
-        <span>{group.publishedAt ? `发布于 ${dateText(group.publishedAt)} · ` : ''}{group.items.length} 份</span>
-      </div>
-      <div className="t-library-list">
-        {group.items.map(entry => <button key={entry.materialId} type="button" className="t-library-row"
-          aria-label={`下载资料：${entry.title}`} disabled={!!busyId} onClick={() => { void download(entry) }}>
-          <span className="t-library-row-icon" aria-hidden="true"><Icon name={materialIcon(entry.mediaType)} size={18} /></span>
-          <span className="t-library-row-main">
-            <strong>{entry.title}</strong>
-            <small>{materialTypeText(entry.mediaType)} · {materialSizeText(entry.byteLength)}</small>
-          </span>
-          <span className="t-library-row-action" aria-hidden="true">
-            {busyId === entry.materialId ? <small>读取中…</small> : <Icon name="download-minimalistic" size={16} />}
-          </span>
-        </button>)}
-      </div>
-    </section>)}
+    {entries && entries.length > 0 && !visibleEntries.length && <div className="t-library-empty">
+      <strong>这个任务还没有已发布资料</strong>
+      <p>换一个任务，或查看全部资料。</p>
+      <Button type="button" variant="outline" onClick={() => setTaskFilter(null)}>查看全部资料</Button>
+    </div>}
+    {visibleEntries.length > 0 && <div className="t-library-list">
+      {visibleEntries.map(entry => <button key={entry.materialId} type="button" className="t-library-row"
+        aria-label={`下载资料：${entry.title}`} disabled={!!busyId} onClick={() => { void download(entry) }}>
+        <span className="t-library-row-icon" aria-hidden="true"><Icon name={materialIcon(entry.mediaType)} size={18} /></span>
+        <span className="t-library-row-main">
+          <strong>{entry.title}</strong>
+          <small>
+            {materialTypeText(entry.mediaType)} · {materialSizeText(entry.byteLength)}
+            {showTaskContext && entry.taskTitle && <><span className="t-library-row-sep">·</span><span className="t-library-row-task">{entry.taskTitle}</span></>}
+          </small>
+        </span>
+        <span className="t-library-row-action" aria-hidden="true">
+          {busyId === entry.materialId ? <small>读取中…</small> : <Icon name="download-minimalistic" size={16} />}
+        </span>
+      </button>)}
+    </div>}
   </div>
 }
 
@@ -1054,6 +1075,112 @@ type DesignEntry = {
 const designSignature = (draft: Pick<TeacherDraft, 'title' | 'summary' | 'objectives'>) => JSON.stringify({
   title: draft.title, summary: draft.summary, objectives: draft.objectives,
 })
+
+const TASK_RECENTS_KEY = 'xj.teacher-task-recents.v1'
+const recentTasksKey = (courseId: string) => `${TASK_RECENTS_KEY}:${courseId}`
+function readRecentTasks(course: TeacherCourse) {
+  let stored: unknown = []
+  try { stored = JSON.parse(window.localStorage.getItem(recentTasksKey(course.courseId)) ?? '[]') } catch { stored = [] }
+  const known = course.tasks.map(task => task.taskId)
+  const recent = Array.isArray(stored) ? stored.filter((id): id is string => typeof id === 'string' && known.includes(id)) : []
+  const unique = [...new Set(recent)]
+  for (const id of known) {
+    if (unique.length >= 3) break
+    if (!unique.includes(id)) unique.push(id)
+  }
+  return unique.slice(0, 3)
+}
+function rememberTask(courseId: string, ids: string[]) {
+  try { window.localStorage.setItem(recentTasksKey(courseId), JSON.stringify(ids)) } catch { /* private mode can reject writes */ }
+}
+
+function TaskFilterTab({ task, active, onSelect }: { task: TeacherTask; active: boolean; onSelect(): void }) {
+  const label = useRef<HTMLSpanElement>(null)
+  const [truncated, setTruncated] = useState(false)
+  useLayoutEffect(() => {
+    const node = label.current
+    if (!node) return
+    const measure = () => setTruncated(node.scrollWidth > node.clientWidth + 1)
+    measure()
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(measure)
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [task.title])
+  return <button type="button" className={'t-task-filter-tab' + (active ? ' on' : '')} aria-pressed={active}
+    data-task-title={truncated ? task.title : undefined} onClick={onSelect}>
+    <span ref={label} className="t-task-filter-label">{task.title}</span>
+  </button>
+}
+
+/** Three recent task shortcuts plus a menu that can reach every task. */
+function TaskScopeBar({ tasks, recents, value, onSelect }: {
+  tasks: TeacherTask[]; recents: string[]; value: string | null; onSelect: (id: string | null) => void
+}) {  const [open, setOpen] = useState(false)
+  const more = useRef<HTMLDivElement>(null)
+  const trigger = useRef<HTMLButtonElement>(null)
+  const menu = useRef<HTMLDivElement>(null)
+  const quick = recents.flatMap(id => tasks.filter(task => task.taskId === id))
+  const remaining = tasks.filter(task => !recents.includes(task.taskId))
+  useEffect(() => {
+    if (!open) return
+    const first = menu.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')
+    if (first) first.focus({ preventScroll: true })
+    else menu.current?.focus({ preventScroll: true })
+    const outside = (event: PointerEvent) => { if (!more.current?.contains(event.target as Node)) setOpen(false) }
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      event.stopPropagation()
+      setOpen(false)
+      trigger.current?.focus({ preventScroll: true })
+    }
+    document.addEventListener('pointerdown', outside)
+    document.addEventListener('keydown', escape)
+    return () => {
+      document.removeEventListener('pointerdown', outside)
+      document.removeEventListener('keydown', escape)
+    }
+  }, [open])
+  const choose = (id: string) => {
+    setOpen(false)
+    onSelect(id)
+    trigger.current?.focus({ preventScroll: true })
+  }
+  return <div className="t-task-scope">
+    <div className="t-task-scope-pills" role="group" aria-label="按任务筛选资料">
+      <button type="button" className={'t-task-filter-all' + (value === null ? ' on' : '')} aria-pressed={value === null}
+        onClick={() => onSelect(null)}>全部</button>
+      {quick.map(task => <TaskFilterTab key={task.taskId} task={task} active={value === task.taskId}
+        onSelect={() => onSelect(task.taskId)} />)}
+      <div className="t-task-more" ref={more}>
+        <button ref={trigger} type="button" className={'t-task-more-trigger' + (open ? ' open' : '')}
+          disabled={!tasks.length} aria-haspopup="menu" aria-expanded={open} aria-controls={open ? 't-task-scope-more' : undefined}
+          onClick={() => setOpen(current => !current)}>
+          <span>更多</span><Icon name="alt-arrow-down" size={14} />
+        </button>
+        <div id="t-task-scope-more" ref={menu} className={'t-task-more-menu' + (open ? ' on' : '')} role="menu" aria-label="更多任务"
+          tabIndex={-1} inert={!open} onKeyDown={event => {
+            if (event.key === 'Tab') { setOpen(false); return }
+            if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp' && event.key !== 'Home' && event.key !== 'End') return
+            event.preventDefault()
+            const items = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')]
+            const index = items.indexOf(document.activeElement as HTMLButtonElement)
+            const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1
+              : index < 0 ? (event.key === 'ArrowDown' ? 0 : items.length - 1)
+                : (index + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length
+            items[next]?.focus()
+          }}>
+          {remaining.length ? remaining.map(task => <button key={task.taskId} type="button" role="menuitemradio" aria-checked={false}
+            className="t-task-more-item" onClick={() => choose(task.taskId)}>
+            <span className="t-task-more-label">{task.title}</span>
+          </button>) : <button type="button" role="menuitemradio" aria-checked={false} disabled className="t-task-more-item">
+            <span className="t-task-more-label">没有更多任务</span>
+          </button>}
+        </div>
+      </div>
+    </div>
+  </div>
+}
 
 function DesignPane({ course, projects, openId, onOpen, onProjects, onDiscuss }: {
   course: TeacherCourse; projects: TeacherDraft[]; openId: string | null

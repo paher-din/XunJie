@@ -12,6 +12,12 @@ const accountA = { key: 'school:a', accountName: '教师甲', schoolName: '学�
 const accountB = { key: 'school:b', accountName: '教师乙', schoolName: '学校乙' }
 const catalogA = { available: true, courses: [{ courseId: 'a', name: '甲的课程', tasks: [] }] }
 const catalogB = { available: true, courses: [{ courseId: 'b', name: '乙的课程', tasks: [] }] }
+const taskCourse = {
+  courseId: 'course-tasks', name: '任务课程', tasks: ['一', '二', '三', '四'].map((suffix, index) => ({
+    taskId: `task-${index + 1}`, title: `任务${suffix}`, summary: '',
+    releases: [{ releaseId: `release-${index + 1}`, publishedAt: '2026-11-20T00:00:00.000Z', objectives: ['目标'] }],
+  })),
+}
 
 let root: Root, host: HTMLDivElement
 let catalogStatus: number, namespace: string
@@ -20,8 +26,20 @@ const settle = async () => { for (let turn = 0; turn < 4; turn++) await new Prom
 beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
   vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener() {}, removeEventListener() {} }))
+  vi.stubGlobal('ResizeObserver', class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  })
+  vi.stubGlobal('IntersectionObserver', class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+    takeRecords() { return [] }
+  })
   history.replaceState(null, '', '/?teacher=overview')
   sessionStorage.clear()
+  localStorage.clear()
   catalogStatus = 200
   namespace = 'namespace-b'
   host = document.createElement('div'); document.body.append(host); root = createRoot(host)
@@ -83,4 +101,51 @@ it('shows the student-surface fallback when the catalog refuses a non-teacher ac
   namespace = 'namespace-c'
   await act(async () => { root.render(<TeacherSpace />); await settle() })
   expect(host.textContent).toContain('正在返回学生端…')
+})
+
+it('adds the task scope to the library and keeps three recent shortcuts', async () => {
+  history.replaceState(null, '', '/?teacher=workbench&course=course-tasks')
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+    if (url === '/api/learning/context') return new Response(JSON.stringify({
+      clientNamespace: 'namespace-tasks', account: accountB,
+      identities: [{ key: accountB.key, identity: {
+        environmentId: '00000000-0000-4000-8000-000000000001', spaceId: '00000000-0000-4000-8000-000000000002',
+        principalId: '00000000-0000-4000-8000-000000000003', kind: 'school', name: accountB.schoolName,
+      } }],
+    }), { status: 200, headers: { 'content-type': 'application/json' } })
+    if (url === '/api/learning/manage/course-catalog') return new Response(JSON.stringify({ courses: [taskCourse] }), {
+      status: 200, headers: { 'content-type': 'application/json' },
+    })
+    if (url === '/api/learning/manage/teacher-course-read') return new Response('{}', { status: 403 })
+    if (url.startsWith('/api/learning/releases/')) {
+      const releaseId = url.split('/').pop()!
+      return new Response(JSON.stringify({ materials: [
+        { materialId: `material-${releaseId}`, title: `${releaseId}.md`, mediaType: 'text/plain', byteLength: 128 },
+      ] }), { status: 200, headers: { 'content-type': 'application/json' } })
+    }
+    throw new Error('Unexpected ' + url)
+  }))
+  await act(async () => { root.render(<TeacherSpace />); await settle() })
+  const libraryTab = host.querySelector<HTMLButtonElement>('#t-tab-library')
+  expect(libraryTab).not.toBeNull()
+  await act(async () => { libraryTab!.click(); await settle(); await settle() })
+
+  expect(host.querySelectorAll('.t-library h3').length).toBe(0)
+  expect(host.querySelectorAll('.t-library-row').length).toBe(4)
+  const quickLabels = () => [...host.querySelectorAll('.t-task-filter-tab')].map(item => item.textContent)
+  expect(quickLabels()).toEqual(['任务一', '任务二', '任务三'])
+  const more = host.querySelector<HTMLButtonElement>('.t-task-more-trigger')!
+  await act(async () => { more.click(); await settle() })
+  const menu = host.querySelector('.t-task-more-menu.on')
+  expect(menu?.textContent).toContain('任务四')
+  expect(menu?.textContent).not.toContain('任务一')
+  const fourth = [...menu!.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')]
+    .find(item => item.textContent === '任务四')!
+  await act(async () => { fourth.click(); await settle() })
+
+  expect(quickLabels()).toEqual(['任务四', '任务一', '任务二'])
+  expect(host.querySelectorAll('.t-library-row').length).toBe(1)
+  expect(host.textContent).toContain('release-4.md')
+  expect(localStorage.getItem('xj.teacher-task-recents.v1:course-tasks')).toBe(JSON.stringify(['task-4', 'task-1', 'task-2']))
+  expect(host.querySelector('.t-task-more-menu.on')).toBeNull()
 })
