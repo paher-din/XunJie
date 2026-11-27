@@ -1904,6 +1904,9 @@ small.t-pulse-counts {
 
 /* ---------- 作业审阅 ---------- */
 /* 双栏审阅工作台：内容区左右 24、上 20；标签栏回贴同一左缘，底距 12，标题合计上距 20。 */
+.content--review-workspace {
+  position: relative;
+}
 .content--review-workspace .t-tabbar {
   margin: -20px -24px 12px;
 }
@@ -1973,9 +1976,9 @@ small.t-pulse-counts {
   white-space: nowrap;
   transition: max-width 160ms var(--ease-s) 180ms, opacity 160ms var(--ease-s) 180ms;
 }
-.t-review-list-toggle,
-.t-detail-list-toggle {
-  display: grid;
+.t-review-tab-toggle,
+.t-review-list-toggle {
+  display: grid !important;
   width: 32px;
   height: 32px;
   flex: none;
@@ -1985,26 +1988,29 @@ small.t-pulse-counts {
   border-radius: 8px;
   background: transparent;
   color: var(--muted);
-  transition: background-color 150ms var(--ease-s), border-color 150ms var(--ease-s), color 150ms var(--ease-s);
+  transition: color 150ms var(--ease-s);
 }
+/* 桌面常驻在标签栏最右，展开与收起共用同一枚按钮，位置不随状态移动。 */
+.t-review-tab-toggle {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 4;
+}
+/* 窄屏回到清单头部，只在单列布局出现。 */
+.t-review-list-toggle {
+  display: none !important;
+}
+.t-review-tab-toggle:hover,
 .t-review-list-toggle:hover,
-.t-detail-list-toggle:hover {
-  background: var(--hover-bg);
+.t-review-tab-toggle:active,
+.t-review-list-toggle:active {
+  background: transparent;
   color: var(--ink);
   filter: none;
 }
-.t-review-list-toggle:active,
-.t-detail-list-toggle:active {
-  background: var(--chip-bg);
-  color: var(--ink);
-}
-/* 折叠态只保留图标，悬停与按下也不出现独立色块 */
-.t-detail-list-toggle:hover,
-.t-detail-list-toggle:active {
-  background: transparent;
-}
-.t-review-list-toggle:focus-visible,
-.t-detail-list-toggle:focus-visible {
+.t-review-tab-toggle:focus-visible,
+.t-review-list-toggle:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: -2px;
 }
@@ -2030,19 +2036,6 @@ small.t-pulse-counts {
   max-width: 0;
   opacity: 0;
   transition-delay: 0s;
-}
-.t-review-list.is-collapsed .t-review-list-toggle {
-  visibility: hidden;
-}
-.t-review-list.is-collapsed .t-review-list-toggle:hover {
-  border-color: transparent;
-  background: transparent;
-  color: var(--accent-deep);
-}
-.t-review-list.is-collapsed .t-review-list-toggle:active {
-  border-color: transparent;
-  background: transparent;
-  color: var(--accent-deep);
 }
 .t-review-list-body-clip {
   min-width: 0;
@@ -2277,14 +2270,6 @@ small.t-pulse-counts {
   margin: 0;
   font-size: 13px;
 }
-.t-review-detail--empty {
-  position: relative;
-}
-.t-review-detail--empty > .t-review-detail-empty-toggle {
-  position: absolute;
-  top: 4px;
-  right: 0;
-}
 .t-review-detail--empty .outline {
   margin-top: 16px;
 }
@@ -2330,8 +2315,8 @@ small.t-pulse-counts {
   transition: max-width 350ms var(--ease-s), padding 350ms var(--ease-s);
 }
 .t-review.is-list-collapsed .t-review-detail {
-  max-width: 1000px;
-  padding-right: 0;
+  max-width: 100%;
+  padding-right: 28px;
 }
 @media (prefers-reduced-motion: reduce) {
   .t-review,
@@ -2340,6 +2325,7 @@ small.t-pulse-counts {
   .t-review-list-head h2,
   .t-review-list-head-end,
   .t-review-list-count,
+  .t-review-tab-toggle,
   .t-review-list-toggle,
   .t-review-detail {
     transition: none;
@@ -4010,6 +3996,10 @@ button.t-project-main {
   .content--review-workspace:has(.t-review) {
     position: relative;
   }
+  /* 常驻按钮压住清单头部右端，给计数让出同一枚 32px 控件的宽度。 */
+  .content--review-workspace:has(.t-review) .t-review-list-head {
+    padding-right: 40px;
+  }
   .content--review-workspace:has(.t-review) #t-panel-review {
     display: block;
     padding-right: 308px;
@@ -4068,6 +4058,13 @@ button.t-project-main {
   .t-review {
     grid-template-columns: minmax(0, 1fr);
   }
+  /* 单列仍走清单头部，标签栏最右的常驻按钮让位。 */
+  .t-review-tab-toggle {
+    display: none !important;
+  }
+  .t-review-list-toggle {
+    display: grid !important;
+  }
   .t-review-list {
     order: 1;
     border-left: 0;
@@ -4087,10 +4084,6 @@ button.t-project-main {
     pointer-events: auto;
     padding: 8px 12px;
     border-bottom-color: transparent;
-  }
-  .t-review.is-list-collapsed .t-detail-head-side > .t-detail-list-toggle,
-  .t-review.is-list-collapsed .t-review-detail--empty > .t-review-detail-empty-toggle {
-    display: none;
   }
   .t-review-list-body {
     min-width: 0;
@@ -4113,9 +4106,6 @@ button.t-project-main {
     flex-direction: row;
     gap: 4px;
     margin-left: auto;
-  }
-  .t-review.is-list-collapsed .t-review-list-toggle {
-    visibility: visible;
   }
   .t-review.is-list-collapsed .t-review-detail {
     max-width: none;

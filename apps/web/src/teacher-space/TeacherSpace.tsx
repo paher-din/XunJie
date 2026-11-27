@@ -897,22 +897,13 @@ function ReviewPane({ course, submissions, taskId, onChange }: {
   const [listCollapsed, setListCollapsed] = useState(() => {
     try { return window.localStorage.getItem(REVIEW_LIST_COLLAPSED) === '1' } catch { return false }
   })
-  const listToggleRef = useRef<HTMLButtonElement>(null)
-  const detailToggleRef = useRef<HTMLButtonElement>(null)
-  const restoreToggleFocus = useRef(false)
   const toggleList = () => {
-    const next = !listCollapsed
-    restoreToggleFocus.current = true
-    setListCollapsed(next)
-    try { window.localStorage.setItem(REVIEW_LIST_COLLAPSED, next ? '1' : '0') } catch { /* Keep the toggle usable when storage is unavailable. */ }
+    setListCollapsed(current => {
+      const next = !current
+      try { window.localStorage.setItem(REVIEW_LIST_COLLAPSED, next ? '1' : '0') } catch { /* Keep the toggle usable when storage is unavailable. */ }
+      return next
+    })
   }
-  useEffect(() => {
-    if (!restoreToggleFocus.current) return
-    restoreToggleFocus.current = false
-    const mobile = window.matchMedia('(max-width: 820px)').matches
-    const target = mobile || !listCollapsed ? listToggleRef.current : detailToggleRef.current
-    requestAnimationFrame(() => target?.focus())
-  }, [listCollapsed])
   const visible = visibleFor(scoped, filter, query)
   const groups = submissionGroups(visible, filter)
   const showGroupTitles = groups.length > 1
@@ -964,13 +955,18 @@ function ReviewPane({ course, submissions, taskId, onChange }: {
   </div>
 
   return <div className={'t-review' + (listCollapsed ? ' is-list-collapsed' : '')}>
+    <button type="button" className="t-review-tab-toggle"
+      aria-label={listCollapsed ? `展开提交清单（${visible.length} / ${scoped.length}）` : '收起提交清单'}
+      title={listCollapsed ? `展开提交清单（${visible.length} / ${scoped.length}）` : '收起提交清单'}
+      aria-expanded={!listCollapsed} aria-controls="t-review-list-body" onClick={toggleList}>
+      <Icon name="review-list" size={20} />
+    </button>
     <aside className={'t-review-list' + (listCollapsed ? ' is-collapsed' : '')} aria-label="提交清单">
       <div className="t-review-list-head">
         <h2>提交清单</h2>
         <div className="t-review-list-head-end">
           <span className="t-review-list-count">{visible.length} / {scoped.length}</span>
           <button type="button" className="t-review-list-toggle"
-            ref={listToggleRef}
             aria-label={listCollapsed ? `展开提交清单（${visible.length} / ${scoped.length}）` : '收起提交清单'}
             title={listCollapsed ? `展开提交清单（${visible.length} / ${scoped.length}）` : '收起提交清单'}
             aria-expanded={!listCollapsed} aria-controls="t-review-list-body" onClick={toggleList}>
@@ -1035,13 +1031,6 @@ function ReviewPane({ course, submissions, taskId, onChange }: {
             <button type="button" aria-label="上一份提交" disabled={selectedIndex <= 0} onClick={() => selectRelative(-1)}><Icon name="alt-arrow-left" size={15} /></button>
             <button type="button" aria-label="下一份提交" disabled={selectedIndex < 0 || selectedIndex >= visible.length - 1} onClick={() => selectRelative(1)}><Icon name="alt-arrow-right" size={15} /></button>
           </div>
-          {listCollapsed && <button type="button" className="t-detail-list-toggle"
-            ref={detailToggleRef}
-            aria-label={`展开提交清单（${visible.length} / ${scoped.length}）`}
-            title={`展开提交清单（${visible.length} / ${scoped.length}）`}
-            aria-expanded="false" aria-controls="t-review-list-body" onClick={toggleList}>
-            <Icon name="review-list" size={20} />
-          </button>}
         </div>
       </header>
       <div className="t-facts" role="group" aria-label="提交概况">
@@ -1126,13 +1115,6 @@ function ReviewPane({ course, submissions, taskId, onChange }: {
       </section>
       <p className="t-preview-note"><Icon name="info-circle" size={13} />审阅写接口尚未接入学校，这里的反馈与状态只保存在本次预览。</p>
     </section> : <section className="t-review-detail t-review-detail--empty" aria-label="提交详情">
-      {listCollapsed && <button type="button" className="t-detail-list-toggle t-review-detail-empty-toggle"
-        ref={detailToggleRef}
-        aria-label={`展开提交清单（${visible.length} / ${scoped.length}）`}
-        title={`展开提交清单（${visible.length} / ${scoped.length}）`}
-        aria-expanded="false" aria-controls="t-review-list-body" onClick={toggleList}>
-        <Icon name="review-list" size={20} />
-      </button>}
       <Icon name="folder-search" size={28} />
       <h2>{inboxCleared ? '待处理已清空' : '没有匹配的提交'}</h2>
       <p>{inboxCleared ? '新的提交与复核会回到这里。' : '调整搜索词或状态，找到需要审阅的内容。'}</p>
