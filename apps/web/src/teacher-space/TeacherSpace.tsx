@@ -1,7 +1,8 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { AgentEmptyState, AgentMessage, ChatViewport, UserMessage, useFollowBottom } from '@xunjie/ui/chat'
 import { CourseTiles, HomeSectionHeading, HomeStatus } from '@xunjie/ui/home'
-import { ConfirmationDialog } from '@xunjie/ui/foundation'
+import { Button, ConfirmationDialog } from '@xunjie/ui/foundation'
+import { toast } from '@xunjie/ui/feedback'
 import type { SpaceIdentity } from '@xunjie/contracts/spaces'
 import { SettingsStatus } from '@xunjie/ui/settings'
 import { ProductShell } from '../components/ProductShell'
@@ -809,7 +810,9 @@ function TeacherAgentPane({ course, selection, onOpenModelSettings, seed, onSeed
   </div>
 }
 
-const filters: { id: 'all' | 'inbox' | SubmissionState; label: string }[] = [
+type ReviewFilter = 'all' | 'inbox' | SubmissionState
+
+const filters: { id: ReviewFilter; label: string }[] = [
   { id: 'inbox', label: '待处理' }, { id: 'all', label: '全部' }, { id: 'pending', label: '待审阅' }, { id: 'revised', label: '待复核' },
   { id: 'feedback', label: '已反馈' }, { id: 'done', label: '已完成' },
 ]
@@ -820,84 +823,159 @@ function ReviewPane({ course, submissions, taskId, onChange }: {
   const scoped = taskId ? submissions.filter(item => item.taskId === taskId) : submissions
   const hasPending = scoped.some(item => item.state === 'pending')
   const hasRevised = scoped.some(item => item.state === 'revised')
-  const initialFilter: 'all' | 'inbox' | SubmissionState = taskId
+  const initialFilter: ReviewFilter = taskId
     ? hasPending || hasRevised ? 'inbox' : 'all'
     : 'pending'
-  const initialVisible = initialFilter === 'all' ? scoped : initialFilter === 'inbox'
-    ? scoped.filter(item => item.state === 'pending' || item.state === 'revised')
-    : scoped.filter(item => item.state === initialFilter)
-  const initialSelected = [...initialVisible].sort((a, b) => a.submittedAt.localeCompare(b.submittedAt))[0] ?? scoped[0]
-  const [filter, setFilter] = useState<'all' | 'inbox' | SubmissionState>(initialFilter)
-  const [selectedId, setSelectedId] = useState(() => initialSelected?.submissionId)
-  const visible = filter === 'all' ? scoped : filter === 'inbox'
-    ? scoped.filter(item => item.state === 'pending' || item.state === 'revised')
-    : scoped.filter(item => item.state === filter)
-  const selected = scoped.find(item => item.submissionId === selectedId) ?? visible[0]
-  const [feedback, setFeedback] = useState(selected?.feedback ?? '')
-  const [saved, setSaved] = useState('')
+  const matchesFilter = (item: TeacherSubmission, value: ReviewFilter) => value === 'all' || (value === 'inbox'
+    ? item.state === 'pending' || item.state === 'revised'
+    : item.state === value)
+  const visibleFor = (items: TeacherSubmission[], status: ReviewFilter, search: string) => items
+    .filter(item => matchesFilter(item, status) && (!search.trim() || item.studentName.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())))
+    .sort((a, b) => a.submittedAt.localeCompare(b.submittedAt))
+  const initialVisible = visibleFor(scoped, initialFilter, '')
+  const [filter, setFilter] = useState<ReviewFilter>(initialFilter)
+  const [query, setQuery] = useState('')
+  const [selectedId, setSelectedId] = useState(() => initialVisible[0]?.submissionId)
+  const [drafts, setDrafts] = useState<Record<string, string>>(() => Object.fromEntries(scoped.map(item => [item.submissionId, item.feedback])))
+  const [saved, setSaved] = useState<{ id: string; message: string } | null>(null)
+  const visible = visibleFor(scoped, filter, query)
+  const selected = visible.find(item => item.submissionId === selectedId) ?? visible[0]
+  const selectedIndex = selected ? visible.findIndex(item => item.submissionId === selected.submissionId) : -1
+  const feedback = selected ? drafts[selected.submissionId] ?? selected.feedback : ''
+  const primaryState: SubmissionState | null = selected
+    ? selected.state === 'revised' ? 'done' : selected.state === 'done' ? 'done' : 'feedback'
+    : null
+  const primaryLabel = selected?.state === 'revised' ? '完成复核' : selected?.state === 'pending' ? '保存反馈' : '更新反馈'
+  const primaryDisabled = !selected || !feedback.trim() || ((selected.state === 'feedback' || selected.state === 'done') && feedback === selected.feedback)
+  const revisionDisabled = !selected || !feedback.trim() || selected.state === 'revised'
 
-  useEffect(() => { setFeedback(selected?.feedback ?? ''); setSaved('') }, [selectedId])
+  const selectSubmission = (id: string) => { setSelectedId(id); setSaved(null) }
+  const changeView = (nextFilter: ReviewFilter, nextQuery: string) => {
+    setFilter(nextFilter)
+    setQuery(nextQuery)
+    setSaved(null)
+    setSelectedId(visibleFor(scoped, nextFilter, nextQuery)[0]?.submissionId)
+  }
+  const selectRelative = (step: number) => {
+    const next = visible[selectedIndex + step]
+    if (next) selectSubmission(next.submissionId)
+  }
+  const save = (state: SubmissionState) => {
+    if (!selected || !feedback.trim()) return
+    const next = { ...selected, feedback, state, version: state === 'revised' ? selected.version + 1 : selected.version }
+    const nextScoped = scoped.map(item => item.submissionId === next.submissionId ? next : item)
+    const nextVisible = visibleFor(nextScoped, filter, query)
+    const message = state === 'revised' ? '已标记为允许修订'
+      : selected.state === 'revised' ? '复核已完成'
+        : selected.state === 'feedback' || selected.state === 'done' ? '反馈已更新' : '反馈已记录在此预览'
+    onChange(next)
+    setSelectedId(nextVisible.some(item => item.submissionId === next.submissionId) ? next.submissionId : nextVisible[0]?.submissionId)
+    setSaved({ id: next.submissionId, message })
+    toast.success(message)
+  }
 
   if (scoped.length === 0) return <div className="t-review-empty">
+    <Icon name="folder-search" size={28} />
     <h3>{taskId ? '这个任务还没有提交' : '还没有学生提交'}</h3>
     <p>{taskId ? '学生提交后，会按状态出现在这里。' : '发布任务后，学生的提交会按状态进入这里。'}</p>
   </div>
 
-  const save = (state: SubmissionState) => {
-    if (!selected) return
-    onChange({ ...selected, feedback, state, version: state === 'revised' ? selected.version + 1 : selected.version })
-    setSaved(state === 'revised' ? '已标记为允许修订' : '反馈已记录在此预览')
-  }
-
   return <div className="t-review">
     <aside className="t-review-list" aria-label="提交清单">
-      <div className="t-filter" role="group" aria-label="按状态筛选">
-        {filters.filter(item => taskId || item.id !== 'inbox').map(item => <button key={item.id} type="button" className={filter === item.id ? 'on' : ''} aria-pressed={filter === item.id}
-          onClick={() => { setFilter(item.id); setSaved('') }}>{item.label}<small>{item.id === 'all' ? scoped.length : item.id === 'inbox'
-            ? scoped.filter(entry => entry.state === 'pending' || entry.state === 'revised').length
-            : scoped.filter(entry => entry.state === item.id).length}</small></button>)}
+      <div className="t-review-list-head"><h2>提交清单</h2><span>{visible.length} / {scoped.length}</span></div>
+      <div className="t-review-tools">
+        <div className="t-review-search">
+          <Icon name="minimalistic-magnifier" size={15} />
+          <input aria-label="搜索学生" placeholder="搜索学生" value={query} onChange={event => changeView(filter, event.target.value)} />
+          {query && <button type="button" aria-label="清空搜索" onClick={() => changeView(filter, '')}><Icon name="close" size={13} /></button>}
+        </div>
+        <div className="t-review-filter">
+          <select aria-label="按状态筛选" value={filter} onChange={event => changeView(event.target.value as ReviewFilter, query)}>
+            {filters.map(item => <option key={item.id} value={item.id}>{item.label} {item.id === 'all' ? scoped.length : scoped.filter(entry => matchesFilter(entry, item.id)).length}</option>)}
+          </select>
+          <Icon name="alt-arrow-down" size={13} />
+        </div>
       </div>
       <div className="t-submission-list">
-        {visible.length === 0 ? <p className="t-list-empty">这个状态没有提交。</p> : visible.map(item => <button key={item.submissionId} type="button"
-          className={'t-submission-row' + (selected?.submissionId === item.submissionId ? ' on' : '')} aria-current={selected?.submissionId === item.submissionId ? 'true' : undefined}
-          onClick={() => { setSelectedId(item.submissionId); setSaved('') }}>
-          <span className="t-submission-main"><strong>{item.studentName}</strong><small>{timeText(item.submittedAt)} · v{item.version}</small></span>
-          <span className={`t-state t-state-${item.state}`}>{submissionLabel[item.state]}</span>
-        </button>)}
+        {visible.length === 0 ? <div className="t-list-empty"><strong>没有符合条件的提交</strong><span>换个关键词或状态试试。</span></div> : visible.map(item => {
+          const hasDraft = (drafts[item.submissionId] ?? item.feedback) !== item.feedback
+          return <button key={item.submissionId} type="button"
+            className={'t-submission-row' + (selected?.submissionId === item.submissionId ? ' on' : '')} aria-current={selected?.submissionId === item.submissionId ? 'true' : undefined}
+            onClick={() => selectSubmission(item.submissionId)}>
+            <span className="t-submission-avatar" aria-hidden="true">{item.studentName.slice(0, 1)}</span>
+            <span className="t-submission-main">
+              <span className="t-submission-title"><strong>{item.studentName}</strong>{hasDraft && <span className="t-draft-mark" title="有未保存反馈">草稿</span>}</span>
+              <small>{timeText(item.submittedAt)}<span>·</span>v{item.version}</small>
+            </span>
+            <span className={`t-state t-state-${item.state}`}>{submissionLabel[item.state]}</span>
+          </button>
+        })}
       </div>
     </aside>
-    {selected && <section className="t-review-detail" aria-label="提交详情">
+    {selected ? <section className="t-review-detail" aria-label="提交详情">
       <header className="t-detail-head">
-        <div><h2>{selected.studentName}的提交</h2><p>{taskTitleOf([course], selected.taskId)}</p></div>
-        <span className={`t-state t-state-${selected.state}`}>{submissionLabel[selected.state]}</span>
+        <div className="t-detail-heading"><h2>{selected.studentName}的提交</h2><p>{taskTitleOf([course], selected.taskId)}</p></div>
+        <div className="t-detail-head-side">
+          <span className={`t-state t-state-${selected.state}`}>{submissionLabel[selected.state]}</span>
+          <div className="t-detail-nav" aria-label="切换提交">
+            <button type="button" aria-label="上一份提交" disabled={selectedIndex <= 0} onClick={() => selectRelative(-1)}><Icon name="alt-arrow-left" size={15} /></button>
+            <button type="button" aria-label="下一份提交" disabled={selectedIndex < 0 || selectedIndex >= visible.length - 1} onClick={() => selectRelative(1)}><Icon name="alt-arrow-right" size={15} /></button>
+          </div>
+        </div>
       </header>
       <dl className="t-meta">
         <div><dt>提交时间</dt><dd>{timeText(selected.submittedAt)}</dd></div>
-        <div><dt>版本</dt><dd>v{selected.version}</dd></div>
+        <div><dt>提交版本</dt><dd>v{selected.version}</dd></div>
         <div><dt>目标进度</dt><dd>{selected.progress.done} / {selected.progress.total}</dd></div>
         <div><dt>附件</dt><dd>{selected.artifacts.length} 个</dd></div>
       </dl>
-      <div className="t-evidence">
-        <h3>学生说明</h3>
-        <p>{selected.note}</p>
-        <ul className="t-artifacts">
-          {selected.artifacts.map(artifact => <li key={artifact.name}><Icon name="file-text" size={16} />
-            <span><strong>{artifact.name}</strong><small>{artifact.kind} · {artifact.size}</small></span></li>)}
-        </ul>
+      <div className="t-submission-content">
+        <section className="t-detail-section" aria-labelledby="t-student-note">
+          <h3 id="t-student-note"><Icon name="clipboard-text" size={16} />学生说明</h3>
+          <p className="t-student-note">{selected.note || '学生没有填写提交说明。'}</p>
+        </section>
+        <section className="t-detail-section" aria-labelledby="t-submission-files">
+          <h3 id="t-submission-files"><Icon name="paperclip" size={16} />提交附件<span>{selected.artifacts.length}</span></h3>
+          {selected.artifacts.length ? <ul className="t-artifacts">
+            {selected.artifacts.map(artifact => <li key={artifact.name}>
+              <span className="t-artifact-icon"><Icon name={artifact.kind === 'CSV' ? 'file-spreadsheet' : artifact.kind === '图片' ? 'file-image' : artifact.kind === 'Logisim 电路' ? 'file-code' : 'file-text'} size={18} /></span>
+              <span className="t-artifact-copy"><strong>{artifact.name}</strong><small>{artifact.kind} · {artifact.size}</small></span>
+            </li>)}
+          </ul> : <p className="t-detail-empty-copy">本次提交没有附件。</p>}
+        </section>
       </div>
-      <label className="t-feedback">
-        <span>反馈</span>
-        <textarea value={feedback} rows={6} placeholder="写清楚学生做对了什么、下一步改哪里。"
-          onChange={event => { setFeedback(event.target.value); setSaved('') }} />
-      </label>
-      <div className="t-actions">
-        <button type="button" className="primary" onClick={() => save(selected.state === 'revised' ? 'done' : 'feedback')}>
-          {selected.state === 'revised' ? '完成复核' : '保存反馈'}
-        </button>
-        <button type="button" className="outline" onClick={() => save('revised')}>允许修订</button>
-        {saved && <span role="status" className="t-saved">{saved}</span>}
-      </div>
-      <p className="t-preview-note">审阅写接口尚未接入学校，这里的反馈与状态只保存在本次预览。</p>
+      <section className="t-feedback" aria-labelledby="t-feedback-title">
+        <div className="t-feedback-head">
+          <div><h3 id="t-feedback-title">教师反馈</h3><span>关联当前提交 v{selected.version}</span></div>
+          {saved?.id === selected.submissionId && <span role="status" className="t-saved"><Icon name="check-circle" size={14} />{saved.message}</span>}
+        </div>
+        <textarea aria-label="反馈" value={feedback} rows={4} placeholder="写清楚学生做对了什么、下一步改哪里。"
+          aria-keyshortcuts="Meta+Enter Control+Enter"
+          onChange={event => {
+            const value = event.target.value
+            setDrafts(current => ({ ...current, [selected.submissionId]: value }))
+            setSaved(null)
+          }}
+          onKeyDown={event => {
+            if (event.nativeEvent.isComposing || !(event.metaKey || event.ctrlKey) || event.key !== 'Enter') return
+            event.preventDefault()
+            if (!primaryDisabled && primaryState) save(primaryState)
+          }} />
+        <div className="t-feedback-footer">
+          <span className="t-feedback-hint">{feedback.trim() ? '⌘ / Ctrl + Enter' : '先填写反馈'}</span>
+          <div className="t-actions">
+            <Button type="button" variant="outline" disabled={revisionDisabled} onClick={() => save('revised')}><Icon name="undo-left-round" size={14} />{selected.state === 'revised' ? '已允许修订' : '允许修订'}</Button>
+            <Button type="button" variant="primary" disabled={primaryDisabled} aria-keyshortcuts="Meta+Enter Control+Enter"
+              onClick={() => primaryState && save(primaryState)}><Icon name="check" size={14} />{primaryLabel}</Button>
+          </div>
+        </div>
+      </section>
+      <p className="t-preview-note"><Icon name="info-circle" size={13} />审阅写接口尚未接入学校，这里的反馈与状态只保存在本次预览。</p>
+    </section> : <section className="t-review-detail t-review-detail--empty" aria-label="提交详情">
+      <Icon name="folder-search" size={28} />
+      <h2>没有匹配的提交</h2>
+      <p>调整搜索词或状态，找到需要审阅的内容。</p>
+      <Button type="button" variant="outline" onClick={() => changeView('all', '')}>查看全部提交</Button>
     </section>}
   </div>
 }
