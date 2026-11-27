@@ -3,6 +3,7 @@ import { isAluCodeWork } from '@xunjie/contracts/alu-learning'
 import type { AdapterContext, ExecutionAdapter, ResultResource } from '../adapter'
 import { verifiedIcarus, icarusProfile, aluOperationIds, type AluOperationId } from '../icarus-runtime'
 import { ExecutionError, type ExecutionErrorCode } from '../errors'
+import { compileFailureHeading } from '../compiler-log'
 import { analyzeCheck, CHECK_ROUNDS, type CheckAnalysis, type CheckRoundResult } from './alu-check'
 
 export type RuntimeResourceLoader=(action:ExecutionActionV3)=>Promise<Record<string,Uint8Array>>
@@ -89,7 +90,7 @@ async function compileAction(action:ExecutionActionV3, context:AdapterContext, l
     options:{includeDirs:basis.compile.includeDirs,strictExprWidth:basis.compile.strictExprWidth}},
     {signal,timeoutMs:limits.compileTimeoutMs})
   if(compiled.status!=='completed') throw new ExecutionError(statusError(compiled.status,expired()),
-    ['编译未完成',...logsOf(compiled)].join('\n'),[
+    [compileFailureHeading,...logsOf(compiled)].join('\n'),[
       {name:'failure.json',mediaType:'application/json',text:JSON.stringify({stage:compiled.stage,operation:action.execution.operation.operationId})},
       {name:'diagnostics.txt',mediaType:'text/plain',text:failureLog(logsOf(compiled),limits.textBytes)}])
   return {runtime,compiled,resources,scaffold:{path:scaffoldRef.path,content:scaffoldContent,sha256:scaffoldRef.sha256},

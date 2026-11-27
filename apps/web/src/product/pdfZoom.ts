@@ -4,6 +4,7 @@ export const pdfZoomMax = 300
 export const pdfSpreadGap = 16
 const preferredPdfZoomMin = 50
 const pdfSpreadMinWidth = 760
+const spreadRangeAdjustment = 0.35
 export const pdfZoomStops = [
   { value: 'fit-page', label: '适合整页', edge: 'top' },
   { value: 'fit-width', label: '适合宽度', edge: 'bottom' },
@@ -33,7 +34,7 @@ export function pdfZoomPercent(zoom: PdfZoom, viewport: PdfSize, pages: readonly
   if (!width || !height) return 100
 
   const widthPercent = 100 * (viewport.width - (spread ? pdfSpreadGap : 0)) / width
-  const heightPercent = 100 * Math.max(1, viewport.height - 26) / height // Page label and its bottom margin.
+  const heightPercent = 100 * viewport.height / height
   // Give ordinary pages a larger reading size while still fitting a narrow column or spread.
   const readingPercent = Math.min(150, Math.max(125, heightPercent * 1.25))
   const wanted = zoom === 'reading' ? Math.min(widthPercent, readingPercent)
@@ -41,6 +42,21 @@ export function pdfZoomPercent(zoom: PdfZoom, viewport: PdfSize, pages: readonly
   return Math.max(1, Math.min(pdfZoomMax, Math.floor(wanted)))
 }
 
-export function pdfZoomSliderMin(viewport: PdfSize, pages: readonly (PdfSize | undefined)[]): number {
-  return Math.min(preferredPdfZoomMin, pdfZoomPercent('fit-page', viewport, pages))
+export function pdfZoomLimits(viewport: PdfSize, rows: readonly (readonly (PdfSize | undefined)[])[], twoPages: boolean) {
+  const fit = (mode: Exclude<PdfZoom, number>) => rows.length
+    ? rows.reduce((value, row) => Math.min(value, pdfZoomPercent(mode, viewport, row)), pdfZoomMax)
+    : 100
+  const fitPage = fit('fit-page')
+  const fitWidth = fit('fit-width')
+  if (!twoPages) {
+    return { min: Math.min(preferredPdfZoomMin, fitPage), max: pdfZoomMax,
+      'fit-page': fitPage, 'fit-width': fitWidth, reading: fit('reading') }
+  }
+
+  const lower = Math.min(preferredPdfZoomMin, fitPage, Math.max(1, Math.floor(fitWidth / 2)))
+  const adjustment = Math.round((fitWidth - lower) * spreadRangeAdjustment)
+  const max = Math.min(pdfZoomMax, fitWidth + adjustment)
+  const min = Math.min(lower + adjustment, fitPage)
+  return { min, max, 'fit-page': fitPage, 'fit-width': fitWidth,
+    reading: Math.min(max, Math.max(min, fit('reading'))) }
 }

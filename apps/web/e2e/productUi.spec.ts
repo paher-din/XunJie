@@ -146,6 +146,163 @@ test('the workspace shows an error when an image attachment cannot be decoded', 
   await expect(page.getByText('无法读取这张图片。', { exact: true })).toBeVisible()
 })
 
+function threePagePdf() {
+  const pageStream = (text: string) => {
+    const body = `BT /F1 18 Tf 30 420 Td (${text}) Tj ET`
+    return `<< /Length ${Buffer.byteLength(body)} >>\nstream\n${body}\nendstream`
+  }
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R 4 0 R 5 0 R] /Count 3 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 500] /Resources << /Font << /F1 6 0 R >> >> /Contents 7 0 R >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 500] /Resources << /Font << /F1 6 0 R >> >> /Contents 8 0 R >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 500] /Resources << /Font << /F1 6 0 R >> >> /Contents 9 0 R >>',
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+    pageStream('Page 1 content'),
+    pageStream('Page 2 content'),
+    pageStream('Page 3 content'),
+  ]
+  let pdf = '%PDF-1.7\n'
+  const offsets = [0]
+  objects.forEach((object, i) => {
+    offsets.push(Buffer.byteLength(pdf))
+    pdf += `${i + 1} 0 obj\n${object}\nendobj\n`
+  })
+  const xref = Buffer.byteLength(pdf)
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`
+  pdf += offsets.slice(1).map(offset => String(offset).padStart(10, '0') + ' 00000 n \n').join('')
+  return Buffer.from(pdf + `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`)
+}
+
+test('multi-page PDF supports continuous vertical scrolling and syncs page controls', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await openPersonalActivityFromHome(page)
+  await page.getByRole('tab', { name: '学习资料', exact: true }).click()
+  await page.getByRole('group', { name: '资料分类' }).getByRole('button', { name: '个人 PDF', exact: true }).click()
+  await page.getByRole('region', { name: '个人 PDF', exact: true }).locator('input[type=file]')
+    .setInputFiles({ name: '连续翻页讲义.pdf', mimeType: 'application/pdf', buffer: threePagePdf() })
+
+  const reader = page.getByRole('region', { name: 'PDF 阅读区', exact: true })
+  const viewport = reader.locator('.pdf-reading')
+  const pageInput = reader.getByRole('textbox', { name: '实际 PDF 页码', exact: true })
+  const prevButton = reader.getByRole('button', { name: '上一页', exact: true })
+  const nextButton = reader.getByRole('button', { name: '下一页', exact: true })
+
+  await expect(reader.locator('[data-pdf-page]')).toHaveCount(3)
+  await expect(pageInput).toHaveValue('1')
+  await expect(prevButton).toBeDisabled()
+  await expect(nextButton).toBeEnabled()
+  await expect.poll(() => viewport.evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true)
+
+  await reader.getByText('页面缩略图', { exact: true }).click()
+  const thumbnailList = reader.getByRole('navigation', { name: 'PDF 页面缩略图' })
+  await expect(thumbnailList.getByRole('button', { name: '第 1 页', exact: true })).toHaveAttribute('aria-current', 'page')
+
+  const box = (await viewport.boundingBox())!
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  const page2Top = await viewport.evaluate(el => {
+    const p2 = el.querySelector<HTMLElement>('[data-pdf-page="2"]')!
+    return p2.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop
+  })
+  await page.mouse.wheel(0, page2Top)
+  await expect(pageInput).toHaveValue('2')
+  await expect(thumbnailList.getByRole('button', { name: '第 2 页', exact: true })).toHaveAttribute('aria-current', 'page')
+  await expect(prevButton).toBeEnabled()
+
+  // Zooming on page 2 keeps page 2 active.
+  await reader.getByRole('button', { name: '适合宽度', exact: true }).click()
+  await expect(pageInput).toHaveValue('2')
+  await reader.getByRole('button', { name: '默认', exact: true }).click()
+  await expect(pageInput).toHaveValue('2')
+
+  // Find text on scrolled page 2 and close find popover.
+  await viewport.press(process.platform === 'darwin' ? 'Meta+f' : 'Control+f')
+  const pdfSearch = reader.getByRole('searchbox', { name: '当前页文字查找', exact: true })
+  const findStatus = reader.getByRole('search', { name: 'PDF 页内查找', exact: true }).getByRole('status')
+  await pdfSearch.fill('Page 2 content')
+  await expect(findStatus).toHaveText('1 / 1')
+  await pdfSearch.press('Escape')
+  await expect(pdfSearch).toBeHidden()
+
+  // Switch to two-page spread: all pages stay mounted in scrollable rows, and overlap dots stay clear of the thumb.
+  await page.setViewportSize({ width: 1680, height: 800 })
+  await reader.getByRole('button', { name: '相邻两页', exact: true }).click()
+  await expect(reader.getByRole('img', { name: 'PDF 第 2 页固定页图', exact: true })).toBeVisible()
+  await expect(reader.getByRole('img', { name: 'PDF 第 3 页固定页图', exact: true })).toBeVisible()
+  await expect(reader.locator('[data-pdf-page]')).toHaveCount(3)
+  await expect(reader.locator('.pdf-page-count')).toHaveText('– 3 / 3')
+  await expect(thumbnailList.locator('[data-in-view]')).toHaveCount(2)
+  const zoomSlider = reader.getByRole('slider', { name: 'PDF 缩放比例' })
+  await zoomSlider.press('End')
+  const rightWidth = () => reader.locator('[data-pdf-page="3"]').evaluate(el => el.getBoundingClientRect().width)
+  const largest = await rightWidth()
+  await zoomSlider.press('ArrowLeft')
+  await expect.poll(rightWidth).toBeLessThan(largest)
+  await zoomSlider.press('End')
+  await expect.poll(() => viewport.evaluate(el => el.scrollWidth > el.clientWidth + 1)).toBe(true)
+  await reader.getByRole('button', { name: '适合宽度', exact: true }).click()
+  await expect.poll(() => viewport.evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true)
+  await expect.poll(() => viewport.evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true)
+
+  // Verify overlapping zoom stop buttons (top/bottom) never intrude into the 12px thumb band when overlap is active.
+  const vpMetrics = await viewport.evaluate(el => {
+    const style = getComputedStyle(el)
+    return {
+      width: el.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight),
+      height: el.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom),
+      windowHeight: window.innerHeight,
+    }
+  })
+  const targetVpHeight = Math.ceil((500 * 96 / 72) * (vpMetrics.width - 16) / (2 * 300 * 96 / 72))
+  await page.setViewportSize({ width: 1680, height: vpMetrics.windowHeight + (targetVpHeight - vpMetrics.height) })
+  await expect(reader.locator('.pdf-zoom-stops[data-overlap]')).toHaveCount(1)
+  const clearance = await reader.locator('.pdf-zoom-scale').evaluate(scale => {
+    const scaleRect = scale.getBoundingClientRect()
+    const centerY = scaleRect.top + scaleRect.height / 2
+    const topStop = scale.querySelector<HTMLElement>('.pdf-zoom-stop[data-edge="top"]')!.getBoundingClientRect()
+    const bottomStop = scale.querySelector<HTMLElement>('.pdf-zoom-stop[data-edge="bottom"]')!.getBoundingClientRect()
+    return { topBottom: topStop.bottom, bottomTop: bottomStop.top, thumbTop: centerY - 6, thumbBottom: centerY + 6 }
+  })
+  expect(clearance.topBottom).toBeLessThanOrEqual(clearance.thumbTop)
+  expect(clearance.bottomTop).toBeGreaterThanOrEqual(clearance.thumbBottom)
+  await page.setViewportSize({ width: 1280, height: 800 })
+
+  // Scroll up in two-page mode to reach row [1], then scroll down to row [2, 3].
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  await page.mouse.wheel(0, -1000)
+  await expect(pageInput).toHaveValue('1')
+  await page.mouse.wheel(0, 1000)
+  await expect(pageInput).toHaveValue('2')
+
+  await reader.getByRole('button', { name: '完整页', exact: true }).click()
+  await expect(reader.locator('[data-pdf-page]')).toHaveCount(3)
+  await expect(pageInput).toHaveValue('2')
+
+  // Switch to region selection on page 2 and cancel back to continuous scroll.
+  await reader.getByRole('button', { name: '框选区域', exact: true }).click()
+  await expect(reader.locator('.pdf-page-image')).toHaveCount(1)
+  const page2TextLayer = reader.locator('[data-pdf-page="2"] .pdf-page-text[data-text-state="ready"]')
+  await expect(page2TextLayer).toBeHidden()
+  await page.keyboard.press('Escape')
+  await expect(pageInput).toHaveValue('2')
+  await expect(page2TextLayer.getByText('Page 2 content', { exact: true })).toBeVisible()
+
+  const maxScroll = await viewport.evaluate(el => el.scrollHeight - el.clientHeight)
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  await page.mouse.wheel(0, maxScroll)
+  await expect(pageInput).toHaveValue('3')
+  await expect(thumbnailList.getByRole('button', { name: '第 3 页', exact: true })).toHaveAttribute('aria-current', 'page')
+  await expect(nextButton).toBeDisabled()
+
+  await reader.getByRole('button', { name: '引用此页', exact: true }).click()
+  await expect(page.getByRole('button', { name: '定位引用 1：连续翻页讲义.pdf · 第 3 页', exact: true })).toBeVisible()
+
+  await pageInput.fill('1')
+  await pageInput.press('Enter')
+  await expect(pageInput).toHaveValue('1')
+  await expect.poll(() => viewport.evaluate(el => el.scrollTop)).toBeLessThan(20)
+})
+
 test('PDF page turns preload and reuse a transient next-page preview', async ({ page }) => {
   await openPersonalActivityFromHome(page)
   const requestedPages: number[][] = []
@@ -204,6 +361,12 @@ test('PDF region references show one fit stop when the fit stops overlap', async
   const slider = zoom.getByRole('slider', { name: 'PDF 缩放比例', exact: true })
   const stops = zoom.locator('.pdf-zoom-stop')
   await expect(slider).toBeEnabled()
+  const printedLabel = reader.locator('.pdf-toolbar .pdf-page-label')
+  await expect(printedLabel).toHaveText('页标签 Cover')
+  await reader.getByRole('button', { name: '下一页', exact: true }).click()
+  await expect(printedLabel).toHaveText('页标签 7')
+  await reader.getByRole('button', { name: '上一页', exact: true }).click()
+  await expect(printedLabel).toHaveText('页标签 Cover')
   await expect(stops).toHaveCount(2)
   await expect(reader.getByRole('button', { name: 'PDF 工具侧栏', exact: true })).toHaveAttribute('aria-expanded', 'true')
   await reader.getByRole('button', { name: '框选区域', exact: true }).click()
@@ -1036,8 +1199,62 @@ test('retained ALU v4 runs after a new release and a home citation is revoked by
   await page.goto(endpoint + '/?space=school&activity=' + activity.activityId)
   await expect(page.locator('#activity-title')).toHaveText(old.task.title)
   await page.getByRole('tab', { name: '作品', exact: true }).click()
+  const panel = page.locator('.alu-tool.runtime-tool-compact')
+  const codeArea = page.locator('.monaco-editor').first()
+  await expect(codeArea).toBeVisible()
+  const inputA = panel.getByRole('textbox', { name: /^A（/ })
+  await inputA.fill('16')
+  const openHeight = (await codeArea.boundingBox())!.height
+  await panel.getByRole('button', { name: '收起 ALU 实验面板' }).click()
+  await expect(inputA).toBeHidden()
+  await expect(panel.getByRole('button', { name: '运行', exact: true })).toBeVisible()
+  await expect.poll(async () => (await codeArea.boundingBox())!.height).toBeGreaterThan(openHeight + 64)
+  await panel.getByRole('button', { name: '展开 ALU 实验面板' }).press('Enter')
+  await expect(inputA).toHaveValue('16')
+  await inputA.fill('0')
   const editor = page.locator('.monaco-editor .view-lines').first()
   await editor.click()
+  await page.keyboard.press('ControlOrMeta+A')
+  await page.setViewportSize({ width: 1440, height: 1000 })
+  const invalidAssignments = Array(12).fill('  assign = ;')
+  await page.keyboard.insertText(['module alu;', ...invalidAssignments, 'endmodule'].join('\n'))
+  const compile = panel.getByRole('button', { name: '运行', exact: true })
+  await expect(compile).toBeEnabled({ timeout: 60000 })
+  await compile.click()
+  const problems = page.getByRole('region', { name: '编译问题' })
+  const toggleProblems = problems.getByRole('button', { name: '编译问题' })
+  await expect(toggleProblems).toHaveAttribute('aria-expanded', 'true', { timeout: 65000 })
+  const errorLine = problems.getByRole('button', { name: 'alu.sv:2', exact: true }).first()
+  await expect(errorLine).toBeVisible()
+  await expect(problems).toContainText(/syntax error/i)
+  const output = problems.locator('.compiler-problems-output')
+  const messages = output.getByRole('listitem')
+  await expect.poll(() => messages.count()).toBeGreaterThan(6)
+  const visibleLines = await output.evaluate(el => el.clientHeight / parseFloat(getComputedStyle(el).lineHeight))
+  expect(visibleLines).toBeCloseTo(6, 1)
+  const dock = (await problems.boundingBox())!, code = (await codeArea.boundingBox())!
+  expect(dock.y).toBeGreaterThanOrEqual(code.y + code.height - 2)
+  await expect(messages.last()).not.toBeInViewport()
+  await output.hover()
+  await page.mouse.wheel(0, await output.evaluate(el => el.scrollHeight))
+  await expect(messages.last()).toBeInViewport()
+  expect((await codeArea.boundingBox())!.height).toBe(code.height)
+  await toggleProblems.click()
+  await expect(errorLine).toBeHidden()
+  await expect.poll(async () => (await codeArea.boundingBox())!.height).toBeGreaterThan(code.height)
+  await toggleProblems.press('Enter')
+  const workspace = page.getByRole('region', { name: '当前作品', exact: true })
+  const stateFile = workspace.getByRole('button', { name: 'components/alu.json', exact: true })
+  await stateFile.click()
+  await expect(stateFile).toHaveAttribute('aria-pressed', 'true')
+  await expect(workspace.locator(':scope > pre')).toContainText('instanceId')
+  expect(Math.abs((await problems.boundingBox())!.y - dock.y)).toBeLessThan(1)
+  await errorLine.click()
+  await expect.poll(() => codeArea.evaluate(el => el.contains(document.activeElement))).toBe(true)
+  expect(Math.abs((await problems.boundingBox())!.y - dock.y)).toBeLessThan(1)
+  await page.keyboard.insertText('//')
+  await expect(problems).toContainText('上次编译')
+  await expect(errorLine).toHaveCount(0)
   await page.keyboard.press('ControlOrMeta+A')
   await page.keyboard.insertText('module alu(input logic [3:0] A, B, input logic M, input logic [1:0] S, input logic Cin, output logic [3:0] F, output logic Cout); assign F = ~A; assign Cout = 0; endmodule')
   await page.getByRole('tab', { name: 'ALU 实验', exact: true }).click()
@@ -1052,6 +1269,9 @@ test('retained ALU v4 runs after a new release and a home citation is revoked by
   await run.click()
   const readout = page.locator('.alu-readout-value').last()
   await expect(readout).toContainText('F=1111', { timeout: 65000 })
+  await page.getByRole('tab', { name: '作品', exact: true }).click()
+  await expect(problems).toHaveCount(0)
+  await page.getByRole('tab', { name: 'ALU 实验', exact: true }).click()
   await readout.scrollIntoViewIfNeeded()
   const getExecution = async () => (await request('executions/' + activity.activityId + '/history', undefined, school))
     .entries.find((entry: { query: { state: string; output?: { output?: { f: string } } } }) =>
@@ -1059,6 +1279,8 @@ test('retained ALU v4 runs after a new release and a home citation is revoked by
   await expect.poll(async () => !!await getExecution(), { timeout: 20000 }).toBe(true)
   const { action, query } = await getExecution()
   await expect.poll(() => displayReceipts, { timeout: 10000 }).toContainEqual({ status: 200 })
+  const history = await request('executions/' + activity.activityId + '/history', undefined, school)
+  expect(history.entries.map((entry: { query: { state: string } }) => entry.query.state).sort()).toEqual(['failed', 'succeeded'])
   expect(action.execution.instance.componentVersion).toBe(4)
   await page.getByRole('button', { name: '到主页追问', exact: true }).click()
   await expect(page).toHaveURL(url => url.searchParams.get('view') === 'agent'
