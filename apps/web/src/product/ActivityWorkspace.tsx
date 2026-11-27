@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { toast } from '@xunjie/ui/feedback'
-import { FileStripView } from '@xunjie/ui/workspace'
+import { CompilerProblemsPanel, FileStripView, type CodeEditorLocation, type EditorDiagnostic } from '@xunjie/ui/workspace'
 import type { WorkFile, LearningActivity } from '@xunjie/contracts/learning-data'
 import { workFileSchema } from '@xunjie/contracts/learning-data'
-import { ALU_REFLECTION_MEDIA_TYPE } from '@xunjie/contracts/alu-learning'
+import { ALU_REFLECTION_MEDIA_TYPE, isAluCodeWork } from '@xunjie/contracts/alu-learning'
 import { componentStateMediaType } from '@xunjie/contracts/components'
 import { CodeReferenceSource } from '../components/workspace/references'
 import { workspaceScope } from './learningTransport'
 import { materialCache } from '../component-preparation/materials'
 import { useActivitySession } from './ActivitySession'
+import { isCompileFailure, parseCompilerLog } from '../tool-execution/compiler-log'
 
 export interface ActivityWorkspaceHandle { leave(): Promise<void> }
 export function ActivityWorkspace({ activity, namespace, spaceKey, authorized, location }: { activity: LearningActivity; spaceKey: string; namespace: string; authorized: boolean; location?: { objectId: string } }) {
@@ -56,17 +57,40 @@ export function ActivityWorkspace({ activity, namespace, spaceKey, authorized, l
       && !(f.mediaType === componentStateMediaType && /^components\/artifact-[0-9a-f-]{36}\.json$/.test(f.name)))
     const openFiles = visibleFiles.filter(f => !closedTabs.includes(f.objectId))
     const file = openFiles.find(f => f.objectId === selected) ?? openFiles[0]
-    const latestRun=runs.records.find(r=>r.action.protocolVersion===3)
-    const failed=latestRun?.query.state==='failed'?latestRun:undefined
-    const basis=file&&failed?.action.execution.basis.works.find(f=>f.objectId===file.objectId&&f.name===file.name&&f.value===file.value)
-    const diagnostics=basis ? {fileId:basis.objectId,originalText:basis.value,diagnostics:[...(failed?.query.reason?.detail??'').matchAll(/^\/?([^:\n]+):(\d+):\s*(.+)$/gm)]
-      .filter(match=>match[1]===basis.name).map(match=>({severity:'error' as const,path:basis.name,line:Number(match[2]),message:match[3]}))}:undefined
+    const latestRun = runs.records.find(({ action }) => action.protocolVersion === 3 && action.execution.initiator.kind === 'student'
+      && ['run-single', 'check-all'].includes(action.execution.operation.operationId))
+    const failed = authorized && latestRun && isCompileFailure(latestRun) ? latestRun : undefined
+    const requestId = failed?.requestId, outputId = failed?.query.output?.contentId
+    const [log, setLog] = useState<{ requestId: string; outputId: string; text: string } | null>(null)
+    useEffect(() => {
+      if (!requestId || !outputId) return
+      let live = true
+      void execution.artifact(requestId).then(artifact => {
+        const resource = artifact?.resources?.find(item => item.name === 'diagnostics.txt' && item.mediaType === 'text/plain')
+        if (live && resource) setLog({ requestId, outputId, text: resource.text })
+      }).catch(() => { /* The execution summary remains available if the retained log cannot be read. */ })
+      return () => { live = false }
+    }, [execution, requestId, outputId])
+    const output = log && log.requestId === requestId && log.outputId === outputId ? log.text
+      : failed?.query.reason?.detail.split('\n').slice(1).join('\n') ?? ''
+    const issues = useMemo(() => parseCompilerLog(output), [output])
+    const sources = failed?.action.execution.basis.works.filter(isAluCodeWork) ?? []
+    const currentSources = sources.filter(source => state.files.some(work => work.objectId === source.objectId
+      && work.name === source.name && work.value === source.value))
+    const stale = currentSources.length !== sources.length || sources.length !== state.files.filter(isAluCodeWork).length
+    const sourceFor = (issue: EditorDiagnostic) => currentSources.find(source => source.name === issue.path)
+    const basis = currentSources.find(source => source.objectId === file?.objectId)
+    const diagnostics = basis ? { fileId: basis.objectId, originalText: basis.value, diagnostics: issues.filter(issue => issue.path === basis.name) } : undefined
+    const editorWorkspaceKey = editorNamespace + ':' + state.editorEpoch
+    const [jump, setJump] = useState<CodeEditorLocation>()
     const attempt = (operation: () => unknown) => { try { operation() } catch { toast.error('操作未完成，请检查文件名、内容大小或重复路径。原内容仍保留。') } }
     const openFile = (id: string) => {
+      setJump(undefined)
       setClosedTabs(tabs => tabs.filter(closed => closed !== id))
       setSelected(id)
     }
     const closeFile = (id: string) => {
+      setJump(undefined)
       void workspace.leave().then(() => {
         setClosedTabs(tabs => [...new Set([...tabs, id])])
         setSelected(selected => selected === id ? null : selected)
@@ -88,7 +112,7 @@ export function ActivityWorkspace({ activity, namespace, spaceKey, authorized, l
       const anchor = document.createElement('a'); anchor.href = url; anchor.download = '循阶作品备份.json'; anchor.click()
       setTimeout(() => URL.revokeObjectURL(url), 1000)
     }
-    return <section className="learning-workspace" aria-label="当前作品" tabIndex={-1}
+    return <section className="learning-workspace" aria-label="当前作品" tabIndex={-1} data-compile-failure={failed ? '' : undefined}
       data-work-object-id={file?.objectId} data-work-content-id={file?.contentId}>
       {(starterError || state.error) && <div role="alert" className="learning-error"><p>{starterError || state.error}</p>
         <button type="button" className="ws-btn ghost" onClick={download}>导出当前作品</button>
@@ -114,7 +138,7 @@ export function ActivityWorkspace({ activity, namespace, spaceKey, authorized, l
           }} />
         {file ? <>
           {file.encoding === 'utf8' && ['text', 'code'].includes(file.kind) ? <CodeReferenceSource key={state.editorEpoch}
-            editorWorkspaceKey={editorNamespace + ':' + state.editorEpoch}
+            editorWorkspaceKey={editorWorkspaceKey} revealLocation={jump}
             fileId={file.objectId} sourceName={file.name} language={file.kind === 'text' ? 'plaintext' : /\.c(pp|c)?$/.test(file.name) ? 'cpp' : /\.(sv|svh|v|vh)$/.test(file.name) ? 'verilog' : 'plaintext'}
             initialText={file.value} readOnly={!!state.conflict || readOnly} readOnlyReason={readOnly ? '还原校验环境中的作品只读' : state.conflict ? '请先比较作品分歧' : null}
             workBasis={() => ({ objectId: file.objectId, contentId: file.contentId, name: file.name,
@@ -122,6 +146,14 @@ export function ActivityWorkspace({ activity, namespace, spaceKey, authorized, l
             diagnostics={diagnostics} onTextChange={(id, text) => attempt(() => workspace.edit(id, text))} onCursorChange={() => {}} />
             : <pre>{file.value}</pre>}
         </> : <div className="empty"><p>{visibleFiles.length ? '从「文件」中打开作品。' : '在「文件」中创建你的第一份作品。'}</p></div>}
+        {failed && <CompilerProblemsPanel key={failed.requestId} issues={issues} stale={stale}
+          canReveal={issue => !!sourceFor(issue)} onReveal={issue => {
+            const source = sourceFor(issue)
+            if (!source || !issue.line) return
+            openFile(source.objectId)
+            setJump({ workspaceKey: editorWorkspaceKey, fileId: source.objectId, originalText: source.value,
+              range: issue.range ?? { startLine: issue.line, endLine: issue.line, startColumn: 1, endColumn: 1 } })
+          }} />}
       </>}
     </section>
   }

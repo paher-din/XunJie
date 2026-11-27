@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useLayoutEffect, useReducer, useRef, useState, type ComponentProps, type CSSProperties, type PointerEvent } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useReducer, useRef, useState, type ComponentProps, type CSSProperties, type PointerEvent } from 'react'
 import type { CourseMaterial } from '@xunjie/contracts/courses'
 import type { LearningActivity } from '@xunjie/contracts/learning-data'
 import { useToastFeedback } from '@xunjie/ui/feedback'
@@ -11,10 +11,12 @@ import { questionReferenceSourceId } from '@xunjie/contracts/question-drafts'
 import { useWorkspaceReferences } from '../components/workspace/references'
 import { acknowledgePdfRequest, listPdfRequests, retainCoursePdf, retainPdfUpload, type PdfMaterialRequest } from '../reliable-workspace/pdf-materials'
 import { learningRequest, workspaceScope } from './learningTransport'
+import { PdfContinuousPage, usePdfPageSizes } from './PdfContinuousPage'
 import { PdfReaderText, PdfSelectionCopy, usePdfReaderText, usePdfTextFind } from './PdfReaderText'
 import { PdfPagePreview } from './PdfPagePreview'
 import { PdfThumbnails } from './PdfThumbnails'
-import { pdfCanSpread, pdfPageSize, pdfSpreadGap, pdfZoomMax, pdfZoomPercent, pdfZoomSliderMin, pdfZoomStops, type PdfSize, type PdfZoom } from './pdfZoom'
+import { buildPdfTwoPageRows, findActivePdfPage, findPdfTwoPageRowIndex } from './pdfScroll'
+import { pdfCanSpread, pdfPageSize, pdfSpreadGap, pdfZoomLimits, pdfZoomPercent, pdfZoomStops, type PdfSize, type PdfZoom } from './pdfZoom'
 import './PdfMaterials.css'
 
 type PdfSource = ReturnType<typeof pdfReferenceSourceSchema.parse>
@@ -48,6 +50,7 @@ const availableReading = (reading: PdfReading | null) => {
   return false
 }
 const pageReadKey = (doc: PdfDocument, pages: number[]) => JSON.stringify([doc.documentId, doc.sha256, pages])
+const samePages = (a: readonly number[], b: readonly number[]) => a.length === b.length && a.every((value, index) => value === b[index])
 function rememberPageRead(cache: Map<string, PdfReading>, key: string, reading: PdfReading) {
   cache.delete(key)
   cache.set(key, reading)
@@ -74,11 +77,14 @@ export function usePdfMaterials({ activity, spaceKey, namespace, authorized, rev
   const [notice, setNotice] = useState('')
   const pageReads = useRef(new Map<string, PdfReading>())
   const preloading = useRef<PagePreload | null>(null)
+  const syncing = useRef<{ key: string; controller: AbortController } | null>(null)
   useToastFeedback(error)
   useToastFeedback(notice, 'success')
   const alive = useRef(false), operation = useRef(false), readEpoch = useRef(0), listEpoch = useRef(0)
   const current = useRef({ authorized, readOnly: !!references.readOnly, reveal })
   current.current = { authorized, readOnly: !!references.readOnly, reveal }
+  const currentDoc = useRef(document)
+  currentDoc.current = document
   const api = useCallback((suffix = '', body?: unknown, signal?: AbortSignal) => learningRequest(activity, spaceKey, namespace,
     `pdf/${activity.activityId}${suffix}`, body, signal), [scope, spaceKey, namespace])
   const loadOriginal = useCallback(async (expected: PdfDocument, signal: AbortSignal) => {
@@ -154,14 +160,58 @@ export function usePdfMaterials({ activity, spaceKey, namespace, authorized, rev
   useEffect(() => {
     alive.current = true
     void refresh()
-    return () => { alive.current = false; ++readEpoch.current; ++listEpoch.current; pageReads.current.clear() }
+    return () => {
+      alive.current = false; ++readEpoch.current; ++listEpoch.current
+      syncing.current?.controller.abort(); syncing.current = null
+      pageReads.current.clear()
+    }
   }, [refresh])
   const previousAuthorized = useRef(authorized)
   useEffect(() => {
-    if (!authorized) pageReads.current.clear()
+    if (!authorized) {
+      syncing.current?.controller.abort(); syncing.current = null
+      pageReads.current.clear()
+    }
     if (authorized && !previousAuthorized.current) void refresh()
     previousAuthorized.current = authorized
   }, [authorized, refresh])
+
+  const syncPages = useCallback(async (pages: number[]) => {
+    const expectedDocument = currentDoc.current
+    if (!expectedDocument || !canWrite() || operation.current || expectedDocument.state !== 'ready' || expectedDocument.removedAt
+      || pages.length < 1 || pages.length > 2
+      || pages.some(targetPage => !Number.isInteger(targetPage) || targetPage < 1 || targetPage > expectedDocument.pageCount)) return
+    const cache = pageReads.current
+    const cacheKey = pageReadKey(expectedDocument, pages)
+    const cached = cache.get(cacheKey)
+    if (cached) {
+      rememberPageRead(cache, cacheKey, cached)
+      setReading(cached); setReferenceReadingId(null); setPendingRead(null); setError(''); setNotice('')
+      return
+    }
+    if (syncing.current?.key === cacheKey) return
+    syncing.current?.controller.abort()
+    const background = preloading.current
+    const prefetched = background?.key === cacheKey ? background : null
+    if (prefetched) preloading.current = null
+    const controller = new AbortController()
+    const activeSync = { key: cacheKey, controller }
+    syncing.current = activeSync
+    const epoch = readEpoch.current
+    try {
+      const input = { requestId: crypto.randomUUID(), documentId: expectedDocument.documentId, pages, region: null }
+      const fixed = (prefetched ? await prefetched.result : null)
+        ?? await fetchReading(input, expectedDocument, true, controller.signal)
+      if (!canWrite() || syncing.current !== activeSync || epoch !== readEpoch.current || operation.current) return
+      if (currentDoc.current?.documentId !== expectedDocument.documentId || currentDoc.current?.sha256 !== expectedDocument.sha256) return
+      if (availableReading(fixed)) rememberPageRead(cache, cacheKey, fixed)
+      setReading(fixed); setReferenceReadingId(null); setPendingRead(null)
+    } catch {
+      // Background scroll sync failures do not interrupt reading or disable toolbar actions.
+    } finally {
+      if (syncing.current === activeSync) syncing.current = null
+    }
+  }, [canWrite, fetchReading])
 
   const addReference = (fixed: PdfReading) => {
     if (!canWrite() || !references.draftReady) return
@@ -184,6 +234,7 @@ export function usePdfMaterials({ activity, spaceKey, namespace, authorized, rev
   const quotePendingRead = useRef(false)
   async function read(input: ReadRequest, quote = false, expectedDocument = document, retry = false) {
     if (!canWrite() || operation.current) return
+    syncing.current?.controller.abort(); syncing.current = null
     const cache = pageReads.current
     const cacheKey = expectedDocument && !input.region && !quote ? pageReadKey(expectedDocument, input.pages) : null
     const cached = !retry && cacheKey ? cache.get(cacheKey) : undefined
@@ -216,8 +267,38 @@ export function usePdfMaterials({ activity, spaceKey, namespace, authorized, rev
     } catch (error) { if (alive.current && epoch === readEpoch.current) setError(failureText(error)) }
     finally { operation.current = false; if (alive.current && epoch === readEpoch.current) setBusy(false) }
   }
+  async function attachTargetPageImages(pages: number[]) {
+    if (!canWrite() || !references.draftReady || !document || operation.current || !pages.length) return
+    syncing.current?.controller.abort(); syncing.current = null
+    const cacheKey = pageReadKey(document, pages)
+    const cached = pageReads.current.get(cacheKey)
+    if (cached && availableReading(cached)) {
+      rememberPageRead(pageReads.current, cacheKey, cached)
+      setReading(cached); setReferenceReadingId(null); setPendingRead(null); setError(''); setNotice('')
+      return addPageImages(cached)
+    }
+    operation.current = true; setBusy(true); setError(''); setNotice('')
+    const epoch = ++readEpoch.current
+    const expectedDocument = document
+    try {
+      const input = { requestId: crypto.randomUUID(), documentId: expectedDocument.documentId, pages, region: null }
+      const fixed = await fetchReading(input, expectedDocument, true)
+      if (!canWrite() || epoch !== readEpoch.current) return
+      if (availableReading(fixed)) {
+        rememberPageRead(pageReads.current, cacheKey, fixed)
+        setReading(fixed); setReferenceReadingId(null); setPendingRead(null)
+        return addPageImages(fixed)
+      }
+    } catch (error) {
+      if (alive.current && epoch === readEpoch.current) setError(failureText(error))
+    } finally {
+      operation.current = false
+      if (alive.current && epoch === readEpoch.current) setBusy(false)
+    }
+  }
   async function openDocument(doc: PdfDocument) {
     if (!alive.current || operation.current) return
+    syncing.current?.controller.abort(); syncing.current = null
     operation.current = true; setBusy(true)
     try {
       await current.current.reveal(doc.courseSource ? 'course' : 'personal')
@@ -324,6 +405,7 @@ export function usePdfMaterials({ activity, spaceKey, namespace, authorized, rev
     if (!parsed.success || parsed.data.activityId !== activity.activityId)
       return { ok: false as const, reason: 'PDF 引用不属于当前活动，固定副本仍保留。' }
     if (operation.current) return { ok: false as const, reason: '正在处理 PDF，请完成后再定位原引用。' }
+    syncing.current?.controller.abort(); syncing.current = null
     const epoch = ++readEpoch.current
     operation.current = true; setBusy(true); setError('')
     try {
@@ -377,20 +459,30 @@ export function usePdfMaterials({ activity, spaceKey, namespace, authorized, rev
   }, [reading])
 
   return { documents, requests, document, lastOpenedPersonalId, reading, referenceReadingId, pendingRead, busy, loading, error, loadError, notice,
-    authorized, loadOriginal, writable: authorized && !references.readOnly, canQuote: references.draftReady && availableReading(reading),
+    authorized, loadOriginal, writable: authorized && !references.readOnly, draftReady: references.draftReady,
+    canQuote: references.draftReady && availableReading(reading),
     imageAttachments: !!references.addImages, addingImages: !!references.addingImages,
-    refresh, upload, remove, receive, openCourse, openDocument, locate, preloadPage,
+    refresh, upload, remove, receive, openCourse, openDocument, locate, preloadPage, syncPages,
     readPages: (pages: number[], region: PdfRegion | null = null, quote = false) => document
       ? read({ requestId: crypto.randomUUID(), documentId: document.documentId, pages, region }, quote) : Promise.resolve(),
     retryRead: () => pendingRead ? read(pendingRead, quotePendingRead.current, document, true) : Promise.resolve(),
-    quote: () => {
+    quote: (targetPages?: number[]) => {
+      if (targetPages?.length && document && (!reading || reading.region || !samePages(reading.requestedPages, targetPages))) {
+        return read({ requestId: crypto.randomUUID(), documentId: document.documentId, pages: targetPages, region: null }, true)
+      }
       if (!reading || !availableReading(reading)) return
       if (reading.readingId === referenceReadingId || reading.region) return addReference(reading)
       return read({ requestId: reading.readingId, documentId: reading.documentId, pages: reading.requestedPages, region: null }, true)
     },
-    attachPageImages: () => reading && !reading.region && addPageImages(reading),
+    attachPageImages: (targetPages?: number[]) => {
+      if (targetPages?.length && (!reading || reading.region || !samePages(reading.requestedPages, targetPages))) {
+        return attachTargetPageImages(targetPages)
+      }
+      return reading && !reading.region && addPageImages(reading)
+    },
     closeDocument: () => {
       if (operation.current) return
+      syncing.current?.controller.abort(); syncing.current = null
       setDocument(null); setReading(null); setPendingRead(null)
     },
   }
@@ -441,14 +533,14 @@ export function PersonalPdfLibrary({ pdf }: { pdf: PdfMaterialsController }) {
   </WorkspaceResourceLibrary>
 }
 
-function pdfZoomPosition(percent: number, min: number): CSSProperties {
-  return { '--pdf-zoom-position': `${100 * (percent - min) / (pdfZoomMax - min)}%` } as CSSProperties
+function pdfZoomPosition(percent: number, min: number, range: number): CSSProperties {
+  return { '--pdf-zoom-position': `${100 * (percent - min) / range}%` } as CSSProperties
 }
 
 const pdfZoomDotSize = 6
 
-function PdfZoomControls({ zoom, percent, min, viewport, pages, cropped, disabled, onChange }: {
-  zoom: PdfZoom; percent: number; min: number; viewport: PdfSize; pages: readonly (PdfSize | undefined)[]
+function PdfZoomControls({ zoom, percent, limits, cropped, disabled, onChange }: {
+  zoom: PdfZoom; percent: number; limits: ReturnType<typeof pdfZoomLimits>
   cropped: boolean; disabled: boolean; onChange(zoom: PdfZoom): void
 }) {
   const slider = useRef<HTMLInputElement>(null)
@@ -463,8 +555,9 @@ function PdfZoomControls({ zoom, percent, min, viewport, pages, cropped, disable
     observer.observe(element)
     return () => observer.disconnect()
   }, [])
-  const stops = pdfZoomStops.map(stop => ({ ...stop, percent: pdfZoomPercent(stop.value, viewport, pages) }))
-  const range = pdfZoomMax - min
+  const { min, max } = limits
+  const stops = pdfZoomStops.map(stop => ({ ...stop, percent: limits[stop.value] }))
+  const range = Math.max(1, max - min)
   const distance = Math.abs(stops[0].percent - stops[1].percent) * trackWidth / range
   const overlap = distance < pdfZoomDotSize
   const combineFits = cropped && overlap
@@ -487,14 +580,14 @@ function PdfZoomControls({ zoom, percent, min, viewport, pages, cropped, disable
       aria-pressed={zoom === 'reading'} onClick={() => onChange('reading')}>默认</Button>
     <div className="pdf-zoom-slider">
       <div className="pdf-zoom-scale">
-        <input ref={slider} type="range" min={min} max={pdfZoomMax} step={1} value={percent} disabled={disabled}
-          style={pdfZoomPosition(percent, min)} aria-label="PDF 缩放比例" aria-valuetext={`${percent}%`}
+        <input ref={slider} type="range" min={min} max={max} step={1} value={percent} disabled={disabled || min === max}
+          style={pdfZoomPosition(percent, min, range)} aria-label="PDF 缩放比例" aria-valuetext={`${percent}%`}
           onChange={event => onChange(event.currentTarget.valueAsNumber)} />
         <div ref={track} className="pdf-zoom-stops" data-overlap={overlap && !combineFits || undefined}
           style={{ '--pdf-zoom-dot-size': `${pdfZoomDotSize}px`, '--pdf-zoom-stop-width': `${overlap ? 20 : Math.min(20, distance)}px` } as CSSProperties}>
           {visibleStops.map(({ value, label, edge, percent: position }) => <button key={combineFits ? 'fit-region' : value} type="button" className="pdf-zoom-stop"
             data-edge={edge} data-current={percent === position || undefined} aria-label={label} aria-pressed={zoom === value} disabled={disabled}
-            style={pdfZoomPosition(position, min)}
+            style={pdfZoomPosition(position, min, range)}
             onPointerDown={event => {
               if (!event.isPrimary || event.button !== 0) return
               pointer.current = { id: event.pointerId, x: event.clientX, dragging: false }
@@ -520,7 +613,7 @@ function keepPdfZoomPosition(area: HTMLDivElement) {
   const offset = Math.min(48, area.clientHeight / 4)
   const left = bounds.left + area.clientWidth / 2
   const top = bounds.top + offset
-  const frame = Array.from(area.querySelectorAll('.pdf-page-image'))
+  const frame = Array.from(area.querySelectorAll('.pdf-page-image, .pdf-page-sheet'))
     .find(item => item.getBoundingClientRect().bottom > top)
   if (!frame) return
   const before = frame.getBoundingClientRect()
@@ -545,7 +638,10 @@ function PdfIconButton({ icon, label, ...props }: Omit<ComponentProps<typeof But
 export function PdfMaterials({ pdf, active, onBackToList }: {
   pdf: PdfMaterialsController; active: boolean; onBackToList(): void
 }) {
-  const { document: doc, reading, pendingRead, preloadPage } = pdf
+  const { document: doc, reading, pendingRead, preloadPage, syncPages } = pdf
+  const [currentPage, setCurrentPage] = useState(1)
+  const [layoutMode, setLayoutMode] = useState<'single' | 'two-page'>('single')
+  const [twoPageAnchor, setTwoPageAnchor] = useState(1)
   const [pageInput, setPageInput] = useState('1')
   const [zoom, setZoom] = useState<PdfZoom>('reading')
   const [viewportSize, setViewportSize] = useState<PdfSize>({ width: 0, height: 0 })
@@ -558,6 +654,10 @@ export function PdfMaterials({ pdf, active, onBackToList }: {
   const findInput = useRef<HTMLInputElement>(null)
   const viewport = useRef<HTMLDivElement>(null)
   const restoreZoomPosition = useRef<(() => void) | undefined>(undefined)
+  const pageInputFocused = useRef(false)
+  const ignoreScrollUntil = useRef(0)
+  const pendingScrollPage = useRef<number | null>(null)
+  const prevDocId = useRef<string | undefined>(undefined)
   const [selectionMode, setSelectionMode] = useState<'page' | 'region'>('page')
   const [region, setRegion] = useState<PdfRegion | null>(null)
   const [query, setQuery] = useState('')
@@ -565,32 +665,93 @@ export function PdfMaterials({ pdf, active, onBackToList }: {
   const [textLayout, textChanged] = useReducer(value => value + 1, 0)
   const openText = usePdfReaderText(doc?.state === 'ready' && pdf.authorized ? doc : null, pdf.loadOriginal)
   const pendingPages = pdf.busy ? pdf.pendingRead?.pages : undefined
-  const find = usePdfTextFind(viewport, reading?.readingId, findOpen && !pendingPages ? query : '', textLayout, !!reading?.region)
   useToastFeedback(localError)
   const composing = useRef(false)
   const findComposing = useRef(false)
-  const page = reading?.requestedPages[0] ?? pdf.pendingRead?.pages[0] ?? 1
-  const pageSizes = reading?.pages.map(pdfPageSize) ?? []
-  const zoomMin = pdfZoomSliderMin(viewportSize, pageSizes)
-  const percent = Math.max(zoomMin, pdfZoomPercent(zoom, viewportSize, pageSizes))
-  const hasPageImage = pageSizes.some(Boolean)
   const ready = doc?.state === 'ready'
   const selecting = selectionMode === 'region'
-  const twoPages = reading?.requestedPages.length === 2
-  const spread = pdfCanSpread(viewportSize, pageSizes)
+  const isFixedReference = !!reading && reading.readingId === pdf.referenceReadingId
+  const twoPages = isFixedReference || !!reading?.region ? reading?.requestedPages.length === 2 : layoutMode === 'two-page'
+  const continuous = !!(ready && doc && doc.pageCount > 1 && !selecting && !reading?.region && !isFixedReference && !doc.removedAt)
+  const readingPage = reading?.requestedPages[0] ?? pdf.pendingRead?.pages[0] ?? 1
+  const page = continuous ? currentPage : readingPage
+  const twoPageRows = useMemo(
+    () => (continuous && twoPages && doc ? buildPdfTwoPageRows(doc.pageCount, twoPageAnchor) : []),
+    [continuous, twoPages, doc?.pageCount, twoPageAnchor],
+  )
+  const activeRowIndex = continuous && twoPages ? findPdfTwoPageRowIndex(twoPageRows, page) : -1
+  const activePages = useMemo(() => continuous
+    ? (twoPages ? (twoPageRows[activeRowIndex] ?? [page]) : [page])
+    : (reading?.requestedPages ?? [page]), [continuous, twoPages, twoPageRows, activeRowIndex, page, reading?.requestedPages])
+  const activeTwoPages = activePages.length === 2
+  const fixedSizes = useMemo(() => reading?.pages.map(pdfPageSize) ?? [], [reading?.pages])
+  const fallbackPageSize = fixedSizes[0]
+  const continuousSizes = usePdfPageSizes(continuous ? openText : undefined, continuous ? doc : null, fallbackPageSize)
+  const layoutRows = useMemo(() => {
+    if (!continuous) return [fixedSizes]
+    if (!twoPages) return [[continuousSizes.get(page) ?? fallbackPageSize]]
+    return twoPageRows.map(row => row.map(num => continuousSizes.get(num) ?? fallbackPageSize))
+  }, [continuous, fixedSizes, twoPages, continuousSizes, twoPageRows, fallbackPageSize, page])
+  const limits = useMemo(() => pdfZoomLimits(viewportSize, layoutRows, twoPages), [viewportSize, layoutRows, twoPages])
+  const percent = typeof zoom === 'number' ? Math.min(limits.max, Math.max(limits.min, zoom)) : limits[zoom]
+  const hasPageImage = layoutRows.some(row => row.some(Boolean))
+  const spread = twoPages && layoutRows.some(row => pdfCanSpread(viewportSize, row))
   const canNavigate = !pdf.busy && pdf.writable
   const hasNativeText = reading?.pages.some(item => item.state === 'ready' && item.image && item.text.trim())
-  const quoteLabel = selecting ? '引用所选区域' : reading?.region ? '引用此区域' : twoPages ? '引用这两页' : '引用此页'
-  const imageLabel = twoPages ? '将两页添加为图片' : '将此页添加为图片'
-  const cancelRegion = () => { setSelectionMode('page'); setRegion(null) }
+  const textScopeId = continuous ? doc?.documentId : reading?.readingId
+  const find = usePdfTextFind(viewport, textScopeId, activePages, findOpen && !pendingPages ? query : '', textLayout, !!reading?.region)
+  const currentFixedPages = continuous && doc && reading?.documentId === doc.documentId && reading.documentSha256 === doc.sha256
+    ? activePages.map(num => reading.pages.find(item => item.page === num)).filter((item): item is PdfPage => !!item)
+    : []
+  const currentPageFailed = currentFixedPages.some(item => item.state !== 'ready' || !item.image)
+  const canQuoteCurrent = continuous ? (pdf.draftReady && !doc.removedAt && !currentPageFailed) : pdf.canQuote
+  const quoteLabel = selecting ? '引用所选区域' : reading?.region ? '引用此区域' : activeTwoPages ? '引用这两页' : '引用此页'
+  const imageLabel = activeTwoPages ? '将两页添加为图片' : '将此页添加为图片'
+  const cancelRegion = () => {
+    if (selectionMode === 'region') pendingScrollPage.current = currentPage
+    setSelectionMode('page')
+    setRegion(null)
+  }
+  const scrollToPage = useCallback((target: number) => {
+    const area = viewport.current
+    if (!area) return
+    const el = area.querySelector<HTMLElement>(`[data-pdf-page="${target}"]`)
+    if (!el) return
+    ignoreScrollUntil.current = performance.now() + 150
+    const top = Math.max(0, el.getBoundingClientRect().top - area.getBoundingClientRect().top + area.scrollTop - 8)
+    area.scrollTo({ top })
+  }, [])
   useEffect(() => {
     if (!active || !canNavigate || pendingRead || doc?.state !== 'ready' || !reading || reading.region
       || reading.documentId !== doc.documentId || reading.documentSha256 !== doc.sha256
-      || reading.pages.length !== 1 || reading.pages[0]?.state !== 'ready' || !reading.pages[0].image) return
+      || reading.pages.length !== 1 || reading.requestedPages[0] !== page
+      || reading.pages[0]?.state !== 'ready' || !reading.pages[0].image) return
     return preloadPage(doc, page + 1)
   }, [active, canNavigate, doc, page, pendingRead, preloadPage, reading])
-  useEffect(() => { setPageInput(String(page)); cancelRegion(); setLocalError('') }, [reading?.readingId, page, doc?.documentId])
-  useEffect(() => { setQuery(''); setFindOpen(false); findComposing.current = false }, [doc?.documentId])
+  useEffect(() => {
+    setCurrentPage(1)
+    setLayoutMode('single')
+    setTwoPageAnchor(1)
+    setQuery('')
+    setFindOpen(false)
+    findComposing.current = false
+    setSelectionMode('page')
+    setRegion(null)
+    pendingScrollPage.current = null
+  }, [doc?.documentId])
+  useEffect(() => {
+    if (pdf.referenceReadingId || reading?.region) {
+      setSelectionMode('page')
+      setRegion(null)
+    }
+  }, [pdf.referenceReadingId, reading?.region])
+  useEffect(() => {
+    if (!continuous && reading?.requestedPages[0]) setCurrentPage(reading.requestedPages[0])
+  }, [continuous, reading?.readingId])
+  useEffect(() => {
+    if (!pageInputFocused.current) setPageInput(String(page))
+    setLocalError('')
+  }, [page, doc?.documentId])
   useLayoutEffect(() => { if (findOpen) findInput.current?.focus() }, [findOpen])
   useLayoutEffect(() => {
     const area = viewport.current
@@ -607,21 +768,115 @@ export function PdfMaterials({ pdf, active, onBackToList }: {
     return () => observer.disconnect()
   }, [ready])
   useLayoutEffect(() => {
-    restoreZoomPosition.current?.()
-    restoreZoomPosition.current = undefined
+    if (restoreZoomPosition.current) {
+      ignoreScrollUntil.current = performance.now() + 150
+      restoreZoomPosition.current()
+      restoreZoomPosition.current = undefined
+    }
   }, [zoom, percent])
-  useLayoutEffect(() => { viewport.current?.scrollTo(0, 0) }, [doc?.documentId, reading?.readingId])
+  useLayoutEffect(() => {
+    const area = viewport.current
+    const docChanged = prevDocId.current !== doc?.documentId
+    prevDocId.current = doc?.documentId
+    if (!area) return
+    if (docChanged) {
+      pendingScrollPage.current = null
+      ignoreScrollUntil.current = performance.now() + 150
+      area.scrollTo(0, 0)
+      return
+    }
+    if (continuous) {
+      if (pendingScrollPage.current !== null) {
+        const target = pendingScrollPage.current
+        pendingScrollPage.current = null
+        scrollToPage(target)
+      }
+      return
+    }
+    area.scrollTo(0, 0)
+  }, [doc?.documentId, reading?.readingId, continuous, layoutMode, scrollToPage])
+  useEffect(() => {
+    const area = viewport.current
+    if (!continuous || !area) return
+    let frame = 0
+    const update = () => {
+      frame = 0
+      if (performance.now() < ignoreScrollUntil.current) return
+      const areaTop = area.getBoundingClientRect().top
+      const spans = Array.from(area.querySelectorAll<HTMLElement>('[data-pdf-page]')).map(el => {
+        const rect = el.getBoundingClientRect()
+        return {
+          page: Number(el.dataset.pdfPage),
+          top: rect.top - areaTop + area.scrollTop,
+          bottom: rect.bottom - areaTop + area.scrollTop,
+        }
+      }).filter(span => Number.isInteger(span.page) && span.page >= 1)
+      setCurrentPage(previous => {
+        const hit = findActivePdfPage(spans, area.scrollTop, area.clientHeight, area.scrollHeight, previous)
+        if (twoPages && twoPageRows.length) {
+          return twoPageRows[findPdfTwoPageRowIndex(twoPageRows, hit)]?.[0] ?? hit
+        }
+        return hit
+      })
+    }
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(update)
+    }
+    const userScroll = () => { ignoreScrollUntil.current = 0 }
+    area.addEventListener('scroll', onScroll, { passive: true })
+    area.addEventListener('wheel', userScroll, { passive: true })
+    area.addEventListener('touchstart', userScroll, { passive: true })
+    area.addEventListener('pointerdown', userScroll, { passive: true })
+    return () => {
+      cancelAnimationFrame(frame)
+      area.removeEventListener('scroll', onScroll)
+      area.removeEventListener('wheel', userScroll)
+      area.removeEventListener('touchstart', userScroll)
+      area.removeEventListener('pointerdown', userScroll)
+    }
+  }, [continuous, twoPages, twoPageRows])
+  useEffect(() => {
+    if (!active || !continuous || !canNavigate || pendingRead || !doc) return
+    if (reading && !reading.region && reading.documentId === doc.documentId && reading.documentSha256 === doc.sha256
+      && samePages(reading.requestedPages, activePages)) return
+    const timer = window.setTimeout(() => { void syncPages(activePages) }, 220)
+    return () => window.clearTimeout(timer)
+  }, [active, continuous, canNavigate, pendingRead, doc, reading, activePages, syncPages])
   const changeZoom = (next: PdfZoom) => {
     if (next === zoom) return
     if (viewport.current) restoreZoomPosition.current = keepPdfZoomPosition(viewport.current)
     setZoom(next)
   }
   const navigate = (next: number, two = false) => {
-    if (!doc || !Number.isInteger(next) || next < 1 || next > doc.pageCount || (two && next >= doc.pageCount)) {
+    if (!doc || !Number.isInteger(next) || next < 1 || next > doc.pageCount || (two && !twoPages && next >= doc.pageCount)) {
       setLocalError(`请输入 1 到 ${doc?.pageCount ?? 1} 之间的实际页码。`); return
     }
     setLocalError('')
-    void pdf.readPages(two ? [next, next + 1] : [next])
+    cancelRegion()
+    if (two) {
+      if (!twoPages) {
+        setLayoutMode('two-page')
+        setTwoPageAnchor(next)
+        pendingScrollPage.current = next
+        setCurrentPage(next)
+        setPageInput(String(next))
+        void pdf.readPages([next, next + 1])
+        return
+      }
+      const row = twoPageRows[findPdfTwoPageRowIndex(twoPageRows, next)] ?? (next < doc.pageCount ? [next, next + 1] : [next])
+      setCurrentPage(row[0])
+      setPageInput(String(row[0]))
+      if (continuous) scrollToPage(row[0])
+      else pendingScrollPage.current = row[0]
+      void pdf.readPages(row)
+      return
+    }
+    setLayoutMode('single')
+    setCurrentPage(next)
+    setPageInput(String(next))
+    if (continuous && !twoPages) scrollToPage(next)
+    else pendingScrollPage.current = next
+    void pdf.readPages([next])
   }
   const openFind = () => {
     if (selecting) cancelRegion()
@@ -640,8 +895,14 @@ export function PdfMaterials({ pdf, active, onBackToList }: {
     if (selection?.anchorNode && viewport.current?.contains(selection.anchorNode)) selection.removeAllRanges()
     setSelectionMode('region')
     setRegion(null)
+    if (continuous && (!reading || reading.documentId !== doc?.documentId || reading.documentSha256 !== doc?.sha256
+      || reading.region || reading.requestedPages.length !== 1 || reading.requestedPages[0] !== currentPage)) {
+      void pdf.readPages([currentPage])
+    }
   }
   if (!doc) return null
+  const labels = activePages.map(num => doc.pageLabels[num - 1] || String(num))
+  const pageLabel = labels.some((label, index) => label !== String(activePages[index])) ? labels.join('–') : undefined
   return <section className="pdf-reader" aria-label="PDF 阅读区" aria-busy={pdf.busy} onKeyDown={event => {
     if (event.defaultPrevented || event.nativeEvent.isComposing || event.keyCode === 229) return
     if (ready && !event.altKey && (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
@@ -658,31 +919,57 @@ export function PdfMaterials({ pdf, active, onBackToList }: {
   }}>
     <header className="pdf-toolbar">
       <div className="pdf-toolbar-document">
-        {ready && <Button ref={sidebarToggle} type="button" variant="outline" className="pdf-icon-button"
-          aria-label="PDF 工具侧栏" title={sidebarOpen ? '收起 PDF 工具' : '展开 PDF 工具'}
-          aria-expanded={sidebarOpen} aria-controls={sidebarId} onClick={() => {
-            if (sidebarOpen) cancelRegion()
-            setSidebarOpen(!sidebarOpen)
-          }}><Icon name="panel-left-close" size={17} /></Button>}
-        <PdfIconButton icon="folder-with-files" label={doc.courseSource ? '返回材料列表' : '返回 PDF 列表'}
-          disabled={pdf.busy} onClick={onBackToList} />
+        <div className="pdf-toolbar-nav">
+          {ready && <Button ref={sidebarToggle} type="button" variant="outline" className="pdf-icon-button"
+            aria-label="PDF 工具侧栏" title={sidebarOpen ? '收起 PDF 工具' : '展开 PDF 工具'}
+            aria-expanded={sidebarOpen} aria-controls={sidebarId} onClick={() => {
+              if (sidebarOpen) cancelRegion()
+              setSidebarOpen(!sidebarOpen)
+            }}><Icon name="panel-left-close" className={sidebarOpen ? undefined : 'panel-left-open'} /></Button>}
+        </div>
+        <Button type="button" variant="outline" className="pdf-library-link" disabled={pdf.busy}
+          aria-label={doc.courseSource ? '返回材料列表' : '返回 PDF 列表'} onClick={onBackToList}>资料</Button>
+        <Icon name="alt-arrow-right" size={12} variant="linear" />
         <h2 title={doc.name}>{doc.name}</h2>
       </div>
       {ready && <div className="pdf-toolbar-controls">
         <div className="pdf-page-controls" role="group" aria-label="PDF 翻页">
-          <PdfIconButton icon="alt-arrow-left" label="上一页" disabled={!canNavigate || page <= 1} onClick={() => navigate(page - 1)} />
-          <form onSubmit={event => { event.preventDefault(); if (!composing.current) navigate(Number(pageInput)) }}>
+          <PdfIconButton icon="alt-arrow-left" label="上一页"
+            disabled={!canNavigate || (continuous && twoPages ? activeRowIndex <= 0 : page <= 1)}
+            onClick={() => {
+              if (continuous && twoPages) {
+                const prevRow = twoPageRows[activeRowIndex - 1]
+                if (prevRow) navigate(prevRow[0], true)
+              } else navigate(page - 1)
+            }} />
+          <form onSubmit={event => {
+            event.preventDefault()
+            if (!composing.current) {
+              pageInputFocused.current = false
+              navigate(Number(pageInput), twoPages)
+            }
+          }}>
             <input aria-label="实际 PDF 页码" inputMode="numeric" autoComplete="off" title="输入页码，按 Enter 跳转"
               value={pageInput} disabled={!canNavigate} onChange={event => setPageInput(event.target.value)}
-              onFocus={event => event.currentTarget.select()} onCompositionStart={() => { composing.current = true }}
+              onFocus={event => { pageInputFocused.current = true; event.currentTarget.select() }}
+              onBlur={() => { pageInputFocused.current = false; setPageInput(String(page)) }}
+              onCompositionStart={() => { composing.current = true }}
               onCompositionEnd={() => { composing.current = false }} onKeyDown={event => {
                 if (event.key === 'Enter' && (composing.current || event.nativeEvent.isComposing || event.keyCode === 229)) event.preventDefault()
               }} />
-            <span className="pdf-page-count" aria-label={`共 ${doc.pageCount} 页`}>/ {doc.pageCount}</span>
+            <span className="pdf-page-count">{activeTwoPages && <span aria-label={`至第 ${activePages[1]} 页`}>– {activePages[1]} </span>}/ {doc.pageCount}</span>
+            {pageLabel && <span className="pdf-page-label" title={pageLabel}>页标签 {pageLabel}</span>}
           </form>
-          <PdfIconButton icon="alt-arrow-right" label="下一页" disabled={!canNavigate || page >= doc.pageCount} onClick={() => navigate(page + 1)} />
+          <PdfIconButton icon="alt-arrow-right" label="下一页"
+            disabled={!canNavigate || (continuous && twoPages ? activeRowIndex >= twoPageRows.length - 1 : page >= doc.pageCount)}
+            onClick={() => {
+              if (continuous && twoPages) {
+                const nextRow = twoPageRows[activeRowIndex + 1]
+                if (nextRow) navigate(nextRow[0], true)
+              } else navigate(page + 1)
+            }} />
         </div>
-        <PdfZoomControls zoom={zoom} percent={percent} min={zoomMin} viewport={viewportSize} pages={pageSizes} cropped={!!reading?.region}
+        <PdfZoomControls zoom={zoom} percent={percent} limits={limits} cropped={!!reading?.region}
           disabled={!hasPageImage} onChange={changeZoom} />
         <PdfIconButton ref={findToggle} icon="minimalistic-magnifier" label="查找文字"
           aria-keyshortcuts="Control+F Meta+F" aria-expanded={findOpen} aria-controls={findId}
@@ -694,50 +981,72 @@ export function PdfMaterials({ pdf, active, onBackToList }: {
         <aside className="pdf-reader-sidebar" id={sidebarId} aria-label="PDF 工具" hidden={!sidebarOpen}>
           <div role="group" aria-label="阅读方式" className="pdf-reader-modes">
             <Button type="button" variant="outline" aria-pressed={!selecting && !twoPages && !reading?.region}
-              disabled={!canNavigate} onClick={() => { cancelRegion(); if (reading?.region || twoPages) navigate(page) }}>
-              <Icon name="file-text" variant="linear" />完整页
+              disabled={!canNavigate} onClick={() => { cancelRegion(); if (reading?.region || twoPages || isFixedReference) navigate(page) }}>
+              <Icon name="file-text" variant="linear" tone="neutral" />完整页
             </Button>
             <Button type="button" variant="outline" aria-pressed={twoPages}
-              disabled={!canNavigate || page >= doc.pageCount} onClick={() => navigate(page, true)}>
-              <Icon name="book-2" variant="linear" />相邻两页
-            </Button>
-            <Button type="button" variant="outline" aria-pressed={selecting}
-              disabled={!canNavigate || !reading || !!reading.region || twoPages || !pdf.canQuote}
-              onClick={selecting ? cancelRegion : startRegion}>
-              <Icon name="pen-new-square" variant="linear" />框选区域
+              disabled={!canNavigate || (!twoPages && page >= doc.pageCount)} onClick={() => navigate(page, true)}>
+              <Icon name="book-2" variant="linear" tone="neutral" />相邻两页
             </Button>
           </div>
           <div role="group" aria-label="引用与附件" className="pdf-reader-actions">
-            <Button type="button" variant="outline" disabled={!canNavigate || !pdf.canQuote || (selecting && !region)}
+            <Button type="button" variant="outline" aria-pressed={selecting}
+              disabled={!canNavigate || !doc || !!reading?.region || twoPages || !canQuoteCurrent}
+              onClick={selecting ? cancelRegion : startRegion}>
+              <Icon name="pen-new-square" variant="linear" tone="neutral" />框选区域
+            </Button>
+            <Button type="button" variant="outline" disabled={!canNavigate || !canQuoteCurrent || (selecting && !region)}
               onPointerDown={event => event.preventDefault()} onClick={() => {
                 if (selecting && region) void pdf.readPages([page], region, true)
-                else pdf.quote()
-              }}><Icon name="link" />{quoteLabel}</Button>
+                else void pdf.quote(continuous ? activePages : undefined)
+              }}><Icon name="link" variant="linear" tone="neutral" />{quoteLabel}</Button>
             {pdf.imageAttachments && !selecting && !reading?.region && <Button type="button" variant="outline"
-              disabled={!canNavigate || pdf.addingImages || !pdf.canQuote} onClick={() => void pdf.attachPageImages()}>
-              <Icon name="file-image" variant="linear" />{imageLabel}
+              disabled={!canNavigate || pdf.addingImages || !canQuoteCurrent}
+              onClick={() => void pdf.attachPageImages(continuous ? activePages : undefined)}>
+              <Icon name="file-image" variant="linear" tone="neutral" />{imageLabel}
             </Button>}
             {selecting && <p className="pdf-hint">在页图上拖动框选，再引用所选区域。</p>}
             {reading?.region && <p className="pdf-hint">当前显示已引用的区域。点「完整页」可阅读整页。</p>}
           </div>
           {doc.pageCount > 1 && <PdfThumbnails key={doc.documentId} open={openText} pageCount={doc.pageCount}
-            page={page} visible={sidebarOpen} enabled={canNavigate}
-            onNavigate={next => navigate(next, twoPages && next < doc.pageCount)} />}
+            page={page} facingPage={activePages[1]} visible={sidebarOpen} enabled={canNavigate}
+            onNavigate={next => navigate(next, twoPages)} />}
         </aside>
         <div className="pdf-reader-stage">
           <div className="pdf-reading" data-pdf-reading-id={reading?.readingId} ref={viewport} tabIndex={0} aria-label="PDF 页图">
-            <div className="pdf-pages" data-spread={spread} style={spread ? { gap: pdfSpreadGap } : undefined}>
-              {reading?.pages.map((item, index) => <article className="pdf-page" data-pdf-page={item.page} tabIndex={-1} key={item.page}
-                style={pageSizes[index] ? { width: pageSizes[index].width * percent / 100 } : undefined}>
-                <h3>第 {item.page} 页{item.label && item.label !== String(item.page) && <span title={item.label}>页标签 {item.label}</span>}</h3>
-                {item.state !== 'ready' || !item.image ? <p className="pdf-error" role="status">{item.state === 'out-of-range' ? '此页超出 PDF 实际页数。'
-                  : item.state === 'limit' ? '此页图超出处理尺寸或体积限制，无法显示。'
-                    : item.state === 'timeout' ? '此页处理超时，未生成可引用页图。' : '此页图未完整生成，无法引用。'}{item.detail ? ` ${item.detail}` : ''}</p>
-                  : <PdfPageImage key={reading.readingId + ':' + item.page} item={item} image={item.image}
-                    openText={reading.documentSha256 === doc.sha256 ? openText : undefined}
-                    sharpen={!reading.region && reading.readingId !== pdf.referenceReadingId} onTextLayout={textChanged}
-                    selecting={selecting && !pdf.busy} region={region} onRegion={setRegion} />}
-              </article>)}
+            <div className="pdf-pages" data-spread={!continuous && spread} data-continuous={continuous || undefined}
+              data-selecting={selecting || undefined} style={!continuous && spread ? { gap: pdfSpreadGap } : undefined}>
+              {continuous
+                ? (twoPages
+                  ? twoPageRows.map(row => <div className="pdf-page-row" key={row[0]} data-spread={spread}
+                    style={spread ? { gap: pdfSpreadGap } : undefined}>
+                    {row.map(number => {
+                      const fixedPage = reading?.documentId === doc.documentId && reading.documentSha256 === doc.sha256
+                        ? reading.pages.find(item => item.page === number) : undefined
+                      return <PdfContinuousPage key={number} pageNumber={number} label={doc.pageLabels[number - 1]}
+                        size={continuousSizes.get(number) ?? fallbackPageSize} percent={percent}
+                        fixedPage={fixedPage} openText={openText} viewport={viewport} onTextLayout={textChanged} />
+                    })}
+                  </div>)
+                  : Array.from({ length: doc.pageCount }, (_, index) => {
+                    const number = index + 1
+                    const fixedPage = reading?.documentId === doc.documentId && reading.documentSha256 === doc.sha256
+                      ? reading.pages.find(item => item.page === number) : undefined
+                    const size = continuousSizes.get(number) ?? fallbackPageSize
+                    return <PdfContinuousPage key={number} pageNumber={number} label={doc.pageLabels[index]}
+                      size={size} percent={typeof zoom === 'number' ? percent : pdfZoomPercent(zoom, viewportSize, [size])}
+                      fixedPage={fixedPage} openText={openText} viewport={viewport} onTextLayout={textChanged} />
+                  }))
+                : reading?.pages.map((item, index) => <article className="pdf-page" data-pdf-page={item.page} tabIndex={-1} key={item.page}
+                  aria-label={`第 ${item.page} 页`} style={fixedSizes[index] ? { width: fixedSizes[index].width * percent / 100 } : undefined}>
+                  {item.state !== 'ready' || !item.image ? <p className="pdf-error" role="status">{item.state === 'out-of-range' ? '此页超出 PDF 实际页数。'
+                    : item.state === 'limit' ? '此页图超出处理尺寸或体积限制，无法显示。'
+                      : item.state === 'timeout' ? '此页处理超时，未生成可引用页图。' : '此页图未完整生成，无法引用。'}{item.detail ? ` ${item.detail}` : ''}</p>
+                    : <PdfPageImage key={reading.readingId + ':' + item.page} item={item} image={item.image}
+                      openText={reading.documentSha256 === doc.sha256 ? openText : undefined}
+                      sharpen={!reading.region && reading.readingId !== pdf.referenceReadingId} onTextLayout={textChanged}
+                      selecting={selecting && !pdf.busy} region={region} onRegion={setRegion} />}
+                </article>)}
             </div>
             {pdf.pendingRead && !pdf.busy && <Button type="button" variant="outline" disabled={!pdf.writable}
               onClick={() => void pdf.retryRead()}>核对并继续本次阅读</Button>}
@@ -745,7 +1054,7 @@ export function PdfMaterials({ pdf, active, onBackToList }: {
               disabled={!canNavigate} onClick={() => void pdf.readPages(reading.requestedPages, reading.region)}>重新读取页图</Button>}
             {pdf.busy && !pendingPages && <p className="pdf-hint" role="status">正在读取 PDF…</p>}
           </div>
-          <PdfSelectionCopy viewport={viewport} readingId={reading?.readingId} scale={percent} enabled={!selecting && !findOpen && !pdf.busy} />
+          <PdfSelectionCopy viewport={viewport} readingId={textScopeId} scale={percent} enabled={!selecting && !findOpen && !pdf.busy} />
         </div>
         {pendingPages && <p className="pdf-hint pdf-reading-status" role="status">
           正在读取第 {pendingPages.join('、')} 页…
@@ -760,9 +1069,12 @@ export function PdfMaterials({ pdf, active, onBackToList }: {
             }} />
           <div className="pdf-find-controls">
             <span className="pdf-find-status" role="status">{query.trim() && (
-              pendingPages ? '正在换页…' : find.count ? `${find.position} / ${find.total}` : !reading || find.loading || pdf.busy ? '正在查找…'
-                : find.unavailable || (hasNativeText && !openText) ? '文字暂不可用' : hasNativeText ? '无匹配'
-                  : reading.pages.every(item => item.state === 'ready') ? '无原生文字' : '文字读取不完整')}
+              pendingPages ? '正在换页…' : find.count ? `${find.position} / ${find.total}`
+                : continuous
+                  ? (find.loading ? '正在查找…' : find.unavailable || !openText ? '文字暂不可用' : find.hasReady || hasNativeText ? '无匹配' : '无原生文字')
+                  : (!reading || find.loading || pdf.busy ? '正在查找…'
+                    : find.unavailable || (hasNativeText && !openText) ? '文字暂不可用' : hasNativeText ? '无匹配'
+                      : reading.pages.every(item => item.state === 'ready') ? '无原生文字' : '文字读取不完整'))}
             </span>
             <PdfIconButton icon="arrow-up" label="上一处匹配" disabled={!find.count} onClick={() => find.step(-1)} />
             <PdfIconButton icon="arrow-down" label="下一处匹配" disabled={!find.count} onClick={() => find.step(1)} />

@@ -1,6 +1,17 @@
 .alu-tool { display: flex; flex-direction: column; gap: 16px; padding: 16px 20px 28px; }
 .alu-tool.runtime-tool-full { height: 100%; max-height: none; overflow: auto; }
 .alu-tool.runtime-tool-compact { padding: 14px 16px; }
+.alu-tool.runtime-tool-compact[data-folded] { padding-block: 4px; gap: 4px; }
+.alu-tool[data-folded] .alu-tool-head { margin-bottom: 0; align-items: center; }
+.alu-tool .alu-compact[hidden] { display: none; }
+.alu-tool-head .alu-panel-toggle {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 32px;
+  padding: 0 6px; margin-inline-start: -6px; border: 0; border-radius: 6px;
+  color: inherit; background: transparent; font: inherit;
+}
+.alu-tool-head .alu-panel-toggle:hover { background: var(--hover-bg); }
+.alu-tool-head .alu-panel-toggle:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.alu-panel-toggle > .ui-icon { color: var(--muted); }
 .alu-tool-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .alu-tool-head h2 { margin: 0; font-size: 17px; color: var(--ink); }
 .alu-tool-head p { margin: 4px 0 0; max-width: 760px; }
@@ -26,7 +37,8 @@
 .alu-cases textarea, .alu-case-results textarea { width: 100%; resize: vertical; min-height: 64px; }
 .alu-cases input:focus-visible, .alu-cases .ui-select-trigger:focus-visible, .alu-case-results .ui-select-trigger:focus-visible,
 .alu-cases textarea:focus-visible, .alu-case-results textarea:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
-.alu-case-help { display: flex; gap: 6px; align-items: center; }
+.alu-cases .alu-case-help { display: flex; align-items: center; justify-self: start; gap: 8px; }
+.alu-case-help input[type='checkbox'] { flex: none; margin: 0; }
 .alu-case-original, .alu-reflection > p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; }
 .alu-reflection { display: grid; gap: 8px; padding: 12px 0; border-top: 1px solid var(--line); }
 .alu-case-results > .ws-btn { justify-self: start; }

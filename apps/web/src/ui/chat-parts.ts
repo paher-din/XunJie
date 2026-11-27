@@ -1,6 +1,6 @@
 /** 旧版对话内部 UI 部件入口；保留原 props、局部状态、样式及领域／运行依赖。 */
 
-/** 回合状态与动作：等待计时、思考摘要、停止／失败、复制与重试。 */
+/** 回合状态与动作：等待提示、思考摘要、停止／失败、复制与重试。 */
 export {
   WaitTail as AgentWaitTail,
   ThinkTail as AgentThinkTail,

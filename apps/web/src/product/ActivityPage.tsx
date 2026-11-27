@@ -1,4 +1,4 @@
-import { ChatViewport, BackToBottom } from '@xunjie/ui/chat'
+import { ChatViewport } from '@xunjie/ui/chat'
 import * as Dialog from '@radix-ui/react-dialog'
 import { useConversationScroll } from './conversation-scroll'
 import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode, type Ref, type RefObject } from 'react'
@@ -26,6 +26,8 @@ import { ExecutionPanel } from './ExecutionPanel'
 import { NativeSessionPanel } from './NativeSessionPanel'
 import { learningRequest, workspaceScope } from './learningTransport'
 import { ActivityPromptComposer } from './ActivityPromptComposer'
+import { ProductComposerDock } from './ProductPromptInput'
+import { SessionQuestionBox } from './SessionQuestion'
 import type { ModelSelectionController } from './ModelSelection'
 import { waitForComposerComposition } from '../components/workspace/references/composer-view'
 import { PdfMaterials, PendingCoursePdfs, PersonalPdfLibrary, usePdfMaterials, type PdfOrigin } from './PdfMaterials'
@@ -78,26 +80,6 @@ async function focusLocation(root: HTMLDivElement | null, selector: string) {
   return { ok: false as const, reason: '原位置当前无法打开，固定依据和结果仍保留。' }
 }
 import { RuntimeTool, type ComponentResultLocation } from './RuntimeTool'
-
-function PanelLeftOpenIcon({ size = 16 }: { size?: number }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      width={size}
-      height={size}
-      className="ui-icon icon-tone-neutral"
-      aria-hidden="true"
-      focusable="false"
-    >
-      <g fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth={1.5}>
-        <path d="M22 11C22 7.22876 22 5.34315 20.8284 4.17157C19.6569 3 17.7712 3 14 3H10C6.22876 3 4.34315 3 3.17157 4.17157C2 5.34315 2 7.22876 2 11V13C2 16.7712 2 18.6569 3.17157 19.8284C4.34315 21 6.22876 21 10 21H14C17.7712 21 19.6569 21 20.8284 19.8284C22 18.6569 22 16.7712 22 13V11Z" />
-        <path d="M9 21L9 3" />
-        <path strokeLinejoin="round" d="M14.2113 9L16.7827 12L14.2113 15" />
-      </g>
-    </svg>
-  )
-}
 
 /** The existing workspace container consumes the reliable session; it owns only layout and focus. */
 export function ActivityPage({ activity, spaceKey, namespace, authorized, nativeAvailable, workspaceRef, busy, onBack, onStatus, onRefresh,
@@ -157,12 +139,12 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
     }).catch(() => { /* The activity still has its basic details if the release is unavailable. */ })
     return () => { current = false }
   }, [dockPanel, authorized, activity, course, deadline, spaceKey, namespace])
-  const [conversationActive, setConversationActive] = useState(false)
   const [tabsSlot, setTabsSlot] = useState<HTMLDivElement | null>(null)
   const references = useWorkspaceReferences()
   const conversationScroll = useConversationScroll()
   const ask = useRef<HTMLButtonElement>(null)
   const { workspace, draft, actions, execution, sessions, agent, agentSessionError, retryAgentSession } = useActivitySession()
+  const conversationActive = !!agent?.active
   const executionState = useSyncExternalStore(execution.subscribe, execution.snapshot)
   const latestExperiment = executionState.records.find(record => record.action.protocolVersion === 3
     && record.query.statusKnowledge === 'confirmed' && record.query.state === 'succeeded' && !!record.query.output)
@@ -245,7 +227,12 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
   const pendingQuestion = agent?.conversation?.questions.find(question => question.state === 'pending')
   const waitText = typeof pendingQuestion?.presentation.question === 'string' ? pendingQuestion.presentation.question : 'Agent 有一个问题想与你确认。'
   const [focusQuestionId, setFocusQuestionId] = useState<string | null>(null)
-  const questionFocused = useCallback(() => setFocusQuestionId(null), [])
+  const questionBox = useRef<HTMLElement>(null)
+  useLayoutEffect(() => {
+    if (!references.open || !focusQuestionId) return
+    if (focusQuestionId === pendingQuestion?.questionId) questionBox.current?.focus({ preventScroll: true })
+    setFocusQuestionId(null)
+  }, [references.open, focusQuestionId, pendingQuestion?.questionId])
   useImperativeHandle(workspaceRef, () => ({ leave: async () => {
     await waitForComposerComposition(scope)
     await workspace.leave(); await draft.leave(); await actions.leave()
@@ -538,9 +525,7 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
             else openDetails()
           }}
         >
-          {detailsOpen
-            ? <Icon name="panel-left-close" size={16} variant="linear" tone="neutral" />
-            : <PanelLeftOpenIcon size={16} />}
+          <Icon name="panel-left-close" className={detailsOpen ? undefined : 'panel-left-open'} />
         </button>
       )}
       {detailsShellVisible && <div className="product-task-details-shell" data-open={detailsOpen ? 'true' : 'false'}
@@ -615,18 +600,21 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
         <ActivityActions activity={activity} />
         <ChatViewport scrollerRef={conversationScroll.scroller} onScroll={conversationScroll.onScroll} onJump={conversationScroll.onJump}
           busy={conversationActive} phase={conversationActive ? 'streaming' : undefined} padSuggestions={false} queued={false}>
-          <ActivityConversation activity={activity} spaceKey={spaceKey} namespace={namespace} onModels={onModels}
-            onActiveChange={setConversationActive} onLocateTool={locateTool} onOpenCitation={openCitation}
-            focusQuestionId={focusQuestionId} onQuestionFocused={questionFocused} artifacts={artifacts} onOpenArtifact={openArtifact} />
+          <ActivityConversation activity={activity} onLocateTool={locateTool} onOpenCitation={openCitation}
+            artifacts={artifacts} onOpenArtifact={openArtifact} />
           {agentSessionError && <p role="alert" className="learning-error product-discussion-error">
             {agentSessionError}<Button type="button" variant="outline" onClick={retryAgentSession}>重新打开对话</Button>
           </p>}
         </ChatViewport>
         <div className="product-discussion-input">
-          {!conversationScroll.atBottom && <BackToBottom onClick={conversationScroll.backToBottom} />}
-          <ActivityPromptComposer activity={activity} spaceKey={spaceKey} namespace={namespace} authorized={authorized}
-            selection={selection} onModels={onModels} active={conversationActive} generating={conversationActive}
-            sending={sending} closeFocusRef={ask} />
+          <ProductComposerDock atBottom={conversationScroll.atBottom} onBackToBottom={conversationScroll.backToBottom}>
+            {agent && pendingQuestion && references.open
+              ? <SessionQuestionBox key={pendingQuestion.questionId + ':' + pendingQuestion.version} focusRef={questionBox}
+                question={pendingQuestion} controller={agent} readOnly={readOnly || !authorized || activity.status !== 'open'} />
+              : <ActivityPromptComposer activity={activity} spaceKey={spaceKey} namespace={namespace} authorized={authorized}
+                selection={selection} onModels={onModels} active={conversationActive}
+                sending={sending} closeFocusRef={ask} onSend={conversationScroll.backToBottom} />}
+          </ProductComposerDock>
         </div>
       </aside>
       {course && <SideDock taskButtonRef={taskInfoEntryRef} openPanel={dockPanel} onOpenPanelChange={setDockPanel}

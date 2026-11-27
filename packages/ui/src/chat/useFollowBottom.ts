@@ -108,7 +108,9 @@ export function useFollowBottom({
           const gap = bottom - el.scrollTop
           if (gap > 0.5) {
             const before = el.scrollTop
-            el.scrollTop += reduce ? gap : gap * (1 - Math.exp(-dt / TAU_MS))
+            // Chrome rounds scroll positions. Keep the final steps moving even when a fast
+            // frame gives the easing curve a subpixel delta.
+            el.scrollTop += reduce ? gap : Math.min(gap, Math.max(1, gap * (1 - Math.exp(-dt / TAU_MS))))
             if (ours) ours.current = el.scrollTop
             // 写不动了就是到底：剩下的那点余距是 clientHeight 取整的零头，
             // 把它一直当欠账，这一钩子会在落定之后每帧白读一次布局（实测 240 次 / 4 秒）

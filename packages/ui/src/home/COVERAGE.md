@@ -34,7 +34,7 @@
 | 旧文件／部件 | 正式名称 | 状态／剩余边界 |
 | --- | --- | --- |
 | `AgentMessage.tsx: AgentMessage` | `AgentMessage` | 已迁相位展示；**完整旧功能未完成**：生成卡 renderer、记录事实及旧失败策略仍由旧适配器注入 |
-| 同文件 `WaitTail` | `WaitTail` | 已迁展示与等待计时 |
+| 同文件 `WaitTail` | `WaitTail` | 已迁等待呼吸点 |
 | 同文件 `ThinkTail` | `ThinkTail` | 已迁展示与思考计时 |
 | 同文件 `ThinkingSettled` | `ThinkingSettled` | 已迁展示与摘要展开 |
 | 同文件 `ConceptBlock` | `ConceptBlock` | 已迁展示、pin 状态和 portal；持久收纳由回调执行 |

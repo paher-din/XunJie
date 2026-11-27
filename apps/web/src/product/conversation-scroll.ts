@@ -12,7 +12,10 @@ export function useConversationScroll() {
   const backToBottom = useCallback(() => {
     stick.current = true; setAtBottom(true)
     const element = scroller.current
-    if (element) element.scrollTop = element.scrollHeight
+    if (element) {
+      element.scrollTop = element.scrollHeight
+      ours.current = element.scrollTop
+    }
   }, [])
   const restore = useCallback((position: ConversationScrollPosition) => {
     stick.current = position.atBottom; setAtBottom(position.atBottom)

@@ -5,7 +5,7 @@
 | 正式组件／部件 | 已迁移的验收范围 |
 | --- | --- |
 | `AgentMessage` | 原相位组合、流式正文、概念／步骤／小测／生成内容插槽、停止和失败分型、消息动作 |
-| `WaitTail`、`ThinkTail`、`ThinkingSettled` | 等待计时、思考秒数和摘要展开状态 |
+| `WaitTail`、`ThinkTail`、`ThinkingSettled` | 等待呼吸点、思考秒数和摘要展开状态 |
 | `ConceptBlock` | 收纳回调、局部 pin 状态及 portal |
 | `StopLine`、`FailureCard`、`ActionBar` | 原按钮、失败折叠、重试／继续／换模型回调、复制成功／失败反馈与时间戳 |
 | `UserMessage` | 原气泡、图片下载、复制、原位编辑、自动增高、焦点与 Escape／快捷提交 |

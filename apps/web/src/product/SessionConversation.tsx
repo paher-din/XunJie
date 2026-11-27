@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { AgentConversation } from '@xunjie/contracts/agent-service'
-import { AgentMessage, UserMessage, MessageTaskCard, AgentTrace, AgentThinking, AgentSkillRead } from '@xunjie/ui/chat'
+import { AgentMessage, UserMessage, MessageTaskCard, AgentTrace, AgentThinking, AgentSkillRead, WaitTail } from '@xunjie/ui/chat'
 import { Button } from '@xunjie/ui/foundation'
 import { workspaceCard } from './agent-sessions'
 import type { AgentSessionController } from './useAgentSession'
@@ -30,6 +30,8 @@ export function SessionConversation({ controller, readOnly = false, onOpenWorksp
     {error ? <p role="alert">{error}<Button variant="outline" onClick={() => void controller.refresh()}>重新读取</Button></p>
       : !pendingMessages && <p role="status" aria-label="正在读取对话" />}</section>
   const inputs = new Map(conversation.inputs.map(input => [input.inputId, input]))
+  const latestInputs = new Map<string, string>()
+  for (const input of conversation.inputs) if (input.state !== 'removed') latestInputs.set(input.turnId, input.inputId)
   const messages = conversation.messages.filter(message => !message.inputId || inputs.get(message.inputId)?.state !== 'removed')
   const lastAssistants = new Map<string, string>()
   for (const message of messages) if (message.role === 'assistant') lastAssistants.set(message.turnId, message.messageId)
@@ -66,7 +68,8 @@ export function SessionConversation({ controller, readOnly = false, onOpenWorksp
         {message.role === 'user' ? <>
           {input ? <SessionUserMessage input={input} at={message.editedAt ?? message.createdAt} controller={controller} readOnly={readOnly} />
             : <UserMessage text={message.text} at={message.editedAt ?? message.createdAt} busy={busy || readOnly} />}
-          {<SessionTrace controller={controller} runId={message.turnId} inputId={input?.inputId} renderTool={renderTool} />}
+          {(!input || latestInputs.get(message.turnId) === input.inputId)
+            && <SessionTrace controller={controller} runId={message.turnId} inputId={input?.inputId} renderTool={renderTool} />}
         </> : <>{!messages.some(item => item.turnId === message.turnId && item.role === 'user') && messages.find(item => item.turnId === message.turnId && item.role === 'assistant')?.messageId === message.messageId && <SessionTrace controller={controller} runId={message.turnId} renderTool={renderTool} />}<AgentMessage reveal={!initial.current?.messages.has(message.messageId)} message={{ role: 'agent', text: message.text, at: message.createdAt, phase: message.state }} markdownVariant="astryx" showStopActions={false}>{lastAssistant ? cards(message.turnId) : null}{messageCitations.length ? <MessageCitations citations={messageCitations} onOpen={onOpenCitation} /> : null}</AgentMessage></>}
       </div>
     })}
@@ -118,15 +121,20 @@ function SessionUserMessage({ input, at, controller, readOnly }: { input: AgentC
 function SessionTrace({ controller, runId, inputId, renderTool }: { controller: AgentSessionController; runId: string; inputId?: string; renderTool?: (tool: AgentConversation['tools'][number]) => ReactNode }) {
   const conversation = controller.conversation!
   const run = conversation.turns.find(run => run.turnId === runId)
-  const thinking = (conversation.thinking ?? []).filter(item => item.turnId === runId && (!item.inputId || item.inputId === inputId))
+  const lastInput = conversation.inputs.filter(input => input.turnId === runId && input.state !== 'removed').at(-1)
+  const shared = !inputId || lastInput?.inputId === inputId
+  const thinking = (conversation.thinking ?? []).filter(item => item.turnId === runId && (shared || !item.inputId || item.inputId === inputId))
     .map(item => ({ ...item, active: item.active && !conversation.messages.some(message =>
       message.turnId === runId && message.role === 'assistant' && message.createdAt >= item.createdAt) }))
   const questionsByTool = new Map(conversation.questions.map(question => [question.toolCallId, question]))
-  const tools = conversation.tools.filter(item => item.turnId === runId && (!item.inputId || item.inputId === inputId)
+  const tools = conversation.tools.filter(item => item.turnId === runId && (shared || !item.inputId || item.inputId === inputId)
     && questionsByTool.get(item.toolCallId)?.state !== 'pending')
   const ordered = orderedAgentTrace(thinking, tools)
-  const lastInput = conversation.inputs.filter(input => input.turnId === runId && input.state !== 'removed').at(-1)
   const active = (!inputId || lastInput?.inputId === inputId) && !!run && run.state === 'active'
+  const waitingForReply = active && !thinking.length && !tools.length
+    && !conversation.questions.some(question => question.turnId === runId && question.state === 'pending')
+    && !conversation.messages.some(message => message.turnId === runId && message.role === 'assistant'
+      && (!inputId || !message.inputId || message.inputId === inputId))
   const failure = run?.state === 'failed' ? run.reason === 'teacher-model-unavailable'
     ? '当前教师模型不可用，请切换或重新配置模型。原问题仍保留。'
     : ['budget_exhausted', 'budget-exhausted', 'input-budget-exhausted', 'output-budget-exhausted'].includes(run.reason)
@@ -134,9 +142,9 @@ function SessionTrace({ controller, runId, inputId, renderTool }: { controller: 
     : ['context-capacity-exceeded', 'context-capacity-preflight'].includes(run.reason)
       ? '当前模型容纳不了这次回答所需的上下文。可以缩小引用范围，或换用上下文更大的模型。'
       : '这次回答未能完成，原问题和内容已保留，可以稍后继续。' : ''
-  if (!thinking.length && !tools.length && !active) return failure ? <p role="status" className="learning-error">{failure}</p> : null
+  if (waitingForReply) return <div className="turn-status workspace-waiting"><WaitTail /></div>
+  if (!thinking.length && !tools.length) return failure ? <p role="status" className="learning-error">{failure}</p> : null
   return <><AgentTrace grouped active={active} label="思考与执行" aria-label="思考与执行记录" data-turn-id={runId}>
-    {!thinking.length && active && !conversation.questions.some(question => question.turnId === runId && question.state === 'pending') && <AgentThinking text="正在理解当前问题并整理可用信息。" active />}
     {ordered.map(entry => {
       if (entry.kind === 'thinking') return <AgentThinking key={entry.item.messageId} text={entry.item.text} active={entry.item.active} />
       const question = questionsByTool.get(entry.item.toolCallId)

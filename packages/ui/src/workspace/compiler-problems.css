@@ -1,0 +1,56 @@
+.compiler-problems {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  min-height: 36px;
+  max-height: 38%;
+  border-top: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+}
+.compiler-problems .compiler-problems-toggle {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  width: 100%;
+  height: 36px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 13px;
+}
+.compiler-problems-toggle:hover { background: var(--chip-bg); }
+.compiler-problems-toggle > svg:last-child { margin-inline-start: auto; }
+.compiler-problems-status { color: var(--danger-deep); }
+.compiler-problems-stale, .compiler-problems-path { color: var(--muted); }
+.compiler-problems-stale { font-size: 12px; font-weight: 400; }
+.compiler-problems-output {
+  min-height: 0;
+  max-height: 6lh;
+  margin-block-end: 8px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  font: 13px/1.65 ui-monospace, Consolas, monospace;
+}
+.compiler-problems-output ul, .compiler-problems-output p { margin: 0; padding: 0 16px; }
+.compiler-problems-output li, .compiler-problems-output p {
+  font: inherit;
+  list-style: none;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.compiler-problems-location, .compiler-problems-path { margin-inline-end: 10px; }
+.compiler-problems .compiler-problems-location {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent-deep);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.compiler-problems button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }

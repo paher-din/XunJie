@@ -51,10 +51,12 @@ async function fixture() {
   const events: { seq: number; [key: string]: unknown }[] = [], locate = vi.fn(async (_record: TeachingToolRecordView) => ({ ok: true as const }))
   vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(JSON.stringify(url.includes('/events?') ? events.filter(event => event.seq > Number(new URL(url, 'http://localhost').searchParams.get('after'))) : conversation))))
   let latestAgent: ReturnType<typeof useAgentSession>
+  const actionState = { items: [] }
+  const actions = { subscribe: () => () => {}, snapshot: () => actionState }
   function View() {
     const agent = latestAgent = useAgentSession(client, sessionId, true)
-    return <ActivitySessionContext.Provider value={{ workspace, agent } as never}>
-      <ActivityConversation activity={activity} spaceKey="personal" namespace="workspace-card" artifacts={artifacts} onOpenArtifact={open} onLocateTool={locate} />
+    return <ActivitySessionContext.Provider value={{ workspace, agent, actions } as never}>
+      <ActivityConversation activity={activity} artifacts={artifacts} onOpenArtifact={open} onLocateTool={locate} />
     </ActivitySessionContext.Provider>
   }
   const render = async () => act(async () => { root.render(<View />); await settle() })
