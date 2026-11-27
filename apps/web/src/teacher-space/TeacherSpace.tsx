@@ -836,10 +836,12 @@ function LibraryPane({ course, namespace, spaceKey }: { course: TeacherCourse; n
       <Button type="button" variant="outline" onClick={() => setAttempt(value => value + 1)}>重试</Button>
     </div>}
     {entries && !entries.length && <div className="t-library-empty">
+      <span className="t-library-empty-icon" aria-hidden="true"><Icon name="folder-with-files" size={22} /></span>
       <strong>这门课程还没有已发布的资料</strong>
       <p>任务发布后，随版本固定的资料会出现在这里。</p>
     </div>}
     {entries && entries.length > 0 && !visibleEntries.length && <div className="t-library-empty">
+      <span className="t-library-empty-icon" aria-hidden="true"><Icon name="folder-with-files" size={22} /></span>
       <strong>这个任务还没有已发布资料</strong>
       <p>换一个任务，或查看全部资料。</p>
       <Button type="button" variant="outline" onClick={() => setTaskFilter(null)}>查看全部资料</Button>
