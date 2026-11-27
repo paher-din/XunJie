@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest'
-import { latestTaskOf, loadTeacherCatalog, teacherCohort, type TeacherCourse } from './data'
+import { latestTaskOf, loadCourseMaterials, loadTeacherCatalog, teacherCohort, type TeacherCourse } from './data'
 
 afterEach(() => { vi.unstubAllGlobals() })
 
@@ -50,4 +50,20 @@ it('does not turn a catalog 403 into a session-long denial', async () => {
   await expect(loadTeacherCatalog(namespace, 'school:connection')).resolves.toEqual({ available: false, courses: [] })
   await expect(loadTeacherCatalog(namespace, 'school:connection')).resolves.toMatchObject({ available: true })
   expect(fetchMock).toHaveBeenCalledTimes(2)
+})
+
+it('lists a task’s materials from the member release when the teacher channel is forbidden', async () => {
+  const namespace = 'materials-' + Math.random()
+  const fetchMock = vi.fn()
+    .mockResolvedValueOnce(new Response('{}', { status: 403 }))
+    .mockResolvedValueOnce(new Response(JSON.stringify({ materials: [
+      { materialId: 'material-1', title: '讲义.md', mediaType: 'text/plain', byteLength: 1024 },
+    ] }), { status: 200, headers: { 'content-type': 'application/json' } }))
+  vi.stubGlobal('fetch', fetchMock)
+  await expect(loadCourseMaterials(namespace, 'school:connection', course('materials-course'))).resolves.toEqual([{
+    materialId: 'material-1', title: '讲义.md', mediaType: 'text/plain', byteLength: 1024,
+    taskId: 'task-materials-course', taskTitle: 'task-materials-course',
+    releaseId: 'release-task-materials-course', publishedAt: '2026-11-20T00:00:00.000Z',
+  }])
+  expect(fetchMock.mock.calls[1][0]).toBe('/api/learning/releases/release-task-materials-course')
 })

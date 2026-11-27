@@ -20,6 +20,12 @@
 - `course-agent-linear.svg` 取自 Kubai line `whiteboard`；仅补动画 class 与 `pathLength`，图形路径未改。
 - `task-design-linear.svg` 取自 Kubai line `layout-template`；仅补动画 class，图形路径未改。
 - `student-review-linear.svg` 取自 Kubai line `user-pen`；仅补动画 class，图形路径未改。
+- `library-linear.svg` 取自 Kubai line `library`；仅补动画 class，图形路径未改。
+- `clock-linear.svg` 取自 Kubai line `clock`；图形路径未改，保留时针、分针图层供提交时刻旋转。
+- `layers-linear.svg` 取自 Kubai line `layers`；图形路径未改。
+- `target-linear.svg` 取自 Kubai line `target`；图形路径未改。
+- `submission-paperclip-linear.svg` 取自 Kubai line `paperclip`；图形路径未改，用于作业审阅提交概况与附件区。
+- `send-linear.svg` 取自 Kubai line `send`；图形路径未改，保留 `data-l` 图层用于「发送反馈」的发送动画。动画还原自 Kubai `packages/core/src/line-motion.js` 的 `keys` 效果（MIT）。
 
 ## OpenMoji
 

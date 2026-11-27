@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MutableRefObject, type UIEvent } from 'react'
 import { AgentEmptyState, ChatViewport, Markdown, UserMessage } from '@xunjie/ui/chat'
 import { Button } from '@xunjie/ui/foundation'
 import { toast } from '@xunjie/ui/feedback'
@@ -9,8 +9,10 @@ import { agentInputReceiptSchema, type AgentInput } from '@xunjie/contracts/agen
 import type { ModelSelectionController } from './ModelSelection'
 import { useAgentModelPicker } from './AgentModelPicker'
 import { AgentSessionRequestError, AgentSessionsClient, SessionOutbox } from './agent-sessions'
+import { teacherConversationCache } from './agent-conversation-cache'
 import { useAgentSession, sessionError } from './useAgentSession'
 import { SessionConversation } from './SessionConversation'
+import { ConversationSkeleton } from './ConversationSkeleton'
 import { toolResultData } from './workspace-conversation'
 import { protectSessionUpload, deliverSessionUpload, sessionUploads, readSessionMaterial, type SessionMaterialUpload } from './session-materials'
 import { useViewPolling } from './useViewPolling'
@@ -22,7 +24,7 @@ import { ProductPromptInput, ProductComposerDock } from './ProductPromptInput'
 import { sessionComposerActions } from './session-composer'
 import { useSessionDraftSkills, sessionDraftSkillsKey, sessionSkillResetKey, consumeSessionSkillSelection } from './session-draft-skills'
 import { sessionSkillStateSchema } from '@xunjie/contracts/agent-skills'
-import { useConversationScroll } from './conversation-scroll'
+import { useConversationScroll, type ConversationScrollPosition } from './conversation-scroll'
 import { SessionQuestionBox } from './SessionQuestion'
 import './product-agent.css'
 import './conversation-empty-state.css'
@@ -75,13 +77,16 @@ export interface TeacherAgentSeed {
 type PostedMessage = Pick<AgentInput, 'sessionId' | 'requestId' | 'text'> & { at: string; first: boolean; inputId?: string }
 
 export function ProductAgent({ identity, spaceKey, namespace, sessionId, session: directorySession, acceptedFirstMessage, onSession, onWorkspace, onWorkspaceCreated,
-  onSettings, selection, readOnly, viewActive = true, onOpenCourseMaterial, teacher }: {
+  onSettings, selection, readOnly, viewActive = true, onOpenCourseMaterial, teacher, directoryPending, directoryError, onRetryDirectory, onNewConversation, scrollMemory }: {
   identity: SpaceIdentity; spaceKey: string; namespace: string; sessionId?: string; session?: AgentSession
   acceptedFirstMessage?: AcceptedFirstMessage
   onSession(session: AgentSession, firstMessage?: AcceptedFirstMessage): void
   onWorkspace?(activityId: string, source?: Record<string, unknown>): void; onWorkspaceCreated?(): void
   onSettings(): void; selection: ModelSelectionController; readOnly: boolean; viewActive?: boolean
   teacher?: { courseId: string; seed: TeacherAgentSeed | null; onSeedApplied(): void }
+  directoryPending?: boolean; directoryError?: string; onRetryDirectory?(): void; onNewConversation?(): void
+  /** 教师课程页签之间保留阅读位置；换课程时由父级换一个新的 ref。 */
+  scrollMemory?: MutableRefObject<ConversationScrollPosition | null>
   onOpenCourseMaterial?: (source: CourseCitationLocation) => Promise<CourseCitationDocument>
 }) {
   const scope = JSON.stringify([namespace, spaceKey, identity.environmentId, identity.spaceId, identity.principalId, ...(teacher ? [teacher.courseId] : [])])
@@ -93,7 +98,16 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
   const imagePreviews = useAgentImagePreviews(client.scope, images)
   const ownMetadata = directorySession?.sessionId === sessionId ? directorySession : metadata?.sessionId === sessionId ? metadata : null
   const writable = !readOnly && (!sessionId || !!ownMetadata && !ownMetadata.archived && !ownMetadata.deleted)
-  const { scroller: scroll, atBottom, onScroll, onJump, backToBottom } = useConversationScroll()
+  const { scroller: scroll, atBottom, onScroll, onJump, backToBottom, restore } = useConversationScroll()
+  const sessionRef = useRef(sessionId); sessionRef.current = sessionId
+  const rememberScroll = useCallback(() => {
+    const element = scroll.current, id = sessionRef.current
+    if (!scrollMemory || !id || !element) return
+    scrollMemory.current = { sessionId: id, top: element.scrollTop,
+      atBottom: element.scrollHeight - element.clientHeight - element.scrollTop < 64 }
+  }, [scrollMemory, scroll])
+  const handleScroll = (event: UIEvent<HTMLDivElement>) => { onScroll(event); rememberScroll() }
+  useEffect(() => () => rememberScroll(), [rememberScroll])
   const picker = useAgentModelPicker(selection)
   const needsImageModel = images.length > 0 && !picker.supportsImages
   const skills = useSessionDraftSkills(identity, spaceKey, namespace, sessionId, teacher?.courseId)
@@ -120,7 +134,33 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
     await composer.clearIfMatches(input.text)
   }
   const controller = useAgentSession(client, sessionId, writable, viewActive,
-    teacher ? { ready: composer.ready, delivered: clearTeacherDraft } : undefined)
+    teacher ? { ready: composer.ready, delivered: clearTeacherDraft } : undefined,
+    teacher ? teacherConversationCache : undefined)
+  // 教师课程页签回来时恢复上次阅读位置；换课程没有记忆，落到底部。只在这段会话第一次可见时做一次。
+  const restoredSession = useRef<string | null>(null)
+  const settleTimers = useRef<number[]>([])
+  useEffect(() => () => { for (const timer of settleTimers.current) window.clearTimeout(timer) }, [])
+  useLayoutEffect(() => {
+    if (!teacher || !sessionId || !controller.conversation) return
+    if (restoredSession.current === sessionId) return
+    restoredSession.current = sessionId
+    const saved = scrollMemory?.current
+    const position = saved?.sessionId === sessionId ? saved : null
+    if (position && !position.atBottom) restore(position)
+    else backToBottom()
+    rememberScroll()
+    // 消息落版会让高度在提交后再补足；开场直接补到底，别先露出半截再滑。只补底部，不碰用户选中的历史位置。
+    if (!position || position.atBottom) {
+      const settle = (delay: number) => {
+        const timer = window.setTimeout(() => {
+          if (restoredSession.current !== sessionId || scrollMemory?.current?.atBottom === false) return
+          backToBottom(); rememberScroll()
+        }, delay)
+        settleTimers.current.push(timer)
+      }
+      settle(0); settle(120)
+    }
+  }, [teacher, sessionId, controller.conversation?.sessionId, scrollMemory, restore, backToBottom, rememberScroll])
   const controls = sessionComposerActions(controller, !writable)
   const pendingQuestion = controller.conversation?.questions.find(question => question.state === 'pending')
   const appliedSeed = useRef<TeacherAgentSeed | null>(null)
@@ -129,11 +169,12 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
     const seed = teacher?.seed
     if (!composer.ready || !seed || appliedSeed.current === seed) return
     appliedSeed.current = seed
+    if (directoryPending) onNewConversation?.()
     const draft = composer.latest()
     void composer.change({ ...draft, text: draft.text.trim() ? draft.text + '\n' + seed.text : seed.text, teacherTarget: seed.target }).catch(() => {})
     teacher.onSeedApplied()
     inputRef.current?.focus({ preventScroll: true })
-  }, [composer.ready, teacher])
+  }, [composer.ready, teacher, directoryPending, onNewConversation])
   const [working, setBusy] = useState(false), [error, setError] = useState('')
   const [sending, setSending] = useState(false)
   const [posted, setPosted] = useState<PostedMessage[]>([])
@@ -165,13 +206,13 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
     setReading(null); setCourseReading(null); setUploads([]); setExcluded([]); setMetadata(null); setBusy(false); setSending(false); setError('')
     setPending(sessionId ? null : outbox.start()); setCompletedFirstMessage(undefined)
     setPosted(items => items.filter(item => item.sessionId === sessionId))
-    backToBottom()
+    if (!teacher) backToBottom()
     setImageDraft({ sessionId, images: readImageDraft(client.scope, sessionId) })
-    if (sessionId) {
+    if (sessionId && directorySession?.sessionId !== sessionId) {
       void client.read(sessionId).then(value => { if (live) setMetadata(value) }).catch(cause => { if (live) setError(sessionError(cause)) })
     }
     return () => { live = false }
-  }, [draftKey, client, sessionId])
+  }, [draftKey, client, sessionId, directorySession?.sessionId])
   useEffect(() => {
     if (posted.some(item => item.inputId && alreadyPresented.has(item.inputId)))
       setPosted(items => items.filter(item => !item.inputId || !alreadyPresented.has(item.inputId)))
@@ -489,13 +530,18 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
       && (!item.inputId || !alreadyPresented.has(item.inputId))).map(item =>
       <UserMessage key={item.requestId} text={item.text} at={item.at} busy />),
   ]
+  const conversationPending = !!teacher && !!sessionId && !controller.conversation && !controller.error
+  const directoryLoading = !!directoryPending && !sessionId && pendingMessages.length === 0
+  const showSkeleton = !pendingMessages.length && (directoryLoading || conversationPending)
   return <div className="agent-layout product-conversation product-agent">
-    {(ownMetadata || firstMessage) && <header className="product-conversation-head"><h1>{ownMetadata?.title ?? firstMessage?.title ?? '新对话'}</h1>{ownMetadata?.archived && <span>已归档</span>}</header>}
-    {sessionId || firstMessage || pendingMessages.length ? <ChatViewport scrollerRef={scroll} onScroll={onScroll} onJump={onJump} phase={controller.active ? 'streaming' : undefined}
-      busy={controller.active} padSuggestions={false} queued={false}>
-      <SessionConversation controller={controller} readOnly={!writable} onOpenWorkspace={onWorkspace}
+    {!teacher && (ownMetadata || firstMessage) && <header className="product-conversation-head"><h1>{ownMetadata?.title ?? firstMessage?.title ?? '新对话'}</h1>{ownMetadata?.archived && <span>已归档</span>}</header>}
+    {pendingMessages.length > 0 || directoryLoading
+      || sessionId && (!teacher || !controller.conversation || controller.conversation.messages.length > 0 || controller.conversation.turns.length > 0)
+      ? <ChatViewport scrollerRef={scroll} onScroll={handleScroll} onJump={onJump} phase={controller.active ? 'streaming' : undefined}
+      busy={controller.active || conversationPending || directoryLoading} padSuggestions={false} queued={false}>
+      {showSkeleton ? <ConversationSkeleton /> : <SessionConversation controller={controller} readOnly={!writable} onOpenWorkspace={onWorkspace}
         onWorkspaceCreated={onWorkspaceCreated} onOpenCitation={openCitation}
-        pendingMessages={pendingMessages.length ? pendingMessages : undefined} />
+        pendingMessages={pendingMessages.length ? pendingMessages : undefined} />}
       {courseReading && <section className="product-conversation-inner session-material-reading" aria-label={courseReading.name}>
         <h2>{courseReading.name}</h2>
         <Button variant="outline" onClick={() => setCourseReading(null)}>返回对话</Button>
@@ -510,6 +556,8 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
         {reading.images.map((src, index) => <img key={index} src={src} alt={`${reading.name} 第 ${reading.page + index} 页`} />)}</section>}
     </ChatViewport> : <div className="product-agent-body"><AgentEmptyState title="今天想探讨什么？" /></div>}
     <div className="product-agent-notices">
+      {directoryError && <p role="alert">{directoryError}{' '}
+        {onRetryDirectory && <button type="button" className="product-agent-settings-link" onClick={onRetryDirectory}>重试</button>}</p>}
       {pending && !sending && <p role="status">原问题已保留。<Button variant="outline" disabled={busy} onClick={() => void completeStart()}>核对并继续原请求</Button></p>}
       {experiment && <p role="status">已固定工作区实验「{experiment.label}」。<button type="button" disabled={busy}
         onClick={() => { sessionStorage.removeItem(experimentKey); setExperiment(null) }}>移除引用</button></p>}
@@ -531,7 +579,10 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
     <ProductComposerDock atBottom={atBottom} onBackToBottom={backToBottom} disclaimer={teacher && spaceKey === 'school' ? '对话自动保存在学校' : undefined}>
       {pendingQuestion ? <SessionQuestionBox key={pendingQuestion.questionId + ':' + pendingQuestion.version}
         question={pendingQuestion} controller={controller} readOnly={!writable} />
-        : <ProductPromptInput value={visibleText} inputRef={inputRef} onChange={value => { void composer.change({ ...composer.value, text: value }).catch(() => {}) }} autoFocus
+        : <ProductPromptInput value={visibleText} inputRef={inputRef} onChange={value => {
+          if (directoryPending && value.trim()) onNewConversation?.()
+          void composer.change({ ...composer.value, text: value }).catch(() => {})
+        }} autoFocus
         onSend={send} canSend={composer.ready && !!text.trim() && !busy && !pending && writable && canUseModel && !picker.blocked && !needsImageModel && !uploads.some(item => !excluded.includes(item.key) && !item.confirmed)}
         submitting={busy || !writable} busy={controls.active && (!!teacher || !hasDraft)} onStop={controls.stop}
         onResume={controls.canResume && !hasDraft && canUseModel ? controls.resume : undefined} actionDisabled={controls.disabled} resumeLabel="继续生成"

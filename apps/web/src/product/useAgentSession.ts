@@ -4,6 +4,7 @@ import type { AgentConversation } from '@xunjie/contracts/agent-service'
 import { agentInputControlReceiptSchema } from '@xunjie/contracts/agent-service'
 import type { AgentInput } from '@xunjie/contracts/agent-runtime'
 import { AgentSessionsClient, AgentSessionRequestError, SessionOutbox, mergeAgentConversation, type SessionSubject } from './agent-sessions'
+import type { AgentConversationCache } from './agent-conversation-cache'
 import { useViewPolling } from './useViewPolling'
 
 export function sessionError(error: unknown) {
@@ -50,10 +51,13 @@ export function useAgentSessionHistory(subject?: SessionSubject, enabled = true)
 }
 
 export function useAgentSession(client: AgentSessionsClient, sessionId: string | undefined, writable: boolean, viewActive = true,
-  recovery?: { ready: boolean; delivered(input: AgentInput): Promise<void> }) {
+  recovery?: { ready: boolean; delivered(input: AgentInput): Promise<void> }, conversationCache?: AgentConversationCache) {
   const outbox = useMemo(() => new SessionOutbox(client), [client])
   const scope = client.scope + ':' + sessionId
-  const [projection, setProjection] = useState<{ scope: string; value: AgentConversation } | null>(null), [error, setError] = useState(''), [busy, setBusy] = useState(false)
+  const [projection, setProjection] = useState<{ scope: string; value: AgentConversation } | null>(() => {
+    const value = conversationCache?.read(client.scope, sessionId)
+    return value ? { scope, value } : null
+  }), [error, setError] = useState(''), [busy, setBusy] = useState(false)
   const conversation = projection?.scope === scope ? projection.value : null
   const current = useRef(scope); current.current = scope
   const alive = useRef(true), reading = useRef<{ scope: string; promise: Promise<void> } | null>(null), latest = useRef(conversation); latest.current = conversation
@@ -66,15 +70,26 @@ export function useAgentSession(client: AgentSessionsClient, sessionId: string |
     if (reading.current?.scope === scope) return reading.current.promise
     const pending = (async () => {
       try {
-        const previous = latest.current?.sessionId === sessionId ? latest.current : null
+        const previous = latest.current?.sessionId === sessionId ? latest.current : conversationCache?.read(client.scope, sessionId) ?? null
         const value = await client.conversation(sessionId, previous?.lastSeq ?? 0)
         if (alive.current && current.current === scope) { setProjection(old => ({ scope, value: mergeAgentConversation(old?.scope === scope ? old.value : null, value) })); if (!localStorage.getItem('xj.agent-operation.' + scope) && !outbox.pending(sessionId).length) setError('') }
       } catch (cause) { if (alive.current && current.current === scope) setError(sessionError(cause)) }
     })().finally(() => { if (reading.current?.promise === pending) reading.current = null })
     reading.current = { scope, promise: pending }; return pending
-  }, [client, sessionId])
+  }, [client, sessionId, conversationCache])
   const active = !!conversation?.turns.some(turn => turn.state === 'active')
   useViewPolling(refresh, scope, active ? 200 : 5000, !!sessionId && viewActive)
+  // 换到另一段会话时，先铺上它的历史缓存；页面首次挂载则由 useState 直接读入。
+  useEffect(() => {
+    if (!conversationCache || !sessionId || projection?.scope === scope) return
+    const value = conversationCache.read(client.scope, sessionId)
+    if (value) setProjection({ scope, value })
+  }, [conversationCache, client.scope, sessionId, scope, projection?.scope])
+  // 流式期间不反复序列化；每次刷新落定后把最新投影写回缓存。
+  useEffect(() => {
+    if (!conversationCache || !conversation || active || conversation.sessionId !== sessionId) return
+    conversationCache.write(client.scope, conversation.sessionId, conversation)
+  }, [conversationCache, client.scope, sessionId, conversation, active])
   const perform = useCallback(async (operation: () => Promise<unknown>, backgroundRefresh = false) => {
     const expected = scope
     if (!writable) throw new Error('当前会话只读。')

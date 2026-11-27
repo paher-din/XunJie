@@ -416,6 +416,11 @@
   background: var(--tint-green-bg);
   color: var(--tint-green-fg);
 }
+.t-state-feedback {
+  background: var(--chip-bg);
+  color: var(--ink-soft);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
 .t-state-draft {
   background: var(--chip-bg);
   color: var(--ink-soft);
@@ -1399,13 +1404,17 @@ small.t-pulse-counts {
   text-overflow: ellipsis;
 }
 /* ── 页签图标 ─────────────────────────────
-   三个页签共用 16px 图标位与 8px 图文间距；常态中性，选中才拿出各自的
-   语义色。入场动画都控制在 560ms 内：课程/任务外层轻落，审阅只让笔写动。 */
+   四个页签共用 16px 图标位与 8px 图文间距；常态中性，选中才拿出各自的
+   语义色。入场动画都控制在 560ms 内：课程/任务外层轻落，审阅只让笔写动，
+   资料库让三本书依次立上书架。 */
 .t-btab-review {
   --tab-icon-accent: var(--icon-amber);
 }
 .t-btab-design {
   --tab-icon-accent: var(--icon-blue);
+}
+.t-btab-library {
+  --tab-icon-accent: var(--icon-teal);
 }
 .t-tab-icon {
   display: inline-flex;
@@ -1457,6 +1466,23 @@ small.t-pulse-counts {
 .t-btab-design.on .tab-design-tile-right {
   animation-delay: 140ms;
 }
+/* 资料库：三本书依次立上书架，斜放的一本最后落定；整枚图标不位移。 */
+.tab-library-book {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+.t-btab-library.on .t-tab-icon-library {
+  animation: t-tab-library-icon 500ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.t-btab-library.on .tab-library-book {
+  animation: t-tab-library-book 420ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.t-btab-library.on .tab-library-book-2 {
+  animation-delay: 70ms;
+}
+.t-btab-library.on .tab-library-book-3 {
+  animation-delay: 140ms;
+}
 @keyframes t-tab-course-icon {
   0% { transform: scale(0.96); }
   55% { transform: scale(1.025); }
@@ -1483,6 +1509,16 @@ small.t-pulse-counts {
   0% { transform: scale(0.86); opacity: 0.45; }
   60% { transform: scale(1.03); opacity: 1; }
   100% { transform: scale(1); opacity: 1; }
+}
+@keyframes t-tab-library-icon {
+  0% { transform: scale(0.97); }
+  55% { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
+@keyframes t-tab-library-book {
+  0% { transform: translateY(2px) scaleY(0.94); opacity: 0.4; }
+  60% { transform: translateY(-0.5px) scaleY(1.01); opacity: 1; }
+  100% { transform: translateY(0) scaleY(1); opacity: 1; }
 }
 /* 下拉落点：与页签同一 36 高；左侧不再画隔离线，箭头自己承担最右端的动作。
    箭头右侧留 10，与课程图标左侧的 10 对齐，首标签两端同宽 */
@@ -1532,6 +1568,9 @@ small.t-pulse-counts {
   .t-btab-course.on .tab-course-line,
   .t-btab-review.on .tab-review-pen,
   .t-btab-design.on .tab-design-tile {
+    animation: none;
+  }
+  .t-btab-library.on .tab-library-book {
     animation: none;
   }
   .t-btab-course.on .tab-course-line {
@@ -1639,6 +1678,16 @@ small.t-pulse-counts {
   flex: 1;
   min-height: 0;
 }
+/* 课程 Agent 页不做入场动画：内容与输入区在首帧直接到位，不透明度、不位移、
+   不分拍，避免任何「先暗后亮」或末尾补 2px 的抽闪。历史消息不逐条重播，
+   课程内切页签不重播。 */
+.teacher-page--agent .message-history .chat-message {
+  animation: none;
+}
+/* 教师课程页的空态不另起分拍：首屏直接到位，不再让小苗 / 标题 / 说明依次淡入。 */
+.teacher-page--agent .chat-empty > * > * {
+  animation: none;
+}
 .t-task-focus {
   display: flex;
   align-items: center;
@@ -1692,39 +1741,298 @@ small.t-pulse-counts {
   color: var(--ink);
 }
 
+/* ---------- 资料库 ---------- */
+/* 单列管理型：标准留白，标签栏下距 21px；宽度收在 880，便于扫读长标题。 */
+.t-library {
+  padding-bottom: 48px;
+}
+.t-library-notice {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.t-library-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 8px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--raised);
+}
+.t-library-error p {
+  margin: 0;
+  color: var(--danger);
+  font-size: 13px;
+}
+.t-library-empty {
+  display: flex;
+  min-height: 260px;
+  margin-top: 8px;
+  padding: 36px 24px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--raised);
+  text-align: center;
+}
+.t-library-empty-icon {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 14px;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--chip-bg);
+  color: var(--muted);
+}
+.t-library-empty strong {
+  max-width: 100%;
+  color: var(--ink-soft);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.t-library-empty p {
+  max-width: 34ch;
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+.t-library-empty button {
+  margin-top: 14px;
+}
+.t-library-row-sep {
+  margin: 0 5px;
+  color: var(--faint);
+}
+.t-library-row-task {
+  color: var(--ink-soft);
+}
+.t-library-list {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--raised);
+}
+.t-library-row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 40px;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 64px;
+  padding: 12px 16px;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 150ms var(--ease-s);
+}
+.t-library-row:first-child {
+  border-top: 0;
+}
+.t-library-row:hover:not(:disabled) {
+  background: var(--hover-bg);
+}
+.t-library-row:disabled {
+  cursor: default;
+}
+.t-library-row:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+.t-library-row-icon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--sunken);
+  color: var(--muted);
+  transition: color 150ms var(--ease-s);
+}
+.t-library-row:hover:not(:disabled) .t-library-row-icon {
+  color: var(--ink-soft);
+}
+.t-library-row-main {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+.t-library-row-main strong {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.t-library-row-main small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.t-library-row-action {
+  display: flex;
+  min-width: 32px;
+  justify-content: flex-end;
+  color: var(--muted);
+  font-size: 11.5px;
+  transition: color 150ms var(--ease-s);
+}
+.t-library-row:hover:not(:disabled) .t-library-row-action {
+  color: var(--ink-soft);
+}
+@media (max-width: 700px) {
+  .t-library-row {
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+    gap: 12px;
+    padding: 12px 14px;
+  }
+  .t-library-row-icon {
+    width: 32px;
+    height: 32px;
+  }
+}
+
 /* ---------- 作业审阅 ---------- */
 /* 双栏审阅工作台：内容区左右 24、上 20；标签栏回贴同一左缘，底距 12，标题合计上距 20。 */
+.content--review-workspace {
+  position: relative;
+}
+/* 列表型内容页：标签栏下距固定 21，任务设计与资料库的首行从同一条线开始。 */
+.content--list-workspace .t-tabbar {
+  margin-bottom: 21px;
+}
 .content--review-workspace .t-tabbar {
   margin: -20px -24px 12px;
 }
 .t-review {
   display: grid;
-  grid-template-columns: 308px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) 308px;
   min-height: 580px;
+  transition: grid-template-columns 350ms var(--ease-s);
+}
+.t-review.is-list-collapsed {
+  grid-template-columns: minmax(0, 1fr) 0;
+  transition: grid-template-columns 240ms var(--ease-s);
 }
 .t-review-list {
+  order: 2;
   min-width: 0;
-  padding: 0 16px 24px 0;
-  border-right: 1px solid var(--line);
+  /* 移动端折叠时列表随轨道收窄并被裁切；桌面由宽屏规则改为整块滑轨。 */
+  overflow: hidden;
+  padding: 0 16px 24px 16px;
+  border-right: 0;
+  border-left: 1px solid var(--line);
+  transition: padding 350ms var(--ease-s), border-color 350ms var(--ease-s);
+}
+.t-review-list.is-collapsed {
+  /* 移动端保留折叠条；桌面覆盖为整块滑出并退出可访问树。 */
+  visibility: hidden;
+  pointer-events: none;
+  padding: 0;
+  border-left-color: transparent;
+  transition: padding 240ms var(--ease-s), border-color 240ms var(--ease-s), visibility 0s linear 240ms;
 }
 .t-review-list-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
+  min-width: 0;
   min-height: 32px;
   margin-bottom: 12px;
+  transition: gap 160ms var(--ease-s) 180ms;
 }
 .t-review-list-head h2 {
+  max-width: 80px;
+  min-width: 0;
   margin: 0;
+  overflow: hidden;
   font-family: var(--font-sans);
   font-size: 13px;
   font-weight: 600;
+  white-space: nowrap;
+  transition: max-width 160ms var(--ease-s) 180ms, opacity 160ms var(--ease-s) 180ms;
 }
-.t-review-list-head > span {
+.t-review-list-head-end {
+  display: flex;
+  align-items: center;
+  flex: none;
+  gap: 4px;
+  margin-left: auto;
+  transition: gap 160ms var(--ease-s) 180ms;
+}
+.t-review-list-count {
+  max-width: 80px;
+  min-width: 0;
+  overflow: hidden;
   color: var(--muted);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  transition: max-width 160ms var(--ease-s) 180ms, opacity 160ms var(--ease-s) 180ms;
+}
+.t-review-tab-toggle,
+.t-review-list-toggle {
+  display: grid !important;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  place-items: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  transition: color 150ms var(--ease-s);
+}
+/* 桌面常驻在标签栏最右，展开与收起共用同一枚按钮，位置不随状态移动。 */
+.t-review-tab-toggle {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 4;
+}
+/* 窄屏回到清单头部，只在单列布局出现。 */
+.t-review-list-toggle {
+  display: none !important;
+}
+.t-review-tab-toggle:hover,
+.t-review-list-toggle:hover,
+.t-review-tab-toggle:active,
+.t-review-list-toggle:active {
+  background: transparent;
+  color: var(--ink);
+  filter: none;
+}
+.t-review-tab-toggle:focus-visible,
+.t-review-list-toggle:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+.t-review-list-body-clip {
+  min-width: 0;
+  overflow: hidden;
+}
+.t-review-list-body {
+  min-width: 0;
 }
 .t-review-tools {
   display: grid;
@@ -1804,7 +2112,43 @@ small.t-pulse-counts {
 .t-submission-list {
   display: flex;
   flex-direction: column;
+  gap: 14px;
+}
+.t-submission-group {
+  display: flex;
+  flex-direction: column;
   gap: 4px;
+}
+.t-review-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px 2px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.t-review-group small {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.t-review-group-dot {
+  width: 5px;
+  height: 5px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--muted);
+}
+.t-review-group-dot[data-state='pending'] {
+  background: var(--tint-blue-fg);
+}
+.t-review-group-dot[data-state='revised'] {
+  background: var(--tint-amber-fg);
+}
+.t-review-group-dot[data-state='done'] {
+  background: var(--tint-green-fg);
 }
 .t-submission-row {
   display: grid;
@@ -1933,12 +2277,64 @@ small.t-pulse-counts {
 .t-list-empty span {
   font-size: 12px;
 }
+.t-list-empty-link {
+  margin-top: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent-deep);
+  font-family: inherit;
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.t-list-empty-link:hover {
+  color: var(--ink);
+}
 
 .t-review-detail {
+  order: 1;
   width: 100%;
   max-width: 880px;
   min-width: 0;
-  padding: 4px 0 32px 28px;
+  padding: 4px 28px 32px 0;
+  transition: max-width 350ms var(--ease-s), padding 350ms var(--ease-s);
+}
+.t-review-detail.is-send-leaving {
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+  transition:
+    opacity 240ms var(--ease-s),
+    transform 240ms var(--ease-s);
+}
+.t-review-detail.is-send-entering {
+  animation: review-detail-enter 350ms var(--ease-s) both;
+  pointer-events: none;
+}
+@keyframes review-detail-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+.t-review.is-list-collapsed .t-review-detail {
+  max-width: 100%;
+  padding-right: 28px;
+  transition: max-width 240ms var(--ease-s), padding 240ms var(--ease-s);
+}
+@media (prefers-reduced-motion: reduce) {
+  .t-review,
+  .t-review-list,
+  .t-review-list-head,
+  .t-review-list-head h2,
+  .t-review-list-head-end,
+  .t-review-list-count,
+  .t-review-list-body-clip,
+  .t-review-tab-toggle,
+  .t-review-list-toggle,
+  .t-review-detail {
+    transition: none;
+  }
 }
 .t-detail-head {
   display: flex;
@@ -2007,30 +2403,207 @@ small.t-pulse-counts {
   outline: 2px solid var(--focus-ring);
   outline-offset: -2px;
 }
-.t-meta {
+.t-facts {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  margin: 0;
-  padding: 12px 0;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
+  grid-template-columns: 1.2fr 1.05fr 1.2fr 1.05fr;
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--line);
 }
-.t-meta div {
+.t-fact {
+  position: relative;
+  display: flex;
   min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 12px 15px 13px;
+  border: 0;
+  background: var(--sunken);
+  color: inherit;
+  font: inherit;
+  text-align: left;
 }
-.t-meta dt {
-  margin-bottom: 4px;
+.t-fact-icon {
+  position: absolute;
+  top: 9px;
+  right: 10px;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 8px;
+  pointer-events: none;
+}
+.t-fact-icon .ui-icon {
+  display: block;
+}
+.t-fact-icon--time {
+  background: var(--course-0-bg);
+  color: var(--course-0-fg);
+}
+.t-fact-icon--version {
+  background: var(--course-2-bg);
+  color: var(--course-2-fg);
+}
+.t-fact-icon--progress {
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+}
+.t-fact-icon--files {
+  background: var(--course-1-bg);
+  color: var(--course-1-fg);
+}
+.t-fact-clock .ui-icon g[data-l='min'],
+.t-fact-clock .ui-icon g[data-l='hour'] {
+  transform-box: view-box;
+  transform-origin: 12px 12px;
+}
+.t-fact-clock .ui-icon g[data-l='min'] {
+  transform: rotate(var(--t-clock-minute));
+  transition: transform 240ms cubic-bezier(0.3, 1, 0.35, 1);
+}
+.t-fact-clock .ui-icon g[data-l='hour'] {
+  transform: rotate(var(--t-clock-hour));
+  transition: transform 240ms cubic-bezier(0.3, 1, 0.35, 1);
+}
+.t-fact-label {
   color: var(--muted);
   font-size: 11px;
-}
-.t-meta dd {
-  overflow-wrap: anywhere;
-  margin: 0;
-  color: var(--ink-soft);
-  font-size: 13px;
   font-weight: 500;
+  letter-spacing: 0.02em;
+  line-height: 1.3;
+}
+.t-fact-value {
+  display: flex;
+  align-items: baseline;
+  gap: 1px;
+  color: var(--ink);
+  font-size: 15px;
   font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+.t-fact-sub {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.t-fact-note {
+  overflow: hidden;
+  max-width: 100%;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.t-fact-bar {
+  display: flex;
+  height: 17px;
+  align-self: stretch;
+  align-items: center;
+}
+.t-fact-track {
+  display: block;
+  width: 100%;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--line-strong);
+}
+.t-fact-track.is-segmented {
+  display: flex;
+  gap: 3px;
+  overflow: visible;
+  background: transparent;
+}
+.t-fact-seg {
+  flex: 1;
+  min-width: 0;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--line-strong);
+  transition: background-color 160ms cubic-bezier(0.3, 1, 0.35, 1);
+}
+.t-fact-seg.is-on {
+  background: var(--accent);
+}
+.t-fact-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 240ms cubic-bezier(0.3, 1, 0.35, 1);
+}
+.t-fact-types {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+}
+.t-fact-type {
+  display: inline-flex;
+  flex: 0 1 auto;
+  min-width: 0;
+  height: 18px;
+  align-items: center;
+  gap: 3px;
+  padding: 0 5px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--paper);
+  color: var(--ink-soft);
+  font-size: 10.5px;
+  font-weight: 500;
+  line-height: 1;
+}
+.t-fact-type > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.t-fact-type .ui-icon {
+  flex: none;
+  color: var(--muted);
+}
+.t-fact-type--more {
+  flex: none;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.t-fact-action {
+  cursor: pointer;
+  transition: background-color 150ms cubic-bezier(0.3, 1, 0.35, 1);
+}
+.t-fact-action:hover:not(:disabled) {
+  background-color: var(--hover-bg);
+}
+.t-fact-action:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -3px;
+}
+.t-fact-action:disabled {
+  cursor: default;
+}
+.t-fact-jump {
+  display: inline-flex;
+  align-self: center;
+  margin-left: 5px;
+  color: var(--muted);
+  transition: color 150ms cubic-bezier(0.3, 1, 0.35, 1), transform 150ms cubic-bezier(0.3, 1, 0.35, 1);
+}
+.t-fact-action:hover:not(:disabled) .t-fact-jump {
+  color: var(--ink-soft);
+  transform: translateY(1px);
+}
+.t-detail-section {
+  scroll-margin-top: 24px;
 }
 .t-submission-content {
   display: grid;
@@ -2147,11 +2720,6 @@ small.t-pulse-counts {
   font-size: 15px;
   font-weight: 600;
 }
-.t-feedback-head > div > span {
-  color: var(--muted);
-  font-size: 11px;
-  white-space: nowrap;
-}
 .t-feedback textarea {
   width: 100%;
   min-height: 112px;
@@ -2187,7 +2755,116 @@ small.t-pulse-counts {
 }
 .t-actions {
   flex: none;
+  margin-left: auto;
   gap: 8px;
+}
+.t-send-icon {
+  display: inline-flex;
+  flex: none;
+}
+.t-revision-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  flex: none;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 8px;
+  background: var(--raised);
+}
+.t-revision-control.is-checked {
+  border-style: solid;
+}
+.t-revision-control .t-feedback-tip {
+  margin-left: -2px;
+}
+.t-revision-check {
+  display: inline-flex;
+  height: 32px;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.t-revision-check input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.t-revision-check-box {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--muted);
+  border-radius: 4px;
+  color: var(--on-primary);
+  background: var(--raised);
+}
+.t-revision-check input:checked + .t-revision-check-box {
+  border-color: var(--accent-deep);
+  background: var(--accent-deep);
+}
+.t-revision-check input:focus-visible + .t-revision-check-box {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+.t-feedback-tip {
+  position: relative;
+  display: grid;
+  width: 24px;
+  height: 24px;
+  flex: none;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--muted);
+  cursor: help;
+}
+.t-feedback-tip:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+.t-feedback-tip::after {
+  content: attr(data-tip);
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 40;
+  width: max-content;
+  max-width: min(300px, calc(100vw - 48px));
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--inverse);
+  color: var(--on-inverse);
+  box-shadow: var(--shadow-tip);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.5;
+  text-wrap: pretty;
+  white-space: normal;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(4px) scale(0.96);
+  transform-origin: right bottom;
+  transition:
+    opacity 150ms cubic-bezier(0.3, 1, 0.35, 1),
+    transform 240ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.t-feedback-tip:hover::after,
+.t-feedback-tip:focus-visible::after {
+  opacity: 1;
+  transform: none;
 }
 .t-actions button:hover:not(:disabled) {
   filter: brightness(0.96);
@@ -2209,6 +2886,10 @@ small.t-pulse-counts {
 .t-actions .primary:disabled:hover,
 .t-actions .outline:disabled:hover {
   filter: none;
+}
+.t-actions .primary.is-sending:disabled {
+  background: var(--primary);
+  color: var(--on-primary);
 }
 .t-saved {
   display: inline-flex;
@@ -2272,9 +2953,8 @@ small.t-pulse-counts {
   .t-review-detail {
     padding-left: 22px;
   }
-  .t-meta {
+  .t-facts {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    row-gap: 16px;
   }
   .t-feedback-footer {
     align-items: flex-start;
@@ -2309,28 +2989,15 @@ small.t-pulse-counts {
 }
 
 /* ---------- 任务设计 ---------- */
+/* 列表与草稿编辑共用同一条内容左缘；侧栏收起或拖宽时只增加可用宽，不再二次居中。 */
 .t-projects,
-.t-designer {
-  width: min(1080px, 100%);
-  margin: 0 auto;
+.t-designer,
+.t-library {
+  width: 100%;
+  margin: 0;
   padding-bottom: 48px;
 }
-.t-designer {
-  width: min(1180px, 100%);
-}
-.t-projects-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  padding: 24px 0 20px;
-}
-.t-projects-head h2 {
-  margin: 0;
-  font-size: 20px;
-  line-height: 1.5;
-}
-.t-projects-head .primary,
+.t-project-tools .primary,
 .t-project-actions button,
 .t-designer-actions button,
 .t-add-objective {
@@ -2339,13 +3006,228 @@ small.t-pulse-counts {
   justify-content: center;
   gap: 6px;
 }
+/* 任务范围：全部 + 最近三个任务 + 更多。后四格等宽，长名在右端淡出，悬停看全名。 */
+.t-task-scope {
+  display: flex;
+  padding-bottom: 10px;
+}
+.t-task-scope-pills {
+  --t-task-slot: 92px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  max-width: 100%;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--chip-bg);
+}
+.t-task-filter-all,
+.t-task-filter-tab,
+.t-task-more-trigger {
+  height: 28px;
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  transition: color 150ms var(--ease-s), background-color 150ms var(--ease-s), box-shadow 150ms var(--ease-s);
+}
+.t-task-filter-all {
+  flex: none;
+  padding: 0 12px;
+}
+.t-task-filter-tab {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex: 0 0 var(--t-task-slot);
+  width: var(--t-task-slot);
+  padding: 0 10px;
+  align-items: center;
+  justify-content: flex-start;
+}
+.t-task-filter-all:hover,
+.t-task-filter-tab:hover,
+.t-task-more-trigger:hover:not(:disabled) {
+  color: var(--ink);
+}
+.t-task-filter-all.on,
+.t-task-filter-tab.on {
+  background: var(--chip-on);
+  color: var(--ink);
+  box-shadow: var(--panel-shadow);
+}
+.t-task-filter-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+/* 只有确实被截断时才淡出；渐变落到当前底色，选中态自然接到白面。 */
+.t-task-filter-tab[data-task-title] .t-task-filter-label {
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 18px), transparent);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 18px), transparent);
+}
+.t-task-filter-tab[data-task-title]::after {
+  content: attr(data-task-title);
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 40;
+  width: max-content;
+  max-width: min(320px, calc(100vw - 40px));
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--inverse);
+  color: var(--on-inverse);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: normal;
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+  box-shadow: var(--shadow-tip);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px) scale(0.96);
+  transform-origin: left top;
+  transition:
+    opacity 150ms cubic-bezier(0.3, 1, 0.35, 1),
+    transform 240ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.t-task-filter-tab[data-task-title]:hover::after,
+.t-task-filter-tab[data-task-title]:focus-visible::after {
+  opacity: 1;
+  transform: none;
+}
+.t-task-more {
+  position: relative;
+  flex: none;
+}
+.t-task-more-trigger {
+  display: flex;
+  width: auto;
+  padding: 0 8px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.t-task-more-trigger svg {
+  flex: none;
+}
+.t-task-more-trigger.open {
+  color: var(--ink);
+}
+.t-task-more-trigger:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.t-task-more-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 45;
+  display: flex;
+  width: max-content;
+  min-width: 120px;
+  max-width: min(240px, calc(100vw - 40px));
+  max-height: 300px;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--raised);
+  box-shadow: var(--shadow-menu);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(-4px) scale(0.98);
+  transform-origin: right top;
+  transition: opacity 150ms var(--ease-s), transform 240ms var(--ease-s), visibility 0s linear 140ms;
+}
+.t-task-more-menu.on {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: none;
+  transition-delay: 20ms, 0ms, 0s;
+}
+.t-task-more-menu:focus {
+  outline: none;
+}
+.t-task-more-item {
+  display: flex;
+  width: 100%;
+  min-height: 34px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: left;
+}
+.t-task-more-item:hover,
+.t-task-more-item:focus-visible {
+  background: var(--hover-bg);
+  outline: none;
+}
+.t-task-more-item:disabled {
+  color: var(--muted);
+  cursor: default;
+}
+.t-task-more-item:disabled:hover {
+  background: transparent;
+}
+.t-task-more-label {
+  min-width: 0;
+  flex: 1;
+  white-space: normal;
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+}
+.t-task-filter-all:focus-visible,
+.t-task-filter-tab:focus-visible,
+.t-task-more-trigger:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+@media (max-width: 980px) {
+  .t-task-scope-pills {
+    --t-task-slot: 88px;
+  }
+}
+@media (max-width: 820px) {
+  .t-task-scope {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .t-task-scope::-webkit-scrollbar {
+    display: none;
+  }
+  .t-task-scope-pills {
+    --t-task-slot: 84px;
+  }
+}
+@media (max-width: 620px) {
+  .t-task-scope-pills {
+    --t-task-slot: 76px;
+  }
+}
 .t-project-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--line);
+  padding: 0 0 8px;
+}
+.t-project-tools {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
 }
 .t-project-filters {
   display: flex;
@@ -2435,7 +3317,7 @@ small.t-pulse-counts {
   color: var(--ink);
 }
 .t-project-list {
-  margin-inline: -8px;
+  padding-top: 6px;
 }
 .t-project-row {
   display: grid;
@@ -2443,7 +3325,7 @@ small.t-pulse-counts {
   align-items: center;
   gap: 16px;
   min-height: 96px;
-  padding: 16px 8px;
+  padding: 16px 0;
   border-bottom: 1px solid var(--line);
   border-radius: 8px;
   transition: background-color 150ms var(--ease-s);
@@ -3077,7 +3959,6 @@ button.t-project-main {
   }
 }
 @media (max-width: 760px) {
-  .t-projects-head,
   .t-designer-head {
     align-items: flex-start;
     flex-direction: column;
@@ -3095,8 +3976,13 @@ button.t-project-main {
     align-items: stretch;
     flex-direction: column;
   }
-  .t-project-search {
+  .t-project-tools {
     width: 100%;
+  }
+  .t-project-search {
+    width: auto;
+    min-width: 0;
+    flex: 1;
   }
 }
 @media (max-width: 620px) {
@@ -3235,6 +4121,139 @@ button.t-project-main {
   }
 }
 
+/* 桌面审阅工作台：标签栏下切成左详情、右提交清单两块通高面板，左右各自滚动。
+   右栏贴主卡右缘；宽屏时侧栏从主卡内容顶边开始，分隔线一直落到卡片底部。 */
+@media (min-width: 821px) {
+  .product-shell .main:has(.content--review-workspace) {
+    overflow: hidden;
+    padding-bottom: 0;
+  }
+  .product-shell .content.content--review-workspace {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    padding: 0 0 0 24px;
+  }
+  .content--review-workspace .t-tabbar {
+    flex: none;
+    margin: 0 0 0 -24px;
+  }
+  .content--review-workspace .t-task-focus {
+    flex: none;
+  }
+  #t-panel-review {
+    position: relative;
+    display: block;
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    padding-right: 308px;
+    transition: padding-right 350ms var(--ease-s);
+  }
+  .t-review {
+    display: block;
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+  }
+  .t-review-detail {
+    max-width: none;
+    transition: none;
+  }
+  .t-review-list {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    width: 308px;
+    height: auto;
+    padding: 12px 16px 0;
+    background: var(--paper);
+    transform: translateX(0);
+    transition: transform 350ms var(--ease-s);
+  }
+  .t-review-list.is-collapsed {
+    /* 整块清单滑出右缘，内容不压缩也不淡出。 */
+    width: 308px;
+    padding: 12px 16px 0;
+    border-left-color: var(--line);
+    visibility: hidden;
+    transform: translateX(100%);
+    transition: transform 240ms var(--ease-s), visibility 0s linear 240ms;
+  }
+  #t-panel-review:has(.t-review.is-list-collapsed) {
+    padding-right: 0;
+    transition-duration: 240ms;
+  }
+  .t-review-list-head {
+    flex: none;
+  }
+  .t-review-list-body-clip {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .t-review-list-body {
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+  }
+  .t-review-tools {
+    flex: none;
+  }
+  .t-submission-list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding-bottom: 24px;
+    scrollbar-gutter: stable;
+  }
+  .t-review-detail {
+    height: 100%;
+    overflow-y: auto;
+    padding-top: 16px;
+    scrollbar-gutter: stable;
+  }
+}
+/* 821–1279：侧栏锚在内容面板顶边，按钮改用视口定位，保持上/右各 12px
+   （主卡 10px 外边距 + 1px 描边 + 12px）。 */
+@media (min-width: 821px) and (max-width: 1279px) {
+  .t-review-tab-toggle {
+    position: fixed;
+    top: calc(10px + 1px + 12px);
+    right: calc(10px + 1px + 12px);
+  }
+}
+/* 宽屏给右侧栏足够的顶栏避让空间，让它真正从主卡内容顶边起一块通高侧栏；
+   窄桌面保留标签栏在顶，避免最后一个页签被侧栏压住。 */
+@media (min-width: 1280px) {
+  .content--review-workspace:has(.t-review) {
+    position: relative;
+  }
+  /* 侧栏从内容顶边起时，固定按钮与清单头部同高；
+     给计数让出同一枚 32px 控件与 12px 间距。 */
+  .content--review-workspace:has(.t-review) .t-review-list-head {
+    padding-right: 40px;
+  }
+  /* 让侧栏的包含块上移到主卡内容顶边；按钮仍留在标签栏原坐标。 */
+  .content--review-workspace:has(.t-review) #t-panel-review {
+    position: static;
+  }
+  .content--review-workspace:has(.t-review) .t-task-focus {
+    width: calc(100% - 308px);
+    transition: width 350ms var(--ease-s);
+  }
+  .content--review-workspace:has(.t-review.is-list-collapsed) .t-task-focus {
+    width: 100%;
+    transition-duration: 240ms;
+  }
+}
 @media (max-width: 820px) {
   .t-pulse-card,
   .t-rhythm-card {
@@ -3260,13 +4279,65 @@ button.t-project-main {
   .t-review {
     grid-template-columns: minmax(0, 1fr);
   }
+  /* 单列仍走清单头部，标签栏最右的常驻按钮让位。 */
+  .t-review-tab-toggle {
+    display: none !important;
+  }
+  .t-review-list-toggle {
+    display: grid !important;
+  }
   .t-review-list {
-    border-right: 0;
+    order: 1;
+    border-left: 0;
     border-bottom: 1px solid var(--line);
-    padding-right: 0;
+    padding: 0 0 16px;
   }
   .t-review-detail {
+    order: 2;
     padding-left: 0;
+    padding-right: 0;
+  }
+  .t-review.is-list-collapsed {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .t-review.is-list-collapsed .t-review-list {
+    visibility: visible;
+    pointer-events: auto;
+    padding: 8px 12px;
+    border-bottom-color: transparent;
+  }
+  .t-review.is-list-collapsed .t-review-list-body-clip {
+    display: none;
+  }
+  .t-review-list-body {
+    min-width: 0;
+  }
+  .t-review-list-head {
+    min-width: 0;
+  }
+  .t-review.is-list-collapsed .t-review-list-head {
+    justify-content: space-between;
+    margin-bottom: 0;
+  }
+  .t-review.is-list-collapsed .t-review-list-head h2 {
+    display: block;
+    max-width: none;
+    opacity: 1;
+    transition: none;
+  }
+  .t-review.is-list-collapsed .t-review-list-head-end {
+    width: auto;
+    flex-direction: row;
+    gap: 4px;
+    margin-left: auto;
+  }
+  /* 折叠栏比展开多 12px 左、8px 上内边距；反向补偿按钮，图标坐标两态一致。 */
+  .t-review.is-list-collapsed .t-review-list-toggle {
+    transform: translate(12px, -8px);
+  }
+  .t-review.is-list-collapsed .t-review-detail {
+    max-width: none;
+    padding: 20px 0 24px;
   }
   .t-designer-head {
     grid-template-columns: 1fr;
@@ -3298,5 +4369,29 @@ button.t-project-main {
   }
   .t-pulse-meta b {
     font-size: 11.5px;
+  }
+}
+
+/* 减少动效时直接交换两态，不保留滑轨、淡出延迟或宽度过渡。 */
+@media (prefers-reduced-motion: reduce) {
+  .content--review-workspace:has(.t-review) .t-review,
+  .content--review-workspace:has(.t-review) #t-panel-review,
+  .content--review-workspace:has(.t-review) .t-task-focus,
+  .content--review-workspace:has(.t-review) .t-review-list,
+  .content--review-workspace:has(.t-review) .t-review-list-head,
+  .content--review-workspace:has(.t-review) .t-review-list-body-clip,
+  .content--review-workspace:has(.t-review) .t-review-detail {
+    transition: none;
+  }
+}
+
+/* 发送过场在减少动效下直接落地，只保留目标页。 */
+@media (prefers-reduced-motion: reduce) {
+  .t-review-detail.is-send-leaving,
+  .t-review-detail.is-send-entering {
+    opacity: 1;
+    transform: none;
+    animation: none;
+    transition: none;
   }
 }

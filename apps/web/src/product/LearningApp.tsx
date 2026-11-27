@@ -1391,6 +1391,7 @@ function LearningView() {
         onActivityStatus={contextVerified && !context.readOnly ? changeStatus : undefined}
         onOpenTask={selection => void viewRelease(selection)} readTaskSubmission={readTaskSubmission}
         onStartConversation={openAgent} onConnectSchool={() => openSettings('school')}
+        demoStatistics={import.meta.env.DEV || new URLSearchParams(window.location.search).has('demo')}
         onRefresh={() => void action(async generation => { await refreshContext(undefined, generation) })} />
       {homeVisible && !authorize && contextVerified && !context.readOnly && personalKey && <ProductHomeAssistant onOpen={prepareAgent} onSend={question => {
         prepareAgent()

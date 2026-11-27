@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { LearningActivity } from '@xunjie/contracts/learning-data'
 import type { Course } from '@xunjie/contracts/courses'
 import { DASHBOARD_WIDGETS, DashboardSection, defaultDashboardLayout, type DashboardLayout } from '@xunjie/ui/dashboard'
+import { demoDashboard, demoTasks } from '../bridge/mockData'
 import { ContinueTaskCard, CourseBreadcrumb, CourseTiles, HomeCourseRegion, HomeIntro, HomeSectionHeading, HomeStatus } from '@xunjie/ui/home'
 import { useHomeCourseNavigation } from '../lib/homeCourseNavigation'
 import { SchoolCourseTasks, schoolActivityEntries, type CourseTaskSelection } from './SchoolCourseTasks'
@@ -30,6 +31,8 @@ export interface ProductHomeProps {
   personalError?: string | null
   courseError?: string | null
   onConnectSchool?: () => void
+  /** 开发与演示环境使用演示统计；正式构建保持空态，避免展示虚构学习事实。 */
+  demoStatistics?: boolean
 }
 
 function activityTitle(activity: LearningActivity) {
@@ -49,7 +52,7 @@ function readLayout(key: string): DashboardLayout {
 export function ProductHome({ projectTitles = {}, accountName, personalActivities: personalData, schoolActivities: schoolData, courses, selectedCourseId = null,
   personalKey, schoolKey, initialCategory = schoolKey ? 'school' : 'personal', dashboardKey,
   busy, onOpenActivity, onActivityStatus, onOpenCourse, onOpenTask, readTaskSubmission, onStartConversation, onRefresh,
-  personalError, courseError, onConnectSchool }: ProductHomeProps) {
+  personalError, courseError, onConnectSchool, demoStatistics = false }: ProductHomeProps) {
   const [categoryFilter, setCategory] = useState(initialCategory)
   const category = selectedCourseId ? 'school' : categoryFilter
   const [layout, setLayout] = useState(() => readLayout(dashboardKey))
@@ -79,11 +82,16 @@ export function ProductHome({ projectTitles = {}, accountName, personalActivitie
   const count = selectedCourseId ? selectedCourse ? `${selectedCourse.tasks.length} 个任务` : ''
     : category === 'school' && courses ? `${courses.length} 门`
       : category === 'personal' && personalActivities ? `${personalActivities.length} 个活动` : ''
+  const assignedTaskCount = courses?.reduce((total, course) => total + course.tasks.length, 0)
 
   return <div className="content home-page product-home">
     <HomeIntro title={<>{greeting}，{accountName}</>} date={<>{now.getMonth() + 1} 月 {now.getDate()} 日</>} />
-    <DashboardSection data={{}} tasks={null} now={now} layout={layout} onLayoutChange={changeLayout}
-      periodLabel="学习概览" editHint="添加或移出看板组件；暂无统计的数据会显示空态。"
+    <DashboardSection data={demoStatistics ? demoDashboard : {}} tasks={demoStatistics ? demoTasks : null}
+      taskCount={demoStatistics ? assignedTaskCount : undefined} now={now} layout={layout} onLayoutChange={changeLayout}
+      periodLabel={demoStatistics ? '演示统计' : '学习概览'}
+      periodTitle={demoStatistics ? '完成率、学习时长等为演示数据，课程和任务入口来自真实服务' : undefined}
+      taskCountLabel={demoStatistics && assignedTaskCount !== undefined ? `真实分配 ${assignedTaskCount} 个任务` : undefined}
+      editHint={demoStatistics ? '编辑模式：点卡片右上角 ✕ 移出看板；下方托盘可添加其他组件。排布会自动记住。' : '添加或移出看板组件；暂无统计的数据会显示空态。'}
       continueSlot={recent ? <ContinueTaskCard tag="继续学习" title={(projectTitles[recent.activityId] || activityTitle(recent))}
         description={recent.goal && recent.goal !== (projectTitles[recent.activityId] || activityTitle(recent)) ? recent.goal : undefined}
         meta="最近创建的进行中活动" metaClassName="db-side" action="继续学习"

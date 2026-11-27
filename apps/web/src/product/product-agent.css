@@ -24,7 +24,7 @@
 .product-conversation-inner { padding: 24px 0; }
 .product-conversation .teaching-conversation-header h3 { font-size: 13px; color: var(--muted); }
 .product-conversation .teaching-message { padding: 16px 0; }
-.product-conversation .teaching-message:not([data-state='streaming']) { content-visibility: auto; contain-intrinsic-size: auto 120px; }
+/* 对话消息高度由内容决定，不要用 content-visibility + 120px 占位估算：首帧会先矮后高，回底时抽闪。 */
 .product-conversation .teaching-message.student { max-width: 80%; margin-left: auto; padding: 12px 16px; background: var(--chip-bg); border: 0; border-radius: 12px; }
 .product-conversation .teaching-message + .teaching-message { margin-top: 16px; }
 .product-conversation-records, .product-conversation-mode { color: var(--muted); font-size: 13px; }
@@ -49,3 +49,30 @@
 .session-material-reading img { max-width: 100%; height: auto; }
 .product-agent-notices > select { max-width: 240px; }
 .product-agent-notices details { margin: 8px 0; }
+/* 对话载入骨架：先给形状，不用“正在打开…”之类的中间文案。 */
+.conversation-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 8px 0 24px;
+  animation: conversation-skeleton-in 240ms cubic-bezier(0.3, 1, 0.35, 1) both;
+}
+.conversation-skeleton-row {
+  display: block;
+  height: 16px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, var(--line-strong), var(--sunken) 82%);
+}
+.conversation-skeleton-row.is-user {
+  width: 34%;
+  height: 38px;
+  align-self: flex-end;
+  border-radius: 12px;
+}
+.conversation-skeleton-row.is-wide { width: 88%; }
+.conversation-skeleton-row.is-mid { width: 72%; }
+.conversation-skeleton-row.is-short { width: 48%; }
+@keyframes conversation-skeleton-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

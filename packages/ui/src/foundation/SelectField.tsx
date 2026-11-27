@@ -45,7 +45,7 @@ export function SelectField({ label, value, options, onChange, onOpen, disabled 
       <Select.Icon className="ui-select-arrow"><Icon name="alt-arrow-down" size={16} /></Select.Icon>
     </Select.Trigger>
     <Select.Portal container={trigger.current?.closest<HTMLElement>('[data-ui-popup-scope], [role="dialog"]') ?? undefined}>
-      <Select.Positioner className="ui-select-positioner" sideOffset={6} alignItemWithTrigger={false}>
+      <Select.Positioner className="ui-select-positioner" sideOffset={6} align="start" alignItemWithTrigger={false}>
         <Select.Popup className="ui-select-popup" data-ui-select-popup="">
           <Select.List className="ui-select-list">{groups.map((group, index) => <Fragment key={group[0]!.value}>
             {index > 0 && <Select.Separator className="ui-select-divider" />}

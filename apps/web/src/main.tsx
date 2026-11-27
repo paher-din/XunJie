@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { createRoot } from 'react-dom/client'
+import { Toaster } from '@xunjie/ui/feedback'
 import { LearningApp } from './product/LearningApp'
 import { PREP_BUILD } from './workspace/mode'
 import './styles/app.css'
@@ -12,4 +13,4 @@ const legacy = PREP_BUILD || /^#\/(teacher|task|settings|icons|brand|dev)(?:\/|$
 const teacher = new URLSearchParams(location.search).get('teacher') !== null
 createRoot(document.getElementById('root')!).render(legacy
   ? <Suspense fallback={<p>正在打开…</p>}><LegacyApp /></Suspense>
-  : teacher ? <Suspense fallback={<p>正在打开…</p>}><TeacherSpace /></Suspense> : <LearningApp />)
+  : teacher ? <><Suspense fallback={<p>正在打开…</p>}><TeacherSpace /></Suspense><Toaster /></> : <LearningApp />)

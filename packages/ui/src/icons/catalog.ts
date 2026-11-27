@@ -529,6 +529,72 @@ export const iconCatalog = {
     "sourceUrl": "https://github.com/480-Design/Solar-Icon-Set",
     "modified": false
   },
+  "clock": {
+    "label": "提交时间",
+    "tone": "neutral",
+    "variant": "linear",
+    "usages": [
+      {
+        "label": "作业审阅提交时刻",
+        "group": "教师课程工作区",
+        "scope": "现有",
+        "reviewId": ""
+      }
+    ],
+    "files": {
+      "linear": "clock-linear.svg"
+    },
+    "source": "Kubai Icons",
+    "author": "Kubai087 与 Kubai Icons contributors",
+    "license": "MIT",
+    "sourceUrl": "https://github.com/kubai087/kubai-icons",
+    "modified": false,
+    "notes": "取自 Kubai line clock：时针与分针拆为独立图层，供提交概况按真实提交时刻旋转指针；24px 画布、1.5px 圆润线条，路径未改。"
+  },
+  "layers": {
+    "label": "提交版本",
+    "tone": "neutral",
+    "variant": "linear",
+    "usages": [
+      {
+        "label": "作业审阅提交版本",
+        "group": "教师课程工作区",
+        "scope": "现有",
+        "reviewId": ""
+      }
+    ],
+    "files": {
+      "linear": "layers-linear.svg"
+    },
+    "source": "Kubai Icons",
+    "author": "Kubai087 与 Kubai Icons contributors",
+    "license": "MIT",
+    "sourceUrl": "https://github.com/kubai087/kubai-icons",
+    "modified": false,
+    "notes": "取自 Kubai line layers：三层叠放，表示同一任务的多次提交版本；24px 画布、1.5px 圆润线条，路径未改。"
+  },
+  "target": {
+    "label": "目标进度",
+    "tone": "neutral",
+    "variant": "linear",
+    "usages": [
+      {
+        "label": "作业审阅目标进度",
+        "group": "教师课程工作区",
+        "scope": "现有",
+        "reviewId": ""
+      }
+    ],
+    "files": {
+      "linear": "target-linear.svg"
+    },
+    "source": "Kubai Icons",
+    "author": "Kubai087 与 Kubai Icons contributors",
+    "license": "MIT",
+    "sourceUrl": "https://github.com/kubai087/kubai-icons",
+    "modified": false,
+    "notes": "取自 Kubai line target：靶心表示任务目标，配合分段进度条读完成数量；24px 画布、1.5px 圆润线条，路径未改。"
+  },
   "play-circle": {
     "label": "任务状态：进行中",
     "tone": "blue",
@@ -1041,6 +1107,50 @@ export const iconCatalog = {
     "license": "CC-BY-4.0",
     "sourceUrl": "https://github.com/480-Design/Solar-Icon-Set",
     "modified": false
+  },
+  "send": {
+    "label": "发送反馈",
+    "tone": "neutral",
+    "variant": "linear",
+    "usages": [
+      {
+        "label": "教师反馈发送主操作",
+        "group": "教师课程工作区",
+        "scope": "现有",
+        "reviewId": ""
+      }
+    ],
+    "files": {
+      "linear": "send-linear.svg"
+    },
+    "source": "Kubai Icons",
+    "author": "Kubai087 与 Kubai Icons contributors",
+    "license": "MIT",
+    "sourceUrl": "https://github.com/kubai087/kubai-icons",
+    "modified": false,
+    "notes": "取自 Kubai line send：纸飞机，用于教师反馈发送主操作；24px 画布、1.5px 圆润线条，路径未改，保留 data-l 图层供发送动画使用。"
+  },
+  "submission-paperclip": {
+    "label": "提交附件",
+    "tone": "neutral",
+    "variant": "linear",
+    "usages": [
+      {
+        "label": "作业审阅提交概况与附件区",
+        "group": "教师课程工作区",
+        "scope": "现有",
+        "reviewId": ""
+      }
+    ],
+    "files": {
+      "linear": "submission-paperclip-linear.svg"
+    },
+    "source": "Kubai Icons",
+    "author": "Kubai087 与 Kubai Icons contributors",
+    "license": "MIT",
+    "sourceUrl": "https://github.com/kubai087/kubai-icons",
+    "modified": false,
+    "notes": "取自 Kubai line paperclip：竖向回形针，用于教师端提交附件入口；24px 画布、1.5px 圆润线条，路径未改。"
   },
   "alt-arrow-down": {
     "label": "选择器展开",
@@ -1745,6 +1855,50 @@ export const iconCatalog = {
     "sourceUrl": "https://github.com/kubai087/kubai-icons",
     "modified": true,
     "notes": "2026-11-27 作业审阅页签改用 Kubai line user-pen：人像 + 笔，表示给学生写反馈；仅补动画 class，路径未改；24px 画布、1.5px 圆润线条。"
+  },
+  "library": {
+    "label": "资料库",
+    "tone": "teal",
+    "variant": "linear",
+    "usages": [
+      {
+        "label": "资料库页签",
+        "group": "教师课程工作区",
+        "scope": "现有",
+        "reviewId": ""
+      }
+    ],
+    "files": {
+      "linear": "library-linear.svg"
+    },
+    "source": "Kubai Icons",
+    "author": "Kubai087 与 Kubai Icons contributors",
+    "license": "MIT",
+    "sourceUrl": "https://github.com/kubai087/kubai-icons",
+    "modified": true,
+    "notes": "2026-11-27 资料库页签取自 Kubai line library：三本竖排书与斜放的一本，表示课程资料的书架；仅补动画 class，路径未改；24px 画布、1.5px 圆润线条。"
+  },
+  "review-list": {
+    "label": "提交清单",
+    "tone": "neutral",
+    "variant": "linear",
+    "usages": [
+      {
+        "label": "作业审阅提交清单开合",
+        "group": "教师课程工作区",
+        "scope": "现有",
+        "reviewId": ""
+      }
+    ],
+    "files": {
+      "linear": "review-list-linear.svg"
+    },
+    "source": "Project",
+    "author": "学习空间项目",
+    "license": "Project",
+    "sourceUrl": "",
+    "modified": false,
+    "notes": "2026-11-27 按用户参考图绘制：左侧栏内三条清单线；24px 画布、1.5px 圆润线条。"
   },
   "trash-bin-trash": {
     "label": "删除历史会话",
