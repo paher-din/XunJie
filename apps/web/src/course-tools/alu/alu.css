@@ -37,7 +37,8 @@
 .alu-cases textarea, .alu-case-results textarea { width: 100%; resize: vertical; min-height: 64px; }
 .alu-cases input:focus-visible, .alu-cases .ui-select-trigger:focus-visible, .alu-case-results .ui-select-trigger:focus-visible,
 .alu-cases textarea:focus-visible, .alu-case-results textarea:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
-.alu-case-help { display: flex; gap: 6px; align-items: center; }
+.alu-cases .alu-case-help { display: flex; align-items: center; justify-self: start; gap: 8px; }
+.alu-case-help input[type='checkbox'] { flex: none; margin: 0; }
 .alu-case-original, .alu-reflection > p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; }
 .alu-reflection { display: grid; gap: 8px; padding: 12px 0; border-top: 1px solid var(--line); }
 .alu-case-results > .ws-btn { justify-self: start; }
