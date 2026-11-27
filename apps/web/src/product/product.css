@@ -222,3 +222,10 @@
 
 .product-discussion .prompt-input textarea { min-height: 44px; }
 .product-discussion-input { position: relative; }
+
+/* Reverse the chevron while keeping the sidebar on the left. */
+.panel-left-open[data-icon="panel-left-close"] path:last-child {
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: scaleX(-1);
+}

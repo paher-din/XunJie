@@ -50,10 +50,13 @@ describe('PdfThumbnails', () => {
       root.unmount()
     })
     host.remove()
+    vi.restoreAllMocks()
     globalThis.IntersectionObserver = originalObserver
   })
 
   it('uses a button toggle, renders visible thumbnails sequentially, and reuses cache on reopen', async () => {
+    const drawImage = vi.fn()
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({ drawImage } as unknown as CanvasRenderingContext2D)
     let inFlight = 0
     let maxInFlight = 0
     const getPageCalls: number[] = []
@@ -115,6 +118,7 @@ describe('PdfThumbnails', () => {
 
     expect(maxInFlight).toBe(1)
     expect(renderCalls).toEqual([1, 2, 3])
+    expect(drawImage).toHaveBeenCalledTimes(3)
     expect(nav!.querySelectorAll('canvas:not([hidden])')).toHaveLength(3)
 
     // Collapse unmounts the nav cleanly (in jsdom height is 0, so it unmounts synchronously).
@@ -133,6 +137,7 @@ describe('PdfThumbnails', () => {
     const reopenedNav = host.querySelector('nav[aria-label="PDF 页面缩略图"]')
     expect(reopenedNav).not.toBeNull()
     expect(reopenedNav!.querySelectorAll('canvas:not([hidden])')).toHaveLength(3)
+    expect(drawImage).toHaveBeenCalledTimes(6)
     expect(getPageCalls).toHaveLength(previousGetPageCount)
     expect(renderCalls).toHaveLength(previousRenderCount)
   })

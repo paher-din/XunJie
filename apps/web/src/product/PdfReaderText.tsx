@@ -191,7 +191,7 @@ function revealPdfMatch(area: HTMLDivElement, range: Range) {
 }
 
 export function usePdfTextFind(viewport: RefObject<HTMLDivElement | null>, readingId: string | undefined,
-  query: string, layout: number, cropped: boolean) {
+  pages: readonly number[], query: string, layout: number, cropped: boolean) {
   const [result, setResult] = useState(emptyFind)
   useEffect(() => {
     const value = query.trim()
@@ -199,7 +199,9 @@ export function usePdfTextFind(viewport: RefObject<HTMLDivElement | null>, readi
     if (!area || !value || !readingId) { setResult(emptyFind); return }
     const pattern = new RegExp(value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'giu')
     const matches: Range[] = []
-    const layers = Array.from(area.querySelectorAll<HTMLElement>('.pdf-page-text'))
+    const layers = pages.flatMap(page => Array.from(
+      area.querySelectorAll<HTMLElement>(`[data-pdf-page="${page}"] .pdf-page-text`),
+    ))
     for (const layer of layers.filter(layer => layer.dataset.textState === 'ready')) {
       matches.push(...findPageText(layer, pattern, matchLimit - matches.length, cropped))
       if (matches.length >= matchLimit) break
@@ -214,7 +216,7 @@ export function usePdfTextFind(viewport: RefObject<HTMLDivElement | null>, readi
     return () => {
       if (CSS.highlights.get(highlightName) === highlight) CSS.highlights.delete(highlightName)
     }
-  }, [viewport, readingId, query, layout, cropped])
+  }, [viewport, readingId, pages, query, layout, cropped])
 
   const active = result.matches[result.index]
   useEffect(() => {

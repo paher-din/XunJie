@@ -154,7 +154,7 @@ function threePagePdf() {
   const objects = [
     '<< /Type /Catalog /Pages 2 0 R >>',
     '<< /Type /Pages /Kids [3 0 R 4 0 R 5 0 R] /Count 3 >>',
-    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 500] /Resources << /Font << /F1 6 0 R >> >> /Contents 7 0 R >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 560 440] /Resources << /Font << /F1 6 0 R >> >> /Contents 7 0 R >>',
     '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 500] /Resources << /Font << /F1 6 0 R >> >> /Contents 8 0 R >>',
     '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 500] /Resources << /Font << /F1 6 0 R >> >> /Contents 9 0 R >>',
     '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
@@ -209,9 +209,14 @@ test('multi-page PDF supports continuous vertical scrolling and syncs page contr
   await expect(thumbnailList.getByRole('button', { name: '第 2 页', exact: true })).toHaveAttribute('aria-current', 'page')
   await expect(prevButton).toBeEnabled()
 
-  // Zooming on page 2 keeps page 2 active.
+  // The portrait page fits independently of its landscape cover.
   await reader.getByRole('button', { name: '适合宽度', exact: true }).click()
   await expect(pageInput).toHaveValue('2')
+  await expect.poll(() => viewport.evaluate(el => {
+    const width = el.querySelector('[data-pdf-page="2"]')!.getBoundingClientRect().width
+    const style = getComputedStyle(el)
+    return Math.abs(width - (el.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)))
+  })).toBeLessThan(5)
   await reader.getByRole('button', { name: '默认', exact: true }).click()
   await expect(pageInput).toHaveValue('2')
 
@@ -219,6 +224,9 @@ test('multi-page PDF supports continuous vertical scrolling and syncs page contr
   await viewport.press(process.platform === 'darwin' ? 'Meta+f' : 'Control+f')
   const pdfSearch = reader.getByRole('searchbox', { name: '当前页文字查找', exact: true })
   const findStatus = reader.getByRole('search', { name: 'PDF 页内查找', exact: true }).getByRole('status')
+  await pdfSearch.fill('Page 1 content')
+  await expect(findStatus).toHaveText('无匹配')
+  await expect(pageInput).toHaveValue('2')
   await pdfSearch.fill('Page 2 content')
   await expect(findStatus).toHaveText('1 / 1')
   await pdfSearch.press('Escape')
@@ -273,6 +281,11 @@ test('multi-page PDF supports continuous vertical scrolling and syncs page contr
   await expect(pageInput).toHaveValue('1')
   await page.mouse.wheel(0, 1000)
   await expect(pageInput).toHaveValue('2')
+  await prevButton.click()
+  await expect(pageInput).toHaveValue('1')
+  await thumbnailList.getByRole('button', { name: '第 3 页', exact: true }).click()
+  await expect(pageInput).toHaveValue('2')
+  await expect(thumbnailList.locator('[data-in-view]')).toHaveCount(2)
 
   await reader.getByRole('button', { name: '完整页', exact: true }).click()
   await expect(reader.locator('[data-pdf-page]')).toHaveCount(3)

@@ -16,7 +16,7 @@ import { PdfReaderText, PdfSelectionCopy, usePdfReaderText, usePdfTextFind } fro
 import { PdfPagePreview } from './PdfPagePreview'
 import { PdfThumbnails } from './PdfThumbnails'
 import { buildPdfTwoPageRows, findActivePdfPage, findPdfTwoPageRowIndex } from './pdfScroll'
-import { pdfCanSpread, pdfPageSize, pdfSpreadGap, pdfZoomLimits, pdfZoomStops, type PdfSize, type PdfZoom } from './pdfZoom'
+import { pdfCanSpread, pdfPageSize, pdfSpreadGap, pdfZoomLimits, pdfZoomPercent, pdfZoomStops, type PdfSize, type PdfZoom } from './pdfZoom'
 import './PdfMaterials.css'
 
 type PdfSource = ReturnType<typeof pdfReferenceSourceSchema.parse>
@@ -627,26 +627,6 @@ function keepPdfZoomPosition(area: HTMLDivElement) {
   }
 }
 
-function PdfPanelOpenIcon({ size = 16 }: { size?: number }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      width={size}
-      height={size}
-      className="ui-icon icon-tone-neutral"
-      aria-hidden="true"
-      focusable="false"
-    >
-      <g fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth={1.5}>
-        <path d="M22 11C22 7.22876 22 5.34315 20.8284 4.17157C19.6569 3 17.7712 3 14 3H10C6.22876 3 4.34315 3 3.17157 4.17157C2 5.34315 2 7.22876 2 11V13C2 16.7712 2 18.6569 3.17157 19.8284C4.34315 21 6.22876 21 10 21H14C17.7712 21 19.6569 21 20.8284 19.8284C22 18.6569 22 16.7712 22 13V11Z" />
-        <path d="M9 21L9 3" />
-        <path strokeLinejoin="round" d="M14.2113 9L16.7827 12L14.2113 15" />
-      </g>
-    </svg>
-  )
-}
-
 function PdfIconButton({ icon, label, ...props }: Omit<ComponentProps<typeof Button>, 'children' | 'variant'> & {
   icon: IconName; label: string
 }) {
@@ -700,18 +680,18 @@ export function PdfMaterials({ pdf, active, onBackToList }: {
     [continuous, twoPages, doc?.pageCount, twoPageAnchor],
   )
   const activeRowIndex = continuous && twoPages ? findPdfTwoPageRowIndex(twoPageRows, page) : -1
-  const activePages = continuous
+  const activePages = useMemo(() => continuous
     ? (twoPages ? (twoPageRows[activeRowIndex] ?? [page]) : [page])
-    : (reading?.requestedPages ?? [page])
+    : (reading?.requestedPages ?? [page]), [continuous, twoPages, twoPageRows, activeRowIndex, page, reading?.requestedPages])
   const activeTwoPages = activePages.length === 2
   const fixedSizes = useMemo(() => reading?.pages.map(pdfPageSize) ?? [], [reading?.pages])
   const fallbackPageSize = fixedSizes[0]
   const continuousSizes = usePdfPageSizes(continuous ? openText : undefined, continuous ? doc : null, fallbackPageSize)
   const layoutRows = useMemo(() => {
     if (!continuous) return [fixedSizes]
-    if (!twoPages) return [[continuousSizes.get(1) ?? fallbackPageSize]]
+    if (!twoPages) return [[continuousSizes.get(page) ?? fallbackPageSize]]
     return twoPageRows.map(row => row.map(num => continuousSizes.get(num) ?? fallbackPageSize))
-  }, [continuous, fixedSizes, twoPages, continuousSizes, twoPageRows, fallbackPageSize])
+  }, [continuous, fixedSizes, twoPages, continuousSizes, twoPageRows, fallbackPageSize, page])
   const limits = useMemo(() => pdfZoomLimits(viewportSize, layoutRows, twoPages), [viewportSize, layoutRows, twoPages])
   const percent = typeof zoom === 'number' ? Math.min(limits.max, Math.max(limits.min, zoom)) : limits[zoom]
   const hasPageImage = layoutRows.some(row => row.some(Boolean))
@@ -719,7 +699,7 @@ export function PdfMaterials({ pdf, active, onBackToList }: {
   const canNavigate = !pdf.busy && pdf.writable
   const hasNativeText = reading?.pages.some(item => item.state === 'ready' && item.image && item.text.trim())
   const textScopeId = continuous ? doc?.documentId : reading?.readingId
-  const find = usePdfTextFind(viewport, textScopeId, findOpen && !pendingPages ? query : '', textLayout, !!reading?.region)
+  const find = usePdfTextFind(viewport, textScopeId, activePages, findOpen && !pendingPages ? query : '', textLayout, !!reading?.region)
   const currentFixedPages = continuous && doc && reading?.documentId === doc.documentId && reading.documentSha256 === doc.sha256
     ? activePages.map(num => reading.pages.find(item => item.page === num)).filter((item): item is PdfPage => !!item)
     : []
@@ -945,9 +925,7 @@ export function PdfMaterials({ pdf, active, onBackToList }: {
             aria-expanded={sidebarOpen} aria-controls={sidebarId} onClick={() => {
               if (sidebarOpen) cancelRegion()
               setSidebarOpen(!sidebarOpen)
-            }}>{sidebarOpen
-              ? <Icon name="panel-left-close" size={16} variant="linear" tone="neutral" />
-              : <PdfPanelOpenIcon size={16} />}</Button>}
+            }}><Icon name="panel-left-close" className={sidebarOpen ? undefined : 'panel-left-open'} /></Button>}
         </div>
         <Button type="button" variant="outline" className="pdf-library-link" disabled={pdf.busy}
           aria-label={doc.courseSource ? '返回材料列表' : '返回 PDF 列表'} onClick={onBackToList}>资料</Button>
@@ -1032,7 +1010,7 @@ export function PdfMaterials({ pdf, active, onBackToList }: {
           </div>
           {doc.pageCount > 1 && <PdfThumbnails key={doc.documentId} open={openText} pageCount={doc.pageCount}
             page={page} facingPage={activePages[1]} visible={sidebarOpen} enabled={canNavigate}
-            onNavigate={next => navigate(next, twoPages && next < doc.pageCount)} />}
+            onNavigate={next => navigate(next, twoPages)} />}
         </aside>
         <div className="pdf-reader-stage">
           <div className="pdf-reading" data-pdf-reading-id={reading?.readingId} ref={viewport} tabIndex={0} aria-label="PDF 页图">
@@ -1054,8 +1032,9 @@ export function PdfMaterials({ pdf, active, onBackToList }: {
                     const number = index + 1
                     const fixedPage = reading?.documentId === doc.documentId && reading.documentSha256 === doc.sha256
                       ? reading.pages.find(item => item.page === number) : undefined
+                    const size = continuousSizes.get(number) ?? fallbackPageSize
                     return <PdfContinuousPage key={number} pageNumber={number} label={doc.pageLabels[index]}
-                      size={continuousSizes.get(number) ?? fallbackPageSize} percent={percent}
+                      size={size} percent={typeof zoom === 'number' ? percent : pdfZoomPercent(zoom, viewportSize, [size])}
                       fixedPage={fixedPage} openText={openText} viewport={viewport} onTextLayout={textChanged} />
                   }))
                 : reading?.pages.map((item, index) => <article className="pdf-page" data-pdf-page={item.page} tabIndex={-1} key={item.page}
