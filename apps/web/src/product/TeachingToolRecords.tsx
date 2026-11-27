@@ -35,6 +35,7 @@ const toolLabels: Record<string, string> = {
   read_pdf_images: '查看 PDF 页面', create_workspace: '创建学习项目',
   list_learning_activities: '查看学习项目', read_learning_activity: '了解项目进展',
   list_courses: '查看课程', read_course: '查看课程内容',
+  read_course_task: '查看发布任务', list_design_materials: '查看公开材料列表', read_design_material: '阅读公开材料',
 }
 
 function toolIcon(name: string): IconName {
@@ -76,6 +77,8 @@ function studentTarget(record: TeachingToolRecord) {
   const reference = objectValue(result.reference), source = objectValue(result.source)
   if (record.name === 'search_materials') return textValue(record.arguments.query)
   if (record.name === 'read_work') return textValue(file?.name)
+  if (record.name === 'read_course_task') return textValue(result.taskTitle)
+  if (record.name === 'read_design_material') return textValue(result.title)
   if (record.name === 'read_material') return textValue(source?.name) ?? textValue(source?.title)
   if (record.name === 'read_personal_material' || record.name === 'read_reference') {
     return textValue(result.name) ?? textValue(reference?.sourceName)
@@ -121,6 +124,23 @@ function failedStudentNote(record: TeachingToolRecord) {
 
 function StudentToolResult({ record }: { record: TeachingToolRecord }) {
   if (record.outcome === 'failed') return <StudentNote>{failedStudentNote(record)}</StudentNote>
+  if (record.name === 'read_course_task' && record.result?.status === 'missing') return <StudentNote>没有找到匹配的发布任务。</StudentNote>
+  if (record.name === 'read_course_task' && record.result?.status === 'ambiguous') {
+    const candidates = Array.isArray(record.result.candidates) ? record.result.candidates : []
+    return <StudentNote>找到 {candidates.length}{record.result.more ? ' 条以上' : ' 条'}匹配的任务发布，请确认要查看哪一版。</StudentNote>
+  }
+  if (record.name === 'list_design_materials') {
+    const titles = Array.isArray(record.result?.materials)
+      ? record.result.materials.flatMap(item => textValue(objectValue(item)?.title) ?? []) : []
+    return <StudentNote>{titles.length ? titles.join('、') : '这次没有返回公开材料。'}</StudentNote>
+  }
+  if (record.name === 'read_design_material' && record.result?.status === 'unsupported-format')
+    return <StudentNote>当前无法作为文本读取这份材料。</StudentNote>
+  if (record.name === 'read_design_material' || record.name === 'read_course_task') {
+    const content = record.name === 'read_course_task' ? objectValue(record.result?.requirements)?.text : record.result?.text
+    const excerpt = textValue(content)
+    return excerpt ? <StudentExcerpt>{excerpt}</StudentExcerpt> : null
+  }
   if (record.name === 'student_ask') return <StudentNote>已在对话中提出问题，可在对应的问题卡片中查看和回应。</StudentNote>
   if (record.outcome && !['completed', 'unknown'].includes(record.outcome))
     return <StudentNote>{record.outcome === 'accepted' ? '正在等待结果。' : '这项操作还没有开始。'}</StudentNote>

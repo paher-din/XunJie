@@ -140,7 +140,7 @@ test('school checks fix configuration and costs, enforce the shared limit, and r
   } finally { upstream.closeAllConnections(); await new Promise(resolve => upstream.close(resolve)); }
 });
 
-test('personal connection reuse needs explicit subject-scoped grants and revocation blocks pending dispatch without hiding history', { timeout: 180000 }, async () => {
+test('explicit grants remain subject-scoped and revocation blocks attempts bound to the grant', { timeout: 180000 }, async () => {
   const received = [];
   const upstream = createServer(async (request, response) => {
     const chunks = []; for await (const chunk of request) chunks.push(chunk);
@@ -188,7 +188,7 @@ test('personal connection reuse needs explicit subject-scoped grants and revocat
   } finally { upstream.closeAllConnections(); await new Promise(resolve => upstream.close(resolve)); }
 });
 
-test('configured personal models select directly, remain owner-scoped, and survive restart without grants', { timeout: 180000 }, async () => {
+test('device connections are shared while selections remain account-scoped across restart', { timeout: 180000 }, async () => {
   await product(async ({ api, member, runtime, root, modelServiceId }) => {
     const alice = await member('direct-model-alice'), bob = await member('direct-model-bob');
     const { policy: _policy, ...input } = configuration();
@@ -200,20 +200,25 @@ test('configured personal models select directly, remain owner-scoped, and survi
     assert.equal(personal.status, 200);
     assert.equal(personal.value.selected.origin, 'self');
     assert.equal(personal.value.selected.grantId, undefined);
-    assert.equal((await api('models/selection', select(), alice.headers)).status, 404,
-      'connection ids do not confer access to another owner');
-    assert.equal((await api('models/selection', select(0, 'device'), alice.headers)).status, 403,
-      'school webpages cannot claim the server host personal identity');
+    const aliceShared = await api('models/selection', select(), alice.headers);
+    assert.equal(aliceShared.status, 200);
+    assert.equal(aliceShared.value.selected.connection.connectionId, input.connectionId);
+    assert.equal((await api('models/selection', select(1, 'device'), alice.headers)).status, 403,
+      'the explicit remote device-owner route still requires an authorized device owner');
     const schoolInput = { ...input, requestId: randomUUID(), connectionId: randomUUID() };
     assert.equal((await api('models/connections', schoolInput, alice.headers)).status, 200);
     const schoolSelect = { requestId: randomUUID(), expectedVersion: 0,
       source: { kind: 'personal', connectionId: schoolInput.connectionId, owner: 'self' } };
-    assert.equal((await api('models/selection', schoolSelect, bob.headers)).status, 404);
-    const schoolSelected = await api('models/selection', schoolSelect, alice.headers);
+    assert.equal((await api('models/selection', schoolSelect, bob.headers)).status, 200);
+    const schoolSelected = await api('models/selection', { ...schoolSelect, requestId: randomUUID(),
+      expectedVersion: aliceShared.value.version }, alice.headers);
     assert.equal(schoolSelected.status, 200);
     assert.equal(schoolSelected.value.selected.grantId, undefined);
     await runtime.stop(); await runtime.start();
-    assert.deepEqual((await api('models/selection', undefined, local)).value, personal.value);
+    const personalAfterRestart = (await api('models/selection', undefined, local)).value;
+    assert.equal(personalAfterRestart.version, personal.value.version);
+    assert.deepEqual(personalAfterRestart.selected, personal.value.selected);
+    assert.ok(personalAfterRestart.options.some(item => item.connection.connectionId === schoolInput.connectionId));
     const restarted = (await api('models/selection', undefined, alice.headers)).value;
     assert.equal(restarted.version, schoolSelected.value.version);
     assert.deepEqual(restarted.selected, schoolSelected.value.selected);
@@ -226,7 +231,7 @@ test('configured personal models select directly, remain owner-scoped, and survi
       const { rows: [counts] } = await client.query(`SELECT (SELECT count(*)::int FROM ${schema}.model_use_grants) AS grants,
         (SELECT count(*)::int FROM ${schema}.model_selections) AS selections`);
       assert.equal(counts.grants, 0, 'direct selections never create model-use grants, including after restart');
-      assert.equal(counts.selections, 2);
+      assert.equal(counts.selections, 3);
     } finally { await client.end(); }
 
   });

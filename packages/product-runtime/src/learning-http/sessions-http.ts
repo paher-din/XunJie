@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import { StorageError } from '@xunjie/storage';
-import { agentEventSchema, agentInputSchema, agentQuestionResponseSchema, type AgentEvent,
+import { agentEventSchema, agentInputSchema, agentQuestionResponseSchema, type AgentEvent, type AgentInput,
   type AgentToolResult, type AgentTurn } from '@xunjie/contracts/agent-runtime';
 import { modelToolProgressSchema } from '@xunjie/contracts/model-connections';
-import { agentSessionSchema, createAgentSessionSchema, updateAgentSessionSchema,
+import { agentSessionSchema, createAgentSessionSchema, startAgentSessionSchema, updateAgentSessionSchema,
   type AgentSession, type CreateAgentSession, type UpdateAgentSession } from '@xunjie/contracts/agent-sessions';
 import { agentInputControlSchema, agentSessionSnapshotSchema, type AgentSessionPort,
   type AgentSessionSnapshot, type BrowserAgentSessionCall } from '@xunjie/contracts/agent-service';
@@ -22,6 +22,7 @@ export interface SessionHttpPort {
     update(identity: SpaceIdentity, input: UpdateAgentSession): Promise<AgentSession>;
     workspace(identity: SpaceIdentity, activityId: string, target: LearningTarget): Promise<AgentSession>;
   };
+  authorizeTeacherCourse?(identity: SpaceIdentity, courseId: string): Promise<void>;
   /** The host authorizes and selects the saved service, not a browser-selected owner. */
   agent(identity: SpaceIdentity, sessionId: string): Promise<AgentSessionPort>;
   materials?(identity: SpaceIdentity, sessionId: string): Promise<SessionMaterials>;
@@ -89,7 +90,8 @@ function browserEvents(value: unknown): AgentEvent[] {
 
 /** Authentication and deployment routing remain with the HTTP host. */
 export async function routeAgentSessions(host: SessionHttpPort, identity: SpaceIdentity, route: string,
-  method: string, body?: unknown, search = '', contractVersion: unknown = undefined): Promise<unknown> {
+  method: string, body?: unknown, search = '', contractVersion: unknown = undefined, teacher = false,
+  authorizeInput?: (input: AgentInput) => Promise<void>): Promise<unknown> {
   if (contractVersion !== '3') throw new StorageError('incompatible');
   const parts = route.split('/');
   if (parts[0] !== 'agent-sessions') throw new StorageError('missing');
@@ -97,12 +99,33 @@ export async function routeAgentSessions(host: SessionHttpPort, identity: SpaceI
     if (method === 'GET') {
       const requested = new URLSearchParams(search).get('courseId');
       const courseId = requested === null ? null : z.uuid().parse(requested);
+      if (teacher && courseId === null) throw new StorageError('invalid');
+      if (courseId) await host.authorizeTeacherCourse?.(identity, courseId);
       const sessions = await host.sessions.list(identity);
       return { items: z.array(agentSessionSchema).parse(sessions.filter(session => courseId === null
         ? session.scenario !== 'teacher-assistant' : session.scenario === 'teacher-assistant' && session.courseId === courseId)) };
     }
-    if (method === 'POST') return agentSessionSchema.parse(await host.sessions.create(identity, createAgentSessionSchema.parse(body)));
+    if (method === 'POST') {
+      const input = createAgentSessionSchema.parse(body);
+      if (teacher && input.scenario !== 'teacher-assistant') throw new StorageError('forbidden');
+      return agentSessionSchema.parse(await host.sessions.create(identity, input));
+    }
     throw new StorageError('missing');
+  }
+  if (parts.length === 2 && parts[1] === 'start' && method === 'POST') {
+    const { create, input } = startAgentSessionSchema.parse(body);
+    if (teacher && create.scenario !== 'teacher-assistant') throw new StorageError('forbidden');
+    const selection = create.scenario === 'student-assistant' && Array.isArray(input.context.skills) && input.context.skills.length
+      ? sessionSkillSelectSchema.parse({ requestId: input.requestId, skills: input.context.skills }) : null;
+    const session = agentSessionSchema.parse(await host.sessions.create(identity, create));
+    if (session.deleted || session.archived) throw new StorageError('conflict');
+    await authorizeInput?.(input);
+    if (selection) {
+      if (!host.skills) throw new StorageError('unavailable');
+      await (await host.skills(identity, session.sessionId)).selectSession(identity, session.sessionId, selection);
+    }
+    const call = createBrowserAgentSessionCall(identity, session.sessionId, 'submit', { input });
+    return { session, receipt: await callBrowserAgentSession(host, identity, session.sessionId, call) };
   }
   if (parts.length === 2 && parts[1] === 'update' && method === 'POST')
     return agentSessionSchema.parse(await host.sessions.update(identity, updateAgentSessionSchema.parse(body)));
@@ -111,6 +134,8 @@ export async function routeAgentSessions(host: SessionHttpPort, identity: SpaceI
     return agentSessionSchema.parse(await host.sessions.workspace(identity, input.activityId, input.target));
   }
   const sessionId = z.uuid().parse(parts[1]);
+  if (teacher && (await host.sessions.read(identity, sessionId)).scenario !== 'teacher-assistant')
+    throw new StorageError('forbidden');
   if (parts.length === 2 && method === 'GET') return agentSessionSchema.parse(await host.sessions.read(identity, sessionId));
   if (parts[2] === 'skills') {
     if (!host.skills) throw new StorageError('unavailable');
@@ -140,7 +165,9 @@ export async function routeAgentSessions(host: SessionHttpPort, identity: SpaceI
     if (parts[2] === 'conversation') call = make(identity, sessionId, 'conversation', { after });
     else if (parts[2] === 'events') call = make(identity, sessionId, 'events', { after });
   } else if (parts.length === 3 && parts[2] === 'inputs' && method === 'POST') {
-    call = make(identity, sessionId, 'submit', { input: agentInputSchema.parse(body) });
+    const input = agentInputSchema.parse(body);
+    call = make(identity, sessionId, 'submit', { input });
+    if (input.sessionId === sessionId) await authorizeInput?.(input);
   } else if (parts.length === 4 && method === 'GET') {
     const id = z.uuid().parse(parts[3]);
     if (parts[2] === 'runs') call = make(identity, sessionId, 'turn', { turnId: id });
@@ -161,18 +188,22 @@ export async function routeAgentSessions(host: SessionHttpPort, identity: SpaceI
     }
   }
   if (!call) throw new StorageError('missing');
+  const result = await callBrowserAgentSession(host, identity, sessionId, call);
+  if (parts[2] === 'snapshots') return browserSessionSnapshot(result);
+  if (parts[2] === 'events') return browserEvents(result);
+  if (call.operation === 'turn' || call.operation === 'stop' || call.operation === 'continueSession')
+    return browserTurn(result as AgentTurn);
+  return result;
+}
+
+async function callBrowserAgentSession(host: SessionHttpPort, identity: SpaceIdentity, sessionId: string, call: BrowserAgentSessionCall) {
   const agent = await host.agent(identity, sessionId);
   const service = createAgentSessionService(agent, { audience: 'browser', async authorize(_identity, _sessionId, operation) {
     const current = await host.sessions.read(identity, sessionId);
     if (current.deleted) throw new StorageError('missing');
     if (current.archived && ['submit', 'answerQuestion', 'continueSession', 'inputControl'].includes(operation)) throw new StorageError('conflict');
   } });
-  const result = await service(call);
-  if (parts[2] === 'snapshots') return browserSessionSnapshot(result);
-  if (parts[2] === 'events') return browserEvents(result);
-  if (call.operation === 'turn' || call.operation === 'stop' || call.operation === 'continueSession')
-    return browserTurn(result as AgentTurn);
-  return result;
+  return service(call);
 }
 
 /** Authenticated host-only technical inspection. The student agent-sessions routes never call this. */

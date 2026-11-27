@@ -72,24 +72,26 @@ beforeEach(() => {
     expect(new Headers(options.headers).get('x-xj-agent-contract')).toBe('3')
     expect(new Headers(options.headers).get('x-xj-space')).toBe('personal')
     if (path === 'agent-sessions' && !body) return response({ items: [...sessions.values()] })
-    if (path === 'agent-sessions' && body) {
-      const value = { ...body, identity: actor, owner, title: body.title ?? null, pinned: false, archived: false, deleted: false,
+    const start = path === 'agent-sessions/start' ? body : null
+    if (start || path === 'agent-sessions' && body) {
+      const create = start?.create ?? body
+      const value = { ...create, identity: actor, owner, title: create.title ?? null, pinned: false, archived: false, deleted: false,
         state: 'ready', createdAt: now, updatedAt: now, readyAt: now } as AgentSession
-      sessions.set(body.sessionId, value)
-      conversations.set(body.sessionId, { sessionId: body.sessionId, lastSeq: 0, messages: [], turns: [], inputs: [], questions: [], tools: [], workspaces: [] })
-      return response(value)
+      sessions.set(create.sessionId, value)
+      conversations.set(create.sessionId, { sessionId: create.sessionId, lastSeq: 0, messages: [], turns: [], inputs: [], questions: [], tools: [], workspaces: [] })
+      if (!start) return response(value)
     }
     if (path === 'agent-sessions/update') {
       const session = { ...sessions.get(body.sessionId)!, ...Object.fromEntries(Object.entries(body).filter(([key]) => key !== 'requestId')), updatedAt: now }
       sessions.set(body.sessionId, session); return response(session)
     }
-    const parts = path.split('/'), sessionId = parts[1]!
-    if (parts.length === 2) return sessions.has(sessionId) ? response(sessions.get(sessionId)) : response({ error: 'missing' }, 404)
+    const parts = path.split('/'), sessionId = start?.create.sessionId ?? parts[1]!
+    if (!start && parts.length === 2) return sessions.has(sessionId) ? response(sessions.get(sessionId)) : response({ error: 'missing' }, 404)
     if (parts[2] === 'materials' || parts[2] === 'pdf') return response([])
     if (parts[2]?.startsWith('conversation')) return response(conversations.get(sessionId))
     if (parts[2] === 'requests') return response(receipts.get(parts[3]! ) ?? null)
-    if (parts[2] === 'inputs' && parts.length === 3) {
-      const input = body as AgentInput, inputId = crypto.randomUUID(), turnId = crypto.randomUUID()
+    if (start || parts[2] === 'inputs' && parts.length === 3) {
+      const input = (start?.input ?? body) as AgentInput, inputId = crypto.randomUUID(), turnId = crypto.randomUUID()
       const receipt = { requestId: input.requestId, sessionId, inputId, turnId, inputDigest: 'a'.repeat(64) }
       receipts.set(input.requestId, { receipt, input })
       const turn = { turnId, sessionId, requestId: input.requestId, trigger: 'user' as const, originNotificationId: null,
@@ -100,7 +102,7 @@ beforeEach(() => {
           { messageId: crypto.randomUUID(), turnId, role: 'assistant', text: '递归通过更小的同类问题求解。', createdAt: now, state: 'settled' }],
         inputs: [...value.inputs, { inputId, turnId, version: 1, state: 'adopted', text: input.text, createdAt: now }] })
       if (loss) throw new Error('lost reply')
-      return response(receipt)
+      return response(start ? { session: sessions.get(sessionId), receipt } : receipt)
     }
     return response({ error: 'missing' }, 404)
   }))
@@ -111,16 +113,16 @@ it('the formal Agent first question creates a persisted session and never create
   await mount(); await sendWhenReady('什么是递归？')
   await waitFor(() => expect(host.textContent).toContain('递归通过更小的同类问题求解。'))
   expect(writes.filter(item => item.path === 'activities')).toHaveLength(0)
-  expect(writes.find(item => item.path === 'agent-sessions')!.body.scenario).toBe('student-assistant')
+  expect(writes.find(item => item.path === 'agent-sessions/start')!.body.create.scenario).toBe('student-assistant')
   expect(new URLSearchParams(location.search).get('session')).toBe([...sessions.keys()][0])
   expect(new URLSearchParams(location.search).has('activity')).toBe(false)
 })
 it('a lost first input ACK is queried under the original identity on reload and is never sent twice', async () => {
   loss = true; await mount(); await sendWhenReady('保留这个原问题')
-  await waitFor(() => expect(writes.filter(item => /\/inputs$/.test(item.path))).toHaveLength(1))
+  await waitFor(() => expect(writes.filter(item => item.path === 'agent-sessions/start')).toHaveLength(1))
   loss = false; await reload()
   await waitFor(() => expect(new URLSearchParams(location.search).get('session')).toBe([...sessions.keys()][0]))
-  expect(writes.filter(item => /\/inputs$/.test(item.path))).toHaveLength(1)
+  expect(writes.filter(item => item.path === 'agent-sessions/start' || /\/inputs$/.test(item.path))).toHaveLength(1)
   expect(host.textContent).toContain('保留这个原问题')
 })
 it('new home sessions remain independent and history keeps their real saved titles', async () => {

@@ -1,5 +1,4 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { AgentEmptyState, AgentMessage, ChatViewport, UserMessage, useFollowBottom } from '@xunjie/ui/chat'
 import { CourseTiles, HomeSectionHeading, HomeStatus } from '@xunjie/ui/home'
 import { Button, ConfirmationDialog } from '@xunjie/ui/foundation'
 import { toast } from '@xunjie/ui/feedback'
@@ -10,7 +9,9 @@ import { Icon } from '../icons'
 import { ProductSettings, type ProductSettingsTab } from '../product/ProductSettings'
 import { SchoolConnectionRow } from '../product/SchoolConnectionRows'
 import { SettingsFailureBoundary } from '../product/SettingsFailureBoundary'
-import { ProductComposerDock, ProductPromptInput, type PromptFiles } from '../product/ProductPromptInput'
+import type { TeacherAgentSeed } from '../product/ProductAgent'
+import type { SessionSubject } from '../product/agent-sessions'
+import { TeacherCourseAgent } from './TeacherCourseAgent'
 import { useModelSelection, type ModelSelectionController } from '../product/ModelSelection'
 import { LearningReadCache } from '../product/learning-read-cache'
 import { getSessionState, logoutSession } from '../workspace/session'
@@ -155,8 +156,15 @@ export function TeacherSpace() {
   const [context, setContext] = useState<TeacherContext | null>(initialCache?.context ?? null)
   const [catalog, setCatalog] = useState<TeacherCatalog | null>(initialCache?.catalog ?? null)
   const [error, setError] = useState('')
-  const [view, setView] = useState<TeacherView>(() => new URLSearchParams(location.search).get('teacher') === 'workbench' ? 'workbench' : 'overview')
-  const [courseId, setCourseId] = useState<string | null>(null)
+  const [view, setView] = useState<TeacherView>(() => new URLSearchParams(location.search).get('teacher') === 'workbench' || new URLSearchParams(location.search).has('course') ? 'workbench' : 'overview')
+  const [courseId, setCourseId] = useState(() => new URLSearchParams(location.search).get('course'))
+  useEffect(() => {
+    const url = new URL(location.href)
+    url.searchParams.set('teacher', view)
+    if (courseId) url.searchParams.set('course', courseId)
+    else url.searchParams.delete('course')
+    history.replaceState(history.state, '', url)
+  }, [courseId, view])
   const [courseTab, setCourseTab] = useState<TeacherTab>('agent')
   const [courseTaskId, setCourseTaskId] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -209,12 +217,11 @@ export function TeacherSpace() {
   }, [catalog])
 
   const cohort = useMemo(() => teacherCohort(catalog?.courses ?? []), [catalog])
-  const schoolIdentity = context?.identities?.find(item => item.identity.kind === 'school')
-  // The course Agent runs on the device's personal model selection, the same one the settings page edits.
-  const personalIdentity = context?.identities?.find(item => item.identity.kind === 'personal')
-  const settingsIdentity = personalIdentity?.identity ?? schoolIdentity?.identity
-  const settingsKey = personalIdentity?.key ?? schoolIdentity?.key ?? 'personal'
-  const selection = useModelSelection(settingsIdentity, settingsKey, context?.clientNamespace ?? '')
+  const schoolIdentity = context?.identities?.find(item => item.key === context.account?.key && item.identity.kind === 'school')
+  const agentSubject = useMemo<SessionSubject | undefined>(() => schoolIdentity && context
+    ? { identity: schoolIdentity.identity, spaceKey: schoolIdentity.key, namespace: context.clientNamespace }
+    : undefined, [schoolIdentity, context?.clientNamespace])
+  const selection = useModelSelection(agentSubject?.identity, agentSubject?.spaceKey ?? '', agentSubject?.namespace ?? '', true)
 
   const retry = () => { clearTeacherCache(); setError(''); setContext(null); setCatalog(null); setAttempt(value => value + 1) }
   const content = !context ? <div className="content teacher-page">
@@ -228,7 +235,7 @@ export function TeacherSpace() {
   </div> : !catalog.available ? <div className="content teacher-page">
     <p role="status" className="t-loading">正在返回学生端…</p>
   </div> : <TeacherWorkspace catalog={catalog} cohort={cohort} view={view} courseId={courseId} courseTab={courseTab} courseTaskId={courseTaskId}
-    selection={selection} onOpenModelSettings={() => { setSettingsTab('models'); setSettingsOpen(true) }}
+    agentSubject={agentSubject} readOnly={context.readOnly} selection={selection} onOpenModelSettings={() => { setSettingsTab('models'); setSettingsOpen(true) }}
     onView={next => { setView(next); if (next === 'overview') setCourseId(null); setCourseTaskId(null) }}
     onCourse={(id, tab = 'agent', taskId = null) => { setCourseId(id); setCourseTab(tab); setCourseTaskId(taskId); setView('workbench') }}
     onBackToCourses={() => { setCourseId(null); setCourseTaskId(null) }} />
@@ -252,19 +259,20 @@ export function TeacherSpace() {
       onNavItem={id => { setSettingsOpen(false); setView(id as TeacherView); setCourseId(null); setCourseTaskId(null) }}
       activeNavItem={settingsOpen ? undefined : view}>
       {settingsOpen ? <TeacherSettingsPage context={context} account={context.account} tab={settingsTab}
-        onTab={setSettingsTab} onClose={() => setSettingsOpen(false)} identity={settingsIdentity} spaceKey={settingsKey} selection={selection} /> : content}
+        onTab={setSettingsTab} onClose={() => setSettingsOpen(false)} identity={agentSubject?.identity} spaceKey={agentSubject?.spaceKey ?? ''} selection={selection} /> : content}
     </ProductShell> : content}
   </>
 }
 
-function TeacherWorkspace({ catalog, cohort, view, courseId, courseTab, courseTaskId, selection, onOpenModelSettings, onView, onCourse, onBackToCourses }: {
+function TeacherWorkspace({ catalog, cohort, view, courseId, courseTab, courseTaskId, agentSubject, readOnly, selection, onOpenModelSettings, onView, onCourse, onBackToCourses }: {
+  agentSubject?: SessionSubject; readOnly?: boolean
   catalog: TeacherCatalog; cohort: ReturnType<typeof teacherCohort>; selection: ModelSelectionController; onOpenModelSettings: () => void
   view: TeacherView; courseId: string | null; courseTab: TeacherTab; courseTaskId: string | null
   onView: (view: TeacherView) => void; onCourse: (id: string, tab?: TeacherTab, taskId?: string | null) => void; onBackToCourses: () => void
 }) {
   const course = catalog.courses.find(item => item.courseId === courseId)
   if (course) return <CourseWorkspace key={course.courseId + ':' + (courseTaskId ?? '')} course={course} courses={catalog.courses} cohort={cohort}
-    selection={selection} onOpenModelSettings={onOpenModelSettings} initialTab={courseTab} initialTaskId={courseTaskId} onBack={onBackToCourses} onSwitch={(id, tab) => onCourse(id, tab, null)} />
+    agentSubject={agentSubject} readOnly={readOnly} selection={selection} onOpenModelSettings={onOpenModelSettings} initialTab={courseTab} initialTaskId={courseTaskId} onBack={onBackToCourses} onSwitch={(id, tab) => onCourse(id, tab, null)} />
   return view === 'overview'
     ? <Overview courses={catalog.courses} cohort={cohort} onCourse={onCourse} onWorkbench={() => onView('workbench')} />
     : <Workbench courses={catalog.courses} cohort={cohort} onCourse={onCourse} />
@@ -538,14 +546,15 @@ function Workbench({ courses, cohort, onCourse }: { courses: TeacherCourse[]; co
   </div>
 }
 
-function CourseWorkspace({ course, courses, cohort, selection, onOpenModelSettings, initialTab, initialTaskId, onBack, onSwitch }: {
+function CourseWorkspace({ course, courses, cohort, agentSubject, readOnly, selection, onOpenModelSettings, initialTab, initialTaskId, onBack, onSwitch }: {
+  agentSubject?: SessionSubject; readOnly?: boolean
   course: TeacherCourse; courses: TeacherCourse[]; cohort: ReturnType<typeof teacherCohort>; selection: ModelSelectionController; onOpenModelSettings: () => void
   initialTab: TeacherTab; initialTaskId?: string | null
   onBack: () => void
   onSwitch: (id: string, tab: TeacherTab) => void
 }) {
   const [tab, setTab] = useState<TeacherTab>(initialTab)
-  const [agentSeed, setAgentSeed] = useState<{ text: string; nonce: number } | null>(null)
+  const [agentSeed, setAgentSeed] = useState<TeacherAgentSeed | null>(null)
   const [courseMenu, setCourseMenu] = useState(false)
   const menuWrap = useRef<HTMLDivElement>(null)
   const menuTrigger = useRef<HTMLButtonElement>(null)
@@ -672,141 +681,15 @@ function CourseWorkspace({ course, courses, cohort, selection, onOpenModelSettin
       <button type="button" className="t-task-focus-clear" onClick={() => setTaskScope(null)}>查看全部任务</button>
     </div>}
     {tab === 'agent' && <div id="t-panel-agent" role="tabpanel" aria-labelledby="t-tab-agent" className="t-agent-panel">
-      <TeacherAgentPane course={course} selection={selection} onOpenModelSettings={onOpenModelSettings} seed={agentSeed} onSeedApplied={() => setAgentSeed(null)} />
+      {agentSubject ? <TeacherCourseAgent subject={agentSubject} courseId={course.courseId} selection={selection}
+        readOnly={!!readOnly} onSettings={onOpenModelSettings} seed={agentSeed}
+        onSeedApplied={() => setAgentSeed(null)} />
+        : <p role="alert" className="t-loading">无法确认当前学校账号，请重新连接学校。</p>}
     </div>}
     {tab === 'review' && <div id="t-panel-review" role="tabpanel" aria-labelledby="t-tab-review"><ReviewPane key={scopedTask?.taskId ?? 'all'} course={course} submissions={submissions} taskId={scopedTask?.taskId ?? null}
       onChange={next => setSubmissions(current => current.map(item => item.submissionId === next.submissionId ? next : item))} /></div>}
     {tab === 'design' && <div id="t-panel-design" role="tabpanel" aria-labelledby="t-tab-design"><DesignPane course={course} projects={projects} openId={designOpenId} onOpen={setDesignOpenId} onProjects={setProjects}
-      onDiscuss={title => { setAgentSeed({ text: `帮我看看任务「${title.trim() || '未命名任务'}」的目标和评价证据。`, nonce: Date.now() }); setTab('agent') }} /></div>}
-  </div>
-}
-
-interface TeacherAgentMessage { role: 'user' | 'agent'; text: string; at?: string }
-interface TeacherAgentFile { id: string; name: string; size: number }
-/** 预览期只在本次页面会话内保留课程对话、输入草稿与待发附件；接入教师 Agent 后由服务端会话替换。 */
-const teacherAgentThreads = new Map<string, TeacherAgentMessage[]>()
-const teacherAgentDrafts = new Map<string, string>()
-const teacherAgentFiles = new Map<string, TeacherAgentFile[]>()
-
-function TeacherAgentPane({ course, selection, onOpenModelSettings, seed, onSeedApplied }: {
-  course: TeacherCourse; selection: ModelSelectionController; onOpenModelSettings: () => void
-  seed: { text: string; nonce: number } | null; onSeedApplied: () => void
-}) {
-  const [messages, setMessages] = useState<TeacherAgentMessage[]>(() => teacherAgentThreads.get(course.courseId) ?? [])
-  const [input, setInputState] = useState(() => teacherAgentDrafts.get(course.courseId) ?? '')
-  const [files, setFileState] = useState<TeacherAgentFile[]>(() => teacherAgentFiles.get(course.courseId) ?? [])
-  const shellRef = useRef<HTMLDivElement>(null)
-  const updateInput = (value: string) => {
-    setInputState(value)
-    teacherAgentDrafts.set(course.courseId, value)
-  }
-  const updateFiles = (next: (current: TeacherAgentFile[]) => TeacherAgentFile[]) => {
-    setFileState(current => {
-      const value = next(current)
-      teacherAgentFiles.set(course.courseId, value)
-      return value
-    })
-  }
-  const fileController: PromptFiles = {
-    items: files, busy: false, error: '',
-    add: list => updateFiles(current => [...current, ...list.map((file, index) => ({
-      id: `${Date.now().toString(36)}-${index}-${file.name}`, name: file.name, size: file.size,
-    }))]),
-    remove: id => updateFiles(current => current.filter(item => item.id !== id)),
-  }
-  const scrollerRef = useRef<HTMLDivElement>(null)
-  const stickRef = useRef(true)
-  const oursRef = useRef(-1)
-  const arrivingRef = useRef(false)
-  const distanceRef = useRef(0)
-  const [atBottom, setAtBottom] = useState(true)
-  useFollowBottom({ scroller: scrollerRef, stick: stickRef, ours: oursRef })
-  // 切回页签时对话页重挂：有历史就落在最新一条，不从最早一条读起。
-  useLayoutEffect(() => {
-    const scroller = scrollerRef.current
-    if (scroller) scroller.scrollTop = scroller.scrollHeight
-  }, [])
-  const focusInput = () => requestAnimationFrame(() => shellRef.current?.querySelector<HTMLTextAreaElement>('.prompt-input textarea')?.focus({ preventScroll: true }))
-  const scrollToBottom = (behavior: ScrollBehavior = 'auto') => {
-    const scroller = scrollerRef.current
-    if (scroller) scroller.scrollTo({ top: scroller.scrollHeight, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : behavior })
-  }
-  const onChatScroll = () => {
-    const scroller = scrollerRef.current
-    if (!scroller) return
-    const distance = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight
-    const previous = distanceRef.current
-    distanceRef.current = distance
-    const ours = oursRef.current
-    if (ours >= 0 && scroller.scrollTop > ours - 1.5) return
-    // 平滑回底途中位置仍在收近，继续等；反向变大就是学生接手
-    if (arrivingRef.current) {
-      if (distance > 4 && distance <= previous + 2) return
-      arrivingRef.current = false
-    }
-    const stick = stickRef.current ? distance < 80 : distance < 40
-    stickRef.current = stick
-    setAtBottom(stick)
-  }
-  const backToBottom = () => {
-    stickRef.current = true
-    arrivingRef.current = true
-    oursRef.current = -1
-    setAtBottom(true)
-    scrollToBottom('smooth')
-  }
-  const jumpToMessage = (element: HTMLElement, last: boolean) => {
-    if (last) { backToBottom(); return }
-    const scroller = scrollerRef.current
-    if (!scroller) return
-    stickRef.current = false
-    arrivingRef.current = false
-    oursRef.current = -1
-    setAtBottom(false)
-    const wrapRect = scroller.getBoundingClientRect()
-    const rect = element.getBoundingClientRect()
-    scroller.scrollTo({ top: scroller.scrollTop + rect.top - wrapRect.top - (scroller.clientHeight - rect.height) / 2,
-      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
-  }
-  useEffect(() => {
-    if (!seed) return
-    updateInput(seed.text)
-    stickRef.current = true
-    setAtBottom(true)
-    onSeedApplied()
-    focusInput()
-  }, [seed])
-  const send = (text: string) => {
-    const trimmed = text.trim()
-    if (!trimmed) return
-    const reply = '收到。我会把这一点放进这次任务的目标与评价证据里，并检查现在发布的任务说明有没有说清学生要做的动作。'
-    const at = new Date().toISOString()
-    const next: TeacherAgentMessage[] = [...messages,
-      { role: 'user', text: trimmed, at },
-      { role: 'agent', text: reply, at }]
-    setMessages(next)
-    teacherAgentThreads.set(course.courseId, next)
-    updateInput('')
-    updateFiles(() => [])
-    stickRef.current = true
-    setAtBottom(true)
-    requestAnimationFrame(() => scrollToBottom())
-  }
-  return <div className="t-agent-shell" ref={shellRef}>
-    {messages.length === 0
-      ? <div className="product-agent-body"><AgentEmptyState title="今天想探讨什么？" /></div>
-      : <ChatViewport scrollerRef={scrollerRef} onJump={jumpToMessage} onScroll={onChatScroll} padSuggestions={false} queued={false} busy={false}>
-        {messages.map((message, index) => message.role === 'user'
-          ? <UserMessage key={index} text={message.text} at={message.at} />
-          : <AgentMessage key={index} message={{ role: 'agent', text: message.text, at: message.at }} reveal={index === messages.length - 1} />)}
-      </ChatViewport>}
-    <ProductComposerDock atBottom={atBottom} onBackToBottom={backToBottom}
-      disclaimer="教师 Agent · 当前为界面预览，回复为合成示例">
-      <ProductPromptInput selection={selection} readOnly={false} onModelSettings={onOpenModelSettings}
-        value={input} onChange={updateInput} onSend={() => send(input)} canSend={!!input.trim()} autoFocus
-        submitting={false} busy={false} files={fileController}
-        textareaProps={{ 'aria-label': '向教师 Agent 提问' }} />
-    </ProductComposerDock>
+      onDiscuss={seed => { setAgentSeed(seed); setTab('agent') }} /></div>}
   </div>
 }
 
@@ -983,7 +866,7 @@ function ReviewPane({ course, submissions, taskId, onChange }: {
 function DesignPane({ course, projects, openId, onOpen, onProjects, onDiscuss }: {
   course: TeacherCourse; projects: TeacherDraft[]; openId: string | null
   onOpen: (id: string | null) => void; onProjects: (projects: TeacherDraft[]) => void
-  onDiscuss: (title: string) => void
+  onDiscuss: (seed: TeacherAgentSeed) => void
 }) {
   const published = course.tasks.filter(task => task.releases.length > 0)
   const draft = openId ? projects.find(project => project.draftId === openId) ?? null : null
@@ -1007,7 +890,7 @@ function DesignPane({ course, projects, openId, onOpen, onProjects, onDiscuss }:
       <button type="button" className="t-back-link" onClick={() => { onOpen(null); setPublishedNote('') }}><Icon name="alt-arrow-left" size={15} />任务列表</button>
       <div className="t-designer-title"><h2>{draft.title || '未命名任务'}</h2><span className="t-state t-state-draft">草稿</span></div>
       <div className="t-designer-actions">
-        <button type="button" className="outline" onClick={() => onDiscuss(draft.title)}><Icon name="chat-round-dots" size={15} />和 Agent 讨论</button>
+        <button type="button" className="outline" onClick={() => onDiscuss({ text: `帮我看看任务「${draft.title.trim() || '未命名任务'}」的目标和评价证据。` })}><Icon name="chat-round-dots" size={15} />和 Agent 讨论</button>
         <button type="button" className="outline" onClick={() => setPublishedNote('草稿已保存在此预览')}>保存草稿</button>
         <button type="button" className="primary" onClick={() => setPublishOpen(true)}>发布</button>
       </div>
@@ -1066,11 +949,18 @@ function DesignPane({ course, projects, openId, onOpen, onProjects, onDiscuss }:
     </header>
     <div className="t-project-group">
       <h3>已发布<small>{published.length}</small></h3>
-      {published.map(task => <div key={task.taskId} className="t-project-row">
-        <span className="t-project-mark"><Icon name="check-circle" size={17} /></span>
-        <span className="t-project-main"><strong>{task.title}</strong><small>{task.releases[0] ? `发布于 ${dateText(task.releases[0].publishedAt)} · ${task.releases[0].objectives.length} 个目标` : '未发布'}</small></span>
-        <span className="t-state t-state-done">已发布</span>
-      </div>)}
+      {published.map(task => {
+        const release = task.releases[0]!
+        return <div key={task.taskId} className="t-project-row">
+          <span className="t-project-mark"><Icon name="check-circle" size={17} /></span>
+          <span className="t-project-main"><strong>{task.title}</strong><small>发布于 {dateText(release.publishedAt)} · {release.objectives.length} 个目标</small></span>
+          <span className="t-state t-state-done">已发布</span>
+          <Button type="button" variant="outline" aria-label={`和 Agent 讨论${task.title}`} onClick={() => onDiscuss({
+            text: `帮我梳理任务「${task.title}」的目标、要求和公开材料。`,
+            target: { kind: 'release', taskId: task.taskId, releaseId: release.releaseId, title: task.title },
+          })}><Icon name="chat-round-dots" size={15} />和 Agent 讨论</Button>
+        </div>
+      })}
     </div>
     <div className="t-project-group">
       <h3>草稿<small>{projects.length}</small></h3>
@@ -1141,7 +1031,7 @@ function TeacherSettingsPage({ context, account, tab, onTab, onClose, identity, 
         onDisconnect={() => { setError(''); setMode('disconnect') }} />}
       modelSettings={settingsIdentity ? <SettingsFailureBoundary key={context.clientNamespace + settingsKey + settingsIdentity.principalId} onBack={onClose}><Suspense
         fallback={<SettingsStatus tone="loading" title="正在读取个人设置" />}><PersonalModelSettings identity={settingsIdentity}
-        spaceKey={settingsKey} namespace={context.clientNamespace} selection={selection} readOnly={context.readOnly} cache={cache} />
+        spaceKey={settingsKey} namespace={context.clientNamespace} selection={selection} readOnly={context.readOnly} cache={cache} teacher />
       </Suspense></SettingsFailureBoundary> : null} />
     <ConfirmationDialog open={!!mode} title={mode === 'replace' ? '换绑学校？' : '断开学校连接？'}
       description={<>{mode === 'replace' && '先解绑当前账号，再绑定新的学校账号。'}断开后，将无法在此访问<strong>「{school}」</strong>的教学内容。本机数据会保留，重新绑定原账号后可继续教学。</>}

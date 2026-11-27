@@ -49,7 +49,8 @@ export function useAgentSessionHistory(subject?: SessionSubject, enabled = true)
     setArchived: (id: string, archived: boolean) => change(id, { archived }), remove: (id: string) => change(id, { deleted: true }) }
 }
 
-export function useAgentSession(client: AgentSessionsClient, sessionId: string | undefined, writable: boolean, viewActive = true) {
+export function useAgentSession(client: AgentSessionsClient, sessionId: string | undefined, writable: boolean, viewActive = true,
+  recovery?: { ready: boolean; delivered(input: AgentInput): Promise<void> }) {
   const outbox = useMemo(() => new SessionOutbox(client), [client])
   const scope = client.scope + ':' + sessionId
   const [projection, setProjection] = useState<{ scope: string; value: AgentConversation } | null>(null), [error, setError] = useState(''), [busy, setBusy] = useState(false)
@@ -57,6 +58,8 @@ export function useAgentSession(client: AgentSessionsClient, sessionId: string |
   const current = useRef(scope); current.current = scope
   const alive = useRef(true), reading = useRef<{ scope: string; promise: Promise<void> } | null>(null), latest = useRef(conversation); latest.current = conversation
   const operation = useRef<string | null>(null)
+  const recovered = useRef(recovery); recovered.current = recovery
+  const recoveryReady = recovery?.ready ?? true
   useEffect(() => { alive.current = true; setError(''); setBusy(false); return () => { alive.current = false } }, [scope])
   const refresh = useCallback(async () => {
     if (!sessionId) return
@@ -72,11 +75,24 @@ export function useAgentSession(client: AgentSessionsClient, sessionId: string |
   }, [client, sessionId])
   const active = !!conversation?.turns.some(turn => turn.state === 'active')
   useViewPolling(refresh, scope, active ? 200 : 5000, !!sessionId && viewActive)
-  const perform = useCallback(async (operation: () => Promise<unknown>) => {
+  const perform = useCallback(async (operation: () => Promise<unknown>, backgroundRefresh = false) => {
     const expected = scope
     if (!writable) throw new Error('当前会话只读。')
     setBusy(true)
-    try { const value = await operation(); if (alive.current && current.current === expected) setError(''); await refresh(); return value }
+    try {
+      const value = await operation()
+      if (alive.current && current.current === expected) {
+        setError('')
+        if (backgroundRefresh) {
+          // An in-flight poll may have started before the write. Follow it with a read of the accepted state.
+          const previous = reading.current?.scope === expected ? reading.current.promise : undefined
+          void Promise.resolve(previous).then(() => {
+            if (alive.current && current.current === expected) return refresh()
+          })
+        } else await refresh()
+      }
+      return value
+    }
     catch (cause) { if (alive.current && current.current === expected) setError(sessionError(cause)); throw cause }
     finally { if (alive.current && current.current === expected) setBusy(false) }
   }, [writable, refresh, sessionId])
@@ -106,12 +122,19 @@ export function useAgentSession(client: AgentSessionsClient, sessionId: string |
     }
   }
   const replay = useCallback(async () => {
-    if (!sessionId || !writable || operation.current === scope) return
+    if (!sessionId || !writable || !recoveryReady || operation.current === scope) return
     operation.current = scope
-    try { for (const input of outbox.pending(sessionId)) await outbox.send(input); await retryMutation(); await refresh() }
+    try {
+      for (const input of outbox.pending(sessionId)) {
+        await outbox.send(input)
+        if (alive.current && current.current === scope) await recovered.current?.delivered(input)
+      }
+      await retryMutation()
+      await refresh()
+    }
     catch (cause) { if (alive.current && current.current === scope) setError(sessionError(cause)) }
     finally { if (operation.current === scope) operation.current = null }
-  }, [outbox, sessionId, writable, refresh])
+  }, [outbox, sessionId, writable, refresh, recoveryReady])
   useEffect(() => { void replay() }, [replay])
   const durable = async (name: string, body: Record<string, unknown>) => {
     const raw = localStorage.getItem(mutationKey)
@@ -126,7 +149,7 @@ export function useAgentSession(client: AgentSessionsClient, sessionId: string |
     return retryMutation()
   }
   return { client, sessionId, conversation, busy, error, active, refresh, replay, outbox,
-    send: (text: string, context: AgentInput['context'] = {}) => perform(async () => {
+    send: (text: string, context: AgentInput['context'] = {}, requestId: string = crypto.randomUUID()) => perform(async () => {
       if (!sessionId) throw new Error('会话尚未准备。')
       const pending = outbox.pending(sessionId)
       if (pending.length) {
@@ -136,8 +159,8 @@ export function useAgentSession(client: AgentSessionsClient, sessionId: string |
         if (pending.length === 1 && original.text === text && JSON.stringify(original.context) === JSON.stringify(context)) return receipt
         throw new Error('原问题已核对并保留，请再次确认发送当前内容。')
       }
-      return outbox.send({ sessionId, requestId: crypto.randomUUID(), text, context })
-    }),
+      return outbox.send({ sessionId, requestId, text, context })
+    }, true),
     control: (turnId: string, operation: 'stop' | 'continue') => perform(() => durable(operation + ':' + turnId, {})),
     respond: (questionId: string, expectedVersion: number, answer: Record<string, any>) => perform(() => durable('response:' + questionId,
       { expectedVersion, answer })),

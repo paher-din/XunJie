@@ -37,14 +37,14 @@ export function ProductComposerDock({ children, atBottom = true, onBackToBottom 
 
 const effortLabels = { auto: '默认', none: '关闭', enabled: '开启', minimal: '最低', low: '低', medium: '中', high: '高', xhigh: '更高', max: '最高' } as const satisfies Record<ModelReasoningEffort, string>
 
-export function ProductPromptInput({ selection, readOnly, onModelSettings, onModelSelected, applyingModel, modelLocked = false, contextUsage, files, skills, ...input }:
+export function ProductPromptInput({ selection, readOnly, onModelSettings, onModelSelected, applyingModel, modelLocked = false, contextUsage, files, skills, allowFiles = true, singleSkill = false, ...input }:
   Pick<PromptInputProps, 'value' | 'onChange' | 'onSend' | 'canSend' | 'autoFocus' | 'submitting' | 'inputRef' | 'textareaProps' | 'sendLabel'
     | 'busy' | 'onStop' | 'onResume' | 'resumeLabel' | 'actionDisabled' | 'pasteImages'> & {
   selection: ModelSelectionController; readOnly: boolean; onModelSettings?: () => void
   onModelSelected?: Parameters<ModelSelectionController['choose']>[1]; applyingModel?: boolean; contextUsage?: { model: { connectionId: string; version: number }; tokens: number; lowerBound: boolean }
   /** A Turn fixes its model; the next Turn adopts any later picker change. */
   modelLocked?: boolean
-  files: PromptFiles; skills?: DraftSkillsController
+  files: PromptFiles; skills?: DraftSkillsController; allowFiles?: boolean; singleSkill?: boolean
 }) {
   const picker = useAgentModelPicker(selection)
   const [menu, setMenu] = useState<'add' | 'skills' | 'slash' | null>(null)
@@ -75,7 +75,7 @@ export function ProductPromptInput({ selection, readOnly, onModelSettings, onMod
     if (!option || option.fixed || option.unavailable || disabled || skills?.loading || skills?.error || !skills) return
     const existing = selectedSkills.find(item => item.skillId === id)
     const next = selectedSkills.filter(item => item.skillId !== id)
-    skills.choose(existing?.version === option.version ? menu === 'slash' ? selectedSkills : next : [...next, { skillId: id, version: option.version }])
+    skills.choose(existing?.version === option.version ? menu === 'slash' ? selectedSkills : next : [...(singleSkill ? [] : next), { skillId: id, version: option.version }])
     const range = menu === 'slash' ? command.current : null
     if (range) {
       pendingCaret.current = range.start
@@ -111,15 +111,15 @@ export function ProductPromptInput({ selection, readOnly, onModelSettings, onMod
   const contextItems: NonNullable<PromptInputProps['contextItems']> = skills?.explicit ? selectedSkills.map(skill => {
       const option = skills.options.find(item => item.skillId === skill.skillId && item.version === skill.version)
       return { id: skill.skillId, label: option?.name ?? `技能 · v${skill.version}`, kind: 'skill' as const,
-        remove: disabled || option?.fixed || skills.loading || skills.error ? undefined : () => skills.choose(selectedSkills.filter(item => item.skillId !== skill.skillId)) }
+        remove: disabled || option?.fixed || !singleSkill && (skills.loading || skills.error) ? undefined : () => skills.choose(selectedSkills.filter(item => item.skillId !== skill.skillId)) }
     }) : []
   const attachments: PromptAttachment[] = files.items.map(file => ({ id: file.id, name: file.name,
     size: file.size ?? 0, kind: file.attachmentKind ?? promptAttachmentKind(file.name), ...(file.src ? { src: file.src } : {}),
     ...(file.progress !== undefined ? { progress: file.progress } : {}) }))
-  return <PromptInput {...input} inputRef={editor} attachments={attachments} showAttachments
+  return <PromptInput {...input} inputRef={editor} attachments={attachments} showAttachments={allowFiles}
     onAddFiles={selected => { if (!disabled) void files.add(selected) }} onRemoveAttachment={files.remove}
     attachmentTitle={input.pasteImages ? '添加图片、UTF-8 文本、代码文件或 PDF' : '添加 UTF-8 文本、代码文件或 PDF'}
-    canSend={input.canSend && !files.busy && !selection.busy && !skills?.loading && !skills?.error && menu !== 'slash'}
+    canSend={input.canSend && !files.busy && !selection.busy && (singleSkill || !skills?.loading && !skills?.error) && menu !== 'slash'}
     onChange={value => { input.onChange(value); updateCommand(value, editor.current?.selectionStart ?? value.length) }}
     textareaProps={{ ...input.textareaProps,
       role: menu === 'slash' && !disabled ? 'combobox' : undefined,
@@ -151,7 +151,7 @@ export function ProductPromptInput({ selection, readOnly, onModelSettings, onMod
         }
         if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); if (active) pickSkill(active) }
       } }}
-    additions={{ view: disabled ? null : menu === 'slash' ? 'skills' : menu, disabled, skills: visibleSkills.map(option => ({ id: option.skillId,
+    additions={{ allowFiles, singleSkill, view: disabled ? null : menu === 'slash' ? 'skills' : menu, disabled, skills: visibleSkills.map(option => ({ id: option.skillId,
       label: option.name, description: option.unavailable || option.description, selected: option.fixed || selectedSkills.some(item => item.skillId === option.skillId && item.version === option.version),
       disabled: !!(option.fixed || option.unavailable || disabled || skills?.loading || skills?.error) })),
       skillStatus, listId: skillListId, activeSkillId: active, onActiveSkill: setActiveSkill, isSlash: menu === 'slash',

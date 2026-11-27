@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { learningTargetSchema, spaceIdentitySchema } from './spaces.js';
 import { teachingAgentBindingSchema } from './teaching-agent.js';
+import { agentInputSchema } from './agent-runtime.js';
 
 export const agentSessionScenarioSchema = z.enum(['student-assistant', 'workspace-assistant', 'teacher-assistant']);
 export type AgentSessionScenario = z.infer<typeof agentSessionScenarioSchema>;
@@ -16,6 +17,10 @@ export const createAgentSessionSchema = z.object({ requestId: z.uuid(), sessionI
   scenario: agentSessionScenarioSchema, workspace: agentSessionWorkspaceSchema.optional(), courseId: z.uuid().optional(),
   title: titleSchema.optional() }).strict().refine(placement, 'Workspace sessions require a workspace and teacher sessions require a course.');
 export type CreateAgentSession = z.infer<typeof createAgentSessionSchema>;
+
+export const startAgentSessionSchema = z.object({ create: createAgentSessionSchema, input: agentInputSchema }).strict()
+  .refine(value => value.create.sessionId === value.input.sessionId && value.create.scenario !== 'workspace-assistant',
+    'The first input must belong to the new standalone session.');
 
 export const agentSessionSchema = z.object({ sessionId: z.uuid(), requestId: z.uuid(), identity: spaceIdentitySchema,
   scenario: agentSessionScenarioSchema, owner: teachingAgentBindingSchema, workspace: agentSessionWorkspaceSchema.optional(), courseId: z.uuid().optional(),

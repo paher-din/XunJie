@@ -1,11 +1,11 @@
 import { replaceEqualDeep } from '@tanstack/react-query'
 import { z } from 'zod'
-import { agentSessionSchema, createAgentSessionSchema, updateAgentSessionSchema, type AgentSession, type CreateAgentSession, type UpdateAgentSession } from '@xunjie/contracts/agent-sessions'
+import { agentSessionSchema, createAgentSessionSchema, startAgentSessionSchema, updateAgentSessionSchema, type AgentSession, type CreateAgentSession, type UpdateAgentSession } from '@xunjie/contracts/agent-sessions'
 import { agentInputSchema, agentInputReceiptSchema, agentEventSchema, agentTurnSchema, agentQuestionReceiptSchema, type AgentInput } from '@xunjie/contracts/agent-runtime'
 import { agentAcceptedRequestSchema, agentConversationSchema, type AgentConversation } from '@xunjie/contracts/agent-service'
 import { learningTargetSchema, type LearningTarget, type SpaceIdentity } from '@xunjie/contracts/spaces'
 
-export interface SessionSubject { identity: SpaceIdentity; spaceKey: string; namespace: string }
+export interface SessionSubject { identity: SpaceIdentity; spaceKey: string; namespace: string; teacherCourseId?: string }
 const fail = (code: string, text: string) => Object.assign(new Error(text), { code })
 const subject = (value: SpaceIdentity) => [value.kind, value.environmentId, value.spaceId, value.principalId].join('.')
 const canonical = (value: unknown): string => JSON.stringify(value, (_key, item) => item && typeof item === 'object' && !Array.isArray(item)
@@ -21,13 +21,17 @@ export class AgentSessionRequestError extends Error {
 }
 export class AgentSessionsClient {
   readonly scope: string
-  constructor(readonly subject: SessionSubject) { this.scope = JSON.stringify([subject.namespace, subject.spaceKey, subject.identity.kind, subject.identity.environmentId, subject.identity.spaceId, subject.identity.principalId]) }
+  constructor(readonly subject: SessionSubject) {
+    this.scope = JSON.stringify([subject.namespace, subject.spaceKey, subject.identity.kind, subject.identity.environmentId,
+      subject.identity.spaceId, subject.identity.principalId, ...(subject.teacherCourseId ? [subject.teacherCourseId] : [])])
+  }
   async request(route = '', body?: unknown): Promise<unknown> {
     const { identity, spaceKey, namespace } = this.subject
     const suffix = route && !route.startsWith('?') ? '/' + route : route
     const response = await fetch('/api/learning/agent-sessions' + suffix, {
       method: body === undefined ? 'GET' : 'POST', credentials: 'same-origin', redirect: 'error', cache: 'no-store',
       headers: { 'content-type': 'application/json', 'x-xj-agent-contract': '3', 'x-xj-space': spaceKey, 'x-xj-namespace': namespace,
+        ...(this.subject.teacherCourseId ? { 'x-xj-teacher-agent': '1' } : {}),
         'x-xj-expected-subject': [identity.environmentId, identity.spaceId, identity.principalId].join('.') },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(60000),
     })
@@ -35,14 +39,17 @@ export class AgentSessionsClient {
     if (!response.ok) {
       const failure = z.object({ error: z.string() }).safeParse(value)
       const code = failure.success ? failure.data.error : 'unavailable'
-      throw new AgentSessionRequestError(code, response.status, ({ incompatible: '对话服务版本不兼容，请更新后继续。', forbidden: '当前会话的访问资格已失效，请恢复原账号。',
-        conflict: '会话或输入已变化，请刷新后再操作。', missing: '原会话或请求暂时无法读取。' } as Record<string, string>)[code] ?? '操作结果尚未确认，原请求已保留，请重试。')
+      throw new AgentSessionRequestError(code, response.status, ({ incompatible: '对话服务版本不兼容，请更新后继续。', forbidden: this.subject.teacherCourseId ? '当前账号没有这门课程的教师 Agent 访问权限。' : '当前会话的访问资格已失效，请恢复原账号。',
+        conflict: '会话或输入已变化，请刷新后再操作。', missing: '原会话或请求暂时无法读取。',
+        unavailable: this.subject.teacherCourseId ? '教师 Agent 暂时不可用，请检查本机服务或学校连接。' : '对话服务暂时不可用，请稍后重试。' } as Record<string, string>)[code] ?? '操作结果尚未确认，原请求已保留，请重试。')
     }
     return value
   }
   private session(value: unknown) {
     const result = agentSessionSchema.parse(value)
     if (subject(result.identity) !== subject(this.subject.identity)) throw fail('forbidden', '会话不属于当前身份。')
+    if (this.subject.teacherCourseId && (result.scenario !== 'teacher-assistant' || result.courseId !== this.subject.teacherCourseId))
+      throw fail('corrupt', '会话不属于当前任教课程。')
     return result
   }
   async list() { return z.object({ items: z.array(agentSessionSchema) }).strict().parse(await this.request()).items.map(item => this.session(item)) }
@@ -57,9 +64,24 @@ export class AgentSessionsClient {
     })
   }
   async read(sessionId: string) { const result = this.session(await this.request(sessionId)); if (result.sessionId !== sessionId) throw fail('corrupt', '会话身份不匹配。'); return result }
-  async create(value: CreateAgentSession) { const input = createAgentSessionSchema.parse(value), result = this.session(await this.request('', input));
+  private createdSession(input: CreateAgentSession, value: unknown) {
+    const result = this.session(value)
     if (result.sessionId !== input.sessionId || result.requestId !== input.requestId
-      || result.scenario !== input.scenario || result.courseId !== input.courseId) throw fail('corrupt', '会话创建回执不匹配。'); return result }
+      || result.scenario !== input.scenario || result.courseId !== input.courseId) throw fail('corrupt', '会话创建回执不匹配。')
+    return result
+  }
+  async create(value: CreateAgentSession) {
+    const input = createAgentSessionSchema.parse(value)
+    return this.createdSession(input, await this.request('', input))
+  }
+  async startSession(create: CreateAgentSession, input: AgentInput) {
+    const value = await this.request('start', startAgentSessionSchema.parse({ create, input }))
+    const result = z.object({ session: agentSessionSchema, receipt: agentInputReceiptSchema }).strict().parse(value)
+    const session = this.createdSession(create, result.session)
+    if (result.receipt.sessionId !== session.sessionId || result.receipt.requestId !== input.requestId)
+      throw fail('corrupt', '输入回执不匹配。')
+    return { session, receipt: result.receipt }
+  }
   async workspace(activityId: string, target: LearningTarget) {
     const result = this.session(await this.request('workspace', { activityId: z.uuid().parse(activityId), target: learningTargetSchema.parse(target) }))
     if (result.scenario !== 'workspace-assistant' || result.workspace?.activityId !== activityId || canonical(result.workspace.target) !== canonical(target)) throw fail('corrupt', '工作区会话不属于原活动。')
@@ -71,9 +93,15 @@ export class AgentSessionsClient {
     if (result.sessionId !== sessionId) throw fail('corrupt', '对话不属于原会话。'); return result }
   async original(sessionId: string, requestId: string) { const result = agentAcceptedRequestSchema.nullable().parse(await this.request(`${sessionId}/requests/${requestId}`));
     if (result && (result.receipt.sessionId !== sessionId || result.receipt.requestId !== requestId)) throw fail('corrupt', '原请求回执不匹配。'); return result }
-  async send(value: AgentInput) {
-    const input = agentInputSchema.parse(value), original = await this.original(input.sessionId, input.requestId)
-    if (original) { if (canonical(original.input) !== canonical(input)) throw fail('identity-conflict', '原请求已绑定其他内容，不能替换后重发。'); return original.receipt }
+  async send(value: AgentInput, checkOriginal = true) {
+    const input = agentInputSchema.parse(value)
+    if (checkOriginal) {
+      const original = await this.original(input.sessionId, input.requestId)
+      if (original) {
+        if (canonical(original.input) !== canonical(input)) throw fail('identity-conflict', '原请求已绑定其他内容，不能替换后重发。')
+        return original.receipt
+      }
+    }
     const receipt = agentInputReceiptSchema.parse(await this.request(`${input.sessionId}/inputs`, input))
     if (receipt.sessionId !== input.sessionId || receipt.requestId !== input.requestId) throw fail('corrupt', '输入回执不匹配。')
     return receipt
@@ -101,25 +129,47 @@ type StoragePort = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
 /** Persist identities and complete bytes before the first network call. A restart queries the original owner. */
 export class SessionOutbox {
   readonly key: string
+  private freshStartId?: string
   constructor(readonly client: AgentSessionsClient, private storage: StoragePort = localStorage) { this.key = 'xj.agent-session.v3.' + client.scope }
   start(): SessionStart | null { const raw = this.storage.getItem(this.key + '.first'); return raw ? startSchema.parse(JSON.parse(raw)) : null }
   begin(text: string, context: AgentInput['context'] = {}): SessionStart {
     const previous = this.start(); if (previous) return previous
     const sessionId = crypto.randomUUID()
-    const value = startSchema.parse({ version: 3, create: { sessionId, requestId: crypto.randomUUID(), scenario: 'student-assistant', title: text.trim().slice(0, 80) || null },
+    const courseId = this.client.subject.teacherCourseId
+    const scenario = courseId ? { scenario: 'teacher-assistant', courseId } : { scenario: 'student-assistant' }
+    const value = startSchema.parse({ version: 3, create: { sessionId, requestId: crypto.randomUUID(), ...scenario, title: text.trim().slice(0, 80) || null },
       input: { sessionId, requestId: crypto.randomUUID(), text, context } })
-    this.storage.setItem(this.key + '.first', JSON.stringify(value)); return value
+    this.storage.setItem(this.key + '.first', JSON.stringify(value))
+    this.freshStartId = value.create.requestId
+    return value
   }
-  async deliverStart(value = this.start(), prepare?: (session: AgentSession, input: AgentInput) => Promise<void>) {
+  async deliverStart(value = this.start()) {
     if (!value) throw fail('missing', '没有待发送的首问。')
-    let session: AgentSession
-    try { session = await this.client.read(value.create.sessionId) }
-    catch (error) { if ((error as { code?: string }).code !== 'missing') throw error; session = await this.client.create(value.create) }
-    if (session.state !== 'ready') session = await this.client.create(value.create)
-    await prepare?.(session, value.input)
-    const receipt = await this.send(value.input)
-    if (this.start()?.input.requestId === value.input.requestId) this.storage.removeItem(this.key + '.first')
-    return { session, receipt }
+    const fresh = this.freshStartId === value.create.requestId
+    this.freshStartId = undefined
+    const recover = async () => {
+      const session = await this.client.read(value.create.sessionId).catch(error => {
+        if ((error as { code?: string }).code !== 'missing') throw error
+        return null
+      })
+      if (session?.state !== 'ready') return null
+      const original = await this.client.original(session.sessionId, value.input.requestId)
+      if (!original) return null
+      if (canonical(original.input) !== canonical(value.input)) throw fail('identity-conflict', '原请求已绑定其他内容，不能替换后重发。')
+      return { session, receipt: original.receipt }
+    }
+    const result = (fresh ? null : await recover()) ?? await this.client.startSession(value.create, value.input)
+    if (!fresh) {
+      // Older builds also stored the first input in the per-session queue.
+      const saved = this.pending(value.input.sessionId)
+      if (saved.some(input => input.requestId === value.input.requestId))
+        this.storage.setItem(this.key + '.' + value.input.sessionId, JSON.stringify(saved.filter(input => input.requestId !== value.input.requestId)))
+    }
+    this.discardStart(value.input.requestId)
+    return result
+  }
+  discardStart(requestId: string) {
+    if (this.start()?.input.requestId === requestId) this.storage.removeItem(this.key + '.first')
   }
   pending(sessionId: string): AgentInput[] { return z.array(agentInputSchema).parse(JSON.parse(this.storage.getItem(this.key + '.' + sessionId) ?? '[]')) }
   async send(value: AgentInput) {
@@ -127,9 +177,15 @@ export class SessionOutbox {
     const saved = this.pending(input.sessionId), prior = saved.find(item => item.requestId === input.requestId)
     if (prior && canonical(prior) !== canonical(input)) throw fail('identity-conflict', '待发请求不能改换内容。')
     if (!prior) this.storage.setItem(key, JSON.stringify([...saved, input]))
-    const receipt = await this.client.send(input)
-    this.storage.setItem(key, JSON.stringify(this.pending(input.sessionId).filter(item => item.requestId !== input.requestId)))
-    return receipt
+    const clear = () => this.storage.setItem(key, JSON.stringify(this.pending(input.sessionId).filter(item => item.requestId !== input.requestId)))
+    try {
+      const receipt = await this.client.send(input, !!prior)
+      clear()
+      return receipt
+    } catch (cause) {
+      if (this.client.subject.teacherCourseId && cause instanceof AgentSessionRequestError && cause.rejected) clear()
+      throw cause
+    }
   }
 }
 export function mergeAgentConversation(previous: AgentConversation | null, next: AgentConversation): AgentConversation {

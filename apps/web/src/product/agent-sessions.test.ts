@@ -18,22 +18,25 @@ beforeEach(() => {
     const path = url.replace('/api/learning/', ''), body = options.body ? JSON.parse(String(options.body)) : undefined
     calls.push({ path, body })
     const respond = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status })
-    if (path === 'agent-sessions' && body || path === 'agent-sessions/workspace') {
-      const sessionId = body.sessionId ?? id(), now = new Date().toISOString()
-      const value: AgentSession = { sessionId, requestId: body.requestId ?? id(), identity: actor, owner,
-        scenario: body.activityId ? 'workspace-assistant' : 'student-assistant', ...(body.activityId ? { workspace: body } : {}),
-        title: body.title ?? null, pinned: false, archived: false, deleted: false, state: 'ready', createdAt: now, updatedAt: now, readyAt: now }
-      sessions.set(sessionId, value); return respond(value)
+    const start = path === 'agent-sessions/start' ? body : null
+    const submit = (input: any) => {
+      const receipt = { requestId: input.requestId, sessionId: input.sessionId, inputId: id(), turnId: id(), inputDigest: 'a'.repeat(64) }
+      inputs.set(input.requestId, { receipt, input })
+      if (loseReply) { loseReply = false; throw new Error('lost ACK') }
+      return receipt
+    }
+    if (start || path === 'agent-sessions' && body || path === 'agent-sessions/workspace') {
+      const create = start?.create ?? body, sessionId = create.sessionId ?? id(), now = new Date().toISOString()
+      const value: AgentSession = { sessionId, requestId: create.requestId ?? id(), identity: actor, owner,
+        scenario: create.activityId ? 'workspace-assistant' : 'student-assistant', ...(create.activityId ? { workspace: create } : {}),
+        title: create.title ?? null, pinned: false, archived: false, deleted: false, state: 'ready', createdAt: now, updatedAt: now, readyAt: now }
+      sessions.set(sessionId, value)
+      return respond(start ? { session: value, receipt: submit(start.input) } : value)
     }
     const parts = path.split('/'), sessionId = parts[1]!
     if (parts.length === 2) return sessions.has(sessionId) ? respond(sessions.get(sessionId)) : respond({ error: 'missing' }, 404)
     if (parts[2] === 'requests') return respond(inputs.get(parts[3]!) ?? null)
-    if (parts[2] === 'inputs' && body) {
-      const receipt = { requestId: body.requestId, sessionId, inputId: id(), turnId: id(), inputDigest: 'a'.repeat(64) }
-      inputs.set(body.requestId, { receipt, input: body })
-      if (loseReply) { loseReply = false; throw new Error('lost ACK') }
-      return respond(receipt)
-    }
+    if (parts[2] === 'inputs' && body) return respond(submit(body))
     throw new Error('Unexpected endpoint ' + path)
   }))
 })
@@ -48,18 +51,19 @@ it('requests teacher sessions only for the selected course and rejects a mismatc
   expect(fetchCourse).toHaveBeenCalledWith('/api/learning/agent-sessions?courseId=' + courseId, expect.anything())
   await expect(client.listTeacherCourse(id())).rejects.toThrow('会话不属于当前任教课程。')
 })
-it('ordinary first questions create only a session; a lost ACK survives reconstruction and queries the original input before any resend', async () => {
+it('ordinary first questions take one request; a lost ACK survives reconstruction and queries the original input before any resend', async () => {
   const client = new AgentSessionsClient({ identity: actor, spaceKey: 'personal', namespace: 'browser' }), store = storage()
   const first = new SessionOutbox(client, store)
   const pending = first.begin('什么是递归？')
   loseReply = true
   await expect(first.deliverStart()).rejects.toThrow()
+  expect(calls.map(call => call.path)).toEqual(['agent-sessions/start'])
   const restored = new SessionOutbox(client, store)
   expect(restored.start()).toEqual(pending)
   const result = await restored.deliverStart()
   expect(result.session.sessionId).toBe(pending.create.sessionId)
   expect(restored.start()).toBeNull()
-  expect(calls.filter(call => call.path.endsWith('/inputs'))).toHaveLength(1)
+  expect(calls.filter(call => call.body)).toHaveLength(1)
   expect(calls.filter(call => call.path === 'activities')).toHaveLength(0)
   expect(calls.at(-1)!.path).toBe(`agent-sessions/${result.session.sessionId}/requests/${pending.input.requestId}`)
 })

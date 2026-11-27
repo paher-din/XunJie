@@ -33,6 +33,8 @@ export function createModelSelections(storage: OwnedStorage, owner: {
   connection(scope: string, connectionId: string): Promise<ModelConnection>;
   list(identity: SpaceIdentity): Promise<ModelConnection[]>;
   deviceOwner?(identity: SpaceIdentity): Promise<SpaceIdentity | null>;
+  sharesConfigurations?(): boolean;
+  connectionScope?(scope: string, id: string): Promise<string>;
   assertWritable(): void;
 }) {
   let deviceRevoker: ((identity: SpaceIdentity, id: string, value: unknown) => Promise<unknown>) | undefined;
@@ -53,7 +55,9 @@ export function createModelSelections(storage: OwnedStorage, owner: {
       const actor = source.owner === 'device' ? await owner.deviceOwner?.(identity) : identity;
       if (!actor) throw new StorageError('forbidden');
       await owner.authorize(actor);
-      const ownerScope = modelScopeOf(actor), connection = await owner.connection(ownerScope, source.connectionId);
+      const scope = modelScopeOf(actor);
+      const ownerScope = await owner.connectionScope?.(scope, source.connectionId) ?? scope;
+      const connection = await owner.connection(ownerScope, source.connectionId);
       return { choice: withEffort<Personal>({ kind: 'personal', connection, policy: personalPolicy, origin: source.owner ?? 'self' }, source.reasoningEffort),
         source: { kind: 'personal' as const, ownerScope, feeSource: ownerScope } };
     }
@@ -136,7 +140,8 @@ export function createModelSelections(storage: OwnedStorage, owner: {
   }
   async function read(identity: SpaceIdentity, deviceOwner?: SpaceIdentity): Promise<z.infer<typeof modelSelectionSchema>> {
     await owner.authorize(identity);
-    deviceOwner ??= await owner.deviceOwner?.(identity) ?? undefined;
+    if (owner.sharesConfigurations?.()) deviceOwner = undefined;
+    else deviceOwner ??= await owner.deviceOwner?.(identity) ?? undefined;
     const saved = await current(identity);
     const options: (School | Personal)[] = [];
     const school = await owner.school(identity); if (school) options.push(school);
@@ -166,9 +171,10 @@ export function createModelSelections(storage: OwnedStorage, owner: {
       return { version: saved?.version ?? 0, selected: null, options, unavailableReason: saved?.source.kind === 'personal' && !saved.source.grantId ? 'connection-unavailable' : 'grant-revoked' };
     }
   }
-  async function save(identity: SpaceIdentity, value: unknown, teacher = false) {
+  async function save(identity: SpaceIdentity, value: unknown, teacher = false, localOnly = false) {
     owner.assertWritable(); await owner.authorize(identity);
     const input = selectModelSchema.parse(value), scope = modelScopeOf(identity), hash = fingerprint({ scope, input });
+    if (localOnly && input.source.kind !== 'personal') throw new StorageError('forbidden');
     if (teacher && input.source.kind === 'personal' && (input.source.owner !== 'self' || input.source.grantId))
       throw new StorageError('forbidden');
     const requestKey = (teacher ? 'teacher-model-selection:' : 'model-selection:') + input.requestId;
@@ -189,7 +195,7 @@ export function createModelSelections(storage: OwnedStorage, owner: {
     if (!resolved || (teacher ? !teacherReady(resolved.choice.connection) : !resolved.choice.connection.enabled))
       throw new StorageError('unavailable');
     if (reasoningEffort && modelReasoningError({ ...resolved.choice.connection, reasoningEffort })) throw new StorageError('invalid');
-    const projection = teacher ? await readTeacher(identity) : await read(identity);
+    const projection = teacher ? await readTeacher(identity, undefined, localOnly) : await read(identity);
     return (await storage.request({ requestId: requestKey, fingerprint: hash }, async tx => {
       if ('source' in resolved) {
         await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', ['model-config:' + resolved.source.ownerScope]);
@@ -218,10 +224,11 @@ export function createModelSelections(storage: OwnedStorage, owner: {
       return result;
     })).result;
   }
-  async function teacherChoice(identity: SpaceIdentity, configured?: string) {
+  async function teacherChoice(identity: SpaceIdentity, configured?: string, localOnly = false) {
     await owner.authorize(identity);
     const saved = await current(identity, true);
     const version = saved?.version ?? 0;
+    if (localOnly && saved?.source.kind !== 'personal') return { version, choice: null, source: null };
     const configuredSource = configured ? { kind: 'school' as const, connectionId: configured } : undefined;
     try {
       let fixed = await resolve(identity, saved?.source ?? configuredSource);
@@ -235,17 +242,17 @@ export function createModelSelections(storage: OwnedStorage, owner: {
       return { version, choice: null, source: null };
     }
   }
-  async function readTeacher(identity: SpaceIdentity, configured?: string) {
-    const { version, choice } = await teacherChoice(identity, configured);
-    const school = await owner.school(identity);
+  async function readTeacher(identity: SpaceIdentity, configured?: string, localOnly = false) {
+    const { version, choice } = await teacherChoice(identity, configured, localOnly);
+    const school = localOnly ? null : await owner.school(identity);
     const options = [...school ? [school] : [], ...(await owner.list(identity)).map(connection => ({
       kind: 'personal' as const, connection, policy: personalPolicy, origin: 'self' as const,
     }))];
     return modelSelectionSchema.parse({ version, selected: choice, options,
       ...(!choice ? { unavailableReason: version ? 'connection-unavailable' : 'model-not-selected' } : {}) });
   }
-  async function pinTeacher(identity: SpaceIdentity, pinId: string, version: number, configured?: string) {
-    const selected = await teacherChoice(identity, configured);
+  async function pinTeacher(identity: SpaceIdentity, pinId: string, version: number, configured?: string, localOnly = false) {
+    const selected = await teacherChoice(identity, configured, localOnly);
     if (selected.version !== version) throw new StorageError('conflict');
     if (!selected.source) throw new StorageError('unavailable');
     return pinSource(identity, pinId, version, selected.source);
@@ -381,6 +388,8 @@ export function createModelSelections(storage: OwnedStorage, owner: {
   async function authorizeAttempt(identity: SpaceIdentity, source: ModelAttempt['source'], connectionId: string) {
     if (!source?.grantId) {
       if (source?.kind === 'personal' && source.ownerScope !== modelScopeOf(identity)) {
+        if (owner.sharesConfigurations?.() && source.ownerScope === await owner.connectionScope?.(modelScopeOf(identity), connectionId))
+          return;
         const actor = await owner.deviceOwner?.(identity);
         if (!actor || modelScopeOf(actor) !== source.ownerScope) throw new StorageError('forbidden');
         await owner.authorize(actor);
@@ -415,7 +424,7 @@ export function createModelSelections(storage: OwnedStorage, owner: {
         continue;
       }
       if (item.source.kind === 'personal' && !item.source.grantId && item.source.owner === 'self')
-        await owner.connection(String(row.scope), item.source.connectionId);
+        await owner.connection(await owner.connectionScope?.(String(row.scope), item.source.connectionId) ?? String(row.scope), item.source.connectionId);
       if (item.source.kind === 'personal' && item.source.grantId) {
         const authorization = await grant(item.source.grantId);
         if (authorization.connectionId !== item.source.connectionId || modelScopeOf(authorization.recipient) !== row.scope) throw new StorageError('corrupt');
@@ -430,7 +439,8 @@ export function createModelSelections(storage: OwnedStorage, owner: {
       if (source.kind !== original.kind || fixed.choice.connection.connectionId !== original.connectionId) throw new StorageError('corrupt');
       if (original.kind === 'personal' && !original.grantId) {
         if (source.grantId || source.grantVersion || source.feeSource !== source.ownerScope
-          || original.owner === 'self' && source.ownerScope !== row.scope) throw new StorageError('corrupt');
+          || original.owner === 'self' && source.ownerScope !== row.scope
+            && source.ownerScope !== await owner.connectionScope?.(String(row.scope), original.connectionId)) throw new StorageError('corrupt');
         await owner.connection(source.ownerScope, original.connectionId);
       }
       if (original.kind === 'personal' && original.grantId) {
@@ -460,7 +470,7 @@ export function createModelSelections(storage: OwnedStorage, owner: {
         || fingerprint(modelDeviceBindingSchema.parse(binding.body)) !== fingerprint(item.binding)) throw new StorageError('corrupt');
     }
   }
-  return { read, save, readTeacher, pinTeacher, saveTeacher: (identity: SpaceIdentity, value: unknown) => save(identity, value, true),
+  return { read, save, readTeacher, pinTeacher, saveTeacher: (identity: SpaceIdentity, value: unknown, localOnly = false) => save(identity, value, true, localOnly),
     createGrant, revoke, readGrant, assertDeviceGrantActive,
     createDeviceGrant(identity: SpaceIdentity, value: unknown) { if (!deviceGranter) throw new StorageError('unavailable'); return deviceGranter(identity, value); },
     onDeviceGrant(handler: NonNullable<typeof deviceGranter>) { deviceGranter = handler; },

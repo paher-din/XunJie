@@ -1620,42 +1620,24 @@ small.t-pulse-counts {
   overflow: hidden;
 }
 .product-shell .content.teacher-page--agent {
+  max-width: none;
+  padding-inline: 0;
   padding-bottom: 0;
 }
 .teacher-page--agent .t-tabbar {
   flex: none;
+  margin-inline: 0;
   margin-bottom: 0;
 }
-.t-agent-panel,
-.t-agent-shell {
+.t-agent-panel {
   display: flex;
   flex: 1;
   flex-direction: column;
   min-height: 0;
 }
-.t-agent-shell .chat-composer {
-  flex: none;
-}
-/* 与正式版学生 Agent 页共用输入框外观：浮起的输入面、聚焦描边与光晕 */
-.t-agent-shell .prompt-input {
-  box-shadow: var(--panel-shadow);
-}
-.t-agent-shell .prompt-input:has(> .prompt-editor > textarea:focus) {
-  border-color: var(--accent);
-  box-shadow: var(--panel-shadow), var(--focus-glow);
-}
-.t-agent-shell .chat-disclaimer {
-  font-size: 12px;
-  color: var(--muted);
-}
-.t-agent-shell .product-agent-body {
+.t-agent-panel > .product-agent {
   flex: 1;
   min-height: 0;
-  display: grid;
-  place-items: center;
-}
-.t-agent-shell .product-agent-body .chat-empty {
-  margin: 0;
 }
 .t-task-focus {
   display: flex;

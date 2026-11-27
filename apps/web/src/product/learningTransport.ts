@@ -13,10 +13,11 @@ export async function learningRequest(activity: LearningActivity, spaceKey: stri
   return learningSubjectRequest(activity.identity, spaceKey, namespace, route, body, 30000, signal)
 }
 export async function learningSubjectRequest(identity: SpaceIdentity, spaceKey: string, namespace: string,
-  route: string, body?: unknown, timeoutMs = 30000, signal?: AbortSignal): Promise<unknown> {
+  route: string, body?: unknown, timeoutMs = 30000, signal?: AbortSignal, teacher = false): Promise<unknown> {
   const response = await fetch('/api/learning/' + route, { method: body === undefined ? 'GET' : 'POST',
     credentials: 'same-origin', redirect: 'error', cache: 'no-store',
     headers: { 'content-type': 'application/json', 'x-xj-space': spaceKey, 'x-xj-namespace': namespace,
+      ...(teacher ? { 'x-xj-teacher-agent': '1' } : {}),
       'x-xj-expected-subject': [identity.environmentId, identity.spaceId, identity.principalId].join('.') },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(timeoutMs)]) : AbortSignal.timeout(timeoutMs) })
   let value: unknown

@@ -78,6 +78,9 @@ export interface ModelGatewayOptions {
   authorizePermit?(identity: SpaceIdentity, permit: AgentDispatchPermit, context: ModelPermitContext): Promise<void>;
   authorize(identity: SpaceIdentity): Promise<void>;
   deviceOwner?(identity: SpaceIdentity): Promise<SpaceIdentity | null>;
+  /** Browser/device configuration only. A paired school operation keeps its explicit access scope. */
+  shareDeviceConfigurations?: boolean;
+  inRemoteModelTask?(): boolean;
   catalogueFetch?: typeof fetch;
   /** Trusted composition/test transport; the target is still checked before credentials leave. */
   supplierFetch?: typeof fetch;
@@ -117,20 +120,51 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
     version: stored.version, routeId: stored.routeId, hasCredential: !!stored.credentialRef,
     adapterState: adapterReady(stored.configuration) ? 'ready' : 'not-integrated',
     ...measuredCapabilities(stored.configuration) });
+  const deviceScopePattern = '^[[:xdigit:]-]{36}[.][[:xdigit:]-]{36}[.][[:xdigit:]-]{36}$';
+  const sharesConfigurations = () => options.shareDeviceConfigurations === true && !options.inRemoteModelTask?.();
+  const configurationScopePattern = () => sharesConfigurations() ? deviceScopePattern : null;
+  function deviceScopeLookup(kind: 'connection' | 'provider') {
+    return kind === 'connection'
+      ? 'SELECT scope FROM model_connections WHERE id=$1 AND scope ~ $2'
+      : `SELECT scope FROM model_providers WHERE id=$1 AND scope ~ $2
+         UNION SELECT scope FROM model_connections WHERE coalesce((body->'configuration'->>'providerId')::uuid,id)=$1 AND scope ~ $2`;
+  }
+  async function assertDeviceScope(tx: OwnedTransaction, scope: string, id: string, kind: 'connection' | 'provider') {
+    if (!sharesConfigurations()) return;
+    await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', ['model-device-' + kind + ':' + id]);
+    const { rows } = await tx.query(deviceScopeLookup(kind), [id, deviceScopePattern]);
+    if (rows.some(row => row.scope !== scope)) throw new StorageError('conflict');
+  }
+  async function sharedScope(scope: string, id: string, kind: 'connection' | 'provider') {
+    if (!sharesConfigurations()) return scope;
+    const { rows } = await storage.read(deviceScopeLookup(kind), [id, deviceScopePattern]);
+    if (rows.length > 1) throw new StorageError('conflict');
+    return rows[0]?.scope as string | undefined;
+  }
+  async function connectionScope(scope: string, id: string) {
+    return await sharedScope(scope, id, 'connection') ?? scope;
+  }
+  async function writableScope(identity: SpaceIdentity, id: string, kind: 'connection' | 'provider') {
+    return await sharedScope(scopeOf(identity), id, kind) ?? scopeOf(identity);
+  }
   async function list(identity: SpaceIdentity) {
     await options.authorize(identity);
-    const { rows } = await storage.read(`SELECT body FROM model_connections WHERE scope=$1 AND NOT (body @> '{"retired":true}') ORDER BY id`, [scopeOf(identity)]);
+    const { rows } = await storage.read(`SELECT id,body FROM model_connections WHERE (scope=$1 OR scope ~ $2)
+      AND NOT (body @> '{"retired":true}') ORDER BY id`, [scopeOf(identity), configurationScopePattern()]);
+    if (new Set(rows.map(row => row.id)).size !== rows.length) throw new StorageError('conflict');
     return rows.map(row => projection(row.body as StoredConnection));
   }
   async function save(identity: SpaceIdentity, value: unknown) {
     if (writesClosed) throw new StorageError('maintenance');
     await options.authorize(identity);
-    return persist(scopeOf(identity), value);
+    const input = saveModelConnectionSchema.parse(value);
+    return persist(await writableScope(identity, input.connectionId, 'connection'), input);
   }
   async function writeConnection(tx: OwnedTransaction, scope: string, value: SaveModelConnection, policy?: ModelCheckPolicy, providerWrite = false, retired?: true) {
     const input = saveModelConnectionSchema.parse(value);
     const configuration = modelConfigurationSchema.parse(Object.fromEntries(Object.entries(input).filter(([name]) =>
       !['requestId', 'expectedVersion', 'credential'].includes(name))));
+    if (!policy) await assertDeviceScope(tx, scope, input.connectionId, 'connection');
     if (policy) {
       const { rows: [existing] } = await tx.query('SELECT id FROM model_connections WHERE scope=$1', [scope]);
       if (existing && existing.id !== input.connectionId) throw new StorageError('conflict');
@@ -224,6 +258,8 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
     },
   });
   const providers = createModelProviders(storage, { authorize: options.authorize, project: projection, readCredential,
+    scopePattern: configurationScopePattern, writableScope: (identity, id) => writableScope(identity, id, 'provider'),
+    assertScope: (tx, scope, id) => assertDeviceScope(tx, scope, id, 'provider'),
     prepare: async (input, identity) => {
       if (!input.models.length || !input.presetId || input.presetId === 'custom') return;
       const saved = input.credential.action === 'keep' ? input.models.find(model => model.expectedVersion > 0) : undefined;
@@ -259,16 +295,21 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
   const selection = createModelSelections(storage, {
     authorize: options.authorize, school: schoolDefault, list,
     ...(options.deviceOwner ? { deviceOwner: options.deviceOwner } : {}),
+    sharesConfigurations, connectionScope,
     assertWritable() { if (writesClosed) throw new StorageError('maintenance'); },
     async connection(scope, connectionId) {
       const { rows: [row] } = await storage.read('SELECT body FROM model_connections WHERE scope=$1 AND id=$2', [scope, connectionId]);
       if (!row) throw new StorageError('missing'); return projection(row.body as StoredConnection);
     },
   });
-  async function stored(identity: SpaceIdentity, id: string) {
-    const { rows: [row] } = await storage.read('SELECT body FROM model_connections WHERE scope=$1 AND id=$2', [scopeOf(identity), id]);
+  async function storedConfiguration(identity: SpaceIdentity, id: string) {
+    const scope = await connectionScope(scopeOf(identity), id);
+    const { rows: [row] } = await storage.read('SELECT body FROM model_connections WHERE scope=$1 AND id=$2', [scope, id]);
     if (!row) throw new StorageError('missing');
-    return row.body as StoredConnection;
+    return { scope, connection: row.body as StoredConnection };
+  }
+  async function stored(identity: SpaceIdentity, id: string) {
+    return (await storedConfiguration(identity, id)).connection;
   }
   async function uncheckedSnapshot(identity: SpaceIdentity, source: ModelCheckInput['source'], learning = false, selectedSource?: unknown): Promise<CheckSnapshot> {
     await options.authorize(identity);
@@ -298,9 +339,11 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
         credentialRef: stored.credentialRef, policy: stored.policy ?? chosen.choice.policy, source: chosen.source };
     }
     let configuration: ModelConfiguration, credentialRef: string | null, version: number, routeId: string;
+    let ownerScope = scopeOf(identity);
     let retain: ((tx: OwnedTransaction) => Promise<void>) | undefined;
     if ('connectionId' in source) {
-      const current = await stored(identity, source.connectionId);
+      const { connection: current, scope } = await storedConfiguration(identity, source.connectionId);
+      ownerScope = scope;
       if (current.version !== source.version) throw new StorageError('conflict');
       ({ configuration, credentialRef, version, routeId } = current);
     } else {
@@ -308,7 +351,8 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
       // Reject unsupported/disabled snapshots before any temporary secret is retained.
       if (!configuration.enabled || !adapterReady(configuration)) throw new StorageError('unavailable');
       if (source.credential.action === 'keep' && source.savedCredential) {
-        const saved = await stored(identity, source.savedCredential.connectionId);
+        const { connection: saved, scope } = await storedConfiguration(identity, source.savedCredential.connectionId);
+        ownerScope = scope;
         if (saved.version !== source.savedCredential.version || saved.configuration.connectionId !== configuration.connectionId
           || targetOf(saved.configuration) !== targetOf(configuration)) throw new StorageError('conflict');
         credentialRef = saved.credentialRef; version = saved.version; routeId = saved.routeId;
@@ -325,7 +369,7 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
     }
     if (!configuration.enabled || !adapterReady(configuration) || !credentialRef) throw new StorageError('unavailable');
     return { connection: projection({ configuration, credentialRef, routeId, version }), credentialRef,
-      source: { kind: 'personal', ownerScope: scopeOf(identity), feeSource: scopeOf(identity) }, ...(retain ? { retain } : {}) };
+      source: { kind: 'personal', ownerScope, feeSource: ownerScope }, ...(retain ? { retain } : {}) };
   }
   async function snapshot(identity: SpaceIdentity, source: ModelCheckInput['source'], learning = false, selectedSource?: unknown): Promise<CheckSnapshot> {
     const fixed = await uncheckedSnapshot(identity, source, learning, selectedSource);
@@ -430,12 +474,12 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
   async function readCredential(identity: SpaceIdentity, connectionId: string, version: number) {
     await options.authorize(identity);
     z.uuid().parse(connectionId); z.number().int().positive().parse(version);
-    const current = await stored(identity, connectionId);
+    const { connection: current, scope } = await storedConfiguration(identity, connectionId);
     if (current.version !== version) throw new StorageError('conflict');
     let value = '';
     if (current.credentialRef) {
       const { rows: [row] } = await storage.read('SELECT binding,sealed FROM model_credentials WHERE id=$1 AND scope=$2 AND temporary=false',
-        [current.credentialRef, scopeOf(identity)]);
+        [current.credentialRef, scope]);
       if (!row) throw new StorageError('forbidden');
       value = openCredential(key, row.binding as string, row.sealed as ReturnType<typeof sealCredential>);
     }

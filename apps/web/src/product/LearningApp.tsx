@@ -476,8 +476,7 @@ function LearningView() {
       // after rendering makes a direct visit visibly flash the student home first.
       // A school authorization request must stay on this page so the approval
       // action is reachable even when the account is already signed in.
-      // The school runtime only ships LearningApp; redirecting it to ?teacher
-      // would reload forever because that entry never mounts TeacherSpace.
+      // The direct school entry keeps its default student landing.
       if (next.account?.key && !authorize && next.profile !== 'school') {
         try {
           const catalog = await loadTeacherCatalog(next.clientNamespace, next.account.key)
@@ -1327,7 +1326,7 @@ function LearningView() {
       {schoolControls}
     </div> : routeActivityId ? <div className="content" role="status">{error ? '学习活动暂时无法打开。' : ''}{error && <Button variant="outline" onClick={goHome}>返回首页</Button>}</div>
     : agentOpen && (!personalKey || key !== personalKey) ? <div className="content home-page"><p>请在本机客户端开始个人学习；学校课程请从首页进入。</p><Button onClick={goHome}>返回首页</Button></div> : agentOpen ? <Suspense fallback={<div className="content" role="status" aria-label="正在准备对话" />}><ProductAgent
-      key={context.clientNamespace + identity.principalId + (routeSessionId ?? 'new')} identity={identity} spaceKey={key} namespace={context.clientNamespace}
+      key={context.clientNamespace + identity.principalId} identity={identity} spaceKey={key} namespace={context.clientNamespace}
       sessionId={routeSessionId} session={conversationHistory.items.find(item => item.sessionId === routeSessionId)} onSession={sessionCreated} onWorkspace={(id, source) => void action(async () => {
         if (!source) return openActivity(id, false, personalKey)
         const original = context.identities.find(item => item.identity.environmentId === source.environmentId

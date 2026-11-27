@@ -11,6 +11,8 @@ export interface PromptContextItem {
 
 export interface PromptAdditionsProps {
   view: 'add' | 'skills' | null
+  allowFiles?: boolean
+  singleSkill?: boolean
   disabled?: boolean
   skills: readonly { id: string; label: string; description: string; disabled?: boolean; selected?: boolean }[]
   skillStatus?: string
@@ -25,7 +27,7 @@ export interface PromptAdditionsProps {
   restoreFocus: () => void
 }
 
-export function PromptAdditions({ view, disabled, skills, skillStatus, onView, onFiles, onSkill, focusSkills, restoreFocus,
+export function PromptAdditions({ view, disabled, allowFiles = true, singleSkill = false, skills, skillStatus, onView, onFiles, onSkill, focusSkills, restoreFocus,
   listId: suppliedId, activeSkillId, onActiveSkill, isSlash }: PromptAdditionsProps) {
   const fallbackId = useId(), listId = suppliedId ?? fallbackId
   const [localActive, setLocalActive] = useState('')
@@ -60,11 +62,11 @@ export function PromptAdditions({ view, disabled, skills, skillStatus, onView, o
       : (index + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length
     items[next]?.focus()
   }}>
-    <button ref={trigger} type="button" className="prompt-attach" aria-label="添加" aria-haspopup={view === 'skills' ? 'listbox' : 'menu'}
+    <button ref={trigger} type="button" className="prompt-attach" aria-label={allowFiles ? '添加' : '选择技能'} aria-haspopup={!allowFiles || view === 'skills' ? 'listbox' : 'menu'}
       aria-expanded={!!view} aria-controls={view ? listId : undefined} disabled={disabled}
-      onClick={() => onView(view === 'add' ? null : 'add')}><Icon name="add" size={18} /></button>
+      onClick={() => onView((allowFiles ? view === 'add' : !!view) ? null : allowFiles ? 'add' : 'skills')}><Icon name="add" size={18} /></button>
     {view && <div ref={menu} id={listId} className="prompt-model-menu prompt-add-menu" data-view={view}
-      role={view === 'add' ? 'menu' : 'listbox'} aria-multiselectable={view === 'skills' ? true : undefined} aria-label={view === 'add' ? '添加' : '选择技能'}>
+      role={view === 'add' ? 'menu' : 'listbox'} aria-multiselectable={view === 'skills' && !singleSkill ? true : undefined} aria-label={view === 'add' ? '添加' : '选择技能'}>
       <header className="prompt-add-title"><strong>{view === 'add' ? '添加' : '技能'}</strong>
         {view === 'skills' && <span>输入 / 快速调用</span>}</header>
       {view === 'add' ? <>

@@ -87,6 +87,7 @@ const cleanupDestinationSchema = z.object({ connectionId: z.uuid(), schoolEndpoi
   const url = new URL(value);
   return value === url.origin && (url.protocol === 'https:' || url.protocol === 'http:' && ['127.0.0.1', '[::1]'].includes(url.hostname));
 }) }).strict();
+const pairedModelScope = new AsyncLocalStorage<true>();
 const modelTaskAuthorization = new AsyncLocalStorage<{
   identity: SpaceIdentity; authorize(fresh?: boolean): Promise<void>;
   authorizePermit?(identity: SpaceIdentity, permit: AgentDispatchPermit, attemptId: string, phase: 'receive' | 'dispatch' | 'active'): Promise<void>;
@@ -369,7 +370,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
         method: body === undefined ? 'GET' : 'POST', redirect: 'error', signal: AbortSignal.timeout(
           /^study-transfer(?:\/ack)?$/.test(route) ? 120000
             : route.startsWith('pdf/') ? 45000 : 10000),
-        headers: { 'content-type': 'application/json', ...(/^(?:agent-sessions(?:\/|$)|agent-sources$)/.test(route) ? { 'x-xj-agent-contract': '3' } : {}), ...(authorized ? { authorization: `Bearer ${connection.grant!.token}` } : {}) },
+        headers: { 'content-type': 'application/json', ...(/^(?:agent-sessions(?:[/?]|$)|agent-sources$)/.test(route) ? { 'x-xj-agent-contract': '3' } : {}), ...(authorized ? { authorization: `Bearer ${connection.grant!.token}` } : {}) },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       });
     } catch { throw new StorageError('unavailable'); }
@@ -387,6 +388,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     // this ceiling cannot be borrowed by an operation that was never sized for a toolchain file.
     if (runtimeResourceRoute.test(route)) return boundedJsonResponse(response, runtimeResourceResponseBytes);
     if(executionArtifactRoute.test(route))return boundedJsonResponse(response,executionArtifactResponseBytes);
+    if (route === 'manage/teacher-course-read') return boundedJsonResponse(response, 16*1024*1024);
     if (route.startsWith('agent-sessions')) return boundedJsonResponse(response, 16*1024*1024);
     if (route.startsWith('artifacts/')) return boundedJsonResponse(response, 2000000);
     if (route.startsWith('materials/')) return boundedJsonResponse(response, 3*1024*1024);
@@ -1169,7 +1171,9 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       const current = await read(connection.requestId);
       if (!current.modelBinding || !current.grant) throw new StorageError('forbidden');
       await checkModelAccess(current, current.modelBinding.runtimeConnectionId);
-      const projection = modelSelectionSchema.parse(await local.models!.selection.read(current.grant.identity, await local.personal?.()));
+      const personal = await local.personal?.();
+      const identity = current.grant.identity;
+      const projection = modelSelectionSchema.parse(await pairedModelScope.run(true, () => local.models!.selection.read(identity, personal)));
       const fingerprint = createHash('sha256').update(JSON.stringify([current.modelBinding,
         projection.options.map(option => JSON.stringify(option)).sort()])).digest('hex');
       if (publishedChoices.get(current.requestId) === fingerprint) return projection;
@@ -1657,6 +1661,43 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     }
     return localForward(connection, route, body, learning);
   }
+  async function teacherCatalog(identity: SpaceIdentity) {
+    return courseCatalogSchema.parse(await call(await identityConnection(identity, false), 'manage/course-catalog', {}, true));
+  }
+  function teacherPublished(identity: SpaceIdentity, courseId: string) {
+    async function readPublished(releaseId: string, materialId?: string) {
+      const connection = await identityConnection(identity, false);
+      try {
+        return await call(connection, 'manage/teacher-course-read', { courseId, releaseId, ...(materialId ? { materialId } : {}) }, true);
+      } catch (error) {
+        if (!(error instanceof StorageError) || !['forbidden', 'missing'].includes(error.code)) throw error;
+        // Older schools may authorize the same teacher through their existing course access list.
+        const course = (await teacherCatalog(identity)).courses.find(item => item.courseId === courseId);
+        if (!course?.tasks.some(task => task.releases.some(release => release.releaseId === releaseId))) throw error;
+        return call(connection, 'releases/' + releaseId + (materialId ? '/materials/' + materialId : ''), undefined, true);
+      }
+    }
+    return {
+      async find(query: string) {
+        const course = (await teacherCatalog(identity)).courses.find(item => item.courseId === courseId);
+        if (!course) throw new StorageError('forbidden');
+        const needle = query.toLowerCase();
+        return course.tasks.filter(task => task.title.toLowerCase().includes(needle)).flatMap(task => task.releases.map(release => ({
+          taskId: task.taskId, title: task.title, releaseId: release.releaseId, publishedAt: release.publishedAt,
+        }))).slice(0, 21);
+      },
+      async release(releaseId: string) {
+        const release = courseReleaseSchema.parse(await readPublished(z.uuid().parse(releaseId)));
+        if (release.courseId !== courseId || release.releaseId !== releaseId) throw new StorageError('identity-conflict');
+        return release;
+      },
+      async material(releaseId: string, materialId: string) {
+        const material = courseMaterialContentSchema.parse(await readPublished(z.uuid().parse(releaseId), z.uuid().parse(materialId)));
+        if (material.materialId !== materialId) throw new StorageError('identity-conflict');
+        return material;
+      },
+    };
+  }
   async function forward(connectionId: string, route: string, body?: unknown, expectedSubject?: string, search = '', contractVersion?: unknown) {
     if (/^(agent|skills)(\/|$)/.test(route)) throw new StorageError('incompatible');
     if ((/^agent-sessions(\/|$)/.test(route) || route === 'agent-sources') && contractVersion !== '3') throw new StorageError('incompatible');
@@ -1927,6 +1968,6 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     await rememberCleanupDestination(connection);
     return call(connection, `native-channel/${operation}`, input, true);
   }
-  return { list, account, start, complete, configureLocal, configureModel, configureAgent, forward, nativeChannelCall,
-    authorizeModel, authorizeModelDispatch, authorizePermit, schoolModel, pollModelTasks, agentDependency, sessionDependency, sessionDirectory, sessionAgent, sessionSkills, learningSources, openActivity, dependenciesForSession, querySource, identityForAgent, publishExecutionRecord, executionEnvironmentFor };
+  return { list, account, start, complete, configureLocal, configureModel, configureAgent, forward, teacherCatalog, teacherPublished, nativeChannelCall,
+    authorizeModel, authorizeModelDispatch, authorizePermit, inRemoteModelTask: () => !!modelTaskAuthorization.getStore() || !!pairedModelScope.getStore(), schoolModel, pollModelTasks, agentDependency, sessionDependency, sessionDirectory, sessionAgent, sessionSkills, learningSources, openActivity, dependenciesForSession, querySource, identityForAgent, publishExecutionRecord, executionEnvironmentFor };
 }

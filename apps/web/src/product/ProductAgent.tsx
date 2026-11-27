@@ -1,18 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { AgentEmptyState, ChatViewport, Markdown } from '@xunjie/ui/chat'
+import { AgentEmptyState, ChatViewport, Markdown, UserMessage } from '@xunjie/ui/chat'
 import { Button } from '@xunjie/ui/foundation'
 import { toast } from '@xunjie/ui/feedback'
+import { teacherChatInputContextSchema } from '@xunjie/contracts/teacher-agent'
 import type { AgentSession } from '@xunjie/contracts/agent-sessions'
 import type { SpaceIdentity } from '@xunjie/contracts/spaces'
-import { agentInputReceiptSchema } from '@xunjie/contracts/agent-runtime'
+import { agentInputReceiptSchema, type AgentInput } from '@xunjie/contracts/agent-runtime'
 import type { ModelSelectionController } from './ModelSelection'
 import { useAgentModelPicker } from './AgentModelPicker'
-import { AgentSessionsClient, SessionOutbox } from './agent-sessions'
+import { AgentSessionRequestError, AgentSessionsClient, SessionOutbox } from './agent-sessions'
 import { useAgentSession, sessionError } from './useAgentSession'
 import { SessionConversation } from './SessionConversation'
+import { toolResultData } from './workspace-conversation'
 import { protectSessionUpload, deliverSessionUpload, sessionUploads, readSessionMaterial, type SessionMaterialUpload } from './session-materials'
 import { useViewPolling } from './useViewPolling'
-import { useSessionDraft, protectSessionDraft } from './session-drafts'
+import { useSessionDraft, protectSessionDraft, type TeacherDraftTarget } from './session-drafts'
 import { MODEL_MESSAGE_IMAGE_LIMIT, modelMessageImagesSchema, type ModelMessageImage } from '@xunjie/contracts/model-connections'
 import { IMAGE_MODEL_HINT, isAgentImage, uploadAgentImage, useAgentImagePreviews, type AgentImageSource } from '../reliable-workspace/agent-images'
 import { learningSubjectRequest } from './learningTransport'
@@ -60,15 +62,27 @@ function writeImageDraft(scope: string, sessionId: string, images: ModelMessageI
   else localStorage.removeItem(key)
 }
 
+function teacherExcerpt(value: unknown) {
+  return value && typeof value === 'object' && 'text' in value && typeof value.text === 'string' ? value.text : ''
+}
+
+export interface TeacherAgentSeed {
+  text: string
+  target?: TeacherDraftTarget
+}
+
+type PostedMessage = Pick<AgentInput, 'sessionId' | 'requestId' | 'text'> & { at: string; first: boolean; inputId?: string }
+
 export function ProductAgent({ identity, spaceKey, namespace, sessionId, session: directorySession, onSession, onWorkspace, onWorkspaceCreated,
-  onSettings, selection, readOnly, viewActive = true, onOpenCourseMaterial }: {
+  onSettings, selection, readOnly, viewActive = true, onOpenCourseMaterial, teacher }: {
   identity: SpaceIdentity; spaceKey: string; namespace: string; sessionId?: string; session?: AgentSession
-  onSession(session: AgentSession): void; onWorkspace(activityId: string, source?: Record<string, unknown>): void; onWorkspaceCreated(): void
+  onSession(session: AgentSession): void; onWorkspace?(activityId: string, source?: Record<string, unknown>): void; onWorkspaceCreated?(): void
   onSettings(): void; selection: ModelSelectionController; readOnly: boolean; viewActive?: boolean
+  teacher?: { courseId: string; seed: TeacherAgentSeed | null; onSeedApplied(): void }
   onOpenCourseMaterial?: (source: CourseCitationLocation) => Promise<CourseCitationDocument>
 }) {
-  const scope = JSON.stringify([namespace, spaceKey, identity.environmentId, identity.spaceId, identity.principalId])
-  const client = useMemo(() => new AgentSessionsClient({ identity, spaceKey, namespace }), [scope])
+  const scope = JSON.stringify([namespace, spaceKey, identity.environmentId, identity.spaceId, identity.principalId, ...(teacher ? [teacher.courseId] : [])])
+  const client = useMemo(() => new AgentSessionsClient({ identity, spaceKey, namespace, teacherCourseId: teacher?.courseId }), [scope])
   const outbox = useMemo(() => new SessionOutbox(client), [client])
   const [metadata, setMetadata] = useState<AgentSession | null>(null), [uploads, setUploads] = useState<SessionMaterialUpload[]>([])
   const [imageDraft, setImageDraft] = useState(() => ({ sessionId, images: readImageDraft(client.scope, sessionId) }))
@@ -76,13 +90,10 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
   const imagePreviews = useAgentImagePreviews(client.scope, images)
   const ownMetadata = directorySession?.sessionId === sessionId ? directorySession : metadata?.sessionId === sessionId ? metadata : null
   const writable = !readOnly && (!sessionId || !!ownMetadata && !ownMetadata.archived && !ownMetadata.deleted)
-  const controller = useAgentSession(client, sessionId, writable, viewActive)
   const { scroller: scroll, atBottom, onScroll, onJump, backToBottom } = useConversationScroll()
   const picker = useAgentModelPicker(selection)
   const needsImageModel = images.length > 0 && !picker.supportsImages
-  const skills = useSessionDraftSkills(identity, spaceKey, namespace, sessionId)
-  const controls = sessionComposerActions(controller, !writable)
-  const pendingQuestion = controller.conversation?.questions.find(question => question.state === 'pending')
+  const skills = useSessionDraftSkills(identity, spaceKey, namespace, sessionId, teacher?.courseId)
   const selectSkills = useCallback(async (id: string, input: { requestId: string; context: Record<string, unknown> }) => {
     if (!Array.isArray(input.context.skills) || input.context.skills.length === 0) return
     sessionSkillStateSchema.parse(await client.request(id + '/skills/select', { requestId: input.requestId, skills: input.context.skills }))
@@ -90,10 +101,46 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
   const clearSkills = useCallback(async (id: string, input: { requestId: string }) => {
     sessionSkillStateSchema.parse(await client.request(id + '/skills/select', { requestId: input.requestId, skills: [] }))
   }, [client])
+  const canUseModel = !teacher || !!selection.selection?.selected && !selection.stale
   const draftKey = 'xj.agent-draft.' + scope + '.' + (sessionId ?? 'new')
   const composer = useSessionDraft(client.scope, sessionId, 'composer', { text: '', editing: true, expectedVersion: 1 }, draftKey)
   const text = composer.value.text
-  const [busy, setBusy] = useState(false), [error, setError] = useState('')
+  const clearTeacherDraft = async (input: Pick<AgentInput, 'text' | 'context'>) => {
+    const current = composer.latest()
+    const target = current.teacherTarget
+    const skill = skills.selected[0]
+    const context = teacherChatInputContextSchema.safeParse(input.context)
+    if (!context.success || current.text !== input.text
+      || target?.releaseId !== context.data.teacherTarget?.releaseId) return
+    if (skill?.skillId === context.data.teacherSkill?.skillId && skill?.version === context.data.teacherSkill?.version)
+      skills.choose([])
+    await composer.clearIfMatches(input.text)
+  }
+  const controller = useAgentSession(client, sessionId, writable, viewActive,
+    teacher ? { ready: composer.ready, delivered: clearTeacherDraft } : undefined)
+  const controls = sessionComposerActions(controller, !writable)
+  const pendingQuestion = controller.conversation?.questions.find(question => question.state === 'pending')
+  const appliedSeed = useRef<TeacherAgentSeed | null>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
+  useEffect(() => {
+    const seed = teacher?.seed
+    if (!composer.ready || !seed || appliedSeed.current === seed) return
+    appliedSeed.current = seed
+    const draft = composer.latest()
+    void composer.change({ ...draft, text: draft.text.trim() ? draft.text + '\n' + seed.text : seed.text, teacherTarget: seed.target }).catch(() => {})
+    teacher.onSeedApplied()
+    inputRef.current?.focus({ preventScroll: true })
+  }, [composer.ready, teacher])
+  const [working, setBusy] = useState(false), [error, setError] = useState('')
+  const [sending, setSending] = useState(false)
+  const [posted, setPosted] = useState<PostedMessage[]>([])
+  const alreadyPresented = useMemo(() => new Set(controller.conversation?.messages.map(message => message.inputId)), [controller.conversation?.messages])
+  const showPosted = ({ sessionId, requestId, text }: Pick<AgentInput, 'sessionId' | 'requestId' | 'text'>, first = false) =>
+    setPosted(items => [...items, { sessionId, requestId, text, at: new Date().toISOString(), first }])
+  const settlePosted = (requestId: string, inputId?: string) => setPosted(items => inputId
+    ? items.map(item => item.requestId === requestId ? { ...item, inputId } : item)
+    : items.filter(item => item.requestId !== requestId))
+  const busy = working || sending
   const [experiment, setExperiment] = useState<ExperimentReference | null>(null)
   const experimentKey = 'xj.agent-experiment.' + namespace
   const loadedExperiment = useRef('')
@@ -105,12 +152,15 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
   const route = useRef(viewKey); route.current = viewKey
   const alive = useRef(true)
   const attaching = useRef(false)
+  const starting = useRef<string | null>(null)
   const resettingSkills = useRef<string | null>(null)
   useEffect(() => { alive.current = true; return () => { alive.current = false } }, [])
   useEffect(() => {
     let live = true
     courseRead.current++
-    setReading(null); setCourseReading(null); setUploads([]); setExcluded([]); setMetadata(null); setBusy(false); setError(''); setPending(outbox.start())
+    setReading(null); setCourseReading(null); setUploads([]); setExcluded([]); setMetadata(null); setBusy(false); setSending(false); setError(''); setPending(outbox.start())
+    setPosted(items => items.filter(item => item.sessionId === sessionId))
+    backToBottom()
     setImageDraft({ sessionId, images: readImageDraft(client.scope, sessionId) })
     if (sessionId) {
       void client.read(sessionId).then(value => { if (live) setMetadata(value) }).catch(cause => { if (live) setError(sessionError(cause)) })
@@ -118,19 +168,23 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
     return () => { live = false }
   }, [draftKey, client, sessionId])
   useEffect(() => {
-    if (loadedExperiment.current === experimentKey) return
-    loadedExperiment.current = experimentKey
+    if (posted.some(item => item.inputId && alreadyPresented.has(item.inputId)))
+      setPosted(items => items.filter(item => !item.inputId || !alreadyPresented.has(item.inputId)))
+  }, [alreadyPresented, posted])
+  useEffect(() => {
+    if (teacher || !composer.ready || loadedExperiment.current === viewKey) return
+    loadedExperiment.current = viewKey
     try {
       const value = parseExperimentReference(JSON.parse(sessionStorage.getItem(experimentKey) ?? 'null'))
       setExperiment(value)
       if (value && !composer.value.text.trim()) void composer.change({ ...composer.value, text: value.question }).catch(() => {})
-    } catch { sessionStorage.removeItem(experimentKey) }
-  }, [experimentKey, composer])
+    } catch { setExperiment(null); sessionStorage.removeItem(experimentKey) }
+  }, [viewKey, composer.ready])
   useViewPolling(async () => {
     if (!sessionId) return
     try { const items = await sessionUploads(client, sessionId); if (alive.current && route.current === viewKey) setUploads(items) }
     catch (cause) { if (alive.current && route.current === viewKey) setError(sessionError(cause)) }
-  }, viewKey + ':materials', 10000, !!sessionId && viewActive)
+  }, viewKey + ':materials', 10000, !teacher && !!sessionId && viewActive)
   useEffect(() => {
     if (!sessionId) return
     const key = sessionSkillResetKey(client.scope, sessionId), raw = localStorage.getItem(key)
@@ -166,10 +220,15 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
     setImageDraft({ sessionId, images: remaining })
   }, [client, sessionId, controller.conversation, images])
   const completeStart = useCallback(async () => {
-    setBusy(true)
+    const original = outbox.start()
+    if (!original || starting.current === viewKey) return
+    starting.current = viewKey
+    setSending(true)
+    showPosted(original.input, true)
     try {
-      const original = outbox.start()
-      const value = await outbox.deliverStart(undefined, (session, input) => selectSkills(session.sessionId, input)); if (alive.current && route.current === viewKey) setPending(null)
+      const value = await outbox.deliverStart(original)
+      settlePosted(original.input.requestId, value.receipt.inputId)
+      if (alive.current && route.current === viewKey) setPending(null)
       if (experiment) { sessionStorage.removeItem(experimentKey); setExperiment(null) }
       if (alive.current && route.current === viewKey && !sessionId) {
         if (Array.isArray(original?.input.context.skills) && original.input.context.skills.length) {
@@ -177,6 +236,7 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
             clientScope: client.scope, turnId: value.receipt.turnId })
           skills.choose([])
         }
+        if (teacher && original?.input.context.teacherSkill) skills.choose([])
         const nextDraft = composer.latest()
         const retained = nextDraft.text && nextDraft.text !== original?.input.text
           ? protectSessionDraft(client.scope, value.session.sessionId, 'composer', nextDraft) : Promise.resolve()
@@ -185,11 +245,19 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
         await Promise.all([retained, cleared])
       }
     } catch (cause) {
+      settlePosted(original.input.requestId)
+      if (teacher && cause instanceof AgentSessionRequestError && cause.rejected) {
+        outbox.discardStart(original.input.requestId)
+        if (alive.current && route.current === viewKey) setPending(null)
+      }
       if (alive.current && route.current === viewKey) setError(sessionError(cause))
       skills.restoreVisible?.()
-    } finally { if (alive.current && route.current === viewKey) setBusy(false) }
-  }, [outbox, draftKey, onSession, identity, spaceKey, namespace, client.scope, skills.choose, experiment, experimentKey])
-  useEffect(() => { if (pending && !sessionId && !readOnly && composer.ready) void completeStart() }, [client, composer.ready])
+    } finally {
+      if (starting.current === viewKey) starting.current = null
+      if (alive.current && route.current === viewKey) setSending(false)
+    }
+  }, [outbox, draftKey, onSession, identity, spaceKey, namespace, client.scope, skills.choose, experiment, experimentKey, teacher])
+  useEffect(() => { if (!sessionId && !readOnly && composer.ready) void completeStart() }, [client, sessionId, readOnly, composer.ready])
   async function ensureSession() {
     if (sessionId) return sessionId
     const key = 'xj.agent-material-session.' + scope
@@ -240,30 +308,43 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
     finally { attaching.current = false; if (alive.current && route.current === viewKey) setBusy(false) }
   }
   const send = async () => {
-    if (!writable || busy || attaching.current || !text.trim() || picker.blocked || needsImageModel || !composer.ready) return
-    setError(''); setBusy(true)
+    if (!writable || busy || pending || attaching.current || !text.trim() || !canUseModel || picker.blocked || needsImageModel || !composer.ready) return
+    setError(''); setSending(true)
     const selectedSkills = [...skills.selected]
+    let requestId: string | undefined
     if (selectedSkills.length) skills.consumeVisible?.()
     try {
-      await composer.protect()
-      const context = { skills: selectedSkills, ...(images.length ? { messageImages: images } : {}), materials: uploads.filter(item => !excluded.includes(item.key)).map(item => ({ kind: item.kind === 'pdf' ? 'pdf' : 'personal-material',
+      const target = teacher && composer.value.teacherTarget
+      const context = teacher ? teacherChatInputContextSchema.parse({
+        ...(target ? { teacherTarget: { kind: target.kind, taskId: target.taskId, releaseId: target.releaseId } } : {}),
+        ...(selectedSkills[0] ? { teacherSkill: selectedSkills[0] } : {}),
+      }) : { skills: selectedSkills, ...(images.length ? { messageImages: images } : {}), materials: uploads.filter(item => !excluded.includes(item.key)).map(item => ({ kind: item.kind === 'pdf' ? 'pdf' : 'personal-material',
         scope: { kind: 'session', sessionId }, objectId: item.input.documentId ?? item.input.materialId, requestId: item.input.requestId })),
         ...(experiment ? { experimentReferences: [{ activityId: experiment.activityId, requestId: experiment.requestId,
           executionRef: experiment.executionRef, inputDigest: experiment.inputDigest, label: experiment.label,
           source: experiment.source }] } : {}) }
-      if (!sessionId) { const value = outbox.begin(text, JSON.parse(JSON.stringify(context))); setPending(value); await completeStart() }
+      const inputContext = JSON.parse(JSON.stringify(context)) as AgentInput['context']
+      if (!sessionId) { const value = outbox.begin(text, inputContext); setPending(value); await completeStart() }
       else {
-        // Select fixed capabilities before delivery, with a protected request identity for retries.
-        const selectionKey = 'xj.session-skill-selection.' + client.scope + ':' + sessionId
-        const raw = localStorage.getItem(selectionKey)
-        const choice = raw ? JSON.parse(raw) : { requestId: crypto.randomUUID(), context: { skills: selectedSkills } }
-        localStorage.setItem(selectionKey, JSON.stringify(choice))
-        await selectSkills(sessionId, choice)
-        localStorage.removeItem(selectionKey)
-        const receipt = agentInputReceiptSchema.parse(await controller.send(text, JSON.parse(JSON.stringify(context))))
+        requestId = crypto.randomUUID()
+        showPosted({ requestId, sessionId, text })
+        if (!teacher) {
+          // Student skill selection has a separate receipt. Keep that selection and the draft recoverable until submission.
+          const selectionKey = 'xj.session-skill-selection.' + client.scope + ':' + sessionId
+          const raw = localStorage.getItem(selectionKey)
+          if (raw || selectedSkills.length) {
+            await composer.protect()
+            const choice = raw ? JSON.parse(raw) : { requestId: crypto.randomUUID(), context: { skills: selectedSkills } }
+            localStorage.setItem(selectionKey, JSON.stringify(choice))
+            await selectSkills(sessionId, choice)
+            localStorage.removeItem(selectionKey)
+          }
+        }
+        const receipt = agentInputReceiptSchema.parse(await controller.send(text, inputContext, requestId))
+        settlePosted(requestId, receipt.inputId)
         if (experiment) { sessionStorage.removeItem(experimentKey); setExperiment(null) }
         if (selectedSkills.length) {
-          consumeSessionSkillSelection({ identity, spaceKey, namespace, currentSessionId: sessionId, nextSessionId: sessionId,
+          if (!teacher) consumeSessionSkillSelection({ identity, spaceKey, namespace, currentSessionId: sessionId, nextSessionId: sessionId,
             clientScope: client.scope, turnId: receipt.turnId })
           skills.choose([])
         }
@@ -273,13 +354,14 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
           writeImageDraft(client.scope, sessionId, remaining)
           if (alive.current && route.current === viewKey) setImageDraft({ sessionId, images: remaining })
         }
-        await composer.clearIfMatches(text)
+        void composer.clearIfMatches(text).catch(() => {})
       }
     } catch (cause) {
+      if (requestId) settlePosted(requestId)
       skills.restoreVisible?.()
       if (alive.current && route.current === viewKey) setError(sessionError(cause))
     }
-    finally { if (alive.current && route.current === viewKey) setBusy(false) }
+    finally { if (alive.current && route.current === viewKey) setSending(false) }
   }
   async function openMaterial(record: SessionMaterialUpload, page = 1) {
     courseRead.current++
@@ -293,16 +375,38 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
   }
   async function openCitation(item: CitationRecord) {
     let source: Record<string, unknown> = item.citation.source as unknown as Record<string, unknown>
+    if (teacher && source.kind === 'tool-call') {
+      const tool = controller.conversation?.tools.find(entry => entry.toolCallId === source.toolCallId)
+      const result = tool && toolResultData(tool)
+      if (result && tool?.name === 'read_course_task' && typeof result.taskTitle === 'string') {
+        const requirements = teacherExcerpt(result.requirements)
+        const objectives = Array.isArray(result.objectives) ? result.objectives.filter(value => typeof value === 'string') : []
+        setCourseReading({ name: result.taskTitle, text: [...objectives, requirements].filter(Boolean).join('\n\n') })
+        return
+      }
+      if (result && tool?.name === 'read_design_material' && typeof result.title === 'string' && typeof result.text === 'string') {
+        setCourseReading({ name: result.title, text: result.text })
+        return
+      }
+      if (result && tool?.name === 'list_design_materials' && Array.isArray(result.materials)) {
+        const titles = result.materials.flatMap(material => material && typeof material === 'object'
+          && 'title' in material && typeof material.title === 'string' ? [material.title] : [])
+        setCourseReading({ name: '公开材料列表', text: titles.join('\n\n') || '此版本未返回公开材料。' })
+        return
+      }
+      toast.info('可在本轮的「思考与执行」中查看读取记录。')
+      return
+    }
     if (source.kind === 'tool-call' && source.source && typeof source.source === 'object' && !Array.isArray(source.source))
       source = source.source as Record<string, unknown>
     if (source.kind === 'experiment-reference' && typeof source.activityId === 'string') {
       const fixed = source.source
-      if (fixed && typeof fixed === 'object' && !Array.isArray(fixed)) onWorkspace(source.activityId, fixed as Record<string, unknown>)
+      if (fixed && typeof fixed === 'object' && !Array.isArray(fixed)) onWorkspace?.(source.activityId, fixed as Record<string, unknown>)
       else toast.error('这条实验出处没有可核对的原始位置。')
       return
     }
     if (source.kind === 'component' && typeof source.activityId === 'string') {
-      onWorkspace(source.activityId, source)
+      onWorkspace?.(source.activityId, source)
       return
     }
     const parsedPdf = coursePdfCitationSourceSchema.safeParse(source)
@@ -353,7 +457,7 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
       size: (item.remote && ('byteLength' in item.remote ? item.remote.byteLength : item.remote.versions.find(version => version.version === ('currentVersion' in item.remote! ? item.remote.currentVersion : 0))?.byteLength)) ?? Math.floor(item.input.dataBase64.length * 3 / 4),
       ...(!item.confirmed ? { progress: 50 } : {}) })),
     ...images.map(image => ({ id: image.imageId, name: image.name, attachmentKind: 'image' as const, src: imagePreviews[image.imageId] })),
-  ], busy: busy || activeUploads.some(item => !item.confirmed), error: '',
+  ], busy: attaching.current || activeUploads.some(item => !item.confirmed), error: '',
   add: addFiles, remove: (id: string) => {
     if (sessionId && images.some(image => image.imageId === id)) {
       const remaining = readImageDraft(client.scope, sessionId).filter(image => image.imageId !== id)
@@ -361,13 +465,16 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
       setImageDraft({ sessionId, images: remaining })
     } else setExcluded(items => [...items, id])
   } }
-  const hasDraft = !!text.trim() || files.items.length > 0
+  const visibleText = sending ? '' : text
+  const hasDraft = !!visibleText.trim() || files.items.length > 0
+  const pendingMessages = posted.filter(item => (sessionId ? item.sessionId === sessionId : item.first)
+    && (!item.inputId || !alreadyPresented.has(item.inputId))).map(item => <UserMessage key={item.requestId} text={item.text} at={item.at} busy />)
   return <div className="agent-layout product-conversation product-agent">
-    {ownMetadata && <header className="product-conversation-head"><h1>{ownMetadata.title ?? '新对话'}</h1>{ownMetadata.archived && <span>已归档</span>}</header>}
-    {sessionId ? <ChatViewport scrollerRef={scroll} onScroll={onScroll} onJump={onJump} phase={controller.active ? 'streaming' : undefined}
+    {!teacher && ownMetadata && <header className="product-conversation-head"><h1>{ownMetadata.title ?? '新对话'}</h1>{ownMetadata.archived && <span>已归档</span>}</header>}
+    {pendingMessages.length > 0 || sessionId && (!teacher || !controller.conversation || controller.conversation.messages.length > 0 || controller.conversation.turns.length > 0) ? <ChatViewport scrollerRef={scroll} onScroll={onScroll} onJump={onJump} phase={controller.active ? 'streaming' : undefined}
       busy={controller.active} padSuggestions={false} queued={false}>
       <SessionConversation controller={controller} readOnly={!writable} onOpenWorkspace={onWorkspace}
-        onWorkspaceCreated={onWorkspaceCreated} onOpenCitation={openCitation} />
+        onWorkspaceCreated={onWorkspaceCreated} onOpenCitation={openCitation} pendingMessages={pendingMessages.length > 0 ? pendingMessages : undefined} />
       {courseReading && <section className="product-conversation-inner session-material-reading" aria-label={courseReading.name}>
         <h2>{courseReading.name}</h2>
         <Button variant="outline" onClick={() => setCourseReading(null)}>返回对话</Button>
@@ -382,13 +489,17 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
         {reading.images.map((src, index) => <img key={index} src={src} alt={`${reading.name} 第 ${reading.page + index} 页`} />)}</section>}
     </ChatViewport> : <div className="product-agent-body"><AgentEmptyState title="今天想探讨什么？" /></div>}
     <div className="product-agent-notices">
-      {pending && <p role="status">原问题已保留。<Button variant="outline" disabled={busy} onClick={() => void completeStart()}>核对并继续原请求</Button></p>}
+      {pending && !sending && <p role="status">原问题已保留。<Button variant="outline" disabled={busy} onClick={() => void completeStart()}>核对并继续原请求</Button></p>}
       {experiment && <p role="status">已固定工作区实验「{experiment.label}」。<button type="button" disabled={busy}
         onClick={() => { sessionStorage.removeItem(experimentKey); setExperiment(null) }}>移除引用</button></p>}
       {composer.error && <p role="alert">{composer.error} <button type="button" onClick={() => void composer.protect().catch(() => {})}>重试保留输入</button></p>}
       {error && <p role="alert">{error}</p>}
       {needsImageModel && <p role="status">{IMAGE_MODEL_HINT}</p>}
-      {!picker.models.length && !readOnly && !selection.stale && <p>尚未配置模型。<button type="button" className="product-agent-settings-link" onClick={onSettings}>打开设置</button></p>}
+      {teacher && composer.value.teacherTarget && <p role="status">本条消息参考发布任务「{composer.value.teacherTarget.title}」。
+        <button type="button" className="product-agent-settings-link" disabled={busy || !!pending} onClick={() => void composer.change({ ...composer.value, teacherTarget: undefined }).catch(() => {})}>移除任务引用</button></p>}
+      {teacher && selection.selection && !selection.selection.selected && <p role="status">当前教师模型不可用。
+        <button type="button" className="product-agent-settings-link" onClick={onSettings}>管理模型</button></p>}
+      {!teacher && !picker.models.length && !readOnly && !selection.stale && <p>尚未配置模型。<button type="button" className="product-agent-settings-link" onClick={onSettings}>打开设置</button></p>}
       {!writable && <p role="status">{ownMetadata?.archived ? '这段对话已归档，恢复后可以继续。' : '当前会话只读。'}</p>}
       {sessionId && uploads.length > 0 && <details><summary>会话资料</summary>{uploads.map(item => <div key={item.key}>
         <button type="button" disabled={busy} onClick={() => void openMaterial(item)}>{item.input.name}</button>
@@ -396,14 +507,15 @@ export function ProductAgent({ identity, spaceKey, namespace, sessionId, session
       </div>)}</details>}
 
     </div>
-    <ProductComposerDock atBottom={atBottom} onBackToBottom={backToBottom}>
+    <ProductComposerDock atBottom={atBottom} onBackToBottom={backToBottom} disclaimer={teacher && spaceKey === 'school' ? '对话自动保存在学校' : undefined}>
       {pendingQuestion ? <SessionQuestionBox key={pendingQuestion.questionId + ':' + pendingQuestion.version}
         question={pendingQuestion} controller={controller} readOnly={!writable} />
-        : <ProductPromptInput value={text} onChange={value => { void composer.change({ ...composer.value, text: value }).catch(() => {}) }} autoFocus
-        onSend={send} canSend={composer.ready && !!text.trim() && !busy && !pending && writable && !picker.blocked && !needsImageModel && !uploads.some(item => !excluded.includes(item.key) && !item.confirmed)}
-        submitting={busy || !writable} busy={controls.active && !hasDraft} onStop={controls.stop}
-        onResume={controls.canResume && !hasDraft ? controls.resume : undefined} actionDisabled={controls.disabled} resumeLabel="继续生成"
-        files={files} pasteImages skills={skills} selection={selection} modelLocked={controller.active} readOnly={!writable}
+        : <ProductPromptInput value={visibleText} inputRef={inputRef} onChange={value => { void composer.change({ ...composer.value, text: value }).catch(() => {}) }} autoFocus
+        onSend={send} canSend={composer.ready && !!text.trim() && !busy && !pending && writable && canUseModel && !picker.blocked && !needsImageModel && !uploads.some(item => !excluded.includes(item.key) && !item.confirmed)}
+        submitting={busy || !writable} busy={controls.active && (!!teacher || !hasDraft)} onStop={controls.stop}
+        onResume={controls.canResume && !hasDraft && canUseModel ? controls.resume : undefined} actionDisabled={controls.disabled} resumeLabel="继续生成"
+        files={files} pasteImages={!teacher} skills={skills} allowFiles={!teacher} singleSkill={!!teacher}
+        textareaProps={teacher ? { 'aria-label': '向教师 Agent 提问' } : undefined} selection={selection} modelLocked={controller.active} readOnly={!writable}
         onModelSettings={onSettings} contextUsage={controller.conversation?.contextUsage} />}
     </ProductComposerDock>
   </div>
