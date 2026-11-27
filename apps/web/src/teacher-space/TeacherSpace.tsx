@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { CourseTiles, HomeSectionHeading, HomeStatus } from '@xunjie/ui/home'
-import { Button, ConfirmationDialog } from '@xunjie/ui/foundation'
+import { Button, ConfirmationDialog, SelectField } from '@xunjie/ui/foundation'
 import { toast } from '@xunjie/ui/feedback'
 import type { SpaceIdentity } from '@xunjie/contracts/spaces'
 import { SettingsStatus } from '@xunjie/ui/settings'
@@ -602,7 +602,7 @@ function CourseWorkspace({ course, courses, cohort, agentSubject, readOnly, sele
     setTab(next)
     requestAnimationFrame(() => document.getElementById(tabIds[next])?.focus())
   }
-  return <div className={'content teacher-page' + (tab === 'agent' ? ' teacher-page--agent' : '')}>
+  return <div className={'content teacher-page' + (tab === 'agent' ? ' teacher-page--agent' : '') + (tab === 'review' ? ' content--review-workspace' : '')}>
     <header className="t-tabbar">
       <button type="button" className="t-tabbar-back" aria-label="返回课程列表" onClick={onBack}>
         <Icon name="alt-arrow-left" size={16} />
@@ -772,12 +772,12 @@ function ReviewPane({ course, submissions, taskId, onChange }: {
           <input aria-label="搜索学生" placeholder="搜索学生" value={query} onChange={event => changeView(filter, event.target.value)} />
           {query && <button type="button" aria-label="清空搜索" onClick={() => changeView(filter, '')}><Icon name="close" size={13} /></button>}
         </div>
-        <div className="t-review-filter">
-          <select aria-label="按状态筛选" value={filter} onChange={event => changeView(event.target.value as ReviewFilter, query)}>
-            {filters.map(item => <option key={item.id} value={item.id}>{item.label} {item.id === 'all' ? scoped.length : scoped.filter(entry => matchesFilter(entry, item.id)).length}</option>)}
-          </select>
-          <Icon name="alt-arrow-down" size={13} />
-        </div>
+        <SelectField className="t-review-filter" label="按状态筛选" value={filter}
+          options={filters.map(item => ({
+            value: item.id,
+            label: `${item.label} ${item.id === 'all' ? scoped.length : scoped.filter(entry => matchesFilter(entry, item.id)).length}`,
+          }))}
+          onChange={value => changeView(value as ReviewFilter, query)} />
       </div>
       <div className="t-submission-list">
         {visible.length === 0 ? <div className="t-list-empty"><strong>没有符合条件的提交</strong><span>换个关键词或状态试试。</span></div> : visible.map(item => {

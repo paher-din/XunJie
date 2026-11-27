@@ -1693,6 +1693,10 @@ small.t-pulse-counts {
 }
 
 /* ---------- 作业审阅 ---------- */
+/* 双栏审阅工作台：内容区左右 24、上 20；标签栏回贴同一左缘，底距 12，标题合计上距 20。 */
+.content--review-workspace .t-tabbar {
+  margin: -20px -24px 12px;
+}
 .t-review {
   display: grid;
   grid-template-columns: 308px minmax(0, 1fr);
@@ -1700,7 +1704,7 @@ small.t-pulse-counts {
 }
 .t-review-list {
   min-width: 0;
-  padding: 4px 16px 24px 0;
+  padding: 0 16px 24px 0;
   border-right: 1px solid var(--line);
 }
 .t-review-list-head {
@@ -1710,7 +1714,6 @@ small.t-pulse-counts {
   gap: 12px;
   min-height: 32px;
   margin-bottom: 12px;
-  padding: 0 4px;
 }
 .t-review-list-head h2 {
   margin: 0;
@@ -1729,8 +1732,7 @@ small.t-pulse-counts {
   gap: 8px;
   margin-bottom: 16px;
 }
-.t-review-search,
-.t-review-filter {
+.t-review-search {
   position: relative;
   display: flex;
   height: 36px;
@@ -1742,8 +1744,7 @@ small.t-pulse-counts {
   color: var(--muted);
   transition: border-color 150ms var(--ease-s), box-shadow 150ms var(--ease-s), background-color 150ms var(--ease-s);
 }
-.t-review-search:focus-within,
-.t-review-filter:focus-within {
+.t-review-search:focus-within {
   border-color: var(--accent);
   box-shadow: var(--focus-glow);
   color: var(--accent-deep);
@@ -1786,22 +1787,19 @@ small.t-pulse-counts {
   color: var(--ink);
   filter: none;
 }
-.t-review-filter select {
-  width: 100%;
-  height: 100%;
-  padding: 0 28px 0 10px;
-  border: 0;
-  outline: 0;
-  appearance: none;
-  background: transparent;
+.t-review-tools .t-review-filter {
+  width: 108px;
+  height: 36px;
+  padding: 0 8px 0 10px;
+  gap: 4px;
   color: var(--ink-soft);
-  font: 12px/1.5 var(--font-sans);
-  cursor: pointer;
+  font-size: 12px;
 }
-.t-review-filter > svg {
-  position: absolute;
-  right: 9px;
-  pointer-events: none;
+.t-review-tools .t-review-filter .ui-select-value {
+  font-size: 12px;
+}
+.t-review-tools .t-review-filter .ui-select-arrow {
+  color: var(--muted);
 }
 .t-submission-list {
   display: flex;
@@ -2268,6 +2266,9 @@ small.t-pulse-counts {
   .t-review-tools {
     grid-template-columns: 1fr;
   }
+  .t-review-tools .t-review-filter {
+    width: 100%;
+  }
   .t-review-detail {
     padding-left: 22px;
   }
@@ -2294,6 +2295,9 @@ small.t-pulse-counts {
   }
   .t-review-tools {
     grid-template-columns: minmax(0, 1fr) 108px;
+  }
+  .t-review-tools .t-review-filter {
+    width: 108px;
   }
   .t-submission-list {
     max-height: 280px;
