@@ -1922,7 +1922,7 @@ small.t-pulse-counts {
 .t-review-list {
   order: 2;
   min-width: 0;
-  /* 折叠时列表随轨道一起收窄并被裁切，避免留下空轨道或内容穿到详情上 */
+  /* 移动端折叠时列表随轨道收窄并被裁切；桌面由宽屏规则改为整块滑轨。 */
   overflow: hidden;
   padding: 0 16px 24px 16px;
   border-right: 0;
@@ -1930,12 +1930,12 @@ small.t-pulse-counts {
   transition: padding 350ms var(--ease-s), border-color 350ms var(--ease-s);
 }
 .t-review-list.is-collapsed {
-  /* 收窄过程保持可见，宽度归零后再退出可访问树 */
+  /* 移动端保留折叠条；桌面覆盖为整块滑出并退出可访问树。 */
   visibility: hidden;
   pointer-events: none;
   padding: 0;
   border-left-color: transparent;
-  transition: padding 350ms var(--ease-s), border-color 350ms var(--ease-s), visibility 0s linear 350ms;
+  transition: padding 240ms var(--ease-s), border-color 240ms var(--ease-s), visibility 0s linear 240ms;
 }
 .t-review-list-head {
   display: flex;
@@ -2014,38 +2014,12 @@ small.t-pulse-counts {
   outline: 2px solid var(--focus-ring);
   outline-offset: -2px;
 }
-.t-review-list.is-collapsed .t-review-list-head {
-  gap: 0;
-  min-width: 0;
-  justify-content: flex-end;
-  margin-bottom: 0;
-  transition-delay: 0s;
-}
-.t-review-list.is-collapsed .t-review-list-head h2 {
-  max-width: 0;
-  opacity: 0;
-  transition-delay: 0s;
-}
-.t-review-list.is-collapsed .t-review-list-head-end {
-  width: 32px;
-  gap: 0;
-  margin-left: 0;
-  transition-delay: 0s;
-}
-.t-review-list.is-collapsed .t-review-list-count {
-  max-width: 0;
-  opacity: 0;
-  transition-delay: 0s;
-}
 .t-review-list-body-clip {
   min-width: 0;
   overflow: hidden;
 }
 .t-review-list-body {
   min-width: 0;
-}
-.t-review-list-body[hidden] {
-  display: none;
 }
 .t-review-tools {
   display: grid;
@@ -3938,22 +3912,52 @@ button.t-project-main {
     flex: none;
   }
   #t-panel-review {
-    display: flex;
+    position: relative;
+    display: block;
     flex: 1;
     min-width: 0;
     min-height: 0;
+    padding-right: 308px;
+    transition: padding-right 350ms var(--ease-s);
   }
   .t-review {
+    display: block;
     flex: 1;
     width: 100%;
     height: 100%;
     min-height: 0;
   }
+  .t-review-detail {
+    max-width: none;
+    transition: none;
+  }
   .t-review-list {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 3;
     display: flex;
     flex-direction: column;
-    height: 100%;
+    width: 308px;
+    height: auto;
     padding: 12px 16px 0;
+    background: var(--paper);
+    transform: translateX(0);
+    transition: transform 350ms var(--ease-s);
+  }
+  .t-review-list.is-collapsed {
+    /* 整块清单滑出右缘，内容不压缩也不淡出。 */
+    width: 308px;
+    padding: 12px 16px 0;
+    border-left-color: var(--line);
+    visibility: hidden;
+    transform: translateX(100%);
+    transition: transform 240ms var(--ease-s), visibility 0s linear 240ms;
+  }
+  #t-panel-review:has(.t-review.is-list-collapsed) {
+    padding-right: 0;
+    transition-duration: 240ms;
   }
   .t-review-list-head {
     flex: none;
@@ -3962,11 +3966,6 @@ button.t-project-main {
     flex: 1;
     min-height: 0;
     overflow: hidden;
-    transition: opacity 160ms var(--ease-s) 190ms;
-  }
-  .t-review-list.is-collapsed .t-review-list-body-clip {
-    opacity: 0;
-    transition: opacity 100ms var(--ease-s);
   }
   .t-review-list-body {
     display: flex;
@@ -3990,47 +3989,37 @@ button.t-project-main {
     scrollbar-gutter: stable;
   }
 }
+/* 821–1279：侧栏锚在内容面板顶边，按钮改用视口定位，保持上/右各 12px
+   （主卡 10px 外边距 + 1px 描边 + 12px）。 */
+@media (min-width: 821px) and (max-width: 1279px) {
+  .t-review-tab-toggle {
+    position: fixed;
+    top: calc(10px + 1px + 12px);
+    right: calc(10px + 1px + 12px);
+  }
+}
 /* 宽屏给右侧栏足够的顶栏避让空间，让它真正从主卡内容顶边起一块通高侧栏；
    窄桌面保留标签栏在顶，避免最后一个页签被侧栏压住。 */
 @media (min-width: 1280px) {
   .content--review-workspace:has(.t-review) {
     position: relative;
   }
-  /* 常驻按钮压住清单头部右端，给计数让出同一枚 32px 控件的宽度。 */
+  /* 侧栏从内容顶边起时，固定按钮与清单头部同高；
+     给计数让出同一枚 32px 控件与 12px 间距。 */
   .content--review-workspace:has(.t-review) .t-review-list-head {
     padding-right: 40px;
   }
+  /* 让侧栏的包含块上移到主卡内容顶边；按钮仍留在标签栏原坐标。 */
   .content--review-workspace:has(.t-review) #t-panel-review {
-    display: block;
-    padding-right: 308px;
-    transition: padding-right 350ms var(--ease-s);
-  }
-  .content--review-workspace:has(.t-review) .t-review {
-    display: block;
-  }
-  .content--review-workspace:has(.t-review) .t-review-list {
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 3;
-    width: 308px;
-    height: auto;
-    background: var(--paper);
-    transition: width 350ms var(--ease-s), padding 350ms var(--ease-s), border-color 350ms var(--ease-s);
+    position: static;
   }
   .content--review-workspace:has(.t-review) .t-task-focus {
     width: calc(100% - 308px);
     transition: width 350ms var(--ease-s);
   }
-  .content--review-workspace:has(.t-review.is-list-collapsed) #t-panel-review {
-    padding-right: 0;
-  }
-  .content--review-workspace:has(.t-review.is-list-collapsed) .t-review-list {
-    width: 0;
-  }
   .content--review-workspace:has(.t-review.is-list-collapsed) .t-task-focus {
     width: 100%;
+    transition-duration: 240ms;
   }
 }
 @media (max-width: 820px) {
@@ -4085,6 +4074,9 @@ button.t-project-main {
     padding: 8px 12px;
     border-bottom-color: transparent;
   }
+  .t-review.is-list-collapsed .t-review-list-body-clip {
+    display: none;
+  }
   .t-review-list-body {
     min-width: 0;
   }
@@ -4106,6 +4098,10 @@ button.t-project-main {
     flex-direction: row;
     gap: 4px;
     margin-left: auto;
+  }
+  /* 折叠栏比展开多 12px 左、8px 上内边距；反向补偿按钮，图标坐标两态一致。 */
+  .t-review.is-list-collapsed .t-review-list-toggle {
+    transform: translate(12px, -8px);
   }
   .t-review.is-list-collapsed .t-review-detail {
     max-width: none;
@@ -4141,5 +4137,18 @@ button.t-project-main {
   }
   .t-pulse-meta b {
     font-size: 11.5px;
+  }
+}
+
+/* 减少动效时直接交换两态，不保留滑轨、淡出延迟或宽度过渡。 */
+@media (prefers-reduced-motion: reduce) {
+  .content--review-workspace:has(.t-review) .t-review,
+  .content--review-workspace:has(.t-review) #t-panel-review,
+  .content--review-workspace:has(.t-review) .t-task-focus,
+  .content--review-workspace:has(.t-review) .t-review-list,
+  .content--review-workspace:has(.t-review) .t-review-list-head,
+  .content--review-workspace:has(.t-review) .t-review-list-body-clip,
+  .content--review-workspace:has(.t-review) .t-review-detail {
+    transition: none;
   }
 }

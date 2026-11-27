@@ -865,7 +865,7 @@ function LibraryPane({ course, namespace, spaceKey }: { course: TeacherCourse; n
   </div>
 }
 
-const REVIEW_LIST_COLLAPSED = 'xj.teacher-review-list-collapsed.v1'
+const REVIEW_LIST_COLLAPSED = 'xj.teacher-review-list-collapsed.v2'
 
 const filters: { id: ReviewView; label: string }[] = [
   { id: 'inbox', label: '待处理' }, { id: 'all', label: '全部' }, { id: 'pending', label: '待审阅' }, { id: 'revised', label: '待复核' },
@@ -975,7 +975,7 @@ function ReviewPane({ course, submissions, taskId, onChange }: {
         </div>
       </div>
       <div className="t-review-list-body-clip">
-        <div id="t-review-list-body" className="t-review-list-body" hidden={listCollapsed}>
+        <div id="t-review-list-body" className="t-review-list-body">
           <div className="t-review-tools">
             <div className="t-review-search">
               <Icon name="minimalistic-magnifier" size={15} />
