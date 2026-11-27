@@ -3317,7 +3317,6 @@ small.t-pulse-counts {
   color: var(--ink);
 }
 .t-project-list {
-  margin-inline: -8px;
   padding-top: 6px;
 }
 .t-project-row {
@@ -3326,7 +3325,7 @@ small.t-pulse-counts {
   align-items: center;
   gap: 16px;
   min-height: 96px;
-  padding: 16px 8px;
+  padding: 16px 0;
   border-bottom: 1px solid var(--line);
   border-radius: 8px;
   transition: background-color 150ms var(--ease-s);
