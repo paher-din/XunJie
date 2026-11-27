@@ -69,6 +69,19 @@ const timeText = (iso: string) => {
   return `${date.getMonth() + 1}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }
 
+const clockText = (iso: string) => {
+  const date = new Date(iso)
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+}
+
+const artifactKinds = (artifacts: TeacherSubmission['artifacts']) =>
+  Array.from(new Set(artifacts.map(artifact => artifact.kind)))
+
+const artifactKindText = (artifacts: TeacherSubmission['artifacts']) => artifactKinds(artifacts).join('、')
+
+const artifactIconName = (kind: string) =>
+  kind === 'CSV' ? 'file-spreadsheet' : kind === '图片' ? 'file-image' : kind === 'Logisim 电路' ? 'file-code' : 'file-text'
+
 const waitingText = (iso?: string) => {
   if (!iso) return ''
   const time = new Date(iso).getTime()
@@ -1008,22 +1021,55 @@ function ReviewPane({ course, submissions, taskId, onChange }: {
           </div>
         </div>
       </header>
-      <dl className="t-meta">
-        <div><dt>提交时间</dt><dd>{timeText(selected.submittedAt)}</dd></div>
-        <div><dt>提交版本</dt><dd>v{selected.version}</dd></div>
-        <div><dt>目标进度</dt><dd>{selected.progress.done} / {selected.progress.total}</dd></div>
-        <div><dt>附件</dt><dd>{selected.artifacts.length} 个</dd></div>
-      </dl>
+      <div className="t-facts" role="group" aria-label="提交概况">
+        <div className="t-fact">
+          <span className="t-fact-label">提交时间</span>
+          <span className="t-fact-value">{dateText(selected.submittedAt)}</span>
+          <span className="t-fact-note">{clockText(selected.submittedAt)}</span>
+        </div>
+        <div className="t-fact">
+          <span className="t-fact-label">提交版本</span>
+          <span className="t-fact-value">第 {selected.version} 次提交</span>
+          <span className="t-fact-note">共 {selected.version} 次</span>
+        </div>
+        <div className="t-fact">
+          <span className="t-fact-label">目标进度</span>
+          <span className="t-fact-value">{selected.progress.done}<span className="t-fact-sub"> / {selected.progress.total}</span></span>
+          <span className="t-fact-bar">
+            <span className="t-fact-track" role="progressbar" aria-label="目标进度" aria-valuemin={0}
+              aria-valuemax={selected.progress.total} aria-valuenow={selected.progress.done}>
+              <span className="t-fact-fill" style={{
+                width: `${selected.progress.total ? Math.round((selected.progress.done / selected.progress.total) * 100) : 0}%`,
+              }} />
+            </span>
+          </span>
+        </div>
+        <button type="button" className="t-fact t-fact-action" disabled={!selected.artifacts.length}
+          aria-label={`查看提交附件，共 ${selected.artifacts.length} 个${selected.artifacts.length ? `：${artifactKindText(selected.artifacts)}` : ''}`}
+          onClick={() => {
+            const section = document.getElementById('t-submission-files-section')
+            if (!section) return
+            const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false
+            section.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' })
+            section.focus({ preventScroll: true })
+          }}>
+          <span className="t-fact-label">附件</span>
+          <span className="t-fact-value">{selected.artifacts.length}<span className="t-fact-sub"> 个</span>
+            {selected.artifacts.length > 0 && <span className="t-fact-jump" aria-hidden="true"><Icon name="alt-arrow-down" size={13} /></span>}
+          </span>
+          <span className="t-fact-note">{selected.artifacts.length ? artifactKindText(selected.artifacts) : '本次没有附件'}</span>
+        </button>
+      </div>
       <div className="t-submission-content">
         <section className="t-detail-section" aria-labelledby="t-student-note">
           <h3 id="t-student-note"><Icon name="clipboard-text" size={16} />学生说明</h3>
           <p className="t-student-note">{selected.note || '学生没有填写提交说明。'}</p>
         </section>
-        <section className="t-detail-section" aria-labelledby="t-submission-files">
+        <section className="t-detail-section" id="t-submission-files-section" aria-labelledby="t-submission-files" tabIndex={-1}>
           <h3 id="t-submission-files"><Icon name="paperclip" size={16} />提交附件<span>{selected.artifacts.length}</span></h3>
           {selected.artifacts.length ? <ul className="t-artifacts">
             {selected.artifacts.map(artifact => <li key={artifact.name}>
-              <span className="t-artifact-icon"><Icon name={artifact.kind === 'CSV' ? 'file-spreadsheet' : artifact.kind === '图片' ? 'file-image' : artifact.kind === 'Logisim 电路' ? 'file-code' : 'file-text'} size={18} /></span>
+              <span className="t-artifact-icon"><Icon name={artifactIconName(artifact.kind)} size={18} /></span>
               <span className="t-artifact-copy"><strong>{artifact.name}</strong><small>{artifact.kind} · {artifact.size}</small></span>
             </li>)}
           </ul> : <p className="t-detail-empty-copy">本次提交没有附件。</p>}
@@ -1031,7 +1077,7 @@ function ReviewPane({ course, submissions, taskId, onChange }: {
       </div>
       <section className="t-feedback" aria-labelledby="t-feedback-title">
         <div className="t-feedback-head">
-          <div><h3 id="t-feedback-title">教师反馈</h3><span>关联当前提交 v{selected.version}</span></div>
+          <div><h3 id="t-feedback-title">教师反馈</h3><span>关联第 {selected.version} 次提交</span></div>
           {saved?.id === selected.submissionId && <span role="status" className="t-saved"><Icon name="check-circle" size={14} />{saved.message}</span>}
         </div>
         <textarea aria-label="反馈" value={feedback} rows={4} placeholder="写清楚学生做对了什么、下一步改哪里。"

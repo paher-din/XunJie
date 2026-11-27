@@ -10,7 +10,7 @@
 .ui-select-arrow { display: flex; flex: none; color: var(--muted); }
 .ui-select-trigger[data-popup-open] .ui-select-arrow { transform: rotate(180deg); }
 .ui-select-positioner { outline: none; }
-.ui-select-popup { width: var(--anchor-width); min-width: min(160px, var(--available-width)); max-width: var(--available-width); max-height: var(--available-height); background: var(--raised); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; padding: 6px; box-shadow: var(--shadow-menu); outline: none; overflow: hidden; transform-origin: var(--transform-origin); transition: opacity 150ms cubic-bezier(0.3, 1, 0.35, 1), transform 150ms cubic-bezier(0.3, 1, 0.35, 1); }
+.ui-select-popup { width: max-content; min-width: var(--anchor-width); max-width: min(320px, var(--available-width)); max-height: var(--available-height); background: var(--raised); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; padding: 6px; box-shadow: var(--shadow-menu); outline: none; overflow: hidden; transform-origin: var(--transform-origin); transition: opacity 150ms cubic-bezier(0.3, 1, 0.35, 1), transform 150ms cubic-bezier(0.3, 1, 0.35, 1); }
 .ui-select-popup[data-starting-style], .ui-select-popup[data-ending-style] { opacity: 0; transform: translateY(-2px); }
 .ui-select-list { max-height: min(300px, calc(var(--available-height) - 24px)); overflow-y: auto; overscroll-behavior: contain; outline: none; }
 .ui-select-item { display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 6px 10px; border-radius: 6px; font-size: 13px; cursor: pointer; outline: none; user-select: none; }
