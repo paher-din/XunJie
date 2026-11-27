@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import * as Dialog from '@radix-ui/react-dialog'
 import { CourseTiles, HomeSectionHeading, HomeStatus } from '@xunjie/ui/home'
 import { Button, ConfirmationDialog, SelectField } from '@xunjie/ui/foundation'
 import { toast } from '@xunjie/ui/feedback'
@@ -863,114 +864,258 @@ function ReviewPane({ course, submissions, taskId, onChange }: {
   </div>
 }
 
+type DesignFilter = 'all' | 'published' | 'draft'
+type DesignCheck = { id: 'title' | 'summary' | 'objectives'; label: string; done: boolean }
+type DesignEntry = {
+  id: string; kind: 'published' | 'draft'; title: string; summary: string; updatedAt: string; objectiveCount: number
+  task?: TeacherTask; release?: TeacherRelease; project?: TeacherDraft
+}
+
+const designSignature = (draft: Pick<TeacherDraft, 'title' | 'summary' | 'objectives'>) => JSON.stringify({
+  title: draft.title, summary: draft.summary, objectives: draft.objectives,
+})
+
 function DesignPane({ course, projects, openId, onOpen, onProjects, onDiscuss }: {
   course: TeacherCourse; projects: TeacherDraft[]; openId: string | null
   onOpen: (id: string | null) => void; onProjects: (projects: TeacherDraft[]) => void
   onDiscuss: (seed: TeacherAgentSeed) => void
 }) {
-  const published = course.tasks.filter(task => task.releases.length > 0)
+  const [filter, setFilter] = useState<DesignFilter>('all')
+  const [query, setQuery] = useState('')
   const draft = openId ? projects.find(project => project.draftId === openId) ?? null : null
-  const [publishOpen, setPublishOpen] = useState(false)
-  const [scope, setScope] = useState<'course' | 'selected'>('course')
-  const [publishedNote, setPublishedNote] = useState('')
+  const entries = useMemo<DesignEntry[]>(() => [
+    ...course.tasks.flatMap(task => {
+      const release = task.releases[0]
+      if (!release) return []
+      return [{ id: task.taskId, kind: 'published' as const, title: task.title, summary: task.summary,
+        updatedAt: release.publishedAt, objectiveCount: release.objectives.length, task, release }]
+    }),
+    ...projects.map(project => ({ id: project.draftId, kind: 'draft' as const, title: project.title || '未命名任务',
+      summary: project.summary, updatedAt: project.updatedAt, objectiveCount: project.objectives.filter(item => item.trim()).length, project })),
+  ].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)), [course.tasks, projects])
+  const normalizedQuery = query.trim().toLocaleLowerCase()
+  const visibleEntries = entries.filter(entry => (filter === 'all' || entry.kind === filter)
+    && (!normalizedQuery || `${entry.title} ${entry.summary}`.toLocaleLowerCase().includes(normalizedQuery)))
 
-  const openDraft = (project: TeacherDraft) => { onOpen(project.draftId); setPublishedNote('') }
   const newDraft = () => {
-    const project: TeacherDraft = { draftId: 'draft-' + Date.now(), courseId: course.courseId, title: '未命名任务', summary: '', updatedAt: new Date().toISOString(), objectives: [''] }
-    onProjects([project, ...projects]); onOpen(project.draftId); setPublishedNote('')
-  }
-  const updateDraft = (patch: Partial<TeacherDraft>) => {
-    if (!draft) return
-    const next = { ...draft, ...patch }
-    onProjects(projects.map(item => item.draftId === next.draftId ? next : item))
+    const project: TeacherDraft = { draftId: 'draft-' + Date.now(), courseId: course.courseId, title: '', summary: '', updatedAt: new Date().toISOString(), objectives: [''] }
+    onProjects([project, ...projects])
+    onOpen(project.draftId)
   }
 
-  if (draft && openId) return <div className="t-designer">
-    <header className="t-designer-head">
-      <button type="button" className="t-back-link" onClick={() => { onOpen(null); setPublishedNote('') }}><Icon name="alt-arrow-left" size={15} />任务列表</button>
-      <div className="t-designer-title"><h2>{draft.title || '未命名任务'}</h2><span className="t-state t-state-draft">草稿</span></div>
-      <div className="t-designer-actions">
-        <button type="button" className="outline" onClick={() => onDiscuss({ text: `帮我看看任务「${draft.title.trim() || '未命名任务'}」的目标和评价证据。` })}><Icon name="chat-round-dots" size={15} />和 Agent 讨论</button>
-        <button type="button" className="outline" onClick={() => setPublishedNote('草稿已保存在此预览')}>保存草稿</button>
-        <button type="button" className="primary" onClick={() => setPublishOpen(true)}>发布</button>
-      </div>
-    </header>
-    {publishedNote && <p role="status" className="t-saved">{publishedNote}</p>}
-    <div className="t-designer-body">
-      <section className="t-blueprint" aria-label="任务蓝图">
-        <header><h3>任务蓝图</h3><span>草稿内容</span></header>
-        <label className="t-field"><span>任务标题</span><input value={draft.title} onChange={event => updateDraft({ title: event.target.value })} /></label>
-        <label className="t-field"><span>任务说明</span><textarea rows={4} value={draft.summary} placeholder="学生要解决什么问题、交付什么。"
-          onChange={event => updateDraft({ summary: event.target.value })} /></label>
-        <div className="t-field-group">
-          <span className="t-field-label">学习目标</span>
-          {draft.objectives.map((objective, index) => <div key={index} className="t-objective-row">
-            <input value={objective} placeholder={`目标 ${index + 1}`} onChange={event => {
-              const next = draft.objectives.slice(); next[index] = event.target.value; updateDraft({ objectives: next })
-            }} />
-            <button type="button" className="t-icon-btn" aria-label={`删除目标 ${index + 1}`} onClick={() => updateDraft({ objectives: draft.objectives.filter((_, item) => item !== index) })}>
-              <Icon name="close" size={14} />
-            </button>
-          </div>)}
-          <button type="button" className="t-add-objective" onClick={() => updateDraft({ objectives: [...draft.objectives, ''] })}><Icon name="add" size={14} />添加目标</button>
-        </div>
-        <dl className="t-meta t-blueprint-meta">
-          <div><dt>课程</dt><dd>{course.name}</dd></div>
-          <div><dt>发放</dt><dd>发布时选择</dd></div>
-          <div><dt>评价证据</dt><dd>说明、附件、目标进度</dd></div>
-        </dl>
-      </section>
-    </div>
-    {publishOpen && <div className="t-dialog-layer">
-      <div className="t-dialog" role="dialog" aria-modal="true" aria-labelledby="t-publish-title">
-        <h2 id="t-publish-title">发布任务</h2>
-        <p className="t-dialog-text">发布后，学生会在课程首页看到这个任务。先选择谁可以拿到它。</p>
-        <fieldset className="t-scope">
-          <legend>发放范围</legend>
-          <label><input type="radio" name="scope" checked={scope === 'course'} onChange={() => setScope('course')} />本课程全部学生<span>12 人</span></label>
-          <label><input type="radio" name="scope" checked={scope === 'selected'} onChange={() => setScope('selected')} />指定学生<span>按课程访问名单选择</span></label>
-        </fieldset>
-        <p className="t-preview-note">发布只在此预览中生效；学校发布接口接入后，这里会写入 release 与 course_access。</p>
-        <div className="t-dialog-actions">
-          <button type="button" className="outline" onClick={() => setPublishOpen(false)}>取消</button>
-          <button type="button" className="primary" onClick={() => {
-            setPublishOpen(false)
-            setPublishedNote(scope === 'course' ? '已按本课程全部学生发布（预览）' : '已按指定学生发布（预览）')
-          }}>确认发布</button>
-        </div>
-      </div>
-    </div>}
-  </div>
+  if (draft) return <DraftDesigner key={draft.draftId} course={course} draft={draft} onBack={() => onOpen(null)}
+    onChange={patch => onProjects(projects.map(item => item.draftId === draft.draftId ? { ...item, ...patch } : item))}
+    onDiscuss={onDiscuss} />
 
   return <div className="t-projects">
     <header className="t-projects-head">
-      <h2>{course.name}的任务</h2>
-      <button type="button" className="primary" onClick={newDraft}>新建任务</button>
+      <h2>任务设计</h2>
+      <Button type="button" variant="primary" onClick={newDraft}><Icon name="add" size={15} />新建任务</Button>
     </header>
-    <div className="t-project-group">
-      <h3>已发布<small>{published.length}</small></h3>
-      {published.map(task => {
-        const release = task.releases[0]!
-        return <div key={task.taskId} className="t-project-row">
-          <span className="t-project-mark"><Icon name="check-circle" size={17} /></span>
-          <span className="t-project-main"><strong>{task.title}</strong><small>发布于 {dateText(release.publishedAt)} · {release.objectives.length} 个目标</small></span>
-          <span className="t-state t-state-done">已发布</span>
-          <Button type="button" variant="outline" aria-label={`和 Agent 讨论${task.title}`} onClick={() => onDiscuss({
-            text: `帮我梳理任务「${task.title}」的目标、要求和公开材料。`,
-            target: { kind: 'release', taskId: task.taskId, releaseId: release.releaseId, title: task.title },
-          })}><Icon name="chat-round-dots" size={15} />和 Agent 讨论</Button>
-        </div>
-      })}
-    </div>
-    <div className="t-project-group">
-      <h3>草稿<small>{projects.length}</small></h3>
-      {projects.length === 0 ? <p className="t-list-empty">还没有草稿。新建任务后，在这里填写任务说明与学习目标。</p>
-        : projects.map(project => <button key={project.draftId} type="button" className="t-project-row" onClick={() => openDraft(project)}>
-          <span className="t-project-mark"><Icon name="pen-new-square" size={17} /></span>
-          <span className="t-project-main"><strong>{project.title}</strong><small>{project.summary || '尚未填写任务说明'} · 更新于 {dateText(project.updatedAt)}</small></span>
-          <span className="t-state t-state-draft">草稿</span>
+    <div className="t-project-toolbar">
+      <div className="t-project-filters" role="group" aria-label="按状态筛选任务">
+        {([['all', '全部'], ['published', '已发布'], ['draft', '草稿']] as const).map(([id, label]) => <button key={id} type="button"
+          className={filter === id ? 'on' : ''} aria-pressed={filter === id} onClick={() => setFilter(id)}>
+          {label}<small>{id === 'all' ? entries.length : entries.filter(entry => entry.kind === id).length}</small>
         </button>)}
+      </div>
+      <div className="t-project-search">
+        <Icon name="minimalistic-magnifier" size={15} />
+        <input aria-label="搜索任务" placeholder="搜索任务" value={query} onChange={event => setQuery(event.target.value)} />
+        {query && <button type="button" aria-label="清空任务搜索" onClick={() => setQuery('')}><Icon name="close" size={13} /></button>}
+      </div>
     </div>
+    {visibleEntries.length ? <div className="t-project-list">
+      {visibleEntries.map(entry => {
+        const content = <>
+          <span className="t-project-title"><strong>{entry.title}</strong><span className={`t-state ${entry.kind === 'published' ? 't-state-done' : 't-state-draft'}`}>{entry.kind === 'published' ? '已发布' : '草稿'}</span></span>
+          <span className="t-project-summary">{entry.summary || '尚未填写任务说明'}</span>
+          <small className="t-project-meta">{entry.kind === 'published' ? `发布于 ${dateText(entry.updatedAt)}` : `更新于 ${dateText(entry.updatedAt)}`}<span>·</span>{entry.objectiveCount} 个学习目标</small>
+        </>
+        return <article key={entry.id} className="t-project-row">
+          <span className={`t-project-mark ${entry.kind === 'published' ? 'is-published' : ''}`}><Icon name={entry.kind === 'published' ? 'check-circle' : 'pen-new-square'} size={17} /></span>
+          {entry.kind === 'draft' ? <button type="button" className="t-project-main" aria-label={`继续设计：${entry.title}`}
+            onClick={() => entry.project && onOpen(entry.project.draftId)}>{content}</button>
+            : <div className="t-project-main">{content}</div>}
+          {entry.kind === 'published' && entry.task && entry.release ? <div className="t-project-actions">
+            <Button type="button" variant="outline" aria-label={`和 Agent 讨论${entry.title}`} onClick={() => onDiscuss({
+              text: `帮我梳理任务「${entry.title}」的目标、要求和公开材料。`,
+              target: { kind: 'release', taskId: entry.task!.taskId, releaseId: entry.release!.releaseId, title: entry.title },
+            })}><Icon name="chat-round-dots" size={15} />和 Agent 讨论</Button>
+          </div> : <span className="t-project-row-arrow" aria-hidden="true"><Icon name="alt-arrow-right" size={16} /></span>}
+        </article>
+      })}
+    </div> : <div className="t-projects-empty">
+      <span className="t-projects-empty-icon"><Icon name={entries.length ? 'folder-search' : 'checklist'} size={24} /></span>
+      <h3>{entries.length ? '没有匹配的任务' : '从第一份任务开始'}</h3>
+      <p>{entries.length ? '换个关键词，或查看其他任务状态。' : '整理任务说明与学习目标，再发布给学生。'}</p>
+      <Button type="button" variant="outline" onClick={() => {
+        if (entries.length) { setFilter('all'); setQuery('') } else newDraft()
+      }}>{entries.length ? '清除筛选' : '新建任务'}</Button>
+    </div>}
+  </div>
+}
+
+function DesignChecklist({ checks, onSelect }: { checks: DesignCheck[]; onSelect?: (id: DesignCheck['id']) => void }) {
+  return <ul className="t-design-checklist">{checks.map(check => {
+    const content = <><Icon name={check.done ? 'check-circle' : 'info-circle'} size={15} /><span>{check.label}</span><small>{check.done ? '已完成' : '待完善'}</small></>
+    return <li key={check.id} className={check.done ? 'is-done' : ''}>{onSelect
+      ? <button type="button" onClick={() => onSelect(check.id)}>{content}</button> : <div>{content}</div>}</li>
+  })}</ul>
+}
+
+function DraftDesigner({ course, draft, onBack, onChange, onDiscuss }: {
+  course: TeacherCourse; draft: TeacherDraft; onBack: () => void
+  onChange: (patch: Partial<TeacherDraft>) => void; onDiscuss: (seed: TeacherAgentSeed) => void
+}) {
+  const [publishOpen, setPublishOpen] = useState(false)
+  const [scope, setScope] = useState<'course' | 'selected'>('course')
+  const [publishedNote, setPublishedNote] = useState('')
+  const [savedSignature, setSavedSignature] = useState(() => designSignature(draft))
+  const cancelPublishRef = useRef<HTMLButtonElement>(null)
+  const publishButtonRef = useRef<HTMLButtonElement>(null)
+  const signature = designSignature(draft)
+  const dirty = signature !== savedSignature
+  const objectiveCount = draft.objectives.filter(item => item.trim()).length
+  const checks: DesignCheck[] = [
+    { id: 'title', label: '填写任务标题', done: !!draft.title.trim() },
+    { id: 'summary', label: '说明问题与交付结果', done: !!draft.summary.trim() },
+    { id: 'objectives', label: '至少添加 1 个学习目标', done: objectiveCount > 0 },
+  ]
+  const completedCount = checks.filter(check => check.done).length
+  const ready = completedCount === checks.length
+
+  const updateDraft = (patch: Partial<TeacherDraft>) => {
+    setPublishedNote('')
+    onChange({ ...patch, updatedAt: new Date().toISOString() })
+  }
+  const saveDraft = () => {
+    if (!dirty) return
+    onChange({ updatedAt: new Date().toISOString() })
+    setSavedSignature(signature)
+    setPublishedNote('草稿已保存在此预览')
+  }
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || event.key.toLocaleLowerCase() !== 's') return
+      event.preventDefault()
+      saveDraft()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [dirty, signature])
+  const focusCheck = (id: DesignCheck['id']) => {
+    if (id === 'objectives' && draft.objectives.length === 0) updateDraft({ objectives: [''] })
+    setTimeout(() => document.getElementById(`t-draft-${id === 'objectives' ? 'objective-0' : id}-${draft.draftId}`)?.focus(), 0)
+  }
+  const moveObjective = (from: number, to: number) => {
+    if (to < 0 || to >= draft.objectives.length) return
+    const next = draft.objectives.slice()
+    const [moved] = next.splice(from, 1)
+    next.splice(to, 0, moved!)
+    updateDraft({ objectives: next })
+    setTimeout(() => document.getElementById(`t-draft-objective-${to}-${draft.draftId}`)?.focus(), 0)
+  }
+
+  return <div className="t-designer">
+    <header className="t-designer-head">
+      <div className="t-designer-heading">
+        <button type="button" className="t-back-link" onClick={onBack}><Icon name="alt-arrow-left" size={15} />任务列表</button>
+        <div className="t-designer-title"><h2>{draft.title.trim() || '未命名任务'}</h2><span className="t-state t-state-draft">草稿</span></div>
+      </div>
+      <div className="t-designer-actions">
+        {(dirty || publishedNote) && <span role="status" className={`t-designer-save-state${publishedNote ? ' is-saved' : ''}`}>
+          {publishedNote && <Icon name="check-circle" size={14} />}{publishedNote || '有未保存的更改'}
+        </span>}
+        <Button type="button" variant="outline" onClick={() => onDiscuss({
+          text: `帮我看看这份任务草稿的目标和评价证据。\n\n任务：${draft.title.trim() || '未命名任务'}${draft.summary.trim() ? '\n说明：' + draft.summary : ''}${objectiveCount ? '\n目标：' + draft.objectives.filter(item => item.trim()).join('、') : ''}`,
+        })}><Icon name="chat-round-dots" size={15} />和 Agent 讨论</Button>
+        <Button type="button" variant="outline" disabled={!dirty} aria-keyshortcuts="Meta+S Control+S" onClick={saveDraft}>保存草稿</Button>
+        <Button ref={publishButtonRef} type="button" variant="primary" onClick={() => setPublishOpen(true)}>发布任务</Button>
+      </div>
+    </header>
+    <div className="t-designer-body">
+      <div className="t-designer-main">
+        <section className="t-editor-section" aria-labelledby={`t-basic-title-${draft.draftId}`}>
+          <header className="t-editor-section-head"><div><h3 id={`t-basic-title-${draft.draftId}`}>基本信息</h3><p>让学生清楚理解要解决的问题，以及最终需要交付什么。</p></div></header>
+          <label className="t-field" htmlFor={`t-draft-title-${draft.draftId}`}><span className="t-field-heading">任务标题<small>必填</small></span>
+            <input id={`t-draft-title-${draft.draftId}`} value={draft.title} placeholder="例如：设计并验证 4 位 ALU"
+              onChange={event => updateDraft({ title: event.target.value })} />
+          </label>
+          <label className="t-field" htmlFor={`t-draft-summary-${draft.draftId}`}><span className="t-field-heading">任务说明<small>必填</small></span>
+            <textarea id={`t-draft-summary-${draft.draftId}`} rows={5} value={draft.summary} placeholder="说明学生要解决的真实问题、需要完成的实践，以及最终交付的成果。"
+              onChange={event => updateDraft({ summary: event.target.value })} />
+            <span className="t-field-hint">先写问题和情境，再写交付要求；具体评价方式由学习目标承接。</span>
+          </label>
+        </section>
+        <section className="t-editor-section" aria-labelledby={`t-goals-title-${draft.draftId}`}>
+          <header className="t-editor-section-head"><div><h3 id={`t-goals-title-${draft.draftId}`}>学习目标</h3><p>用可观察的表现描述学生完成实践后应能做到什么。</p></div><span>{objectiveCount} 项</span></header>
+          <div className="t-objective-list">
+            {draft.objectives.map((objective, index) => <div key={index} className="t-objective-row">
+              <span className="t-objective-index" aria-hidden="true">{index + 1}</span>
+              <input id={`t-draft-objective-${index}-${draft.draftId}`} aria-label={`学习目标 ${index + 1}`} value={objective}
+                placeholder="例如：能用波形数据比较两种电路结构" onChange={event => {
+                  const next = draft.objectives.slice(); next[index] = event.target.value; updateDraft({ objectives: next })
+                }} />
+              <div className="t-objective-actions">
+                <button type="button" className="t-icon-btn" aria-label={`上移目标 ${index + 1}`} title="上移" disabled={index === 0}
+                  onClick={() => moveObjective(index, index - 1)}><Icon name="arrow-up" size={14} /></button>
+                <button type="button" className="t-icon-btn" aria-label={`下移目标 ${index + 1}`} title="下移" disabled={index === draft.objectives.length - 1}
+                  onClick={() => moveObjective(index, index + 1)}><Icon name="arrow-down" size={14} /></button>
+                <button type="button" className="t-icon-btn t-icon-btn-danger" aria-label={`删除目标 ${index + 1}`} title="删除" disabled={draft.objectives.length === 1}
+                  onClick={() => updateDraft({ objectives: draft.objectives.filter((_, item) => item !== index) })}><Icon name="trash-bin-trash" size={14} /></button>
+              </div>
+            </div>)}
+          </div>
+          <Button type="button" variant="outline" className="t-add-objective" onClick={() => {
+            const index = draft.objectives.length
+            updateDraft({ objectives: [...draft.objectives, ''] })
+            setTimeout(() => document.getElementById(`t-draft-objective-${index}-${draft.draftId}`)?.focus(), 0)
+          }}><Icon name="add" size={14} />添加学习目标</Button>
+        </section>
+      </div>
+      <aside className="t-designer-rail" aria-label="任务发布信息">
+        <section className="t-readiness">
+          <header><h3>发布准备</h3><span>{completedCount} / {checks.length}</span></header>
+          <DesignChecklist checks={checks} onSelect={focusCheck} />
+          <p>{ready ? '内容已齐备，可以打开发布设置。' : '点击待完善项，直接回到对应内容。'}</p>
+        </section>
+        <dl className="t-design-facts">
+          <div><dt>所属课程</dt><dd>{course.name}</dd></div>
+          <div><dt>发放范围</dt><dd>发布时选择</dd></div>
+          <div><dt>评价证据</dt><dd>说明、附件、目标进度</dd></div>
+        </dl>
+      </aside>
+    </div>
+    <Dialog.Root open={publishOpen} onOpenChange={setPublishOpen}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="t-publish-overlay" />
+        <Dialog.Content className="t-publish-dialog" onOpenAutoFocus={event => { event.preventDefault(); cancelPublishRef.current?.focus() }}
+          onCloseAutoFocus={event => { event.preventDefault(); publishButtonRef.current?.focus() }}>
+          <div className="t-publish-head"><div><Dialog.Title>发布任务</Dialog.Title><Dialog.Description>核对任务内容与发放范围。发布后，学生会在课程首页看到这个任务。</Dialog.Description></div>
+            <Dialog.Close asChild><button type="button" className="t-icon-btn" aria-label="关闭发布对话框"><Icon name="close" size={16} /></button></Dialog.Close>
+          </div>
+          <div className="t-publish-summary"><span><Icon name="clipboard-check" size={20} /></span><div><strong>{draft.title.trim() || '未命名任务'}</strong><small>{course.name} · {objectiveCount} 个学习目标</small></div></div>
+          <section className="t-publish-check" aria-labelledby={`t-publish-check-${draft.draftId}`}>
+            <h3 id={`t-publish-check-${draft.draftId}`}>发布前检查<span>{completedCount} / {checks.length}</span></h3>
+            <DesignChecklist checks={checks} />
+            {!ready && <p role="alert">还有 {checks.length - completedCount} 项待完善，返回草稿补充后即可发布。</p>}
+          </section>
+          <fieldset className="t-scope"><legend>发放范围</legend>
+            <label><input type="radio" name={`scope-${draft.draftId}`} checked={scope === 'course'} onChange={() => setScope('course')} /><span><strong>本课程全部学生</strong><small>12 人</small></span></label>
+            <label className="is-disabled"><input type="radio" name={`scope-${draft.draftId}`} disabled checked={scope === 'selected'} onChange={() => setScope('selected')} /><span><strong>指定学生</strong><small>学生名单接入后可用</small></span></label>
+          </fieldset>
+          <p className="t-preview-note"><Icon name="info-circle" size={13} />发布仅用于当前预览，不会同步到学校。</p>
+          <div className="t-dialog-actions">
+            <Dialog.Close asChild><Button ref={cancelPublishRef} type="button" variant="outline">返回编辑</Button></Dialog.Close>
+            <Button type="button" variant="primary" disabled={!ready || scope !== 'course'} onClick={() => {
+              setPublishOpen(false)
+              setPublishedNote('已按本课程全部学生发布（预览）')
+            }}>确认发布</Button>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   </div>
 }
 
