@@ -20,6 +20,7 @@
 - `course-agent-linear.svg` 取自 Kubai line `whiteboard`；仅补动画 class 与 `pathLength`，图形路径未改。
 - `task-design-linear.svg` 取自 Kubai line `layout-template`；仅补动画 class，图形路径未改。
 - `student-review-linear.svg` 取自 Kubai line `user-pen`；仅补动画 class，图形路径未改。
+- `library-linear.svg` 取自 Kubai line `library`；仅补动画 class，图形路径未改。
 
 ## OpenMoji
 

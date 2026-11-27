@@ -4,7 +4,6 @@ export interface TeacherRelease {
   publishedAt: string
   objectives: string[]
 }
-
 export interface TeacherTask {
   taskId: string
   title: string
@@ -132,6 +131,95 @@ function parseCourses(value: unknown): TeacherCourse[] {
       }),
     }]
   })
+}
+
+/** One file inside the latest published release of a task. Read-only view of what students received. */
+export interface CourseMaterialEntry {
+  materialId: string
+  title: string
+  mediaType: string
+  byteLength: number
+  taskId: string
+  taskTitle: string
+  releaseId: string
+  publishedAt: string
+}
+
+/** Releases are immutable; the newest published release carries the task's current material set. */
+export function latestReleaseOf(task: TeacherTask): TeacherRelease | null {
+  const publishedTime = (release: TeacherRelease) => {
+    const time = release.publishedAt ? new Date(release.publishedAt).getTime() : 0
+    return Number.isFinite(time) ? time : 0
+  }
+  return task.releases.reduce<TeacherRelease | null>((latest, release) => !latest
+    || publishedTime(release) > publishedTime(latest) ? release : latest, null)
+}
+
+function courseHeaders(namespace: string, connectionKey: string) {
+  return { 'content-type': 'application/json', 'x-xj-space': connectionKey, 'x-xj-namespace': namespace }
+}
+
+/** Teacher channel first; a space that does not grant it still serves the same fixed release to course members. */
+async function readCourseRelease(namespace: string, connectionKey: string, courseId: string, releaseId: string) {
+  const response = await fetch('/api/learning/manage/teacher-course-read', {
+    method: 'POST', credentials: 'same-origin', headers: courseHeaders(namespace, connectionKey),
+    body: JSON.stringify({ courseId, releaseId }),
+  })
+  if (response.status === 403) {
+    const fallback = await fetch(`/api/learning/releases/${releaseId}`, { credentials: 'same-origin',
+      headers: courseHeaders(namespace, connectionKey) })
+    if (!fallback.ok) throw new Error('课程资料暂时无法读取。')
+    return fallback.json()
+  }
+  if (!response.ok) throw new Error('课程资料暂时无法读取。')
+  return response.json()
+}
+
+/** Reads each task's newest release through the teacher channel; the catalog itself omits materials. */
+export function loadCourseMaterials(namespace: string, connectionKey: string, course: TeacherCourse) {
+  return Promise.all(course.tasks.map(async task => {
+    const release = latestReleaseOf(task)
+    if (!release) return []
+    const body = await readCourseRelease(namespace, connectionKey, course.courseId, release.releaseId) as { materials?: unknown }
+    if (!Array.isArray(body.materials)) return []
+    return body.materials.flatMap((value): CourseMaterialEntry[] => {
+      const material = value as { materialId?: unknown; title?: unknown; mediaType?: unknown; byteLength?: unknown }
+      if (typeof material.materialId !== 'string' || typeof material.title !== 'string') return []
+      return [{
+        materialId: material.materialId, title: material.title,
+        mediaType: typeof material.mediaType === 'string' ? material.mediaType : '',
+        byteLength: typeof material.byteLength === 'number' ? material.byteLength : 0,
+        taskId: task.taskId, taskTitle: task.title, releaseId: release.releaseId, publishedAt: release.publishedAt,
+      }]
+    })
+  })).then(groups => groups.flat())
+}
+
+/** Material bytes stay on the school; the teacher channel returns the fixed version's content. */
+export async function readCourseMaterial(courseId: string, entry: CourseMaterialEntry, namespace: string, connectionKey: string) {
+  type MaterialBody = { contentBase64?: unknown; mediaType?: unknown; title?: unknown }
+  const response = await fetch('/api/learning/manage/teacher-course-read', {
+    method: 'POST', credentials: 'same-origin', headers: courseHeaders(namespace, connectionKey),
+    body: JSON.stringify({ courseId, releaseId: entry.releaseId, materialId: entry.materialId }),
+  })
+  let body: MaterialBody
+  if (response.status === 403) {
+    const fallback = await fetch(`/api/learning/releases/${entry.releaseId}/materials/${entry.materialId}`,
+      { credentials: 'same-origin', headers: courseHeaders(namespace, connectionKey) })
+    if (!fallback.ok) throw new Error('资料暂时无法读取。')
+    body = await fallback.json() as MaterialBody
+  } else {
+    if (!response.ok) throw new Error('资料暂时无法读取。')
+    body = await response.json() as MaterialBody
+  }
+  if (typeof body.contentBase64 !== 'string') throw new Error('资料内容为空。')
+  const binary = atob(body.contentBase64)
+  const bytes = new Uint8Array(binary.length)
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index)
+  return {
+    bytes, mediaType: typeof body.mediaType === 'string' ? body.mediaType : entry.mediaType,
+    title: typeof body.title === 'string' ? body.title : entry.title,
+  }
 }
 
 const STUDENT_NAMES = ['陈一鸣', '林知远', '苏念', '周予安', '郑亦然', '何知微', '许清和', '唐莞', '顾行舟', '沈砚', '江晚', '罗屿']

@@ -1404,13 +1404,17 @@ small.t-pulse-counts {
   text-overflow: ellipsis;
 }
 /* ── 页签图标 ─────────────────────────────
-   三个页签共用 16px 图标位与 8px 图文间距；常态中性，选中才拿出各自的
-   语义色。入场动画都控制在 560ms 内：课程/任务外层轻落，审阅只让笔写动。 */
+   四个页签共用 16px 图标位与 8px 图文间距；常态中性，选中才拿出各自的
+   语义色。入场动画都控制在 560ms 内：课程/任务外层轻落，审阅只让笔写动，
+   资料库让三本书依次立上书架。 */
 .t-btab-review {
   --tab-icon-accent: var(--icon-amber);
 }
 .t-btab-design {
   --tab-icon-accent: var(--icon-blue);
+}
+.t-btab-library {
+  --tab-icon-accent: var(--icon-teal);
 }
 .t-tab-icon {
   display: inline-flex;
@@ -1462,6 +1466,23 @@ small.t-pulse-counts {
 .t-btab-design.on .tab-design-tile-right {
   animation-delay: 140ms;
 }
+/* 资料库：三本书依次立上书架，斜放的一本最后落定；整枚图标不位移。 */
+.tab-library-book {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+.t-btab-library.on .t-tab-icon-library {
+  animation: t-tab-library-icon 500ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.t-btab-library.on .tab-library-book {
+  animation: t-tab-library-book 420ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.t-btab-library.on .tab-library-book-2 {
+  animation-delay: 70ms;
+}
+.t-btab-library.on .tab-library-book-3 {
+  animation-delay: 140ms;
+}
 @keyframes t-tab-course-icon {
   0% { transform: scale(0.96); }
   55% { transform: scale(1.025); }
@@ -1488,6 +1509,16 @@ small.t-pulse-counts {
   0% { transform: scale(0.86); opacity: 0.45; }
   60% { transform: scale(1.03); opacity: 1; }
   100% { transform: scale(1); opacity: 1; }
+}
+@keyframes t-tab-library-icon {
+  0% { transform: scale(0.97); }
+  55% { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
+@keyframes t-tab-library-book {
+  0% { transform: translateY(2px) scaleY(0.94); opacity: 0.4; }
+  60% { transform: translateY(-0.5px) scaleY(1.01); opacity: 1; }
+  100% { transform: translateY(0) scaleY(1); opacity: 1; }
 }
 /* 下拉落点：与页签同一 36 高；左侧不再画隔离线，箭头自己承担最右端的动作。
    箭头右侧留 10，与课程图标左侧的 10 对齐，首标签两端同宽 */
@@ -1537,6 +1568,9 @@ small.t-pulse-counts {
   .t-btab-course.on .tab-course-line,
   .t-btab-review.on .tab-review-pen,
   .t-btab-design.on .tab-design-tile {
+    animation: none;
+  }
+  .t-btab-library.on .tab-library-book {
     animation: none;
   }
   .t-btab-course.on .tab-course-line {
@@ -1695,6 +1729,220 @@ small.t-pulse-counts {
 }
 .t-task-focus-clear:hover {
   color: var(--ink);
+}
+
+/* ---------- 资料库 ---------- */
+/* 单列管理型：标准留白，标签栏下距 21px；宽度收在 880，便于扫读长标题。 */
+.t-library {
+  width: min(880px, 100%);
+  margin: 0 auto;
+  padding-bottom: 48px;
+}
+.t-library-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 24px 0 18px;
+}
+.t-library-heading {
+  min-width: 0;
+}
+.t-library-heading h2 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.5;
+}
+.t-library-heading p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.t-library-tools {
+  display: flex;
+  align-items: center;
+  flex: none;
+  gap: 12px;
+  padding-top: 2px;
+}
+.t-library-count {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.t-library-tools button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.t-library-notice {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.t-library-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 8px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--raised);
+}
+.t-library-error p {
+  margin: 0;
+  color: var(--danger);
+  font-size: 13px;
+}
+.t-library-empty {
+  margin-top: 8px;
+  padding: 52px 24px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--raised);
+  text-align: center;
+}
+.t-library-empty strong {
+  color: var(--ink-soft);
+  font-size: 14px;
+  font-weight: 600;
+}
+.t-library-empty p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.t-library-group {
+  margin-top: 28px;
+}
+.t-library-group-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 2px 10px;
+}
+.t-library-group-head h3 {
+  min-width: 0;
+  overflow: hidden;
+  margin: 0;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.t-library-group-head span {
+  flex: none;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+.t-library-list {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--raised);
+}
+.t-library-row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 40px;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 64px;
+  padding: 12px 16px;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 150ms var(--ease-s);
+}
+.t-library-row:first-child {
+  border-top: 0;
+}
+.t-library-row:hover:not(:disabled) {
+  background: var(--hover-bg);
+}
+.t-library-row:disabled {
+  cursor: default;
+}
+.t-library-row:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+.t-library-row-icon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--sunken);
+  color: var(--muted);
+  transition: color 150ms var(--ease-s);
+}
+.t-library-row:hover:not(:disabled) .t-library-row-icon {
+  color: var(--ink-soft);
+}
+.t-library-row-main {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+.t-library-row-main strong {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.t-library-row-main small {
+  color: var(--muted);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+}
+.t-library-row-action {
+  display: flex;
+  min-width: 32px;
+  justify-content: flex-end;
+  color: var(--muted);
+  font-size: 11.5px;
+  transition: color 150ms var(--ease-s);
+}
+.t-library-row:hover:not(:disabled) .t-library-row-action {
+  color: var(--ink-soft);
+}
+@media (max-width: 700px) {
+  .t-library-head {
+    flex-direction: column;
+    gap: 14px;
+    padding-top: 16px;
+  }
+  .t-library-tools {
+    align-self: stretch;
+    justify-content: space-between;
+    padding-top: 0;
+  }
+  .t-library-row {
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+    gap: 12px;
+    padding: 12px 14px;
+  }
+  .t-library-row-icon {
+    width: 32px;
+    height: 32px;
+  }
 }
 
 /* ---------- 作业审阅 ---------- */

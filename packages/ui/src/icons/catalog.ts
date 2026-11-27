@@ -1746,6 +1746,28 @@ export const iconCatalog = {
     "modified": true,
     "notes": "2026-11-27 作业审阅页签改用 Kubai line user-pen：人像 + 笔，表示给学生写反馈；仅补动画 class，路径未改；24px 画布、1.5px 圆润线条。"
   },
+  "library": {
+    "label": "资料库",
+    "tone": "teal",
+    "variant": "linear",
+    "usages": [
+      {
+        "label": "资料库页签",
+        "group": "教师课程工作区",
+        "scope": "现有",
+        "reviewId": ""
+      }
+    ],
+    "files": {
+      "linear": "library-linear.svg"
+    },
+    "source": "Kubai Icons",
+    "author": "Kubai087 与 Kubai Icons contributors",
+    "license": "MIT",
+    "sourceUrl": "https://github.com/kubai087/kubai-icons",
+    "modified": true,
+    "notes": "2026-11-27 资料库页签取自 Kubai line library：三本竖排书与斜放的一本，表示课程资料的书架；仅补动画 class，路径未改；24px 画布、1.5px 圆润线条。"
+  },
   "trash-bin-trash": {
     "label": "删除历史会话",
     "tone": "neutral",

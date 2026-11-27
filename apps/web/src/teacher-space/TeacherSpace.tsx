@@ -18,8 +18,8 @@ import { LearningReadCache } from '../product/learning-read-cache'
 import { getSessionState, logoutSession } from '../workspace/session'
 import './teacher-space.css'
 import {
-  latestTaskOf, loadTeacherCatalog, submissionLabel, teacherCohort,
-  type SubmissionState, type TeacherCatalog, type TeacherCourse, type TeacherDraft, type TeacherRelease, type TeacherSubmission, type TeacherTask,
+  latestTaskOf, loadCourseMaterials, loadTeacherCatalog, readCourseMaterial, submissionLabel, teacherCohort,
+  type CourseMaterialEntry, type SubmissionState, type TeacherCatalog, type TeacherCourse, type TeacherDraft, type TeacherRelease, type TeacherSubmission, type TeacherTask,
 } from './data'
 import { clearTeacherCache, readTeacherCache, writeTeacherCache, type TeacherContext } from './teacher-cache'
 import { orderSubmissions, submissionGroups, waitingText as submissionWaitingText, type ReviewView } from './review-order'
@@ -27,7 +27,7 @@ import { orderSubmissions, submissionGroups, waitingText as submissionWaitingTex
 const PersonalModelSettings = lazy(() => import('../product/PersonalModelSettings').then(module => ({ default: module.PersonalModelSettings })))
 
 type TeacherView = 'overview' | 'workbench'
-type TeacherTab = 'agent' | 'review' | 'design'
+type TeacherTab = 'agent' | 'review' | 'design' | 'library'
 type InboxKind = 'pending' | 'revised' | 'draft' | 'stalled'
 type InboxAction = 'review' | 'design' | 'workbench'
 
@@ -595,8 +595,8 @@ function CourseWorkspace({ course, courses, cohort, agentSubject, readOnly, sele
   const [projects, setProjects] = useState<TeacherDraft[]>(() => cohort.drafts.filter(item => item.courseId === course.courseId))
   const scopedTask = taskScope ? course.tasks.find(item => item.taskId === taskScope) : undefined
   const scopedCount = scopedTask ? submissions.filter(item => item.taskId === scopedTask.taskId).length : 0
-  const tabIds: Record<TeacherTab, string> = { agent: 't-tab-agent', review: 't-tab-review', design: 't-tab-design' }
-  const tabOrder: TeacherTab[] = ['agent', 'review', 'design']
+  const tabIds: Record<TeacherTab, string> = { agent: 't-tab-agent', review: 't-tab-review', design: 't-tab-design', library: 't-tab-library' }
+  const tabOrder: TeacherTab[] = ['agent', 'review', 'design', 'library']
   const onTabKey = (current: TeacherTab) => (event: { key: string; preventDefault: () => void }) => {
     if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return
     event.preventDefault()
@@ -672,6 +672,12 @@ function CourseWorkspace({ course, courses, cohort, agentSubject, readOnly, sele
         <span className="t-tab-icon t-tab-icon-design" aria-hidden="true"><Icon name="task-design" variant="linear" tone="neutral" size={16} /></span>
         <span className="t-btab-label">任务设计</span>
       </button>
+      <button type="button" role="tab" id="t-tab-library" aria-selected={tab === 'library'} aria-controls="t-panel-library"
+        tabIndex={tab === 'library' ? 0 : -1} className={'t-btab t-btab-library' + (tab === 'library' ? ' on' : '')}
+        data-tab-active={tab === 'library' ? '' : undefined} onClick={() => setTab('library')} onKeyDown={onTabKey('library')}>
+        <span className="t-tab-icon t-tab-icon-library" aria-hidden="true"><Icon name="library" variant="linear" tone="neutral" size={16} /></span>
+        <span className="t-btab-label">资料库</span>
+      </button>
       </div>
     </header>
     {scopedTask && tab === 'review' && <div className="t-task-focus">
@@ -692,6 +698,134 @@ function CourseWorkspace({ course, courses, cohort, agentSubject, readOnly, sele
       onChange={next => setSubmissions(current => current.map(item => item.submissionId === next.submissionId ? next : item))} /></div>}
     {tab === 'design' && <div id="t-panel-design" role="tabpanel" aria-labelledby="t-tab-design"><DesignPane course={course} projects={projects} openId={designOpenId} onOpen={setDesignOpenId} onProjects={setProjects}
       onDiscuss={seed => { setAgentSeed(seed); setTab('agent') }} /></div>}
+    {tab === 'library' && <div id="t-panel-library" role="tabpanel" aria-labelledby="t-tab-library">
+      {agentSubject ? <LibraryPane course={course} namespace={agentSubject.namespace} spaceKey={agentSubject.spaceKey} />
+        : <p role="alert" className="t-loading">无法确认当前学校账号，请重新连接学校。</p>}
+    </div>}
+  </div>
+}
+
+const MATERIAL_TYPE_LABELS: [RegExp, string][] = [
+  [/pdf/, 'PDF'], [/markdown/, 'Markdown'], [/presentation|powerpoint/, '演示文稿'],
+  [/spreadsheet|csv|excel/, '表格'], [/zip|compressed/, '压缩包'],
+  [/^image\//, '图片'], [/^video\//, '视频'], [/^audio\//, '音频'], [/^text\//, '文本'],
+]
+
+function materialTypeText(mediaType: string) {
+  const normalized = mediaType.toLowerCase()
+  return MATERIAL_TYPE_LABELS.find(([pattern]) => pattern.test(normalized))?.[1] ?? (mediaType || '文件')
+}
+
+function materialSizeText(byteLength: number) {
+  if (!byteLength) return '大小未知'
+  if (byteLength < 1024) return `${byteLength} B`
+  if (byteLength < 1024 * 1024) return `${(byteLength / 1024).toFixed(1)} KB`
+  return `${(byteLength / 1024 / 1024).toFixed(1)} MB`
+}
+
+function materialFileName(title: string, mediaType: string) {
+  if (/\.\w{1,8}$/.test(title)) return title
+  const normalized = mediaType.toLowerCase()
+  const extension = normalized.includes('pdf') ? '.pdf' : normalized.includes('markdown') ? '.md'
+    : normalized.includes('presentation') ? '.pptx' : normalized.includes('spreadsheet') ? '.xlsx'
+      : normalized.includes('zip') ? '.zip' : normalized.startsWith('image/') ? '.png'
+        : normalized.startsWith('video/') ? '.mp4' : normalized.startsWith('audio/') ? '.mp3'
+          : normalized.startsWith('text/') ? '.txt' : ''
+  return title + extension
+}
+
+function materialIcon(mediaType: string) {
+  const normalized = mediaType.toLowerCase()
+  if (normalized.startsWith('image/')) return 'file-image' as const
+  if (normalized.startsWith('video/')) return 'file-video-camera' as const
+  if (/presentation|powerpoint/.test(normalized)) return 'file-presentation' as const
+  return 'file-text' as const
+}
+
+/** Read-only library of the files fixed in each task's newest published release. */
+function LibraryPane({ course, namespace, spaceKey }: { course: TeacherCourse; namespace: string; spaceKey: string }) {
+  const [entries, setEntries] = useState<CourseMaterialEntry[] | null>(null)
+  const [error, setError] = useState('')
+  const [attempt, setAttempt] = useState(0)
+  const [busyId, setBusyId] = useState<string | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    setEntries(null); setError('')
+    loadCourseMaterials(namespace, spaceKey, course).then(value => { if (!cancelled) setEntries(value) })
+      .catch(reason => { if (!cancelled) setError(reason instanceof Error ? reason.message : '课程资料暂时无法读取。') })
+    return () => { cancelled = true }
+  }, [course, namespace, spaceKey, attempt])
+  const groups = useMemo(() => {
+    const grouped = new Map<string, { taskId: string; taskTitle: string; publishedAt: string; items: CourseMaterialEntry[] }>()
+    for (const entry of entries ?? []) {
+      const group = grouped.get(entry.taskId) ?? { taskId: entry.taskId, taskTitle: entry.taskTitle, publishedAt: entry.publishedAt, items: [] }
+      group.items.push(entry)
+      grouped.set(entry.taskId, group)
+    }
+    return [...grouped.values()].sort((a, b) => (b.publishedAt ?? '').localeCompare(a.publishedAt ?? ''))
+  }, [entries])
+  const loading = entries === null && !error
+  const download = async (entry: CourseMaterialEntry) => {
+    if (busyId) return
+    setBusyId(entry.materialId)
+    try {
+      const data = await readCourseMaterial(course.courseId, entry, namespace, spaceKey)
+      const buffer = new ArrayBuffer(data.bytes.byteLength)
+      new Uint8Array(buffer).set(data.bytes)
+      const url = URL.createObjectURL(new Blob([buffer], { type: data.mediaType || 'application/octet-stream' }))
+      const link = document.createElement('a')
+      link.href = url
+      link.download = materialFileName(data.title, data.mediaType)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 0)
+    } catch (reason) {
+      toast.error(reason instanceof Error ? reason.message : '资料暂时无法读取。')
+    } finally { setBusyId(null) }
+  }
+  return <div className="t-library" aria-busy={loading || undefined}>
+    <header className="t-library-head">
+      <div className="t-library-heading">
+        <h2>资料库</h2>
+        <p>课程已发布版本中的资料，按任务归拢；这里是学生拿到的同一份文件。</p>
+      </div>
+      <div className="t-library-tools">
+        <span className="t-library-count">{entries ? `共 ${entries.length} 份` : ''}</span>
+        <Button type="button" variant="outline" disabled={loading || !!busyId}
+          onClick={() => setAttempt(value => value + 1)}>
+          <Icon name="refresh" size={14} />刷新
+        </Button>
+      </div>
+    </header>
+    {loading && <p role="status" className="t-library-notice">正在读取课程资料…</p>}
+    {error && <div role="alert" className="t-library-error">
+      <p>{error}</p>
+      <Button type="button" variant="outline" onClick={() => setAttempt(value => value + 1)}>重试</Button>
+    </div>}
+    {entries && !entries.length && <div className="t-library-empty">
+      <strong>这门课程还没有已发布的资料</strong>
+      <p>任务发布后，随版本固定的资料会出现在这里。</p>
+    </div>}
+    {groups.map(group => <section key={group.taskId} className="t-library-group" aria-labelledby={`t-library-${group.taskId}`}>
+      <div className="t-library-group-head">
+        <h3 id={`t-library-${group.taskId}`}>{group.taskTitle}</h3>
+        <span>{group.publishedAt ? `发布于 ${dateText(group.publishedAt)} · ` : ''}{group.items.length} 份</span>
+      </div>
+      <div className="t-library-list">
+        {group.items.map(entry => <button key={entry.materialId} type="button" className="t-library-row"
+          aria-label={`下载资料：${entry.title}`} disabled={!!busyId} onClick={() => { void download(entry) }}>
+          <span className="t-library-row-icon" aria-hidden="true"><Icon name={materialIcon(entry.mediaType)} size={18} /></span>
+          <span className="t-library-row-main">
+            <strong>{entry.title}</strong>
+            <small>{materialTypeText(entry.mediaType)} · {materialSizeText(entry.byteLength)}</small>
+          </span>
+          <span className="t-library-row-action" aria-hidden="true">
+            {busyId === entry.materialId ? <small>读取中…</small> : <Icon name="download-minimalistic" size={16} />}
+          </span>
+        </button>)}
+      </div>
+    </section>)}
   </div>
 }
 
