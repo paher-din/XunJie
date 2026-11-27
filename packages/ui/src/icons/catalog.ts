@@ -1768,6 +1768,28 @@ export const iconCatalog = {
     "modified": true,
     "notes": "2026-11-27 资料库页签取自 Kubai line library：三本竖排书与斜放的一本，表示课程资料的书架；仅补动画 class，路径未改；24px 画布、1.5px 圆润线条。"
   },
+  "review-list": {
+    "label": "提交清单",
+    "tone": "neutral",
+    "variant": "linear",
+    "usages": [
+      {
+        "label": "作业审阅提交清单开合",
+        "group": "教师课程工作区",
+        "scope": "现有",
+        "reviewId": ""
+      }
+    ],
+    "files": {
+      "linear": "review-list-linear.svg"
+    },
+    "source": "Project",
+    "author": "学习空间项目",
+    "license": "Project",
+    "sourceUrl": "",
+    "modified": false,
+    "notes": "2026-11-27 按用户参考图绘制：左侧栏内三条清单线；24px 画布、1.5px 圆润线条。"
+  },
   "trash-bin-trash": {
     "label": "删除历史会话",
     "tone": "neutral",
