@@ -22,6 +22,7 @@ import {
   type SubmissionState, type TeacherCatalog, type TeacherCourse, type TeacherDraft, type TeacherRelease, type TeacherSubmission, type TeacherTask,
 } from './data'
 import { clearTeacherCache, readTeacherCache, writeTeacherCache, type TeacherContext } from './teacher-cache'
+import { orderSubmissions, submissionGroups, waitingText as submissionWaitingText, type ReviewView } from './review-order'
 
 const PersonalModelSettings = lazy(() => import('../product/PersonalModelSettings').then(module => ({ default: module.PersonalModelSettings })))
 
@@ -132,12 +133,12 @@ function reviewInboxRows(courses: TeacherCourse[], submissions: TeacherSubmissio
   return [...groups.values()].map<InboxRow>(group => {
     const pendingCount = group.submissions.filter(item => item.state === 'pending').length
     const revisedCount = group.submissions.length - pendingCount
-    const statusSummary = [revisedCount ? `待复核 ${revisedCount}` : '', pendingCount ? `待审阅 ${pendingCount}` : ''].filter(Boolean).join(' · ')
+    const statusSummary = [pendingCount ? `待审阅 ${pendingCount}` : '', revisedCount ? `待复核 ${revisedCount}` : ''].filter(Boolean).join(' · ')
     const waitingSince = group.submissions.map(item => item.submittedAt).sort()[0]
     return {
       key: `review:${group.courseId}:${group.taskId}`,
-      kind: revisedCount ? 'revised' : 'pending',
-      label: revisedCount ? '待复核' : '待审阅',
+      kind: pendingCount ? 'pending' : 'revised',
+      label: pendingCount ? '待审阅' : '待复核',
       title: taskTitleOf(courses, group.taskId),
       course: courseName(courses, group.courseId),
       people: [...group.people.entries()].map(([name, submittedAt]) => ({ name, time: timeText(submittedAt), submittedAt })),
@@ -694,9 +695,9 @@ function CourseWorkspace({ course, courses, cohort, agentSubject, readOnly, sele
   </div>
 }
 
-type ReviewFilter = 'all' | 'inbox' | SubmissionState
+const REVIEW_LIST_COLLAPSED = 'xj.teacher-review-list-collapsed.v1'
 
-const filters: { id: ReviewFilter; label: string }[] = [
+const filters: { id: ReviewView; label: string }[] = [
   { id: 'inbox', label: '待处理' }, { id: 'all', label: '全部' }, { id: 'pending', label: '待审阅' }, { id: 'revised', label: '待复核' },
   { id: 'feedback', label: '已反馈' }, { id: 'done', label: '已完成' },
 ]
@@ -707,22 +708,34 @@ function ReviewPane({ course, submissions, taskId, onChange }: {
   const scoped = taskId ? submissions.filter(item => item.taskId === taskId) : submissions
   const hasPending = scoped.some(item => item.state === 'pending')
   const hasRevised = scoped.some(item => item.state === 'revised')
-  const initialFilter: ReviewFilter = taskId
-    ? hasPending || hasRevised ? 'inbox' : 'all'
-    : 'pending'
-  const matchesFilter = (item: TeacherSubmission, value: ReviewFilter) => value === 'all' || (value === 'inbox'
+  // 默认进处理队列；待审阅与待复核都属待处理，不能被漏在默认视图外。
+  const initialFilter: ReviewView = hasPending || hasRevised ? 'inbox' : 'all'
+  const matchesFilter = (item: TeacherSubmission, value: ReviewView) => value === 'all' || (value === 'inbox'
     ? item.state === 'pending' || item.state === 'revised'
     : item.state === value)
-  const visibleFor = (items: TeacherSubmission[], status: ReviewFilter, search: string) => items
-    .filter(item => matchesFilter(item, status) && (!search.trim() || item.studentName.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())))
-    .sort((a, b) => a.submittedAt.localeCompare(b.submittedAt))
+  const visibleFor = (items: TeacherSubmission[], status: ReviewView, search: string) => {
+    const normalizedQuery = search.trim().toLocaleLowerCase()
+    return orderSubmissions(items.filter(item => matchesFilter(item, status)
+      && (!normalizedQuery || item.studentName.toLocaleLowerCase().includes(normalizedQuery))), status)
+  }
   const initialVisible = visibleFor(scoped, initialFilter, '')
-  const [filter, setFilter] = useState<ReviewFilter>(initialFilter)
+  const [filter, setFilter] = useState<ReviewView>(initialFilter)
   const [query, setQuery] = useState('')
   const [selectedId, setSelectedId] = useState(() => initialVisible[0]?.submissionId)
   const [drafts, setDrafts] = useState<Record<string, string>>(() => Object.fromEntries(scoped.map(item => [item.submissionId, item.feedback])))
   const [saved, setSaved] = useState<{ id: string; message: string } | null>(null)
+  const [listCollapsed, setListCollapsed] = useState(() => {
+    try { return window.localStorage.getItem(REVIEW_LIST_COLLAPSED) === '1' } catch { return false }
+  })
+  const toggleList = () => {
+    const next = !listCollapsed
+    setListCollapsed(next)
+    try { window.localStorage.setItem(REVIEW_LIST_COLLAPSED, next ? '1' : '0') } catch { /* Keep the toggle usable when storage is unavailable. */ }
+  }
   const visible = visibleFor(scoped, filter, query)
+  const groups = submissionGroups(visible, filter)
+  const showGroupTitles = groups.length > 1
+  const inboxCleared = filter === 'inbox' && !query.trim() && visible.length === 0
   const selected = visible.find(item => item.submissionId === selectedId) ?? visible[0]
   const selectedIndex = selected ? visible.findIndex(item => item.submissionId === selected.submissionId) : -1
   const feedback = selected ? drafts[selected.submissionId] ?? selected.feedback : ''
@@ -731,29 +744,34 @@ function ReviewPane({ course, submissions, taskId, onChange }: {
     : null
   const primaryLabel = selected?.state === 'revised' ? '完成复核' : selected?.state === 'pending' ? '保存反馈' : '更新反馈'
   const primaryDisabled = !selected || !feedback.trim() || ((selected.state === 'feedback' || selected.state === 'done') && feedback === selected.feedback)
-  const revisionDisabled = !selected || !feedback.trim() || selected.state === 'revised'
+  const revisionDisabled = !selected || !feedback.trim()
 
   const selectSubmission = (id: string) => { setSelectedId(id); setSaved(null) }
-  const changeView = (nextFilter: ReviewFilter, nextQuery: string) => {
+  const changeView = (nextFilter: ReviewView, nextQuery: string) => {
+    const nextVisible = visibleFor(scoped, nextFilter, nextQuery)
     setFilter(nextFilter)
     setQuery(nextQuery)
     setSaved(null)
-    setSelectedId(visibleFor(scoped, nextFilter, nextQuery)[0]?.submissionId)
+    // 搜索或切换筛选时，原选中仍在结果里就保持；否则落到队列第一条。
+    setSelectedId(current => nextVisible.some(item => item.submissionId === current) ? current : nextVisible[0]?.submissionId)
   }
   const selectRelative = (step: number) => {
     const next = visible[selectedIndex + step]
     if (next) selectSubmission(next.submissionId)
   }
-  const save = (state: SubmissionState) => {
+  const save = (state: SubmissionState, intent: 'review' | 'revise' = 'review') => {
     if (!selected || !feedback.trim()) return
-    const next = { ...selected, feedback, state, version: state === 'revised' ? selected.version + 1 : selected.version }
+    const next = { ...selected, feedback, state }
     const nextScoped = scoped.map(item => item.submissionId === next.submissionId ? next : item)
     const nextVisible = visibleFor(nextScoped, filter, query)
-    const message = state === 'revised' ? '已标记为允许修订'
-      : selected.state === 'revised' ? '复核已完成'
+    const message = intent === 'revise' ? '已退回修改，等待学生重新提交'
+      : state === 'done' ? '复核已完成'
         : selected.state === 'feedback' || selected.state === 'done' ? '反馈已更新' : '反馈已记录在此预览'
+    // 仍留在当前视图就保持选中；移出视图后接原位置的下一条，避免跳回队首。
+    const kept = nextVisible.find(item => item.submissionId === next.submissionId)
+    const nextId = kept?.submissionId ?? nextVisible[Math.min(selectedIndex, nextVisible.length - 1)]?.submissionId
     onChange(next)
-    setSelectedId(nextVisible.some(item => item.submissionId === next.submissionId) ? next.submissionId : nextVisible[0]?.submissionId)
+    setSelectedId(nextId)
     setSaved({ id: next.submissionId, message })
     toast.success(message)
   }
@@ -764,36 +782,64 @@ function ReviewPane({ course, submissions, taskId, onChange }: {
     <p>{taskId ? '学生提交后，会按状态出现在这里。' : '发布任务后，学生的提交会按状态进入这里。'}</p>
   </div>
 
-  return <div className="t-review">
-    <aside className="t-review-list" aria-label="提交清单">
-      <div className="t-review-list-head"><h2>提交清单</h2><span>{visible.length} / {scoped.length}</span></div>
-      <div className="t-review-tools">
-        <div className="t-review-search">
-          <Icon name="minimalistic-magnifier" size={15} />
-          <input aria-label="搜索学生" placeholder="搜索学生" value={query} onChange={event => changeView(filter, event.target.value)} />
-          {query && <button type="button" aria-label="清空搜索" onClick={() => changeView(filter, '')}><Icon name="close" size={13} /></button>}
-        </div>
-        <SelectField className="t-review-filter" label="按状态筛选" value={filter}
-          options={filters.map(item => ({
-            value: item.id,
-            label: `${item.label} ${item.id === 'all' ? scoped.length : scoped.filter(entry => matchesFilter(entry, item.id)).length}`,
-          }))}
-          onChange={value => changeView(value as ReviewFilter, query)} />
-      </div>
-      <div className="t-submission-list">
-        {visible.length === 0 ? <div className="t-list-empty"><strong>没有符合条件的提交</strong><span>换个关键词或状态试试。</span></div> : visible.map(item => {
-          const hasDraft = (drafts[item.submissionId] ?? item.feedback) !== item.feedback
-          return <button key={item.submissionId} type="button"
-            className={'t-submission-row' + (selected?.submissionId === item.submissionId ? ' on' : '')} aria-current={selected?.submissionId === item.submissionId ? 'true' : undefined}
-            onClick={() => selectSubmission(item.submissionId)}>
-            <span className="t-submission-avatar" aria-hidden="true">{item.studentName.slice(0, 1)}</span>
-            <span className="t-submission-main">
-              <span className="t-submission-title"><strong>{item.studentName}</strong>{hasDraft && <span className="t-draft-mark" title="有未保存反馈">草稿</span>}</span>
-              <small>{timeText(item.submittedAt)}<span>·</span>v{item.version}</small>
-            </span>
-            <span className={`t-state t-state-${item.state}`}>{submissionLabel[item.state]}</span>
+  return <div className={'t-review' + (listCollapsed ? ' is-list-collapsed' : '')}>
+    <aside className={'t-review-list' + (listCollapsed ? ' is-collapsed' : '')} aria-label="提交清单">
+      <div className="t-review-list-head">
+        <h2>提交清单</h2>
+        <div className="t-review-list-head-end">
+          <span className="t-review-list-count">{visible.length} / {scoped.length}</span>
+          <button type="button" className="t-review-list-toggle"
+            aria-label={listCollapsed ? '展开提交清单' : '收起提交清单'}
+            title={listCollapsed ? '展开提交清单' : '收起提交清单'}
+            aria-expanded={!listCollapsed} aria-controls="t-review-list-body" onClick={toggleList}>
+            <Icon name={listCollapsed ? 'alt-arrow-right' : 'panel-left-close'} size={16} />
           </button>
-        })}
+        </div>
+      </div>
+      <div id="t-review-list-body" className="t-review-list-body" hidden={listCollapsed}>
+        <div className="t-review-tools">
+          <div className="t-review-search">
+            <Icon name="minimalistic-magnifier" size={15} />
+            <input aria-label="搜索学生" placeholder="搜索学生" value={query} onChange={event => changeView(filter, event.target.value)} />
+            {query && <button type="button" aria-label="清空搜索" onClick={() => changeView(filter, '')}><Icon name="close" size={13} /></button>}
+          </div>
+          <SelectField className="t-review-filter" label="按状态筛选" value={filter}
+            options={filters.map(item => ({
+              value: item.id,
+              label: `${item.label} ${item.id === 'all' ? scoped.length : scoped.filter(entry => matchesFilter(entry, item.id)).length}`,
+            }))}
+            onChange={value => changeView(value as ReviewView, query)} />
+        </div>
+        <div className="t-submission-list">
+          {visible.length === 0 ? <div className="t-list-empty">
+            <strong>{inboxCleared ? '待处理已清空' : '没有符合条件的提交'}</strong>
+            <span>{inboxCleared ? '新的提交与复核会回到这里。' : '换个关键词或状态试试。'}</span>
+            {inboxCleared && <button type="button" className="t-list-empty-link" onClick={() => changeView('all', '')}>查看全部提交</button>}
+          </div> : groups.map(group => <div key={group.id} className="t-submission-group">
+            {showGroupTitles && <div className="t-review-group">
+              <span className="t-review-group-dot" data-state={group.id} aria-hidden="true" />
+              <span>{group.label}</span>
+              <small>{group.items.length}</small>
+            </div>}
+            {group.items.map(item => {
+              const hasDraft = (drafts[item.submissionId] ?? item.feedback) !== item.feedback
+              const queued = item.state === 'pending' || item.state === 'revised'
+              return <button key={item.submissionId} type="button"
+                className={'t-submission-row' + (selected?.submissionId === item.submissionId ? ' on' : '')} aria-current={selected?.submissionId === item.submissionId ? 'true' : undefined}
+                onClick={() => selectSubmission(item.submissionId)}>
+                <span className="t-submission-avatar" aria-hidden="true">{item.studentName.slice(0, 1)}</span>
+                <span className="t-submission-main">
+                  <span className="t-submission-title"><strong>{item.studentName}</strong>{hasDraft && <span className="t-draft-mark" title="有未保存反馈">草稿</span>}</span>
+                  <small title={`提交于 ${timeText(item.submittedAt)}`}>
+                    {queued ? submissionWaitingText(item.submittedAt) : `提交 ${timeText(item.submittedAt).split(' ')[0]}`}
+                    <span>·</span>v{item.version}
+                  </small>
+                </span>
+                <span className={`t-state t-state-${item.state}`}>{submissionLabel[item.state]}</span>
+              </button>
+            })}
+          </div>)}
+        </div>
       </div>
     </aside>
     {selected ? <section className="t-review-detail" aria-label="提交详情">
@@ -848,7 +894,7 @@ function ReviewPane({ course, submissions, taskId, onChange }: {
         <div className="t-feedback-footer">
           <span className="t-feedback-hint">{feedback.trim() ? '⌘ / Ctrl + Enter' : '先填写反馈'}</span>
           <div className="t-actions">
-            <Button type="button" variant="outline" disabled={revisionDisabled} onClick={() => save('revised')}><Icon name="undo-left-round" size={14} />{selected.state === 'revised' ? '已允许修订' : '允许修订'}</Button>
+            <Button type="button" variant="outline" disabled={revisionDisabled} onClick={() => save('feedback', 'revise')}><Icon name="undo-left-round" size={14} />允许修订</Button>
             <Button type="button" variant="primary" disabled={primaryDisabled} aria-keyshortcuts="Meta+Enter Control+Enter"
               onClick={() => primaryState && save(primaryState)}><Icon name="check" size={14} />{primaryLabel}</Button>
           </div>
@@ -857,8 +903,8 @@ function ReviewPane({ course, submissions, taskId, onChange }: {
       <p className="t-preview-note"><Icon name="info-circle" size={13} />审阅写接口尚未接入学校，这里的反馈与状态只保存在本次预览。</p>
     </section> : <section className="t-review-detail t-review-detail--empty" aria-label="提交详情">
       <Icon name="folder-search" size={28} />
-      <h2>没有匹配的提交</h2>
-      <p>调整搜索词或状态，找到需要审阅的内容。</p>
+      <h2>{inboxCleared ? '待处理已清空' : '没有匹配的提交'}</h2>
+      <p>{inboxCleared ? '新的提交与复核会回到这里。' : '调整搜索词或状态，找到需要审阅的内容。'}</p>
       <Button type="button" variant="outline" onClick={() => changeView('all', '')}>查看全部提交</Button>
     </section>}
   </div>
