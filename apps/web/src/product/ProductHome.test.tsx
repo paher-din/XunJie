@@ -76,3 +76,36 @@ it('filters independent school and personal lists without changing route or requ
     vi.unstubAllGlobals()
   }
 })
+
+it('labels demo statistics and reports the real assignment count', async () => {
+  vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
+  vi.stubGlobal('ResizeObserver', class {
+    observe() { /* The heat widget only needs the callback to be constructible in jsdom. */ }
+    unobserve() { /* No layout in jsdom. */ }
+    disconnect() { /* No layout in jsdom. */ }
+  })
+  const host = document.createElement('div')
+  document.body.append(host)
+  const root = createRoot(host)
+  const release = { releaseId: 'release-1', contentDigest: 'test-release', objectives: [], publishedAt: '2026-01-02' }
+  const task = { taskId: 'task-1', title: '课程任务', summary: '任务简介', releases: [release] }
+  const props: ProductHomeProps = { accountName: '学生', personalKey: 'personal', dashboardKey: 'test-dashboard-demo',
+    personalActivities: [], schoolActivities: [], demoStatistics: true,
+    courses: [{ courseId: 'course-1', name: '真实课程', tasks: [task] }], busy: false,
+    onOpenActivity: vi.fn(), onOpenCourse: vi.fn(), onOpenTask: vi.fn(), readTaskSubmission: async () => false,
+    onStartConversation: vi.fn(), onRefresh: vi.fn() }
+  try {
+    await act(async () => root.render(<MemoryRouter><HomeNavigationProvider scope="test">
+      <ProductHome {...props} />
+    </HomeNavigationProvider></MemoryRouter>))
+    expect(host.textContent).toContain('演示统计')
+    expect(host.textContent).toContain('真实分配 1 个任务')
+    expect(host.textContent).toContain('3 / 8 个任务 · 37.5%')
+    expect(host.textContent).not.toContain('完成进度暂无统计')
+  } finally {
+    await act(async () => root.unmount())
+    localStorage.removeItem('test-dashboard-demo')
+    host.remove()
+    vi.unstubAllGlobals()
+  }
+})
