@@ -1,19 +1,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { MutableRefObject } from 'react'
 import type { AgentSession } from '@xunjie/contracts/agent-sessions'
 import { AgentSessionsClient, SessionOutbox, type SessionSubject } from '../product/agent-sessions'
 import type { ModelSelectionController } from '../product/ModelSelection'
 import { ProductAgent, type TeacherAgentSeed } from '../product/ProductAgent'
 import { sessionError } from '../product/useAgentSession'
+import type { ConversationScrollPosition } from '../product/conversation-scroll'
 import { clearTeacherCourseSession, readTeacherCourseSession, writeTeacherCourseSession } from './teacher-course-session'
 
 type Directory = { client: AgentSessionsClient; session?: AgentSession; pending: boolean; error?: string }
 const ready = (item: AgentSession) => item.state === 'ready' && !item.deleted && !item.archived
 const newest = (items: AgentSession[]) => items.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || b.sessionId.localeCompare(a.sessionId))[0]
 
-export function TeacherCourseAgent({ subject, courseId, selection, readOnly, onSettings, seed, onSeedApplied }: {
+export function TeacherCourseAgent({ subject, courseId, selection, readOnly, onSettings, seed, onSeedApplied, scrollMemory }: {
   subject: SessionSubject; courseId: string; selection: ModelSelectionController; readOnly: boolean
   onSettings(): void; seed: TeacherAgentSeed | null
   onSeedApplied(): void
+  scrollMemory?: MutableRefObject<ConversationScrollPosition | null>
 }) {
   const scope = JSON.stringify([subject.namespace, subject.spaceKey, subject.identity.kind, subject.identity.environmentId,
     subject.identity.spaceId, subject.identity.principalId, courseId])
@@ -72,5 +75,5 @@ export function TeacherCourseAgent({ subject, courseId, selection, readOnly, onS
   return <ProductAgent key={client.scope} {...subject} sessionId={directory.session?.sessionId} session={directory.session}
     selection={selection} readOnly={readOnly} onSession={onSession} onSettings={onSettings}
     teacher={{ courseId, seed, onSeedApplied }} directoryPending={directory.pending} directoryError={directory.error}
-    onRetryDirectory={retry} onNewConversation={startNew} />
+    onRetryDirectory={retry} onNewConversation={startNew} scrollMemory={scrollMemory} />
 }

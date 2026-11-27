@@ -62,7 +62,7 @@ export function SessionConversation({ controller, readOnly = false, onOpenWorksp
       if (input?.state === 'removed') return null
       const lastAssistant = lastAssistants.get(message.turnId) === message.messageId
       const messageCitations = citationsFor(message)
-      return <div key={message.messageId} data-message-id={message.messageId} data-turn-id={message.turnId} data-state={message.state}>
+      return <div key={message.messageId} className={initial.current?.messages.has(message.messageId) ? 'message-history' : undefined} data-message-id={message.messageId} data-turn-id={message.turnId} data-state={message.state}>
         {message.role === 'user' ? <>
           {input ? <SessionUserMessage input={input} at={message.editedAt ?? message.createdAt} controller={controller} readOnly={readOnly} />
             : <UserMessage text={message.text} at={message.editedAt ?? message.createdAt} busy={busy || readOnly} />}

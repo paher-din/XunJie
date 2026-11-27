@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { CourseTiles, HomeSectionHeading, HomeStatus } from '@xunjie/ui/home'
 import { Button, ConfirmationDialog, SelectField } from '@xunjie/ui/foundation'
@@ -7,10 +7,12 @@ import type { SpaceIdentity } from '@xunjie/contracts/spaces'
 import { SettingsStatus } from '@xunjie/ui/settings'
 import { ProductShell } from '../components/ProductShell'
 import { Icon } from '../icons'
+import { AnimatedSendIcon, SEND_MOTION_DURATION } from './AnimatedSendIcon'
 import { ProductSettings, type ProductSettingsTab } from '../product/ProductSettings'
 import { SchoolConnectionRow } from '../product/SchoolConnectionRows'
 import { SettingsFailureBoundary } from '../product/SettingsFailureBoundary'
 import type { TeacherAgentSeed } from '../product/ProductAgent'
+import type { ConversationScrollPosition } from '../product/conversation-scroll'
 import type { SessionSubject } from '../product/agent-sessions'
 import { TeacherCourseAgent } from './TeacherCourseAgent'
 import { useModelSelection, type ModelSelectionController } from '../product/ModelSelection'
@@ -72,6 +74,16 @@ const timeText = (iso: string) => {
 const clockText = (iso: string) => {
   const date = new Date(iso)
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+}
+
+// Kubai clock 的时针原始指向 4 点整；从真实时刻反推旋转角，让图标本身读出提交时间。
+const clockHands = (iso: string) => {
+  const date = new Date(iso)
+  if (!Number.isFinite(date.getTime())) return { minute: 0, hour: 0 }
+  return {
+    minute: date.getMinutes() * 6,
+    hour: (date.getHours() % 12) * 30 + date.getMinutes() * 0.5 - 120,
+  }
 }
 
 const artifactKinds = (artifacts: TeacherSubmission['artifacts']) =>
@@ -571,6 +583,8 @@ function CourseWorkspace({ course, courses, cohort, agentSubject, readOnly, sele
   const [tab, setTab] = useState<TeacherTab>(initialTab)
   const [agentSeed, setAgentSeed] = useState<TeacherAgentSeed | null>(null)
   const [courseMenu, setCourseMenu] = useState(false)
+  // 同一门课的页签切换保留阅读位置；换课程时 CourseWorkspace 重挂载，新 ref 从底部开始。
+  const agentScroll = useRef<ConversationScrollPosition | null>(null)
   const menuWrap = useRef<HTMLDivElement>(null)
   const menuTrigger = useRef<HTMLButtonElement>(null)
   useEffect(() => {
@@ -617,7 +631,7 @@ function CourseWorkspace({ course, courses, cohort, agentSubject, readOnly, sele
     setTab(next)
     requestAnimationFrame(() => document.getElementById(tabIds[next])?.focus())
   }
-  return <div className={'content teacher-page' + (tab === 'agent' ? ' teacher-page--agent' : '') + (tab === 'review' ? ' content--review-workspace' : '')}>
+  return <div className={'content teacher-page' + (tab === 'agent' ? ' teacher-page--agent' : '') + (tab === 'review' ? ' content--review-workspace' : '') + (tab === 'design' || tab === 'library' ? ' content--list-workspace' : '')}>
     <header className="t-tabbar">
       <button type="button" className="t-tabbar-back" aria-label="返回课程列表" onClick={onBack}>
         <Icon name="alt-arrow-left" size={16} />
@@ -704,7 +718,7 @@ function CourseWorkspace({ course, courses, cohort, agentSubject, readOnly, sele
     {tab === 'agent' && <div id="t-panel-agent" role="tabpanel" aria-labelledby="t-tab-agent" className="t-agent-panel">
       {agentSubject ? <TeacherCourseAgent subject={agentSubject} courseId={course.courseId} selection={selection}
         readOnly={!!readOnly} onSettings={onOpenModelSettings} seed={agentSeed}
-        onSeedApplied={() => setAgentSeed(null)} />
+        onSeedApplied={() => setAgentSeed(null)} scrollMemory={agentScroll} />
         : <p role="alert" className="t-loading">无法确认当前学校账号，请重新连接学校。</p>}
     </div>}
     {tab === 'review' && <div id="t-panel-review" role="tabpanel" aria-labelledby="t-tab-review"><ReviewPane key={scopedTask?.taskId ?? 'all'} course={course} submissions={submissions} taskId={scopedTask?.taskId ?? null}
@@ -871,6 +885,25 @@ const filters: { id: ReviewView; label: string }[] = [
   { id: 'inbox', label: '待处理' }, { id: 'all', label: '全部' }, { id: 'pending', label: '待审阅' }, { id: 'revised', label: '待复核' },
   { id: 'feedback', label: '已反馈' }, { id: 'done', label: '已完成' },
 ]
+const revisionHelp = '勾选后，发送反馈会允许学生修订任务提交。'
+
+type ReviewSendPhase = 'idle' | 'leaving' | 'entering'
+type ReviewSendRecord = {
+  original: TeacherSubmission
+  updated: TeacherSubmission
+  nextId?: string
+  message: string
+  feedback: string
+  revisionChecked: boolean
+  scrollTop: number
+  filter: ReviewView
+  query: string
+  toastId: string
+  committed: boolean
+}
+const SEND_SWITCH_DELAY = SEND_MOTION_DURATION + 120
+const SEND_LEAVE_DURATION = 240
+const SEND_ENTER_DURATION = 350
 
 function ReviewPane({ course, submissions, taskId, onChange }: {
   course: TeacherCourse; submissions: TeacherSubmission[]; taskId?: string | null; onChange: (submission: TeacherSubmission) => void
@@ -891,9 +924,20 @@ function ReviewPane({ course, submissions, taskId, onChange }: {
   const initialVisible = visibleFor(scoped, initialFilter, '')
   const [filter, setFilter] = useState<ReviewView>(initialFilter)
   const [query, setQuery] = useState('')
-  const [selectedId, setSelectedId] = useState(() => initialVisible[0]?.submissionId)
+  const [selectedId, setSelectedId] = useState<string | undefined>(() => initialVisible[0]?.submissionId)
   const [drafts, setDrafts] = useState<Record<string, string>>(() => Object.fromEntries(scoped.map(item => [item.submissionId, item.feedback])))
+  const [revisionChecks, setRevisionChecks] = useState<Record<string, boolean>>({})
   const [saved, setSaved] = useState<{ id: string; message: string } | null>(null)
+  const [sendMotion, setSendMotion] = useState(0)
+  const [sendLocked, setSendLocked] = useState(false)
+  const [sendFlash, setSendFlash] = useState(false)
+  const [sendPhase, setSendPhase] = useState<ReviewSendPhase>('idle')
+  const [sendReset, setSendReset] = useState(0)
+  const detailRef = useRef<HTMLElement>(null)
+  const pendingSend = useRef<ReviewSendRecord | null>(null)
+  const sendTimer = useRef<number | null>(null)
+  const enterTimer = useRef<number | null>(null)
+  const activeToast = useRef<string | null>(null)
   const [listCollapsed, setListCollapsed] = useState(() => {
     try { return window.localStorage.getItem(REVIEW_LIST_COLLAPSED) === '1' } catch { return false }
   })
@@ -910,17 +954,118 @@ function ReviewPane({ course, submissions, taskId, onChange }: {
   const inboxCleared = filter === 'inbox' && !query.trim() && visible.length === 0
   const selected = visible.find(item => item.submissionId === selectedId) ?? visible[0]
   const selectedIndex = selected ? visible.findIndex(item => item.submissionId === selected.submissionId) : -1
+  const selectedKinds = selected ? artifactKinds(selected.artifacts) : []
+  const selectedClock = clockHands(selected?.submittedAt ?? '')
+  const segmentedProgress = !!selected && selected.progress.total > 0 && selected.progress.total <= 8
   const feedback = selected ? drafts[selected.submissionId] ?? selected.feedback : ''
+  const revisionChecked = selected ? !!revisionChecks[selected.submissionId] : false
   const primaryState: SubmissionState | null = selected
-    ? selected.state === 'revised' ? 'done' : selected.state === 'done' ? 'done' : 'feedback'
+    ? revisionChecked ? 'feedback' : selected.state === 'revised' ? 'done' : selected.state === 'done' ? 'done' : 'feedback'
     : null
-  const primaryLabel = selected?.state === 'revised' ? '完成复核' : selected?.state === 'pending' ? '保存反馈' : '更新反馈'
-  const primaryDisabled = !selected || !feedback.trim() || ((selected.state === 'feedback' || selected.state === 'done') && feedback === selected.feedback)
-  const revisionDisabled = !selected || !feedback.trim()
+  const primaryLabel = selected?.state === 'revised' ? (revisionChecked ? '发送反馈' : '完成复核') : selected?.state === 'pending' ? '发送反馈' : selected ? '更新反馈' : ''
+  const primaryDisabled = !selected || !feedback.trim()
+    || (!revisionChecked && (selected.state === 'feedback' || selected.state === 'done') && feedback === selected.feedback)
+  const detailMotionClass = sendPhase === 'idle' ? '' : sendPhase === 'leaving' ? ' is-send-leaving' : ' is-send-entering'
 
-  const selectSubmission = (id: string) => { setSelectedId(id); setSaved(null) }
+  const cancelSendTimers = () => {
+    if (sendTimer.current !== null) { window.clearTimeout(sendTimer.current); sendTimer.current = null }
+    if (enterTimer.current !== null) { window.clearTimeout(enterTimer.current); enterTimer.current = null }
+  }
+
+  const applySendRecord = (record: ReviewSendRecord, selectId: string | undefined, animate: boolean) => {
+    pendingSend.current = null
+    record.committed = true
+    if (detailRef.current) detailRef.current.scrollTop = 0
+    onChange(record.updated)
+    setSelectedId(selectId)
+    setSaved({ id: record.updated.submissionId, message: record.message })
+    setRevisionChecks(current => ({ ...current, [record.updated.submissionId]: false }))
+    setSendFlash(false)
+    if (!animate) {
+      setSendPhase('idle')
+      setSendLocked(false)
+      return
+    }
+    setSendPhase('entering')
+    enterTimer.current = window.setTimeout(() => {
+      enterTimer.current = null
+      setSendPhase('idle')
+      setSendLocked(false)
+    }, SEND_ENTER_DURATION)
+  }
+
+  const finishSend = (record: ReviewSendRecord, animate = true) => {
+    if (pendingSend.current !== record || record.committed) return
+    cancelSendTimers()
+    applySendRecord(record, record.nextId, animate)
+  }
+
+  const undoSend = (record: ReviewSendRecord) => {
+    cancelSendTimers()
+    pendingSend.current = null
+    activeToast.current = null
+    if (record.committed) onChange(record.original)
+    setFilter(record.filter)
+    setQuery(record.query)
+    setSelectedId(record.original.submissionId)
+    setDrafts(current => ({ ...current, [record.original.submissionId]: record.feedback }))
+    setRevisionChecks(current => ({ ...current, [record.original.submissionId]: record.revisionChecked }))
+    setSaved(null)
+    setSendPhase('idle')
+    setSendLocked(false)
+    setSendFlash(false)
+    setSendReset(value => value + 1)
+    const restoreScroll = () => {
+      if (detailRef.current) detailRef.current.scrollTop = record.scrollTop
+    }
+    window.requestAnimationFrame(() => window.requestAnimationFrame(restoreScroll))
+  }
+
+  const settleMotion = () => {
+    if (enterTimer.current !== null) {
+      window.clearTimeout(enterTimer.current)
+      enterTimer.current = null
+    }
+    setSendPhase(current => current === 'idle' ? current : 'idle')
+    setSendLocked(false)
+  }
+
+  /** Commit an in-flight send immediately when the teacher navigates away from the queue item. */
+  const flushPendingSend = (selectId?: string) => {
+    const record = pendingSend.current
+    if (!record) return false
+    cancelSendTimers()
+    pendingSend.current = null
+    record.committed = true
+    if (detailRef.current) detailRef.current.scrollTop = 0
+    onChange(record.updated)
+    setSelectedId(selectId ?? record.nextId)
+    setSaved(null)
+    setRevisionChecks(current => ({ ...current, [record.updated.submissionId]: false }))
+    setSendPhase('idle')
+    setSendFlash(false)
+    setSendLocked(false)
+    setSendReset(value => value + 1)
+    return true
+  }
+
+  const selectSubmission = (id: string) => {
+    if (pendingSend.current) flushPendingSend(id)
+    else {
+      settleMotion()
+      setSelectedId(id)
+    }
+    setSaved(null)
+  }
   const changeView = (nextFilter: ReviewView, nextQuery: string) => {
-    const nextVisible = visibleFor(scoped, nextFilter, nextQuery)
+    let nextScoped = scoped
+    if (pendingSend.current) {
+      nextScoped = scoped.map(item => item.submissionId === pendingSend.current!.updated.submissionId ? pendingSend.current!.updated : item)
+      flushPendingSend()
+    } else {
+      settleMotion()
+    }
+    const nextVisible = visibleFor(nextScoped, nextFilter, nextQuery)
     setFilter(nextFilter)
     setQuery(nextQuery)
     setSaved(null)
@@ -932,7 +1077,7 @@ function ReviewPane({ course, submissions, taskId, onChange }: {
     if (next) selectSubmission(next.submissionId)
   }
   const save = (state: SubmissionState, intent: 'review' | 'revise' = 'review') => {
-    if (!selected || !feedback.trim()) return
+    if (!selected || !feedback.trim() || sendLocked) return
     const next = { ...selected, feedback, state }
     const nextScoped = scoped.map(item => item.submissionId === next.submissionId ? next : item)
     const nextVisible = visibleFor(nextScoped, filter, query)
@@ -942,11 +1087,68 @@ function ReviewPane({ course, submissions, taskId, onChange }: {
     // 仍留在当前视图就保持选中；移出视图后接原位置的下一条，避免跳回队首。
     const kept = nextVisible.find(item => item.submissionId === next.submissionId)
     const nextId = kept?.submissionId ?? nextVisible[Math.min(selectedIndex, nextVisible.length - 1)]?.submissionId
-    onChange(next)
-    setSelectedId(nextId)
-    setSaved({ id: next.submissionId, message })
-    toast.success(message)
+    const isSend = primaryLabel !== '完成复核'
+
+    if (!isSend) {
+      if (detailRef.current) detailRef.current.scrollTop = 0
+      onChange(next)
+      setSelectedId(nextId)
+      setSaved({ id: next.submissionId, message })
+      setRevisionChecks(current => ({ ...current, [next.submissionId]: false }))
+      toast.success(message)
+      return
+    }
+
+    const toastId = `review-send-${next.submissionId}-${Date.now()}`
+    const record: ReviewSendRecord = {
+      original: selected,
+      updated: next,
+      nextId,
+      message,
+      feedback,
+      revisionChecked,
+      scrollTop: detailRef.current?.scrollTop ?? 0,
+      filter,
+      query,
+      toastId,
+      committed: false,
+    }
+    pendingSend.current = record
+    if (activeToast.current) toast.dismiss(activeToast.current)
+    activeToast.current = toastId
+    setSendLocked(true)
+    setSendFlash(true)
+    setSaved(null)
+    setRevisionChecks(current => ({ ...current, [next.submissionId]: false }))
+    setSendMotion(value => value + 1)
+    toast.success('已发送', {
+      id: toastId,
+      duration: 8000,
+      closeButton: false,
+      action: { label: '撤回', onClick: () => undoSend(record) },
+    })
+
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) {
+      finishSend(record, false)
+      return
+    }
+    sendTimer.current = window.setTimeout(() => {
+      if (pendingSend.current !== record) return
+      setSendPhase('leaving')
+      setSendFlash(false)
+      sendTimer.current = window.setTimeout(() => finishSend(record), SEND_LEAVE_DURATION)
+    }, SEND_SWITCH_DELAY)
   }
+
+  useEffect(() => () => {
+    cancelSendTimers()
+    const record = pendingSend.current
+    if (record && !record.committed) {
+      record.committed = true
+      onChange(record.updated)
+    }
+    pendingSend.current = null
+  }, [])
 
   if (scoped.length === 0) return <div className="t-review-empty">
     <Icon name="folder-search" size={28} />
@@ -1022,7 +1224,7 @@ function ReviewPane({ course, submissions, taskId, onChange }: {
         </div>
       </div>
     </aside>
-    {selected ? <section className="t-review-detail" aria-label="提交详情">
+    {selected ? <section ref={detailRef} className={'t-review-detail' + detailMotionClass} aria-label="提交详情" aria-busy={sendPhase !== 'idle' || undefined}>
       <header className="t-detail-head">
         <div className="t-detail-heading"><h2>{selected.studentName}的提交</h2><p>{taskTitleOf([course], selected.taskId)}</p></div>
         <div className="t-detail-head-side">
@@ -1036,23 +1238,35 @@ function ReviewPane({ course, submissions, taskId, onChange }: {
       <div className="t-facts" role="group" aria-label="提交概况">
         <div className="t-fact">
           <span className="t-fact-label">提交时间</span>
+          <span className="t-fact-icon t-fact-icon--time t-fact-clock" aria-hidden="true" style={{
+            '--t-clock-minute': `${selectedClock.minute}deg`,
+            '--t-clock-hour': `${selectedClock.hour}deg`,
+          } as CSSProperties}>
+            <Icon name="clock" size={18} />
+          </span>
           <span className="t-fact-value">{dateText(selected.submittedAt)}</span>
           <span className="t-fact-note">{clockText(selected.submittedAt)}</span>
         </div>
         <div className="t-fact">
           <span className="t-fact-label">提交版本</span>
+          <span className="t-fact-icon t-fact-icon--version" aria-hidden="true"><Icon name="layers" size={18} /></span>
           <span className="t-fact-value">第 {selected.version} 次提交</span>
           <span className="t-fact-note">共 {selected.version} 次</span>
         </div>
         <div className="t-fact">
           <span className="t-fact-label">目标进度</span>
+          <span className="t-fact-icon t-fact-icon--progress" aria-hidden="true"><Icon name="target" size={18} /></span>
           <span className="t-fact-value">{selected.progress.done}<span className="t-fact-sub"> / {selected.progress.total}</span></span>
           <span className="t-fact-bar">
-            <span className="t-fact-track" role="progressbar" aria-label="目标进度" aria-valuemin={0}
+            <span className={'t-fact-track' + (segmentedProgress ? ' is-segmented' : '')} role="progressbar" aria-label="目标进度" aria-valuemin={0}
               aria-valuemax={selected.progress.total} aria-valuenow={selected.progress.done}>
-              <span className="t-fact-fill" style={{
-                width: `${selected.progress.total ? Math.round((selected.progress.done / selected.progress.total) * 100) : 0}%`,
-              }} />
+              {segmentedProgress
+                ? Array.from({ length: selected.progress.total }, (_, index) => (
+                  <span key={index} className={'t-fact-seg' + (index < selected.progress.done ? ' is-on' : '')} aria-hidden="true" />
+                ))
+                : <span className="t-fact-fill" style={{
+                  width: `${selected.progress.total ? Math.round((selected.progress.done / selected.progress.total) * 100) : 0}%`,
+                }} />}
             </span>
           </span>
         </div>
@@ -1066,10 +1280,19 @@ function ReviewPane({ course, submissions, taskId, onChange }: {
             section.focus({ preventScroll: true })
           }}>
           <span className="t-fact-label">附件</span>
+          <span className="t-fact-icon t-fact-icon--files" aria-hidden="true"><Icon name="submission-paperclip" size={18} /></span>
           <span className="t-fact-value">{selected.artifacts.length}<span className="t-fact-sub"> 个</span>
             {selected.artifacts.length > 0 && <span className="t-fact-jump" aria-hidden="true"><Icon name="alt-arrow-down" size={13} /></span>}
           </span>
-          <span className="t-fact-note">{selected.artifacts.length ? artifactKindText(selected.artifacts) : '本次没有附件'}</span>
+          <span className="t-fact-note t-fact-types">
+            {selectedKinds.length ? <>
+              {selectedKinds.slice(0, 2).map(kind => <span className="t-fact-type" key={kind}>
+                <Icon name={artifactIconName(kind)} size={12} />
+                <span>{kind}</span>
+              </span>)}
+              {selectedKinds.length > 2 && <span className="t-fact-type t-fact-type--more">+{selectedKinds.length - 2}</span>}
+            </> : '本次没有附件'}
+          </span>
         </button>
       </div>
       <div className="t-submission-content">
@@ -1078,7 +1301,7 @@ function ReviewPane({ course, submissions, taskId, onChange }: {
           <p className="t-student-note">{selected.note || '学生没有填写提交说明。'}</p>
         </section>
         <section className="t-detail-section" id="t-submission-files-section" aria-labelledby="t-submission-files" tabIndex={-1}>
-          <h3 id="t-submission-files"><Icon name="paperclip" size={16} />提交附件<span>{selected.artifacts.length}</span></h3>
+          <h3 id="t-submission-files"><Icon name="submission-paperclip" size={16} />提交附件<span>{selected.artifacts.length}</span></h3>
           {selected.artifacts.length ? <ul className="t-artifacts">
             {selected.artifacts.map(artifact => <li key={artifact.name}>
               <span className="t-artifact-icon"><Icon name={artifactIconName(artifact.kind)} size={18} /></span>
@@ -1089,10 +1312,10 @@ function ReviewPane({ course, submissions, taskId, onChange }: {
       </div>
       <section className="t-feedback" aria-labelledby="t-feedback-title">
         <div className="t-feedback-head">
-          <div><h3 id="t-feedback-title">教师反馈</h3><span>关联第 {selected.version} 次提交</span></div>
+          <div><h3 id="t-feedback-title">教师反馈</h3></div>
           {saved?.id === selected.submissionId && <span role="status" className="t-saved"><Icon name="check-circle" size={14} />{saved.message}</span>}
         </div>
-        <textarea aria-label="反馈" value={feedback} rows={4} placeholder="写清楚学生做对了什么、下一步改哪里。"
+        <textarea aria-label="反馈" value={feedback} rows={4} readOnly={sendLocked} placeholder="写清做得好的地方，以及下一步怎么改。"
           aria-keyshortcuts="Meta+Enter Control+Enter"
           onChange={event => {
             const value = event.target.value
@@ -1102,19 +1325,34 @@ function ReviewPane({ course, submissions, taskId, onChange }: {
           onKeyDown={event => {
             if (event.nativeEvent.isComposing || !(event.metaKey || event.ctrlKey) || event.key !== 'Enter') return
             event.preventDefault()
-            if (!primaryDisabled && primaryState) save(primaryState)
+            if (!primaryDisabled && primaryState) save(primaryState, revisionChecked ? 'revise' : 'review')
           }} />
         <div className="t-feedback-footer">
-          <span className="t-feedback-hint">{feedback.trim() ? '⌘ / Ctrl + Enter' : '先填写反馈'}</span>
+          {feedback.trim() && <span className="t-feedback-hint">⌘ / Ctrl + Enter</span>}
           <div className="t-actions">
-            <Button type="button" variant="outline" disabled={revisionDisabled} onClick={() => save('feedback', 'revise')}><Icon name="undo-left-round" size={14} />允许修订</Button>
-            <Button type="button" variant="primary" disabled={primaryDisabled} aria-keyshortcuts="Meta+Enter Control+Enter"
-              onClick={() => primaryState && save(primaryState)}><Icon name="check" size={14} />{primaryLabel}</Button>
+            <div className={'t-revision-control' + (revisionChecked ? ' is-checked' : '')}>
+              <label className="t-revision-check">
+                <input type="checkbox" checked={revisionChecked} disabled={sendLocked} onChange={event => {
+                  setRevisionChecks(current => ({ ...current, [selected.submissionId]: event.target.checked }))
+                  setSaved(null)
+                }} />
+                <span className="t-revision-check-box" aria-hidden="true">{revisionChecked && <Icon name="check" size={12} />}</span>
+                <span>允许修订</span>
+              </label>
+              <span className="t-feedback-tip" tabIndex={0} aria-label={revisionHelp} data-tip={revisionHelp}>
+                <Icon name="info-circle" size={16} />
+              </span>
+            </div>
+            <Button type="button" variant="primary" className={sendFlash ? 'is-sending' : undefined}
+              disabled={primaryDisabled || sendLocked} aria-busy={sendFlash || undefined} aria-keyshortcuts="Meta+Enter Control+Enter"
+              onClick={() => primaryState && save(primaryState, revisionChecked ? 'revise' : 'review')}>{primaryLabel === '完成复核'
+                ? <Icon name="check" size={14} />
+                : <AnimatedSendIcon playKey={sendMotion} resetKey={sendReset} />}{primaryLabel}</Button>
           </div>
         </div>
       </section>
       <p className="t-preview-note"><Icon name="info-circle" size={13} />审阅写接口尚未接入学校，这里的反馈与状态只保存在本次预览。</p>
-    </section> : <section className="t-review-detail t-review-detail--empty" aria-label="提交详情">
+    </section> : <section ref={detailRef} className={'t-review-detail t-review-detail--empty' + detailMotionClass} aria-label="提交详情" aria-busy={sendPhase !== 'idle' || undefined}>
       <Icon name="folder-search" size={28} />
       <h2>{inboxCleared ? '待处理已清空' : '没有匹配的提交'}</h2>
       <p>{inboxCleared ? '新的提交与复核会回到这里。' : '调整搜索词或状态，找到需要审阅的内容。'}</p>
@@ -1264,6 +1502,7 @@ function DesignPane({ course, projects, openId, onOpen, onProjects, onDiscuss }:
 
   const newDraft = () => {
     const project: TeacherDraft = { draftId: 'draft-' + Date.now(), courseId: course.courseId, title: '', summary: '', updatedAt: new Date().toISOString(), objectives: [''] }
+    setFilter('all')
     onProjects([project, ...projects])
     onOpen(project.draftId)
   }
@@ -1273,10 +1512,6 @@ function DesignPane({ course, projects, openId, onOpen, onProjects, onDiscuss }:
     onDiscuss={onDiscuss} />
 
   return <div className="t-projects">
-    <header className="t-projects-head">
-      <h2>任务设计</h2>
-      <Button type="button" variant="primary" onClick={newDraft}><Icon name="add" size={15} />新建任务</Button>
-    </header>
     <div className="t-project-toolbar">
       <div className="t-project-filters" role="group" aria-label="按状态筛选任务">
         {([['all', '全部'], ['published', '已发布'], ['draft', '草稿']] as const).map(([id, label]) => <button key={id} type="button"
@@ -1284,10 +1519,13 @@ function DesignPane({ course, projects, openId, onOpen, onProjects, onDiscuss }:
           {label}<small>{id === 'all' ? entries.length : entries.filter(entry => entry.kind === id).length}</small>
         </button>)}
       </div>
-      <div className="t-project-search">
-        <Icon name="minimalistic-magnifier" size={15} />
-        <input aria-label="搜索任务" placeholder="搜索任务" value={query} onChange={event => setQuery(event.target.value)} />
-        {query && <button type="button" aria-label="清空任务搜索" onClick={() => setQuery('')}><Icon name="close" size={13} /></button>}
+      <div className="t-project-tools">
+        <div className="t-project-search">
+          <Icon name="minimalistic-magnifier" size={15} />
+          <input aria-label="搜索任务" placeholder="搜索任务" value={query} onChange={event => setQuery(event.target.value)} />
+          {query && <button type="button" aria-label="清空任务搜索" onClick={() => setQuery('')}><Icon name="close" size={13} /></button>}
+        </div>
+        <Button type="button" variant="primary" className="t-project-new" onClick={newDraft}><Icon name="add" size={15} />新建任务</Button>
       </div>
     </div>
     {visibleEntries.length ? <div className="t-project-list">
@@ -1313,9 +1551,10 @@ function DesignPane({ course, projects, openId, onOpen, onProjects, onDiscuss }:
     </div> : <div className="t-projects-empty">
       <span className="t-projects-empty-icon"><Icon name={entries.length ? 'folder-search' : 'checklist'} size={24} /></span>
       <h3>{entries.length ? '没有匹配的任务' : '从第一份任务开始'}</h3>
-      <p>{entries.length ? '换个关键词，或查看其他任务状态。' : '整理任务说明与学习目标，再发布给学生。'}</p>
+      <p>{entries.length ? '换个关键词或状态，查看其他设计。' : '整理任务说明与学习目标，再发布给学生。'}</p>
       <Button type="button" variant="outline" onClick={() => {
-        if (entries.length) { setFilter('all'); setQuery('') } else newDraft()
+        if (entries.length) { setFilter('all'); setQuery('') }
+        else newDraft()
       }}>{entries.length ? '清除筛选' : '新建任务'}</Button>
     </div>}
   </div>

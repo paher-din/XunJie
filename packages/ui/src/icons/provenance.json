@@ -31,6 +31,7 @@
     "clipboard-check-linear.svg": "fbf86a8bf0e2cb011ff67afa5c7c499a1854007d5015ce67a45da1f645e823c0",
     "clipboard-text-linear.svg": "14041b94bbdb737fc966640e0c6cb1dcbef9f3c9d8265dd6699997f6332c21cd",
     "clock-circle-linear.svg": "fb937e3c5f0ba9b2a209d3110b211821f3cb1fa970daa3b1b9b2e985a111c508",
+    "clock-linear.svg": "f99c02eb04785d2d7132709b86f4cff51d3117de9edbbd787c90ddd9028fe3fd",
     "close-linear.svg": "7a8983ba52d59e95b7794c16bb028de04f64f75b12448b293e4bd9d71af7b55d",
     "code-square-bold-duotone.svg": "51832bfe231108fc36513121c470a3aa598c497f09d6bb0db371dcd182da63b9",
     "code-square-linear.svg": "c2dead813556b4c9bb409c8e91f87597e8e3bc8a7bf81ec5bbba7f106176b0f5",
@@ -69,6 +70,7 @@
     "info-circle-linear.svg": "90355ce8d904ac47c4b6e1a1e83d720fd87994b8d06ba289eed83bf68bdf134a",
     "insert-prompt-linear.svg": "649c081c11296e0bef1ebe2356d2d0ca8fe0a5f86a65f2965a61bcbe6710caa9",
     "laptop-linear.svg": "6b9ec6cd0cdc06fad23ec026cc8b853c3f22b1e489f1c677e0ec749d74afd53c",
+    "layers-linear.svg": "d893d65d98d67a704f9c64de266c40b45f62bc535430dc74c4817ac417ef292c",
     "learning-space-linear.svg": "2742c9af04cb2c1b7f1da1c6cedefd4d421eae7b2585011e82280486c1d0d0de",
     "lightbulb-bold-duotone.svg": "98ddbf223fd67d6653001893b942bd15959df90ced1e4d448b390127355d3a16",
     "lightbulb-linear.svg": "ceabf0944ed72e341c2f31b7689d6443d634cf41b41e688475a53062ed5664ef",
@@ -102,7 +104,9 @@
     "structure-bold-duotone.svg": "d1fdc2146781bc4bdbfb9cd97dc38f05a924f078da80b678c304205d5e5a86e8",
     "structure-linear.svg": "d605f27ba97fa8340c1a4aaf478523d6ad6dbc81643809e02bf4f012ce058b0a",
     "student-review-linear.svg": "3e55f36249f73b921d8775f60addfb2c5d984a7a4c918e964b2de340866eed03",
+    "submission-paperclip-linear.svg": "3c487ff75b514e9598d51a2cbf54dda131bbbe64a8a7ee669f4738672af9a131",
     "sun-linear.svg": "0b5717416b64346146b03a6e200843a538574886201cfe41f332c16d7596d447",
+    "target-linear.svg": "45ae887bc534c4bd3f335af0f5969aedbad154cd994455a0581d48d048a44929",
     "task-design-linear.svg": "6e2c6e73bb10301a9564c1dd6d42cb186ebb2c5535b166ab08470f13edc686ea",
     "text-square-linear.svg": "3bf95f071e76eff39c066957dcd39bf509eff02b271353eab706c867209d18ee",
     "traffic-linear.svg": "da9d9ed96b99a4a4f5d9892fd0d7e3a137ef6a4307a00cd66c0fde596f7c166b",
@@ -114,10 +118,11 @@
     "virtual-board-linear.svg": "a4464de7b04642cc7626d4b425bd35642b8aed19d28ed9446521ae0171cfdd12",
     "volume-loud-linear.svg": "bb7600509ec8cb107e6d825a383e83e75cbb73eae8a0b729fec11f0c0a611951",
     "wallet-linear.svg": "f8c66253d72736d65f50d14108afb8ba4d08d64b7efb9ab45db5e49425b0a2a6",
-    "provider-custom-linear.svg": "7da5ed3ef6435824d0596e3fc77b778d31be96071fc9fd8c569d61ef4743e68c"
+    "provider-custom-linear.svg": "7da5ed3ef6435824d0596e3fc77b778d31be96071fc9fd8c569d61ef4743e68c",
+    "send-linear.svg": "8df5fb68fc303bedca1006f81e47abbaecef7fe58cacbcc5497d29b550306893"
   },
   "frozenOn": "2026-10-10",
-  "source": "Approved color-polish-v2 review; Solar and OpenMoji SVG bodies from local Iconify snapshot; original custom SVGs from review; profile semantic additions: four unmodified Solar Linear bodies from iconify/icon-sets and one original analogy SVG; 2026-10-11 sun-linear.svg 项目自绘（本地快照无太阳图形，按 Solar Linear 同风格补绘）、model-linear.svg 项目自绘（模型语义）; 2026-11-10 provider-custom-linear.svg 项目自绘（自定义供应商接入）; brand-github-native.svg 来自 GitHub Octicons 原始图形（见 ATTRIBUTION.md）; 2026-11-27 course-agent-linear.svg 与 task-design-linear.svg 取自 Kubai line（whiteboard / layout-template，MIT；路径未改，仅补动画 class）；2026-11-27 student-review-linear.svg 取自 Kubai line user-pen（MIT；路径未改，仅补动画 class）",
+  "source": "Approved color-polish-v2 review; Solar and OpenMoji SVG bodies from local Iconify snapshot; original custom SVGs from review; profile semantic additions: four unmodified Solar Linear bodies from iconify/icon-sets and one original analogy SVG; 2026-10-11 sun-linear.svg 项目自绘（本地快照无太阳图形，按 Solar Linear 同风格补绘）、model-linear.svg 项目自绘（模型语义）; 2026-11-10 provider-custom-linear.svg 项目自绘（自定义供应商接入）; brand-github-native.svg 来自 GitHub Octicons 原始图形（见 ATTRIBUTION.md）; 2026-11-27 course-agent-linear.svg 与 task-design-linear.svg 取自 Kubai line（whiteboard / layout-template，MIT；路径未改，仅补动画 class）；2026-11-27 student-review-linear.svg 取自 Kubai line user-pen（MIT；路径未改，仅补动画 class）; 2026-11-27 clock/layers/target/submission-paperclip 取自 Kubai line（clock / layers / target / paperclip，MIT；路径未改，clock 保留时针分针图层）; 2026-11-27 send-linear.svg 取自 Kubai line send（MIT；路径未改，保留 data-l 图层用于发送动画）",
   "workbench-bold.svg": "1d8892df983821ea5b7608a2d574134a2c8c3fff152410d0f76f9dfe59b551b1",
   "workbench-linear.svg": "2639ede0b6322c572a59984effb7b11a69d68bb1f541f5fcb7d516beafc18fbb"
 }

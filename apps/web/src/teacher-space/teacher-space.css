@@ -1678,6 +1678,16 @@ small.t-pulse-counts {
   flex: 1;
   min-height: 0;
 }
+/* 课程 Agent 页不做入场动画：内容与输入区在首帧直接到位，不透明度、不位移、
+   不分拍，避免任何「先暗后亮」或末尾补 2px 的抽闪。历史消息不逐条重播，
+   课程内切页签不重播。 */
+.teacher-page--agent .message-history .chat-message {
+  animation: none;
+}
+/* 教师课程页的空态不另起分拍：首屏直接到位，不再让小苗 / 标题 / 说明依次淡入。 */
+.teacher-page--agent .chat-empty > * > * {
+  animation: none;
+}
 .t-task-focus {
   display: flex;
   align-items: center;
@@ -1734,8 +1744,6 @@ small.t-pulse-counts {
 /* ---------- 资料库 ---------- */
 /* 单列管理型：标准留白，标签栏下距 21px；宽度收在 880，便于扫读长标题。 */
 .t-library {
-  width: min(880px, 100%);
-  margin: 0 auto;
   padding-bottom: 48px;
 }
 .t-library-notice {
@@ -1907,6 +1915,10 @@ small.t-pulse-counts {
 .content--review-workspace {
   position: relative;
 }
+/* 列表型内容页：标签栏下距固定 21，任务设计与资料库的首行从同一条线开始。 */
+.content--list-workspace .t-tabbar {
+  margin-bottom: 21px;
+}
 .content--review-workspace .t-tabbar {
   margin: -20px -24px 12px;
 }
@@ -1918,6 +1930,7 @@ small.t-pulse-counts {
 }
 .t-review.is-list-collapsed {
   grid-template-columns: minmax(0, 1fr) 0;
+  transition: grid-template-columns 240ms var(--ease-s);
 }
 .t-review-list {
   order: 2;
@@ -2288,9 +2301,26 @@ small.t-pulse-counts {
   padding: 4px 28px 32px 0;
   transition: max-width 350ms var(--ease-s), padding 350ms var(--ease-s);
 }
+.t-review-detail.is-send-leaving {
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+  transition:
+    opacity 240ms var(--ease-s),
+    transform 240ms var(--ease-s);
+}
+.t-review-detail.is-send-entering {
+  animation: review-detail-enter 350ms var(--ease-s) both;
+  pointer-events: none;
+}
+@keyframes review-detail-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
 .t-review.is-list-collapsed .t-review-detail {
   max-width: 100%;
   padding-right: 28px;
+  transition: max-width 240ms var(--ease-s), padding 240ms var(--ease-s);
 }
 @media (prefers-reduced-motion: reduce) {
   .t-review,
@@ -2299,6 +2329,7 @@ small.t-pulse-counts {
   .t-review-list-head h2,
   .t-review-list-head-end,
   .t-review-list-count,
+  .t-review-list-body-clip,
   .t-review-tab-toggle,
   .t-review-list-toggle,
   .t-review-detail {
@@ -2382,6 +2413,7 @@ small.t-pulse-counts {
   background: var(--line);
 }
 .t-fact {
+  position: relative;
   display: flex;
   min-width: 0;
   flex-direction: column;
@@ -2393,6 +2425,49 @@ small.t-pulse-counts {
   color: inherit;
   font: inherit;
   text-align: left;
+}
+.t-fact-icon {
+  position: absolute;
+  top: 9px;
+  right: 10px;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 8px;
+  pointer-events: none;
+}
+.t-fact-icon .ui-icon {
+  display: block;
+}
+.t-fact-icon--time {
+  background: var(--course-0-bg);
+  color: var(--course-0-fg);
+}
+.t-fact-icon--version {
+  background: var(--course-2-bg);
+  color: var(--course-2-fg);
+}
+.t-fact-icon--progress {
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+}
+.t-fact-icon--files {
+  background: var(--course-1-bg);
+  color: var(--course-1-fg);
+}
+.t-fact-clock .ui-icon g[data-l='min'],
+.t-fact-clock .ui-icon g[data-l='hour'] {
+  transform-box: view-box;
+  transform-origin: 12px 12px;
+}
+.t-fact-clock .ui-icon g[data-l='min'] {
+  transform: rotate(var(--t-clock-minute));
+  transition: transform 240ms cubic-bezier(0.3, 1, 0.35, 1);
+}
+.t-fact-clock .ui-icon g[data-l='hour'] {
+  transform: rotate(var(--t-clock-hour));
+  transition: transform 240ms cubic-bezier(0.3, 1, 0.35, 1);
 }
 .t-fact-label {
   color: var(--muted);
@@ -2437,10 +2512,27 @@ small.t-pulse-counts {
 .t-fact-track {
   display: block;
   width: 100%;
-  height: 3px;
+  height: 4px;
   overflow: hidden;
   border-radius: 999px;
   background: var(--line-strong);
+}
+.t-fact-track.is-segmented {
+  display: flex;
+  gap: 3px;
+  overflow: visible;
+  background: transparent;
+}
+.t-fact-seg {
+  flex: 1;
+  min-width: 0;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--line-strong);
+  transition: background-color 160ms cubic-bezier(0.3, 1, 0.35, 1);
+}
+.t-fact-seg.is-on {
+  background: var(--accent);
 }
 .t-fact-fill {
   display: block;
@@ -2448,6 +2540,42 @@ small.t-pulse-counts {
   border-radius: inherit;
   background: var(--accent);
   transition: width 240ms cubic-bezier(0.3, 1, 0.35, 1);
+}
+.t-fact-types {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+}
+.t-fact-type {
+  display: inline-flex;
+  flex: 0 1 auto;
+  min-width: 0;
+  height: 18px;
+  align-items: center;
+  gap: 3px;
+  padding: 0 5px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--paper);
+  color: var(--ink-soft);
+  font-size: 10.5px;
+  font-weight: 500;
+  line-height: 1;
+}
+.t-fact-type > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.t-fact-type .ui-icon {
+  flex: none;
+  color: var(--muted);
+}
+.t-fact-type--more {
+  flex: none;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 .t-fact-action {
   cursor: pointer;
@@ -2592,11 +2720,6 @@ small.t-pulse-counts {
   font-size: 15px;
   font-weight: 600;
 }
-.t-feedback-head > div > span {
-  color: var(--muted);
-  font-size: 11px;
-  white-space: nowrap;
-}
 .t-feedback textarea {
   width: 100%;
   min-height: 112px;
@@ -2632,7 +2755,116 @@ small.t-pulse-counts {
 }
 .t-actions {
   flex: none;
+  margin-left: auto;
   gap: 8px;
+}
+.t-send-icon {
+  display: inline-flex;
+  flex: none;
+}
+.t-revision-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  flex: none;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 8px;
+  background: var(--raised);
+}
+.t-revision-control.is-checked {
+  border-style: solid;
+}
+.t-revision-control .t-feedback-tip {
+  margin-left: -2px;
+}
+.t-revision-check {
+  display: inline-flex;
+  height: 32px;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.t-revision-check input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.t-revision-check-box {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--muted);
+  border-radius: 4px;
+  color: var(--on-primary);
+  background: var(--raised);
+}
+.t-revision-check input:checked + .t-revision-check-box {
+  border-color: var(--accent-deep);
+  background: var(--accent-deep);
+}
+.t-revision-check input:focus-visible + .t-revision-check-box {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+.t-feedback-tip {
+  position: relative;
+  display: grid;
+  width: 24px;
+  height: 24px;
+  flex: none;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--muted);
+  cursor: help;
+}
+.t-feedback-tip:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+.t-feedback-tip::after {
+  content: attr(data-tip);
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 40;
+  width: max-content;
+  max-width: min(300px, calc(100vw - 48px));
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--inverse);
+  color: var(--on-inverse);
+  box-shadow: var(--shadow-tip);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.5;
+  text-wrap: pretty;
+  white-space: normal;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(4px) scale(0.96);
+  transform-origin: right bottom;
+  transition:
+    opacity 150ms cubic-bezier(0.3, 1, 0.35, 1),
+    transform 240ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.t-feedback-tip:hover::after,
+.t-feedback-tip:focus-visible::after {
+  opacity: 1;
+  transform: none;
 }
 .t-actions button:hover:not(:disabled) {
   filter: brightness(0.96);
@@ -2654,6 +2886,10 @@ small.t-pulse-counts {
 .t-actions .primary:disabled:hover,
 .t-actions .outline:disabled:hover {
   filter: none;
+}
+.t-actions .primary.is-sending:disabled {
+  background: var(--primary);
+  color: var(--on-primary);
 }
 .t-saved {
   display: inline-flex;
@@ -2753,28 +2989,15 @@ small.t-pulse-counts {
 }
 
 /* ---------- 任务设计 ---------- */
+/* 列表与草稿编辑共用同一条内容左缘；侧栏收起或拖宽时只增加可用宽，不再二次居中。 */
 .t-projects,
-.t-designer {
-  width: min(1080px, 100%);
-  margin: 0 auto;
+.t-designer,
+.t-library {
+  width: 100%;
+  margin: 0;
   padding-bottom: 48px;
 }
-.t-designer {
-  width: min(1180px, 100%);
-}
-.t-projects-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  padding: 24px 0 20px;
-}
-.t-projects-head h2 {
-  margin: 0;
-  font-size: 20px;
-  line-height: 1.5;
-}
-.t-projects-head .primary,
+.t-project-tools .primary,
 .t-project-actions button,
 .t-designer-actions button,
 .t-add-objective {
@@ -2998,7 +3221,13 @@ small.t-pulse-counts {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding-bottom: 8px;
+  padding: 0 0 8px;
+}
+.t-project-tools {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
 }
 .t-project-filters {
   display: flex;
@@ -3731,7 +3960,6 @@ button.t-project-main {
   }
 }
 @media (max-width: 760px) {
-  .t-projects-head,
   .t-designer-head {
     align-items: flex-start;
     flex-direction: column;
@@ -3749,8 +3977,13 @@ button.t-project-main {
     align-items: stretch;
     flex-direction: column;
   }
-  .t-project-search {
+  .t-project-tools {
     width: 100%;
+  }
+  .t-project-search {
+    width: auto;
+    min-width: 0;
+    flex: 1;
   }
 }
 @media (max-width: 620px) {
@@ -4149,6 +4382,17 @@ button.t-project-main {
   .content--review-workspace:has(.t-review) .t-review-list-head,
   .content--review-workspace:has(.t-review) .t-review-list-body-clip,
   .content--review-workspace:has(.t-review) .t-review-detail {
+    transition: none;
+  }
+}
+
+/* 发送过场在减少动效下直接落地，只保留目标页。 */
+@media (prefers-reduced-motion: reduce) {
+  .t-review-detail.is-send-leaving,
+  .t-review-detail.is-send-entering {
+    opacity: 1;
+    transform: none;
+    animation: none;
     transition: none;
   }
 }

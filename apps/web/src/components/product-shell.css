@@ -3,6 +3,12 @@
   padding: 28px clamp(24px, 2.4vw, 32px) 32px;
 }
 
+/* 列表型内容页：任务设计、资料库共用同一套外框与首行间距。
+   左右即产品壳标准留白；内容列与内容框同宽，不再在框内二次居中。 */
+.product-shell .content.content--list-workspace {
+  padding: 28px clamp(24px, 2.4vw, 32px) 32px;
+}
+
 /* 双栏审阅/处理工作台：首屏直接进入对象清单，左上边距比常规内容页收一档。 */
 .product-shell .content.content--review-workspace {
   padding: 20px 24px 32px;
