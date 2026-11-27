@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest'
 import type { PdfPage } from '@xunjie/contracts/pdf-materials'
-import { pdfCanSpread, pdfPageSize, pdfSpreadGap, pdfZoomPercent, pdfZoomSliderMin } from './pdfZoom'
+import { pdfCanSpread, pdfPageSize, pdfSpreadGap, pdfZoomPercent, pdfZoomLimits } from './pdfZoom'
 
 const portrait = { width: 794, height: 1123 }
 const desktop = { width: 1280, height: 800 }
@@ -16,11 +16,20 @@ it('opens a wide desktop view between fit page and fit width', () => {
 it('keeps whole-page fitting reachable below the normal slider minimum', () => {
   const short = { width: 1280, height: 350 }
   const pages = [portrait, portrait]
-  expect(pdfZoomSliderMin(desktop, pages)).toBe(50)
-  const minimum = pdfZoomSliderMin(short, pages)
+  const minimum = pdfZoomLimits(short, [pages], true).min
   expect(minimum).toBe(pdfZoomPercent('fit-page', short, pages))
   expect(minimum).toBeLessThan(50)
-  expect(portrait.height * minimum / 100 + 26).toBeLessThanOrEqual(short.height)
+  expect(portrait.height * minimum / 100).toBeLessThanOrEqual(short.height)
+})
+
+it('bounds the spread slider by the widest row, including a lone landscape page, and remeasures stacked rows', () => {
+  const wide = { width: 1600, height: 900 }
+  const rows = [[portrait, portrait], [portrait, wide], [wide]]
+  const limits = pdfZoomLimits(desktop, rows, true)
+  expect(limits).toMatchObject({ min: 35, max: 61, 'fit-width': 52 })
+  expect((portrait.width + wide.width) * limits['fit-width'] / 100 + pdfSpreadGap).toBeLessThanOrEqual(desktop.width)
+  expect(pdfZoomLimits({ width: 640, height: 800 }, rows, true)).toMatchObject({ min: 27, max: 47 })
+  expect(pdfZoomLimits(desktop, [[wide]], false).max).toBe(300)
 })
 
 it('uses the available width for a narrow column without horizontally clipping either page', () => {

@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { Button } from '@xunjie/ui/foundation'
+import { Icon } from '@xunjie/ui/icons'
 import { toast } from '@xunjie/ui/feedback'
 import { componentStateName, type ComponentBinding } from '@xunjie/contracts/components'
 import { isExecutionAction, isTerminalExecutionState } from '@xunjie/contracts/execution'
@@ -10,6 +12,7 @@ import { runtimeAction } from '../../tool-execution/runtime-action'
 import { componentStateMediaType, readComponentState } from '../../tool-execution/action'
 import type { ExecutionController } from '../../tool-execution/controller'
 import type { ExecutionRecord } from '../../tool-execution/ledger'
+import { isCompileFailure } from '../../tool-execution/compiler-log'
 import { ExecutionPanel } from '../../product/ExecutionPanel'
 import type { ComponentResultLocation } from '../../product/RuntimeTool'
 import { AluBoard, type AluReading } from './AluBoard'
@@ -117,6 +120,9 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
   const runs = useSyncExternalStore(execution.subscribe, execution.snapshot)
   const actionFacts = useSyncExternalStore(actions.subscribe, actions.snapshot)
   const manifest = binding.definition.manifest
+  const inputsId = useId()
+  const [inputsOpen, setInputsOpen] = useState(true)
+  const folded = compact && !inputsOpen
   const toolHost = useRef<HTMLElement>(null)
   useEffect(() => { if (toolHost.current && manifest.stateVersion === 3) return protectCompositionNavigation(toolHost.current) }, [manifest.stateVersion])
   const instanceId = `${activity.activityId}:${binding.key}`
@@ -393,7 +399,8 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
     } else {
       const saved = writeState(previous => previous.pendingActivation === record.requestId
         ? { ...previous, pendingActivation: '', pendingActivationRevision: 0, pendingActivationBase: 0 } : previous, true)
-      if (saved) setNote(`本次未启用：${record.query.state === 'succeeded'
+      if (saved && compact && isCompileFailure(record)) setNote('')
+      else if (saved) setNote(`本次未启用：${record.query.state === 'succeeded'
         ? '运行完成但完整结果未确认保留'
         : record.query.reason?.detail ?? '运行未完成'}。实验仍使用上次运行的作品。`)
     }
@@ -626,11 +633,16 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
     : <p className="alu-readout-value alu-muted">{shownReading.state === 'waiting' ? '等待观察' : shownReading.state === 'incomplete' ? '观察不完整' : '尚未取得观察'}</p>
 
   return <section ref={toolHost} className={`execution-panel runtime-tool alu-tool ${compact ? 'runtime-tool-compact' : 'runtime-tool-full'}`}
-    aria-label="ALU 实验" data-component-key={binding.key} tabIndex={-1}>
+    aria-label="ALU 实验" data-component-key={binding.key} data-folded={folded || undefined} tabIndex={-1}>
     <header className="alu-tool-head">
       <div>
-        <h2>ALU 实验</h2>
-        <p className="alu-hint">{enabledRecord
+        <h2>{compact ? <Button variant="outline" className="alu-panel-toggle"
+          aria-expanded={inputsOpen} aria-controls={inputsId} aria-label={folded ? '展开 ALU 实验面板' : '收起 ALU 实验面板'}
+          onClick={() => setInputsOpen(open => !open)}>
+          <Icon name={folded ? 'alt-arrow-right' : 'alt-arrow-down'} size={14} variant="linear" tone="neutral" />
+          ALU 实验
+        </Button> : 'ALU 实验'}</h2>
+        <p className="alu-hint" hidden={folded}>{enabledRecord
           ? (showModified ? '实验使用上次运行的作品；当前代码有修改，检查也不会验证修改。' : '实验使用上次运行的作品；代码未改动。')
           : '编辑 alu.sv，点「运行」启用当时作品，再用开关或全部输入检查验证。'}</p>
       </div>
@@ -688,7 +700,7 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
       <button className="ws-btn ghost" onClick={() => writeState(previous => ({ ...previous, selectedObservation: '', selectedObservationRevision: -1 }))}>返回当前输入</button>
     </p>}
 
-    {compact ? <div className="alu-compact">
+    {compact ? <div className="alu-compact" hidden={folded} id={inputsId}>
       <NumericEditor values={controls} disabled={!canWrite} onChange={changeInput} />
       <div className="alu-compact-readout">
         {currentReadout}

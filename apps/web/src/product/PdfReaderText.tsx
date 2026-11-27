@@ -7,11 +7,11 @@ import type { openPdfText } from './pdfTextEngine'
 
 type PdfTextEngine = typeof import('./pdfTextEngine')
 type TextSource = { engine: PdfTextEngine; document: Awaited<ReturnType<typeof openPdfText>['promise']> }
-type OpenText = () => Promise<TextSource>
+export type OpenPdfText = () => Promise<TextSource>
 type LoadOriginal = (document: PdfDocument, signal: AbortSignal) => Promise<Uint8Array>
 
 export function usePdfReaderText(document: PdfDocument | null, loadOriginal: LoadOriginal) {
-  const [source, setSource] = useState<{ document: PdfDocument; open: OpenText }>()
+  const [source, setSource] = useState<{ document: PdfDocument; open: OpenPdfText }>()
   useEffect(() => {
     if (!document) return
     const controller = new AbortController()
@@ -34,7 +34,7 @@ export function usePdfReaderText(document: PdfDocument | null, loadOriginal: Loa
 }
 
 export function PdfReaderText({ open, page, width, frame, onLayout }: {
-  open: OpenText; page: PdfPage; width: number; frame: RefObject<HTMLDivElement | null>; onLayout(): void
+  open: OpenPdfText; page: PdfPage; width: number; frame: RefObject<HTMLDivElement | null>; onLayout(): void
 }) {
   const scaled = useRef<HTMLDivElement>(null)
   const container = useRef<HTMLDivElement>(null)
@@ -88,10 +88,68 @@ export function PdfReaderText({ open, page, width, frame, onLayout }: {
   </>
 }
 
+export function PdfContinuousText({ open, pageNumber, frame, expectText, onLayout }: {
+  open: OpenPdfText; pageNumber: number; frame: RefObject<HTMLDivElement | null>; expectText: boolean; onLayout(): void
+}) {
+  const scaled = useRef<HTMLDivElement>(null)
+  const container = useRef<HTMLDivElement>(null)
+  const [rawState, setRawState] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading')
+  useEffect(() => {
+    const node = container.current!, scaledNode = scaled.current!, pageFrame = frame.current!
+    let active = true
+    let viewportWidth = 0
+    let layer: InstanceType<PdfTextEngine['TextLayer']> | undefined
+    setRawState('loading')
+    const resize = ({ width: displayedWidth }: { width: number }) => {
+      if (viewportWidth > 0) scaledNode.style.transform = `scale(${displayedWidth / viewportWidth})`
+    }
+    const observer = new ResizeObserver(([entry]) => resize(entry.contentRect))
+    observer.observe(pageFrame)
+    void (async () => {
+      const source = await open()
+      if (!active) return
+      const nativePage = await source.document.getPage(pageNumber)
+      if (!active) return
+      const scale = 96 / 72
+      const viewport = nativePage.getViewport({ scale })
+      viewportWidth = viewport.width
+      resize(pageFrame.getBoundingClientRect())
+      node.style.setProperty('--total-scale-factor', String(scale * nativePage.userUnit))
+      node.style.left = '0px'
+      node.style.top = '0px'
+      layer = new source.engine.TextLayer({ textContentSource: nativePage.streamTextContent(), container: node, viewport })
+      const sideways = viewport.rotation % 180 !== 0
+      node.style.width = `${sideways ? viewport.height : viewport.width}px`
+      node.style.height = `${sideways ? viewport.width : viewport.height}px`
+      await layer.render()
+      if (active) setRawState(layer.textDivs.some(div => div.textContent?.trim()) ? 'ready' : 'empty')
+    })().catch(() => {
+      if (active) setRawState('error')
+    })
+    return () => {
+      active = false
+      observer.disconnect()
+      layer?.cancel()
+      node.replaceChildren()
+    }
+  }, [open, pageNumber, frame])
+  const state = rawState === 'error' ? 'unavailable' : rawState === 'empty' && expectText ? 'unavailable' : rawState
+  useEffect(() => {
+    onLayout()
+    return () => { onLayout() }
+  }, [state, onLayout])
+  return <>
+    <div className="pdf-text-scale" ref={scaled}>
+      <div className="pdf-page-text" data-text-state={state} aria-hidden={state !== 'ready'} ref={container} />
+    </div>
+    {state === 'unavailable' && expectText && <span className="pdf-text-unavailable" role="status">原生文字暂不可选</span>}
+  </>
+}
+
 const highlightName = 'xunjie-pdf-find'
 const activeHighlightName = 'xunjie-pdf-find-active'
 const matchLimit = 500
-const emptyFind = { matches: [] as Range[], index: 0, loading: false, unavailable: false }
+const emptyFind = { matches: [] as Range[], index: 0, loading: false, unavailable: false, hasReady: false }
 
 function findPageText(layer: HTMLElement, pattern: RegExp, limit: number, cropped: boolean): Range[] {
   const runs: { node: Text; start: number; end: number }[] = []
@@ -104,7 +162,7 @@ function findPageText(layer: HTMLElement, pattern: RegExp, limit: number, croppe
     text += node.data
     runs.push({ node, start, end: text.length })
   }
-  const clip = cropped ? layer.closest('.pdf-page-image')?.getBoundingClientRect() : undefined
+  const clip = cropped ? layer.closest('.pdf-page-image, .pdf-page-sheet')?.getBoundingClientRect() : undefined
   let first = 0, last = 0
   const matches: Range[] = []
   for (const match of text.matchAll(pattern)) {
@@ -133,7 +191,7 @@ function revealPdfMatch(area: HTMLDivElement, range: Range) {
 }
 
 export function usePdfTextFind(viewport: RefObject<HTMLDivElement | null>, readingId: string | undefined,
-  query: string, layout: number, cropped: boolean) {
+  pages: readonly number[], query: string, layout: number, cropped: boolean) {
   const [result, setResult] = useState(emptyFind)
   useEffect(() => {
     const value = query.trim()
@@ -141,20 +199,24 @@ export function usePdfTextFind(viewport: RefObject<HTMLDivElement | null>, readi
     if (!area || !value || !readingId) { setResult(emptyFind); return }
     const pattern = new RegExp(value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'giu')
     const matches: Range[] = []
-    const layers = Array.from(area.querySelectorAll<HTMLElement>('.pdf-page-text'))
+    const layers = pages.flatMap(page => Array.from(
+      area.querySelectorAll<HTMLElement>(`[data-pdf-page="${page}"] .pdf-page-text`),
+    ))
     for (const layer of layers.filter(layer => layer.dataset.textState === 'ready')) {
       matches.push(...findPageText(layer, pattern, matchLimit - matches.length, cropped))
       if (matches.length >= matchLimit) break
     }
+    const hasReady = layers.some(layer => layer.dataset.textState === 'ready')
     setResult({ matches, index: 0, loading: layers.some(layer => layer.dataset.textState === 'loading'),
-      unavailable: layers.length > 0 && layers.every(layer => layer.dataset.textState === 'unavailable') })
+      unavailable: layers.length > 0 && layers.some(layer => layer.dataset.textState === 'unavailable') && !hasReady,
+      hasReady })
     if (!globalThis.Highlight || !CSS.highlights) return
     const highlight = new Highlight(...matches)
     CSS.highlights.set(highlightName, highlight)
     return () => {
       if (CSS.highlights.get(highlightName) === highlight) CSS.highlights.delete(highlightName)
     }
-  }, [viewport, readingId, query, layout, cropped])
+  }, [viewport, readingId, pages, query, layout, cropped])
 
   const active = result.matches[result.index]
   useEffect(() => {
@@ -172,7 +234,7 @@ export function usePdfTextFind(viewport: RefObject<HTMLDivElement | null>, readi
 
   const count = result.matches.length
   return { count, total: count >= matchLimit ? `${matchLimit}+` : String(count),
-    position: result.index + 1, loading: result.loading, unavailable: result.unavailable,
+    position: result.index + 1, loading: result.loading, unavailable: result.unavailable, hasReady: result.hasReady,
     step(delta: -1 | 1) {
       if (count === 1 && active && viewport.current) revealPdfMatch(viewport.current, active)
       setResult(previous => {
@@ -187,19 +249,24 @@ type CopySelection = { text: string; left: number; top: number; above: boolean }
 function findCopySelection(area: HTMLDivElement): CopySelection | null {
   const selection = document.getSelection()
   if (!selection || selection.isCollapsed || !selection.rangeCount || !selection.anchorNode || !selection.focusNode) return null
-  const layer = selection.anchorNode.parentElement?.closest('.pdf-page-text[data-text-state="ready"]')
-  if (!layer || !area.contains(layer) || !layer.contains(selection.focusNode)) return null
-  const frame = layer.closest('.pdf-page-image')
+  const anchorLayer = selection.anchorNode.parentElement?.closest('.pdf-page-text[data-text-state="ready"]')
+  const focusLayer = selection.focusNode.parentElement?.closest('.pdf-page-text[data-text-state="ready"]')
+  if (!anchorLayer || !focusLayer || !area.contains(anchorLayer) || !area.contains(focusLayer)) return null
+  const frame = anchorLayer.closest('.pdf-page-image, .pdf-page-sheet')
   if (!frame) return null
   const page = frame.getBoundingClientRect(), bounds = area.getBoundingClientRect()
+  const clip = anchorLayer === focusLayer
+    ? { left: Math.max(page.left, bounds.left), right: Math.min(page.right, bounds.right),
+      top: Math.max(page.top, bounds.top), bottom: Math.min(page.bottom, bounds.bottom) }
+    : bounds
   const rect = Array.from(selection.getRangeAt(0).getClientRects()).find(rect =>
     rect.width > 0 && rect.height > 0
-      && rect.right > Math.max(page.left, bounds.left) && rect.left < Math.min(page.right, bounds.right)
-      && rect.bottom > Math.max(page.top, bounds.top) && rect.top < Math.min(page.bottom, bounds.bottom))
+      && rect.right > clip.left && rect.left < clip.right
+      && rect.bottom > clip.top && rect.top < clip.bottom)
   const text = selection.toString()
   if (!rect || !text.trim()) return null
   const above = rect.top - bounds.top >= 48
-  return { text, above, left: Math.max(rect.left, page.left) - bounds.left,
+  return { text, above, left: Math.max(rect.left, clip.left) - bounds.left,
     top: (above ? rect.top - 6 : Math.min(rect.bottom + 6, bounds.bottom - 40)) - bounds.top }
 }
 

@@ -81,26 +81,6 @@ async function focusLocation(root: HTMLDivElement | null, selector: string) {
 }
 import { RuntimeTool, type ComponentResultLocation } from './RuntimeTool'
 
-function PanelLeftOpenIcon({ size = 16 }: { size?: number }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      width={size}
-      height={size}
-      className="ui-icon icon-tone-neutral"
-      aria-hidden="true"
-      focusable="false"
-    >
-      <g fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth={1.5}>
-        <path d="M22 11C22 7.22876 22 5.34315 20.8284 4.17157C19.6569 3 17.7712 3 14 3H10C6.22876 3 4.34315 3 3.17157 4.17157C2 5.34315 2 7.22876 2 11V13C2 16.7712 2 18.6569 3.17157 19.8284C4.34315 21 6.22876 21 10 21H14C17.7712 21 19.6569 21 20.8284 19.8284C22 18.6569 22 16.7712 22 13V11Z" />
-        <path d="M9 21L9 3" />
-        <path strokeLinejoin="round" d="M14.2113 9L16.7827 12L14.2113 15" />
-      </g>
-    </svg>
-  )
-}
-
 /** The existing workspace container consumes the reliable session; it owns only layout and focus. */
 export function ActivityPage({ activity, spaceKey, namespace, authorized, nativeAvailable, workspaceRef, busy, onBack, onStatus, onRefresh,
   onModels, onAskHome, details, courseResources, account, requestedArtifactId, requestedExperiment, selection, taskInfoEntryRef, taskProgress }: {
@@ -545,9 +525,7 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
             else openDetails()
           }}
         >
-          {detailsOpen
-            ? <Icon name="panel-left-close" size={16} variant="linear" tone="neutral" />
-            : <PanelLeftOpenIcon size={16} />}
+          <Icon name="panel-left-close" className={detailsOpen ? undefined : 'panel-left-open'} />
         </button>
       )}
       {detailsShellVisible && <div className="product-task-details-shell" data-open={detailsOpen ? 'true' : 'false'}

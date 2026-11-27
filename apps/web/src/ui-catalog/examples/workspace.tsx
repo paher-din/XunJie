@@ -130,6 +130,12 @@ function ManagedFilesDemo({ readOnly = false, empty = false }: { readOnly?: bool
     </Stage>
   )
 }
+function CompilerProblemsDemo({ stale = false }: { stale?: boolean }) {
+  const [event, setEvent] = useEvent()
+  return <Stage event={event}><W.CompilerProblemsPanel
+    issues={[{ severity: 'error', path: 'alu.sv', line: 8, message: 'syntax error' }]}
+    stale={stale} canReveal={() => !stale} onReveal={issue => setEvent(`定位到 ${issue.path} 第 ${issue.line} 行`)} /></Stage>
+}
 function WorkspaceStatusDemo({ closed = false, running = false }: { closed?: boolean; running?: boolean }) {
   return <Stage><W.WorkspaceStatusBar closed={closed} attention={closed}
     workLabel={closed ? '作品保存待核对' : '已保存'} workDescription={closed ? undefined : '作品已保存到本机（v2）'}
@@ -452,6 +458,11 @@ function GuideDemo({ card = false }: { card?: boolean }) {
 export const workspaceEntries: CatalogEntry[] = [
   entry('TaskProgress', 'TaskPresentation', '受控进度环；每个实例的 gradient ID 独立。', ['percent/done/status', 'title/ariaLabel'], [], [state('progress', '进行中／可调进度', () => <TaskProgressDemo />), state('done', '已完成', () => <TaskProgressDemo done />)]),
   entry('TaskInfo', 'TaskPresentation', '任务展示字段由调用方提供，演示说明可省略。', ['name/status/goal', 'percent/done/currentProgress/stage/deadline/course', 'demoNotice?'], ['ProgressBar', '状态节点插槽'], [state('plain', '无演示标识', () => <TaskInfoDemo />), state('demo', '显式演示标识', () => <TaskInfoDemo demo />)]),
+  entry('CompilerProblemsPanel', 'CompilerProblemsPanel', '编译问题列表与源码定位。',
+    ['issues', 'stale', 'canReveal', 'onReveal'], ['Button', 'Icon'], [
+      state('current', '当前代码', () => <CompilerProblemsDemo />),
+      state('stale', '代码已修改', () => <CompilerProblemsDemo stale />),
+    ]),
   entry('FileTabs', 'FileTabs', '关闭标签与删除文件明确分离。', ['files/activeId/tabRoles', 'onOpen/onClose'], ['Icon'], [state('tabs', '打开／关闭', () => <FileTabsDemo />), state('empty', '空标签', () => <FileTabsDemo empty />)]),
   entry('FileStripView', 'FileStripView', '文件列表、行内命名、删除确认和备份入口。', ['files/openFiles/activeId/readOnly', 'onCreate/onRename/onDelete/onExport'],
     ['FileTabs', 'ConfirmationDialog'], [

@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import {
   applyModelEdits,
   OriginalEditHistory,
@@ -121,10 +121,11 @@ export interface CodeEditorHostProps {
   /** Interaction is present only for an explicit Monaco mouse/keyboard selection, never focus or API restore. */
   onSelectionChange?: (result: CodeSelectionResult, interaction?: 'mouse' | 'keyboard') => void
   diagnostics?: EditorDiagnosticMarkers
+  revealLocation?: CodeEditorLocation
 }
 
 export const CodeEditorHost = forwardRef<CodeEditorHandle, CodeEditorHostProps>(function CodeEditorHost(
-  { workspaceKey, fileId, language, initialText, readOnly, readOnlyReason, onTextChange, onCursorChange, onSelectionChange, diagnostics },
+  { workspaceKey, fileId, language, initialText, readOnly, readOnlyReason, onTextChange, onCursorChange, onSelectionChange, diagnostics, revealLocation },
   ref,
 ) {
   const hostRef = useRef<HTMLDivElement>(null)
@@ -150,7 +151,7 @@ export const CodeEditorHost = forwardRef<CodeEditorHandle, CodeEditorHostProps>(
     selectionRef.current = onSelectionChange
   })
 
-  const currentOriginal = () => {
+  const currentOriginal = useCallback(() => {
     const editor = editorRef.current, model = editor?.getModel()
     const identity = identityRef.current
     if (!editor || !model || registryKey !== identity.workspaceKey || identity.fileId === null ||
@@ -158,7 +159,22 @@ export const CodeEditorHost = forwardRef<CodeEditorHandle, CodeEditorHostProps>(
     const key = keyOf(identity.workspaceKey, identity.fileId), state = originals.get(key)
     if (!state || models.get(key) !== model || model.getValue() !== state.projection.modelText) return null
     return { editor, model, state, identity }
-  }
+  }, [])
+  const revealOriginalRange = useCallback<CodeEditorHandle['revealOriginalRange']>((location) => {
+    const current = currentOriginal()
+    if (!current || location.workspaceKey !== current.identity.workspaceKey ||
+      location.fileId !== current.identity.fileId || location.originalText !== current.state.history.current)
+      return { ok: false, reason: '原文件或正文已改变，不能把旧位置定位到当前代码。' }
+    const offsets = codeRangeModelOffsets(location.originalText, location.range)
+    if (!offsets) return { ok: false, reason: '原位置无法在编辑器中精确表示，原文保持不变。' }
+    const start = current.model.getPositionAt(offsets[0]), end = current.model.getPositionAt(offsets[1])
+    const range = { startLineNumber: start.lineNumber, startColumn: start.column,
+      endLineNumber: end.lineNumber, endColumn: end.column }
+    current.editor.setSelection(range)
+    current.editor.revealRangeInCenter(range)
+    current.editor.focus()
+    return { ok: true }
+  }, [currentOriginal])
   const captureSelection = (): CodeSelectionResult => {
     const current = currentOriginal()
     if (!current) return { ok: false, reason: '编辑器或原文件实例尚不可用，请重新选择。' }
@@ -236,21 +252,7 @@ export const CodeEditorHost = forwardRef<CodeEditorHandle, CodeEditorHostProps>(
       }
       return null
     },
-    revealOriginalRange: (location) => {
-      const current = currentOriginal()
-      if (!current || location.workspaceKey !== current.identity.workspaceKey ||
-        location.fileId !== current.identity.fileId || location.originalText !== current.state.history.current)
-        return { ok: false, reason: '原文件或正文已改变，不能把旧位置定位到当前代码。' }
-      const offsets = codeRangeModelOffsets(location.originalText, location.range)
-      if (!offsets) return { ok: false, reason: '原位置无法在编辑器中精确表示，原文保持不变。' }
-      const start = current.model.getPositionAt(offsets[0]), end = current.model.getPositionAt(offsets[1])
-      const range = { startLineNumber: start.lineNumber, startColumn: start.column,
-        endLineNumber: end.lineNumber, endColumn: end.column }
-      current.editor.setSelection(range)
-      current.editor.revealRangeInCenter(range)
-      current.editor.focus()
-      return { ok: true }
-    },
+    revealOriginalRange,
   }))
 
   /* 1. 加载 Monaco 并创建唯一的编辑器实例 */
@@ -421,6 +423,10 @@ export const CodeEditorHost = forwardRef<CodeEditorHandle, CodeEditorHostProps>(
     originals.set(key, { history: new OriginalEditHistory(initialText, model.getAlternativeVersionId()), projection })
     notifySelection()
   }, [status, workspaceKey, fileId, initialText])
+
+  useEffect(() => {
+    if (status === 'ready' && revealLocation) revealOriginalRange(revealLocation)
+  }, [status, revealLocation, revealOriginalRange])
 
   useEffect(() => {
     const monaco = monacoRef.current, model = editorRef.current?.getModel()

@@ -55,7 +55,10 @@
 .learning-workspace .cw-filetab-name { overflow: hidden; text-overflow: ellipsis; }
 .learning-workspace .cw-editor-wrap { height: 100%; min-height: 240px; }
 .learning-workspace .wr-code-source { flex: 1; min-height: 240px; }
+.learning-workspace > pre { flex: 1; min-height: 0; min-width: 0; overflow: auto; }
 .learning-workspace .cw-editor { width: 100%; height: 100%; }
+.learning-workspace[data-compile-failure] :is(.wr-code-source, .cw-editor-wrap) { min-height: 0; }
+.learning-workspace[data-compile-failure] > .empty { flex: 1; }
 .work-comparison { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .work-comparison pre, .learning-action-record pre { overflow: auto; max-height: 240px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .product-discussion { display: flex; flex-direction: column; flex: none; width: 380px; min-width: 0; overflow: hidden; padding: 0; border-left: 1px solid var(--line); background: var(--paper); }
@@ -219,3 +222,10 @@
 
 .product-discussion .prompt-input textarea { min-height: 44px; }
 .product-discussion-input { position: relative; }
+
+/* Reverse the chevron while keeping the sidebar on the left. */
+.panel-left-open[data-icon="panel-left-close"] path:last-child {
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: scaleX(-1);
+}
